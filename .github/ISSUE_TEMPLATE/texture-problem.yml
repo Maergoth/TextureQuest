@@ -1,0 +1,34 @@
+name: Texture problem
+description: Report an appearance, installation or texture issue.
+title: "[Texture] "
+body:
+  - type: input
+    id: version
+    attributes:
+      label: TextureQuest version
+    validations:
+      required: true
+  - type: input
+    id: game
+    attributes:
+      label: Game version and server
+  - type: input
+    id: subject
+    attributes:
+      label: Zone, item, creature or character appearance
+      description: Include race, gender and appearance variant when relevant.
+  - type: dropdown
+    id: verification
+    attributes:
+      label: Does Verify installation pass?
+      options:
+        - Not checked
+        - Yes
+        - No
+  - type: textarea
+    id: problem
+    attributes:
+      label: What looks wrong?
+      description: Attach a close-up screenshot if possible. Do not attach credentials or private logs.
+    validations:
+      required: true

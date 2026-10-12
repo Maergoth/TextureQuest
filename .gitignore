@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+build/
+dist/
+data/
+downloads/
+*.zip
+*.zip.*
+*.pending
+*.download
+*.log
+*.spec
+local-release-receipt.json
+
