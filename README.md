@@ -6,7 +6,7 @@
 
 TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim is to retain the game's original style, recognizable designs and art direction while bringing out the detail in armor, creatures, signs, buildings and terrain.
 
-AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes more than **23,000 textures at 1K or 2K**, covering equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
+AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes more than **23,000 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
 
 ## Download and install
 
@@ -30,7 +30,7 @@ Already have the full `Texture-Pack.zip`? Choose **Maintenance & updates → Use
 
 ## Examples
 
-Close-ups of older Norrath, using the original game models and their material layers with matching cameras and lighting. Original textures are on the left; TextureQuest is on the right. The Leviathan comparison shows the upcoming 1.1 texture; the other examples use the released 1.0 pack. These are 3D previews; appearance in game will vary with lighting, settings and character customization.
+Close-ups of older Norrath, using the original game models and their material layers with matching cameras and lighting. Original textures are on the left; released TextureQuest textures are on the right. These are 3D previews; appearance in game will vary with lighting, settings and character customization.
 
 Expand a category to see close-up comparisons.
 
@@ -61,9 +61,9 @@ Expand a category to see close-up comparisons.
 
 **The Leviathan — mouth, teeth and scales**
 
-Original 1K artwork beside the new 4K texture on the complete model. **Coming in 1.1; not included in the current 1.0 download.**
+Original 1K artwork beside the released 4K texture on the complete model.
 
-![Original 1K and upcoming TextureQuest 4K Leviathan, side by side](docs/images/monster-leviathan-main-4k.png)
+![Original 1K and TextureQuest 1.1 4K Leviathan, side by side](docs/images/monster-leviathan-main-4k.png)
 
 **Hell Boar — fur, skin and tusks**
 
@@ -132,7 +132,7 @@ The installer installs the complete pack. Separate content selections are not av
 
 The [technical guide](docs/TECHNICAL.md) covers the model and generation recipe, resolution selection, material and DDS compatibility findings, corrections, validation, and building the installer. It also explains what is available to reproduce from this repository.
 
-For manual downloads and checksums, use the [release files](https://github.com/Maergoth/TextureQuest/releases/tag/v1.0.0). The installer handles the fourteen pack parts automatically. GitHub's **Source code (zip)** does not contain the textures.
+For manual downloads and checksums, use the [release files](https://github.com/Maergoth/TextureQuest/releases/latest). The installer fetches and verifies the required base and update files automatically. GitHub's **Source code (zip)** does not contain the textures.
 
 ## Credits and ownership
 

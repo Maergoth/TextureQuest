@@ -1,8 +1,8 @@
 {
   "schema": "texturequest-3d-comparison-provenance-v1",
-  "slug": "monster-leviathan-main-4k",
-  "title": "The Leviathan - original vs 4K",
-  "publication_status": "4K candidate; TextureQuest 1.1 pending; not included in published 1.0",
+  "slug": "monster-leviathan-main-shipped-1-1",
+  "title": "The Leviathan - original vs TextureQuest 1.1",
+  "publication_status": "TextureQuest 1.1.0 public release",
   "left": {
     "label": "Original 1K",
     "native_size": [
@@ -14,15 +14,18 @@
     "source_alpha_sha256": "f5fb04aa5b882706b9309e885f19477261336ef76a150c3b4d3489dfac3953ec"
   },
   "right": {
-    "label": "4K candidate Â· TextureQuest 1.1 pending",
+    "label": "TextureQuest 1.1",
     "native_size": [
       4096,
       4096
     ],
-    "raw_png_sha256": "45f0a52d0ef883eaa05e8af2e2ef00c1698af5e7e302888f058d9ba23318d0c7",
-    "finished_png_sha256": "934a098c818e4b69ae58ea3808b59e86835f4f8164b0d2aeb2dbd7e62e8293d5",
-    "source_alpha_exact": true,
-    "encoding": "lossless candidate PNG before final DDS compression"
+    "dds_sha256": "c6191928d067e22ed65075224eb05def97f7ec13683ceccb09fc1e04b646368a",
+    "dds_bytes": 11184958,
+    "dds_format": "DXT1",
+    "authored_mips": 11,
+    "decoded_png_sha256": "968ea22415aa10912e5d15a5675ce08514864c5c06561ddb1e161cb58a922653",
+    "decoded_rgba_sha256": "a3ab2ab24414ff39fd144aab702be0e1092cb8eab39c1afdbd179fd132cad60e",
+    "encoding": "Actual final packed DDS decoded without additional color processing"
   },
   "texture": {
     "archive": "Char_exp04_behemoth.vpk",
@@ -58,16 +61,17 @@
     ]
   },
   "finish": {
-    "contrast": 1.15,
-    "saturation": 1.15,
-    "application_count": 1,
-    "from": "raw verified candidate",
-    "function_ast_sha256": "3ed03e125bca8b5065d2f821225116a9433c4568d1ecbc03e57968ed5fc8f9cb",
-    "alpha_unchanged": true
+    "applied_during_packing": {
+      "contrast": 1.15,
+      "saturation": 1.15,
+      "application_count": 1
+    },
+    "preview_extra_finish_count": 0,
+    "source_alpha_verified_all_mips": true
   },
   "render": {
     "same_mesh_uv_camera_lighting": true,
-    "renderer_sha256": "5e1d6da65cf97aaf2cc4f123aab2819da3fd07eb57c5bf5e3963914ba4972931",
+    "renderer_sha256": "0d0eb87530c40eccc41ef1b930eda3069ed7879b68151e0cc6bbd2df03423851",
     "three_js_sha256": "9274bbcec8d96168626c732b5d31c775aa8cfb7eaa0599bec0c175908a2c1ce2",
     "camera_default": {
       "position": [
@@ -89,8 +93,8 @@
     "method": "Unretouched browser canvas export of original game geometry",
     "limitations": [
       "Shared approximate lighting; original stored pose, not game animation.",
-      "Complete single-draw main creature appearance, not separately spawned behemoth actor components.",
-      "Right side uses lossless finished candidate PNG before DDS compression; version 1.1 publication pending."
+      "Complete single-draw main creature appearance; separate behemoth actor components are not attached by its VOC.",
+      "Color pixels are decoded from the exact final DXT1 DDS. Browser preview filtering may differ from the game."
     ]
   },
   "source_verification": {
@@ -107,10 +111,25 @@
     "raw_candidate_sha256": "45f0a52d0ef883eaa05e8af2e2ef00c1698af5e7e302888f058d9ba23318d0c7",
     "checks": "frozen source, conditioned binding, latent, output dimensions and source alpha verified independently"
   },
+  "encoded_release": {
+    "zip_name": "TextureQuest-Update-1.1.0.zip",
+    "zip_bytes": 1041986839,
+    "zip_sha256": "7c80130a1cdb33b7fd44ac9d770249b4fe4781ef81e4237b53cffde023679f02",
+    "pack_id": "7ee7f5c455ca4b5652a8b039f13574e8aba5f1185413cdfdafc7f6d1f8a9e238",
+    "archive_name": "Char_exp04_behemoth.vpk",
+    "archive_bytes": 78723811,
+    "archive_sha256": "c836dcb2395faeb1fc5fce0c9194ad499604372f803a62421038afea12751895",
+    "completed_result_record_sha256": "74be6633b96bf9046d72a0a0e5032168e7e796ae521d253c7492f9606f4d500d",
+    "package_proof_sha256": "f5b2ebf7393a1197e42080b62fdbcc4fe673e177bd555d6af761754ac4026f2b",
+    "archive_proof_record_sha256": "c508d1ec3100be896404216331269b49d692c4a52fdc344f0a304e745ce6d50d",
+    "all_protected_archive_blocks_verified": true,
+    "independent_delivery_verification_sha256": "4c3d391b968dc4af3d290703b8a1e41727c6fd2819a9e34907e7ac9b2e7c035f"
+  },
+  "release_url": "https://github.com/Maergoth/TextureQuest/releases/tag/v1.1.0",
   "capture": {
-    "slug": "monster-leviathan-main-4k",
-    "bytes": 2057802,
-    "sha256": "a9af2236370f59ee5656ca65b5b4e9f2a3c179e733f022a6fdfac9e230027a12",
+    "slug": "monster-leviathan-main-shipped-1-1",
+    "bytes": 2085341,
+    "sha256": "9873f764dc2e4622b42e37ac0aff0d0648d5dc87dbae01f754071226c372d1e4",
     "size": [
       1600,
       960
@@ -132,10 +151,10 @@
           0
         ],
         "roll_radians": 0,
-        "renderer_revision": "leviathan-main-4k-v1"
+        "renderer_revision": "leviathan-main-shipped-1-1-v1"
       },
       {
-        "side": "candidate",
+        "side": "pack",
         "width": 400,
         "height": 402.5,
         "triangles": 5054,
@@ -150,14 +169,14 @@
           0
         ],
         "roll_radians": 0,
-        "renderer_revision": "leviathan-main-4k-v1"
+        "renderer_revision": "leviathan-main-shipped-1-1-v1"
       }
     ],
-    "renderer_sha256": "5e1d6da65cf97aaf2cc4f123aab2819da3fd07eb57c5bf5e3963914ba4972931",
-    "manifest_sha256": "6fd21c697f385c5841669d3beeeeff81c203f83f344703c02b574c2d0d811c95",
-    "geometry_sha256": "96bd0b05b2909340b8cb2326331278b9092bd234a755832551abb70615c56fcc",
+    "renderer_sha256": "0d0eb87530c40eccc41ef1b930eda3069ed7879b68151e0cc6bbd2df03423851",
+    "manifest_sha256": "d17ab33af25c1319e6a910948d971c0712d4a05e89f9dee983438188cc9141f4",
+    "geometry_sha256": "4be054cbeae7957622a4c5840dcff03ad4252732d6dfc488fdd6a3bab88466df",
     "method": "Exact original browser canvas PNG bytes; no image editing or re-encoding",
     "file": "images/monster-leviathan-main-4k.png",
-    "captured_at": "2026-10-12T10:25:12.738351+00:00"
+    "captured_at": "2026-10-12T11:30:33.916286+00:00"
   }
 }
