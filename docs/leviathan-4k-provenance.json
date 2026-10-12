@@ -1,0 +1,163 @@
+{
+  "schema": "texturequest-3d-comparison-provenance-v1",
+  "slug": "monster-leviathan-main-4k",
+  "title": "The Leviathan - original vs 4K",
+  "publication_status": "4K candidate; TextureQuest 1.1 pending; not included in published 1.0",
+  "left": {
+    "label": "Original 1K",
+    "native_size": [
+      1024,
+      1024
+    ],
+    "dds_sha256": "9ee641cd1caf4e86a9706abd16d7e813b7c555db24d6027dedea9dbf9ac2a630",
+    "rgba_sha256": "c35e6a88914c5384f894050c1d1ba22238d25ec74c9e68aab437358d5e07cbd7",
+    "source_alpha_sha256": "f5fb04aa5b882706b9309e885f19477261336ef76a150c3b4d3489dfac3953ec"
+  },
+  "right": {
+    "label": "4K candidate Â· TextureQuest 1.1 pending",
+    "native_size": [
+      4096,
+      4096
+    ],
+    "raw_png_sha256": "45f0a52d0ef883eaa05e8af2e2ef00c1698af5e7e302888f058d9ba23318d0c7",
+    "finished_png_sha256": "934a098c818e4b69ae58ea3808b59e86835f4f8164b0d2aeb2dbd7e62e8293d5",
+    "source_alpha_exact": true,
+    "encoding": "lossless candidate PNG before final DDS compression"
+  },
+  "texture": {
+    "archive": "Char_exp04_behemoth.vpk",
+    "name": "_exp04/cooked/characters/monsters/behemoth_main/sourceimages/behemoth_main_c.dds"
+  },
+  "geometry": {
+    "archive": "Char_exp04_behemoth.vpk",
+    "name": "_exp04/cooked/characters/monsters/behemoth_main/scenes/behemoth_main_l0.draw",
+    "sha256": "b24646224dd1696f25d9422930a9cb49747584c32306a0fd1602cba3bb92689f",
+    "parts": 1,
+    "triangles": 5054,
+    "geometry_arrays_unchanged": true,
+    "pose": "original stored bind pose"
+  },
+  "materials": {
+    "all_active_maps_included": true,
+    "color_blend": "same color image in both tint slots; white source tint constants",
+    "unchanged_maps": [
+      {
+        "archive": "Char_exp04_behemoth.vpk",
+        "name": "_exp04/cooked/characters/monsters/behemoth_main/sourceimages/behemoth_main_b.dds",
+        "role": "bump",
+        "dds_sha256": "ecf8c2ce6b5be486c776a80e950eacbbae78025137e49a6a471caa3d884f8891",
+        "png_sha256": "eeaf5fa5ac768344476e2d88d02a7578a50687b472b00a1e4619d26ada7452ef"
+      },
+      {
+        "archive": "Char_exp04_behemoth.vpk",
+        "name": "_exp04/cooked/characters/monsters/behemoth_main/sourceimages/behemoth_main_s.dds",
+        "role": "specular",
+        "dds_sha256": "634203e8a9f43b35d0b3bc9abfa150867c50bf615d9bb487928cf200703f349e",
+        "png_sha256": "ac0581b5faa2eb4001d2e94ed2feb4c91a828f2348ec3652cc73d4e8515b0ead"
+      }
+    ]
+  },
+  "finish": {
+    "contrast": 1.15,
+    "saturation": 1.15,
+    "application_count": 1,
+    "from": "raw verified candidate",
+    "function_ast_sha256": "3ed03e125bca8b5065d2f821225116a9433c4568d1ecbc03e57968ed5fc8f9cb",
+    "alpha_unchanged": true
+  },
+  "render": {
+    "same_mesh_uv_camera_lighting": true,
+    "renderer_sha256": "5e1d6da65cf97aaf2cc4f123aab2819da3fd07eb57c5bf5e3963914ba4972931",
+    "three_js_sha256": "9274bbcec8d96168626c732b5d31c775aa8cfb7eaa0599bec0c175908a2c1ce2",
+    "camera_default": {
+      "position": [
+        0.55,
+        1.05,
+        1.35
+      ],
+      "target": [
+        0,
+        0.3,
+        0
+      ],
+      "fov_degrees": 38
+    },
+    "size": [
+      1600,
+      960
+    ],
+    "method": "Unretouched browser canvas export of original game geometry",
+    "limitations": [
+      "Shared approximate lighting; original stored pose, not game animation.",
+      "Complete single-draw main creature appearance, not separately spawned behemoth actor components.",
+      "Right side uses lossless finished candidate PNG before DDS compression; version 1.1 publication pending."
+    ]
+  },
+  "source_verification": {
+    "queue_plan_seal": "1af36053945593ed25ae26b6424196674cda40f16f843498208aaaeab3ef3166",
+    "item_plan_sha256": "b5c6b5470f634df0212089a26c2067273b1670041246381de3ea3ad92d6353f0",
+    "result_record_sha256": "c435c8c6529cc7e884c60e1bf93ce14e6d383da5bcaaf225b8c5cd57ce9f23d4",
+    "receipt_sha256": "2dd6cb68d9add29581e433fd05a51619f80d949646d03da741d555ffe3da37fc",
+    "backend_sha256": "da81a3c9c1cb981925ae611aae5efb8aa438fd82633e738f62155188f5c558fc",
+    "backend_read_only_verifiers_passed": true
+  },
+  "image": null,
+  "independent_candidate_verification": {
+    "receipt_sha256": "40a18d92fba1dedee6ebb25e0e3351c8c95108447b307ac226a115097005df06",
+    "raw_candidate_sha256": "45f0a52d0ef883eaa05e8af2e2ef00c1698af5e7e302888f058d9ba23318d0c7",
+    "checks": "frozen source, conditioned binding, latent, output dimensions and source alpha verified independently"
+  },
+  "capture": {
+    "slug": "monster-leviathan-main-4k",
+    "bytes": 2057802,
+    "sha256": "a9af2236370f59ee5656ca65b5b4e9f2a3c179e733f022a6fdfac9e230027a12",
+    "size": [
+      1600,
+      960
+    ],
+    "cameras": [
+      {
+        "side": "stock",
+        "width": 400,
+        "height": 402.5,
+        "triangles": 5054,
+        "camera": [
+          0.55,
+          1.05,
+          1.35
+        ],
+        "target": [
+          0,
+          0.3,
+          0
+        ],
+        "roll_radians": 0,
+        "renderer_revision": "leviathan-main-4k-v1"
+      },
+      {
+        "side": "candidate",
+        "width": 400,
+        "height": 402.5,
+        "triangles": 5054,
+        "camera": [
+          0.55,
+          1.05,
+          1.35
+        ],
+        "target": [
+          0,
+          0.3,
+          0
+        ],
+        "roll_radians": 0,
+        "renderer_revision": "leviathan-main-4k-v1"
+      }
+    ],
+    "renderer_sha256": "5e1d6da65cf97aaf2cc4f123aab2819da3fd07eb57c5bf5e3963914ba4972931",
+    "manifest_sha256": "6fd21c697f385c5841669d3beeeeff81c203f83f344703c02b574c2d0d811c95",
+    "geometry_sha256": "96bd0b05b2909340b8cb2326331278b9092bd234a755832551abb70615c56fcc",
+    "method": "Exact original browser canvas PNG bytes; no image editing or re-encoding",
+    "file": "images/monster-leviathan-main-4k.png",
+    "captured_at": "2026-10-12T10:25:12.738351+00:00"
+  }
+}
