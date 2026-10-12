@@ -75,17 +75,11 @@ After a game patch, you can reapply your downloaded pack without downloading it 
 
 Version 1.0 installs the complete pack. Separate content selections are not available because the game's archives mix equipment, characters and shared world textures.
 
-## Manual downloads and integrity
+## Technical details and contributing
 
-The installer handles the download and checksums for you. If downloading manually, the pack consists of **14 ordered parts** that must be joined into one `Texture-Pack.zip` before extraction. Individual parts cannot be extracted on their own. GitHub's **Source code (zip)** does not contain the textures.
+The [technical guide](docs/TECHNICAL.md) covers the model and generation recipe, resolution selection, material and DDS compatibility findings, corrections, validation, and building the installer. It also explains what is available to reproduce from this repository.
 
-The resulting `Texture-Pack.zip` is **27,763,745,032 bytes** with SHA-256:
-
-```text
-9501071759d57c26175ee9245b3f5dfee4d4cee7f19a57c039289d09d2041caf
-```
-
-Individual file checksums are available with the [release downloads](https://github.com/Maergoth/TextureQuest/releases/tag/v1.0.0).
+For manual downloads and checksums, use the [release files](https://github.com/Maergoth/TextureQuest/releases/tag/v1.0.0). The installer handles the fourteen pack parts automatically. GitHub's **Source code (zip)** does not contain the textures.
 
 ## Credits and ownership
 
