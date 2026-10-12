@@ -1,11 +1,11 @@
 {
-  "schema": "texturequest-public-gallery-v1",
+  "schema": "texturequest-public-gallery-v2",
   "source_pack_sha256": "9501071759d57c26175ee9245b3f5dfee4d4cee7f19a57c039289d09d2041caf",
-  "method": "Stock vs top-mip DDS decoded directly from the exact shipped ZIP. Same original mesh, UVs, camera and neutral lighting; no second color finish. Local 3D material preview, not an in-game screenshot. Surface maps omitted equally. The supplied game mip chains are not rendered by this preview.",
+  "method": "Original stock versus top-mip DDS decoded directly from the released ZIP. All original object parts and audited material layers are assembled with identical cameras and lighting. Terrain is explicitly a close-up mesh patch. These local 3D previews are not in-game screenshots; exact engine lighting, animation, particles and supplied mip chains are not reproduced.",
   "render": {
     "engine": "Three.js r128",
+    "material": "MeshPhongMaterial with source-equation color-layer composition",
     "field_of_view_degrees": 38,
-    "material": "MeshLambertMaterial",
     "color_space": "sRGB",
     "ambient_intensity": 0.85,
     "key_intensity": 0.6,
@@ -21,14 +21,14 @@
       -1
     ],
     "same_camera_lighting_and_sampler_on_both_sides": true,
-    "presentation": "Direct export of both rendered WebGL canvases with title/labels/footer. No AI-generated or retouched comparisons.",
-    "code_sha256": "27f1175280e561126dbb2f0a78b24eb5689692aee5825a1f5976a4385336915a"
+    "presentation": "Unchanged 1600 x 960 browser canvas export with labels; no AI retouching.",
+    "code_versions": "Exact renderer hash recorded separately for each image. Later versions add a terrain-specific caption and optional camera roll; default projection and lighting are unchanged."
   },
   "items": [
     {
-      "title": "Mermaid scale armor",
-      "image": "images/armor-mermaid.png",
-      "image_sha256": "f2fa848dcb903fcdfcffce2d3dadde6bec1ca000f5a3492c97edaaabe05534f6",
+      "title": "Faydark ornate plate armor",
+      "image": "images/armor-faydark-plate.png",
+      "image_sha256": "69a01343fd37d765ba719497736fbc19e243d6c6e49c3a0111aec69e36a76b12",
       "image_size": [
         1600,
         960
@@ -36,42 +36,824 @@
       "mesh": {
         "archive": "Char_B.vpk",
         "name": "cooked/characters/accessories/armor/plate/optimizedplate/humanmale/scenes/chest.draw",
-        "sha256": "905ae2b3ffb1306368314e456bb83022d6ce36d0e0040f13c1f97b320f036053"
+        "sha256": "905ae2b3ffb1306368314e456bb83022d6ce36d0e0040f13c1f97b320f036053",
+        "bytes": 44640
       },
-      "geometry_input_sha256": "1c4f23eac5ab10c249847380a213fcf0e80fbdf39bd253f80fe00071f163eb8a",
+      "geometry_input_sha256": "b2a9f193e636aee7615c985ccdb68754a35093d2617dc03cd6c61fb8e0560ea0",
+      "triangles": 550,
+      "material_groups": 1,
       "camera_normalized": [
-        0.25,
-        0.15,
+        0.35,
+        0.3,
         2.55
       ],
       "target_normalized": [
         0,
+        0.12,
+        0
+      ],
+      "camera_roll_radians": 0,
+      "renderer_code_sha256": "475525085ec108feccc674bc6d2a0cc4e29a547a35b3f3e8638d9c8f939e58b9",
+      "scope": null,
+      "limitations": [],
+      "material_equation": "color0=lerp(white,tint0,tex0.alpha); textureColoring=lerp(color0,tint1,tint2.alpha); RGB=tex0.RGB*textureColoring. tint0=tint1=source default white, therefore RGB=tex0.RGB. All samples use original UV0.",
+      "material_audit": null,
+      "render_material_bindings": [
+        {
+          "reviewed": true,
+          "label": "Faydark ornate plate",
+          "material": "shaders/characters/accessories/wearable_items_textures/exp03/faydark_plate_01/faydark_plate_01.vdl",
+          "gallery_maps": {
+            "stock": "armor-faydark-plate-color-stock.png",
+            "pack": "armor-faydark-plate-color-pack.png"
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "armor-faydark-plate-bump-stock.png",
+              "pack": "armor-faydark-plate-bump-pack.png"
+            },
+            "specular": {
+              "stock": "armor-faydark-plate-specular-stock.png",
+              "pack": "armor-faydark-plate-specular-pack.png"
+            }
+          },
+          "gallery_tint_mask": {
+            "stock": "armor-faydark-plate-tint_mask-stock.png",
+            "pack": "armor-faydark-plate-tint_mask-pack.png"
+          },
+          "tint0": [
+            1,
+            1,
+            1
+          ],
+          "tint1": [
+            1,
+            1,
+            1
+          ],
+          "bump_scale": 0.0125,
+          "shininess": 32,
+          "two_sided": true,
+          "opacity": 1,
+          "notes": [
+            "Both source default tints are white. The exact material tint equation reduces to primary RGB regardless of both alpha masks. Tint mask is retained with stock/released hashes; it is not object transparency."
+          ]
+        }
+      ],
+      "completeness": null,
+      "textures": [
+        {
+          "archive": "Char_exp03_global_01.vpk",
+          "name": "cooked/characters/accessories/wearable_items_textures/exp03/faydark_plate_01/faydark_plate_01_tint1.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "hash-verified retained stock DDS"
+          },
+          "images": {
+            "stock": {
+              "url": "armor-faydark-plate-color-stock.png",
+              "png_sha256": "9d2a3a121ba5a7825c1b2260f1a8bcdf28511190c953b8fe33d04c90f00ff578",
+              "dds_sha256": "51e686301b2b0305345709e4a3f508980bcac1dba36c0fdecc383d0e7a88334d",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT3"
+            },
+            "pack": {
+              "url": "armor-faydark-plate-color-pack.png",
+              "png_sha256": "f2404394eff5348189eb87b7db6fce3a576731c581a4e0683bc7c623614173ec",
+              "dds_sha256": "6fbe7c642a9e9532c35da5841c377c5c90ccb1349b272b78120879cf4cd1d9e7",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT3"
+            }
+          }
+        },
+        {
+          "archive": "Char_exp03_global_01.vpk",
+          "name": "cooked/characters/accessories/wearable_items_textures/exp03/faydark_plate_01/faydark_plate_01_tint2.dds",
+          "role": "tint_mask",
+          "stock_proof": {
+            "kind": "hash-verified retained stock DDS"
+          },
+          "images": {
+            "stock": {
+              "url": "armor-faydark-plate-tint_mask-stock.png",
+              "png_sha256": "3c5eb22eceeca94825aa80a9ad65f6e31dc7eedd6fee64a374cfc7c2c19a9996",
+              "dds_sha256": "99e32d4f3aa7d83c6a13cfcd612420c65a8a1d781826b898121a9eb4185bb73c",
+              "size": [
+                256,
+                256
+              ],
+              "format": "DXT3"
+            },
+            "pack": {
+              "url": "armor-faydark-plate-tint_mask-pack.png",
+              "png_sha256": "298aada4561c450cedf433193e995e0e3d234122a17d47cb21449210cc95abc8",
+              "dds_sha256": "f24f79691e73369b177e41e124292a3ef906c47d73c6a44a5fa0371315e26402",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT3"
+            }
+          }
+        },
+        {
+          "archive": "Char_exp03_global_01.vpk",
+          "name": "cooked/characters/accessories/wearable_items_textures/exp03/faydark_plate_01/faydark_plate_01_bump.dds",
+          "role": "bump",
+          "stock_proof": {
+            "basis": "protected stock entry retained by verified pack; no historical individual entry SHA available",
+            "catalog_sha256": "b3efb0373950e5416fa0b40fbd051056a21cf98421b45f464c860c9943799f5f",
+            "classification": {
+              "name": "cooked/characters/accessories/wearable_items_textures/exp03/faydark_plate_01/faydark_plate_01_bump.dds",
+              "key": "08216f781a903f13",
+              "fmt": "RGB8(r=0,g=0,b=0,a=0)",
+              "w": 512,
+              "h": 512,
+              "mips": 8,
+              "role": "bump",
+              "reason": "material binds @bump on an 8-bit height map",
+              "material": "metal",
+              "tileable": [
+                true,
+                true
+              ],
+              "sequence": false,
+              "scale": 4,
+              "recipe": "data"
+            },
+            "archive": {
+              "bytes": 110710775,
+              "entries": 971,
+              "member": "Char_exp03_global_01.vpk",
+              "name": "Char_exp03_global_01.vpk",
+              "sha256": "740665ea9c90108f45a57798b8dc198670b8ae68036c8799c8eeef5236d44caa"
+            },
+            "completed_protection_receipt": "work/nightly/character_seam_pack_v3/result.json",
+            "completed_protection_receipt_sha256": "0c4275f3506ca7c8dc80f7fbfb430c404af01bdc616db36ab27bc90a48d56737",
+            "replacement_absence": "No canonical replacement for this exact DDS in complete published inventory"
+          },
+          "images": {
+            "stock": {
+              "url": "armor-faydark-plate-bump-stock.png",
+              "png_sha256": "9c8b8f6dfdcebff8d23f9e75c0a25047abe61a7bd34145236486ac36b045ccf1",
+              "dds_sha256": "d7b67e829832efdd104d61cf1a3c824a1bb6c828f8ed731dbc036af35fa781a5",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "armor-faydark-plate-bump-pack.png",
+              "png_sha256": "9c8b8f6dfdcebff8d23f9e75c0a25047abe61a7bd34145236486ac36b045ccf1",
+              "dds_sha256": "d7b67e829832efdd104d61cf1a3c824a1bb6c828f8ed731dbc036af35fa781a5",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "Char_exp03_global_01.vpk",
+          "name": "cooked/characters/accessories/wearable_items_textures/exp03/faydark_plate_01/faydark_plate_01_spec.dds",
+          "role": "specular",
+          "stock_proof": {
+            "basis": "protected stock entry retained by verified pack; no historical individual entry SHA available",
+            "catalog_sha256": "b3efb0373950e5416fa0b40fbd051056a21cf98421b45f464c860c9943799f5f",
+            "classification": {
+              "name": "cooked/characters/accessories/wearable_items_textures/exp03/faydark_plate_01/faydark_plate_01_spec.dds",
+              "key": "5dd93893f9a4a546",
+              "fmt": "RGB8(r=0,g=0,b=0,a=0)",
+              "w": 256,
+              "h": 256,
+              "mips": 7,
+              "role": "spec",
+              "reason": "material binds it as gloss/spec data",
+              "material": "metal",
+              "tileable": [
+                false,
+                false
+              ],
+              "sequence": false,
+              "scale": 4,
+              "recipe": "data"
+            },
+            "archive": {
+              "bytes": 110710775,
+              "entries": 971,
+              "member": "Char_exp03_global_01.vpk",
+              "name": "Char_exp03_global_01.vpk",
+              "sha256": "740665ea9c90108f45a57798b8dc198670b8ae68036c8799c8eeef5236d44caa"
+            },
+            "completed_protection_receipt": "work/nightly/character_seam_pack_v3/result.json",
+            "completed_protection_receipt_sha256": "0c4275f3506ca7c8dc80f7fbfb430c404af01bdc616db36ab27bc90a48d56737",
+            "replacement_absence": "No canonical replacement for this exact DDS in complete published inventory"
+          },
+          "images": {
+            "stock": {
+              "url": "armor-faydark-plate-specular-stock.png",
+              "png_sha256": "bcbf3db7a22e19cf88175199c7fa39136e0e09b61d2f56475ed3f65df02cfdf2",
+              "dds_sha256": "acdc95b6ae3716532f8280e8b7e1154b00329d116695432d7b0f8035ee037763",
+              "size": [
+                256,
+                256
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "armor-faydark-plate-specular-pack.png",
+              "png_sha256": "bcbf3db7a22e19cf88175199c7fa39136e0e09b61d2f56475ed3f65df02cfdf2",
+              "dds_sha256": "acdc95b6ae3716532f8280e8b7e1154b00329d116695432d7b0f8035ee037763",
+              "size": [
+                256,
+                256
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Qeynos Guard shield",
+      "image": "images/shield-qeynos-guard.png",
+      "image_sha256": "a36cd0d373bf60346e4de0734d4cc091fbb557ed02e67a4ee33e039c5fcdaa9a",
+      "image_size": [
+        1600,
+        960
+      ],
+      "mesh": {
+        "archive": "Char_D2.vpk",
+        "name": "cooked/characters/accessories/wieldable_items/shields/tower_shield/qeynos_guard_tower_shield/qeynos_guard_tower_shield_l0.draw",
+        "sha256": "497af0648bc778e7b62d608bfc7a9871d328ad92d4fc0744c33cf1cf0dab97c2",
+        "bytes": 27561
+      },
+      "geometry_input_sha256": "56db9506fe1696340079241f6c81d044a1cbd6914b85dd1a34295a0d5200442d",
+      "triangles": 632,
+      "material_groups": 2,
+      "camera_normalized": [
+        -1.85,
+        0.3,
+        0.18
+      ],
+      "target_normalized": [
+        0,
+        0.22,
+        0
+      ],
+      "camera_roll_radians": 0,
+      "renderer_code_sha256": "f8f16e2a0b9c53c92bfd57364a2c443d9398a9369eff789db7bcbfa3f5937d7a",
+      "scope": "Complete 632-triangle shield, both material parts, all nine bound image maps. Original tint masks at neutral white customization; both rune noise layers frozen at shared time zero, source alpha blend and protected rune glow included. Shared approximate bump/specular lighting, not exact EQ2 lighting or scene particles.",
+      "limitations": [],
+      "material_equation": null,
+      "material_audit": null,
+      "render_material_bindings": [
+        {
+          "reviewed": true,
+          "label": "qeynos_guard_tower_shield_qeynos_guard_tower_shield_shader",
+          "gallery_maps": {
+            "stock": "shield-qeynos-guard-tint1-stock.png",
+            "pack": "shield-qeynos-guard-tint1-pack.png"
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "shield-qeynos-guard-bump-stock.png",
+              "pack": "shield-qeynos-guard-bump-pack.png"
+            },
+            "specular": {
+              "stock": "shield-qeynos-guard-spec-stock.png",
+              "pack": "shield-qeynos-guard-spec-pack.png"
+            }
+          },
+          "gallery_layers": {
+            "kind": "qeynos_tint",
+            "tint_mask": {
+              "stock": "shield-qeynos-guard-tint2-stock.png",
+              "pack": "shield-qeynos-guard-tint2-pack.png"
+            },
+            "tint0": [
+              1,
+              1,
+              1
+            ],
+            "tint1": [
+              1,
+              1,
+              1
+            ]
+          },
+          "shininess": 24
+        },
+        {
+          "reviewed": true,
+          "label": "qeynos_guard_tower_shield_runes_qeynos_guard_tower_shield_shader",
+          "gallery_maps": {
+            "stock": "shield-qeynos-guard-runes_tint-stock.png",
+            "pack": "shield-qeynos-guard-runes_tint-pack.png"
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "shield-qeynos-guard-runes_bump-stock.png",
+              "pack": "shield-qeynos-guard-runes_bump-pack.png"
+            },
+            "emissive": {
+              "stock": "shield-qeynos-guard-runes_spec-stock.png",
+              "pack": "shield-qeynos-guard-runes_spec-pack.png"
+            }
+          },
+          "gallery_layers": {
+            "kind": "qeynos_runes",
+            "noise0": {
+              "stock": "shield-qeynos-guard-runes_noise01-stock.png",
+              "pack": "shield-qeynos-guard-runes_noise01-pack.png"
+            },
+            "noise1": {
+              "stock": "shield-qeynos-guard-runes_noise00-stock.png",
+              "pack": "shield-qeynos-guard-runes_noise00-pack.png"
+            },
+            "time_seconds": 0,
+            "rate0": [
+              0.05,
+              0.07
+            ],
+            "rate1": [
+              -0.04,
+              -0.085
+            ]
+          },
+          "shininess": 24
+        }
+      ],
+      "completeness": {
+        "original_parts": 2,
+        "rendered_parts": 2,
+        "original_triangles": 632,
+        "rendered_triangles": 632,
+        "bound_image_maps": 9,
+        "rendered_image_maps": 9,
+        "unresolved_image_maps": [],
+        "effect_time_seconds": 0
+      },
+      "textures": [
+        {
+          "archive": "Char_D2.vpk",
+          "name": "cooked/characters/accessories/wieldable_items/shields/tower_shield/qeynos_guard_tower_shield/qeynos_guard_tower_shield_tint1.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "retained hash-verified stock DDS",
+            "dds_sha256": "559a1f8d1a44e260d0dc34d6af39239faddf66c87c8dd3f0af8ff48f9bdcc9ff"
+          },
+          "images": {
+            "stock": {
+              "url": "shield-qeynos-guard-tint1-stock.png",
+              "dds_sha256": "559a1f8d1a44e260d0dc34d6af39239faddf66c87c8dd3f0af8ff48f9bdcc9ff",
+              "png_sha256": "3a9c2f28c56072c2470fb3e61f701eaca4e0a587830517b8fa3a80b62eaa5753",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT3"
+            },
+            "pack": {
+              "url": "shield-qeynos-guard-tint1-pack.png",
+              "dds_sha256": "27d768388485964262063882b480298c61dad1e3c43cd9bd318a1c72277888d7",
+              "png_sha256": "cb145a1cb3595d847940ddedee297deeac96a2f393ca5155eeda941e2ffc651a",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT3"
+            }
+          }
+        },
+        {
+          "archive": "Char_D2.vpk",
+          "name": "cooked/characters/accessories/wieldable_items/shields/tower_shield/qeynos_guard_tower_shield/qeynos_guard_tower_shield_runes_tint.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "retained hash-verified stock DDS",
+            "dds_sha256": "a581579dd82222d3f5ad56018ad4452d0bed1c0e817e86a67aad39fb9fa24aac"
+          },
+          "images": {
+            "stock": {
+              "url": "shield-qeynos-guard-runes_tint-stock.png",
+              "dds_sha256": "a581579dd82222d3f5ad56018ad4452d0bed1c0e817e86a67aad39fb9fa24aac",
+              "png_sha256": "89de2ce4adc40d350b9072dc7c71b406a47c9452b35147abb848235027ef0072",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT3"
+            },
+            "pack": {
+              "url": "shield-qeynos-guard-runes_tint-pack.png",
+              "dds_sha256": "525851a904e62ec51b36a9cf967f6ee2eebb5927cf2f734858c719083f8dd9fd",
+              "png_sha256": "4ab9802639d1b60f3dc0edaa2ed0243aefe438d802c4d7ee017ded50edd2809c",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT3"
+            }
+          }
+        },
+        {
+          "archive": "Char_D2.vpk",
+          "name": "cooked/characters/accessories/wieldable_items/shields/tower_shield/qeynos_guard_tower_shield/qeynos_guard_tower_shield_tint2.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "retained hash-verified stock DDS",
+            "dds_sha256": "b0cb8e9611b2f21bea56ec93e7c10a51df10db08d9c263e6e924efde60529a70"
+          },
+          "images": {
+            "stock": {
+              "url": "shield-qeynos-guard-tint2-stock.png",
+              "dds_sha256": "b0cb8e9611b2f21bea56ec93e7c10a51df10db08d9c263e6e924efde60529a70",
+              "png_sha256": "358eedfa2bd170ddd7c59ce9ad15e2bb66cf923191cb23d0a14eea888fb620e4",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT3"
+            },
+            "pack": {
+              "url": "shield-qeynos-guard-tint2-pack.png",
+              "dds_sha256": "5d0fbce026966013aa1a0d458aa4cd425790335a659a56c9510f09016324514f",
+              "png_sha256": "970cbca69fe459342ef91df7eb4659afd416a42e8dd5a2d2399e52a42ba78a66",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT3"
+            }
+          }
+        },
+        {
+          "archive": "Char_D2.vpk",
+          "name": "cooked/characters/accessories/wieldable_items/shields/tower_shield/qeynos_guard_tower_shield/qeynos_guard_tower_shield_runes_noise00.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "retained hash-verified stock DDS",
+            "dds_sha256": "3772d95427535ae8bbb99ed0d3c76e2b540b238b2014a10bda407ad6328d9dae"
+          },
+          "images": {
+            "stock": {
+              "url": "shield-qeynos-guard-runes_noise00-stock.png",
+              "dds_sha256": "3772d95427535ae8bbb99ed0d3c76e2b540b238b2014a10bda407ad6328d9dae",
+              "png_sha256": "dbd088965474e53518b9c383e28995de99fb1a032633b7073de38a3192ab42c0",
+              "size": [
+                32,
+                32
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "shield-qeynos-guard-runes_noise00-pack.png",
+              "dds_sha256": "6d9b3edbabf4f8cabf8db4a69c3c26758f2b5c8747582e3739edd23328ca17bd",
+              "png_sha256": "ac700c77909b560dff2a119dd4b5cbdc4b72a610ea53259feafd33e36cceae8e",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT1"
+            }
+          }
+        },
+        {
+          "archive": "Char_D2.vpk",
+          "name": "cooked/characters/accessories/wieldable_items/shields/tower_shield/qeynos_guard_tower_shield/qeynos_guard_tower_shield_runes_noise01.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "retained hash-verified stock DDS",
+            "dds_sha256": "3772d95427535ae8bbb99ed0d3c76e2b540b238b2014a10bda407ad6328d9dae"
+          },
+          "images": {
+            "stock": {
+              "url": "shield-qeynos-guard-runes_noise01-stock.png",
+              "dds_sha256": "3772d95427535ae8bbb99ed0d3c76e2b540b238b2014a10bda407ad6328d9dae",
+              "png_sha256": "dbd088965474e53518b9c383e28995de99fb1a032633b7073de38a3192ab42c0",
+              "size": [
+                32,
+                32
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "shield-qeynos-guard-runes_noise01-pack.png",
+              "dds_sha256": "6d9b3edbabf4f8cabf8db4a69c3c26758f2b5c8747582e3739edd23328ca17bd",
+              "png_sha256": "ac700c77909b560dff2a119dd4b5cbdc4b72a610ea53259feafd33e36cceae8e",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT1"
+            }
+          }
+        },
+        {
+          "archive": "Char_D2.vpk",
+          "name": "cooked/characters/accessories/wieldable_items/shields/tower_shield/qeynos_guard_tower_shield/qeynos_guard_tower_shield_bump.dds",
+          "role": "bump",
+          "stock_proof": {
+            "kind": "protected unchanged stock entry in verified complete released archive",
+            "dds_sha256": "16d824d33e4707f293daf5d58848ca4666720cede47e74f8080130e45d40523f"
+          },
+          "images": {
+            "stock": {
+              "url": "shield-qeynos-guard-bump-stock.png",
+              "dds_sha256": "16d824d33e4707f293daf5d58848ca4666720cede47e74f8080130e45d40523f",
+              "png_sha256": "d1b53a4157e3026028a5abde3f9c17b75dc6a03e40ba3efd852f5f51d9c938dc",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "shield-qeynos-guard-bump-pack.png",
+              "dds_sha256": "16d824d33e4707f293daf5d58848ca4666720cede47e74f8080130e45d40523f",
+              "png_sha256": "d1b53a4157e3026028a5abde3f9c17b75dc6a03e40ba3efd852f5f51d9c938dc",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "Char_D2.vpk",
+          "name": "cooked/characters/accessories/wieldable_items/shields/tower_shield/qeynos_guard_tower_shield/qeynos_guard_tower_shield_spec.dds",
+          "role": "specular",
+          "stock_proof": {
+            "kind": "protected unchanged stock entry in verified complete released archive",
+            "dds_sha256": "3d580f56b8864f8b589ec03920916c3639efcc50c21600f23681d1e1fcfe91fc"
+          },
+          "images": {
+            "stock": {
+              "url": "shield-qeynos-guard-spec-stock.png",
+              "dds_sha256": "3d580f56b8864f8b589ec03920916c3639efcc50c21600f23681d1e1fcfe91fc",
+              "png_sha256": "c8eba4624857cc031a4a5b07b67b7dfedb85f3e9689ccd4d2d6ec839d909d91d",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "shield-qeynos-guard-spec-pack.png",
+              "dds_sha256": "3d580f56b8864f8b589ec03920916c3639efcc50c21600f23681d1e1fcfe91fc",
+              "png_sha256": "c8eba4624857cc031a4a5b07b67b7dfedb85f3e9689ccd4d2d6ec839d909d91d",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "Char_D2.vpk",
+          "name": "cooked/characters/accessories/wieldable_items/shields/tower_shield/qeynos_guard_tower_shield/qeynos_guard_tower_shield_runes_bump.dds",
+          "role": "bump",
+          "stock_proof": {
+            "kind": "protected unchanged stock entry in verified complete released archive",
+            "dds_sha256": "6ff542158d6ade1d3aa5b204d51db27049883450bfb3c1a92b609806753fba66"
+          },
+          "images": {
+            "stock": {
+              "url": "shield-qeynos-guard-runes_bump-stock.png",
+              "dds_sha256": "6ff542158d6ade1d3aa5b204d51db27049883450bfb3c1a92b609806753fba66",
+              "png_sha256": "051502ef273b0c594ad0db2a0bc88b5bf30e8dded9476da7d31ba69d7b9fe63d",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "shield-qeynos-guard-runes_bump-pack.png",
+              "dds_sha256": "6ff542158d6ade1d3aa5b204d51db27049883450bfb3c1a92b609806753fba66",
+              "png_sha256": "051502ef273b0c594ad0db2a0bc88b5bf30e8dded9476da7d31ba69d7b9fe63d",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "Char_D2.vpk",
+          "name": "cooked/characters/accessories/wieldable_items/shields/tower_shield/qeynos_guard_tower_shield/qeynos_guard_tower_shield_runes_spec.dds",
+          "role": "emissive",
+          "stock_proof": {
+            "kind": "protected unchanged stock entry in verified complete released archive",
+            "dds_sha256": "16082012ab2fa0507212e91651ed46ce0088c1fcea3b875239f5c8199b90cc2d"
+          },
+          "images": {
+            "stock": {
+              "url": "shield-qeynos-guard-runes_spec-stock.png",
+              "dds_sha256": "16082012ab2fa0507212e91651ed46ce0088c1fcea3b875239f5c8199b90cc2d",
+              "png_sha256": "a9d65af2c2fabff2eced25a3907ab1ab61eac0538f80412c8d88a25ab9016748",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "shield-qeynos-guard-runes_spec-pack.png",
+              "dds_sha256": "16082012ab2fa0507212e91651ed46ce0088c1fcea3b875239f5c8199b90cc2d",
+              "png_sha256": "a9d65af2c2fabff2eced25a3907ab1ab61eac0538f80412c8d88a25ab9016748",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Dragon Sharp weapon",
+      "image": "images/weapon-dragon-sharp.png",
+      "image_sha256": "6e61b7db0186f5e98dbbcf322deda8ad52a22b1ac58dd986e2ea6fff92812f10",
+      "image_size": [
+        1600,
+        960
+      ],
+      "mesh": {
+        "archive": "AP3_Weapons_SOGA.vpk",
+        "name": "cooked/soga_art/soga_accessories/weapons/scout/dragon_sharp/scenes/dragon_sharp.draw",
+        "sha256": "5c1337e0e35dc850b654db20ca8eec727eb1f63c9d6db456a9d13db9a9352ee8",
+        "bytes": 24349
+      },
+      "geometry_input_sha256": "fc6651c089d1867f48d3a7084f48402e8d00c4af42b47de824c3a17e5c37ea22",
+      "triangles": 396,
+      "material_groups": 1,
+      "camera_normalized": [
+        -0.5,
+        0.1,
+        0.9
+      ],
+      "target_normalized": [
+        -0.65,
         0,
         0
       ],
-      "crop_note": "Selected material part of the original game mesh; other parts omitted equally on both sides.",
+      "camera_roll_radians": 1.57079632679,
+      "renderer_code_sha256": "7951abc6fb71a061bbd99bf03e8e1831e94d1506de6fa9be05319b5b30169929",
+      "scope": null,
+      "limitations": [],
+      "material_equation": null,
+      "material_audit": null,
+      "render_material_bindings": [
+        {
+          "reviewed": true,
+          "label": "dragon_sharp",
+          "material": "shaders/soga_art/soga_accessories/weapons/scout/dragon_sharp/dragon_sharp.vdl",
+          "two_sided": true,
+          "opacity": 1.0,
+          "shininess": 24.0,
+          "notes": [],
+          "sources": [
+            {
+              "archive": "AP3_Weapons_SOGA.vpk",
+              "name": "shaders/soga_art/soga_accessories/weapons/scout/dragon_sharp/dragon_sharp.vdl",
+              "sha256": "53ef927e02bf4be8125d2b79f3158424eaee4f32601e6560143abfc129d958f5",
+              "bytes": 1260
+            }
+          ],
+          "source_parameters": {
+            "@bumpScale": 1.0
+          },
+          "bump_scale": 0.025,
+          "lighting_note": "Shared preview lights; stock maps where proven; lighting intensity is approximate",
+          "gallery_maps": {
+            "stock": "weapon-dragon-sharp-0-color-stock.png",
+            "pack": "weapon-dragon-sharp-0-color-pack.png"
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "weapon-dragon-sharp-0-bump-stock.png",
+              "pack": "weapon-dragon-sharp-0-bump-pack.png"
+            },
+            "specular": {
+              "stock": "weapon-dragon-sharp-0-specular-stock.png",
+              "pack": "weapon-dragon-sharp-0-specular-pack.png"
+            }
+          }
+        }
+      ],
+      "completeness": null,
       "textures": [
         {
-          "archive": "Char_A.vpk",
-          "entry": "cooked/characters/accessories/wearable_items_textures/exp06/mermaid_scale_armor/mermaid_scale_armor_color.dds",
-          "stock_dds_sha256": "7da66702bdbed832cdec5b16a6fd95fe38c6c53fbbc44a4f23ea684c53b470f2",
-          "shipped_dds_sha256": "da9955828cb64ec8a003277500b03cae6da55cac36be2c6f4d20764076676ed1",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT3"
+          "archive": "AP3_Weapons_SOGA.vpk",
+          "name": "cooked/soga_art/soga_accessories/weapons/scout/dragon_sharp/sourceimages/dragon_sharp_color.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "verified retained stock preview",
+            "receipt_sha256": "d78e1fc412789578f2ca3d7ab0c27df767bb9c9d8f6320fcb78d979b7893521c"
+          },
+          "images": {
+            "stock": {
+              "url": "weapon-dragon-sharp-0-color-stock.png",
+              "png_sha256": "81c786b7c19117ac12b56aba021b7b2fe6207e88946fde11658bafafea243ca4",
+              "dds_sha256": "d348997ace8bb62912fe278c4ff2f1544c0aa9ba5a5cbe20dab73a3a3a3b55ad",
+              "size": [
+                256,
+                256
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "weapon-dragon-sharp-0-color-pack.png",
+              "png_sha256": "032f0bd670e82f0ad50159740ebf8cb1e60977b38b0a520a6f064f4bf37543f5",
+              "dds_sha256": "9fc4430fa334588d2c66f93789c307052e5b1ba2509fe4f112f9115b91948e95",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT1"
+            }
+          }
+        },
+        {
+          "archive": "AP3_Weapons_SOGA.vpk",
+          "name": "cooked/soga_art/soga_accessories/weapons/scout/dragon_sharp/sourceimages/dragon_sharp_bump.dds",
+          "role": "bump",
+          "stock_proof": {
+            "kind": "released protected entry matches prior stock SHA256"
+          },
+          "images": {
+            "stock": {
+              "url": "weapon-dragon-sharp-0-bump-stock.png",
+              "png_sha256": "83552dcff654b97504848c703a78f96f2dbc5e16ce4f265010901d71df3e1933",
+              "dds_sha256": "f57a70f318f8fca002e1f11f19648597744180b8732fd264e6d85cd4ad888aea",
+              "size": [
+                256,
+                256
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "weapon-dragon-sharp-0-bump-pack.png",
+              "png_sha256": "83552dcff654b97504848c703a78f96f2dbc5e16ce4f265010901d71df3e1933",
+              "dds_sha256": "f57a70f318f8fca002e1f11f19648597744180b8732fd264e6d85cd4ad888aea",
+              "size": [
+                256,
+                256
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "AP3_Weapons_SOGA.vpk",
+          "name": "cooked/soga_art/soga_accessories/weapons/scout/dragon_sharp/sourceimages/dragon_sharp_spec.dds",
+          "role": "specular",
+          "stock_proof": {
+            "kind": "released protected entry matches prior stock SHA256"
+          },
+          "images": {
+            "stock": {
+              "url": "weapon-dragon-sharp-0-specular-stock.png",
+              "png_sha256": "4c54518b95aba00b4102e9d353c12b8179fb52be8b166f9e6e733ab120fe5997",
+              "dds_sha256": "c1ac9fa3e0fedb9058deddfc7c7be9aa30319032004fd134aee6a56bc75bd225",
+              "size": [
+                128,
+                128
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "weapon-dragon-sharp-0-specular-pack.png",
+              "png_sha256": "4c54518b95aba00b4102e9d353c12b8179fb52be8b166f9e6e733ab120fe5997",
+              "dds_sha256": "c1ac9fa3e0fedb9058deddfc7c7be9aa30319032004fd134aee6a56bc75bd225",
+              "size": [
+                128,
+                128
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
         }
       ]
     },
     {
       "title": "Hell Boar",
       "image": "images/monster-hell-boar.png",
-      "image_sha256": "d3052dd6ec1ea925afd9daf1450e26f77e35abed326666f73835af2028438f0c",
+      "image_sha256": "8163aad211e2ddbeb467acbcd07f1139d91ec5ec4425ef974d955e38cdcb0274",
       "image_size": [
         1600,
         960
@@ -79,57 +861,988 @@
       "mesh": {
         "archive": "Char_AP02_monster.vpk",
         "name": "cooked/characters/ap02/hellboar/scenes/hell_boar_l0.draw",
-        "sha256": "14eeb2885422d348a2cb7e5f3e17d5116159960ec85f910e087de415c6b2e06a"
+        "sha256": "14eeb2885422d348a2cb7e5f3e17d5116159960ec85f910e087de415c6b2e06a",
+        "bytes": 167045
       },
-      "geometry_input_sha256": "dafbdb766da35c796ece1ea9a936a2dd8cb0425603757df3d6619cf9dec2dfd4",
+      "geometry_input_sha256": "83ada8e1bcde71c517b3ab31ce7f61bb61ba5bf6598de8accb0f86095021306a",
+      "triangles": 2924,
+      "material_groups": 2,
       "camera_normalized": [
-        1.25,
+        0.3,
         0.55,
-        2.1
+        2.05
       ],
       "target_normalized": [
-        0,
-        0,
+        -0.16,
+        -0.1,
         0
       ],
-      "crop_note": "Original whole mesh framed on its head material.",
+      "camera_roll_radians": 0,
+      "renderer_code_sha256": "475525085ec108feccc674bc6d2a0cc4e29a547a35b3f3e8638d9c8f939e58b9",
+      "scope": "Complete original model: all geometry/material groups included, both color and proven bump/normal/specular maps restored. Neutral local lighting approximates the original game shaders.",
+      "limitations": [
+        "Static original model pose; local lighting is not the game renderer.",
+        "Ambiguous normal/reflection semantics are retained in material audit and not guessed."
+      ],
+      "material_equation": null,
+      "material_audit": [
+        {
+          "material": "shaders/characters/ap02/hellboar/hellboar_body.vdl",
+          "sources": [
+            {
+              "archive": "Char_AP02_monster.vpk",
+              "name": "shaders/characters/ap02/hellboar/hellboar_body.vdl",
+              "sha256": "6e9894dab0e222639054e3403fc6ac0ad289741e35c6b3b546b6f85812b3867b",
+              "bytes": 1132,
+              "verification": "retained shader tree"
+            }
+          ],
+          "symbols": {
+            "@bump": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_b01.dds",
+            "@bumpScale": "1.000000",
+            "@diffIntensity": "(1.000000 1.000000 1.000000)",
+            "@gloss": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_s01.dds",
+            "@specIntensity": "(1.000000 1.000000 1.000000)",
+            "@tex0": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_c01.dds"
+          },
+          "rendered_color": {
+            "archive": "Char_AP02_monster.vpk",
+            "name": "cooked/characters/ap02/hellboar/sourceimages/hell_boar_c01.dds",
+            "sha256": "23870968567e2aa3b49934af111c6a063acb0f19e74dedf0125f7ec064ef78e1",
+            "bytes": 174910
+          },
+          "rendered_aux_roles": [
+            "bump",
+            "specular"
+          ],
+          "notes": []
+        },
+        {
+          "material": "shaders/characters/ap02/hellboar/hellboar_head.vdl",
+          "sources": [
+            {
+              "archive": "Char_AP02_monster.vpk",
+              "name": "shaders/characters/ap02/hellboar/hellboar_head.vdl",
+              "sha256": "0035956aba097d571fcfe036e33450007036db4955bd91f2158bfb09a2d76521",
+              "bytes": 1121,
+              "verification": "retained shader tree"
+            }
+          ],
+          "symbols": {
+            "@bump": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_b00.dds",
+            "@bumpScale": "1.000000",
+            "@diffIntensity": "(1.000000 1.000000 1.000000)",
+            "@gloss": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_s00.dds",
+            "@specIntensity": "(1.000000 1.000000 1.000000)",
+            "@tex0": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_c00.dds"
+          },
+          "rendered_color": {
+            "archive": "Char_AP02_monster.vpk",
+            "name": "cooked/characters/ap02/hellboar/sourceimages/hell_boar_c00.dds",
+            "sha256": "2dcc112f0eba1fe94f7a2cfa10618831d3834b9a598254bb2c32425ececc9dab",
+            "bytes": 174910
+          },
+          "rendered_aux_roles": [
+            "bump",
+            "specular"
+          ],
+          "notes": []
+        }
+      ],
+      "render_material_bindings": [
+        {
+          "reviewed": false,
+          "label": "hellboar_body",
+          "material": "shaders/characters/ap02/hellboar/hellboar_body.vdl",
+          "color": "#ffffff",
+          "two_sided": true,
+          "opacity": 1.0,
+          "shininess": 24.0,
+          "maps": {},
+          "notes": [],
+          "sources": [
+            {
+              "archive": "Char_AP02_monster.vpk",
+              "name": "shaders/characters/ap02/hellboar/hellboar_body.vdl",
+              "sha256": "6e9894dab0e222639054e3403fc6ac0ad289741e35c6b3b546b6f85812b3867b",
+              "bytes": 1132
+            }
+          ],
+          "source_parameters": {
+            "@bumpScale": 1.0
+          },
+          "uv_set": 0,
+          "uv_transform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          "diffuse_binding": {
+            "symbol": "@tex0",
+            "texture": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_c01.dds",
+            "variants": [
+              {
+                "variant": "legacy",
+                "templates": [
+                  {
+                    "archive": "ShaTplt.vpk",
+                    "name": "shaders/templates/t1_bmp1_spwmt_alph1.vdl",
+                    "sha256": "e5d94aab011c5fbf19986d87f093e0ff39e2a0e80101eeeff2ed3c565b561d3d",
+                    "bytes": 16778
+                  }
+                ],
+                "status": "identity",
+                "uv_set": 0,
+                "routes": [
+                  {
+                    "layer": 10,
+                    "uv_set": 0,
+                    "coordinate_source": "0",
+                    "status": "identity",
+                    "transform_fields": {},
+                    "address_fields": {}
+                  },
+                  {
+                    "layer": 11,
+                    "uv_set": 0,
+                    "coordinate_source": "0",
+                    "status": "identity",
+                    "transform_fields": {},
+                    "address_fields": {}
+                  }
+                ]
+              },
+              {
+                "variant": "shader3",
+                "templates": [
+                  {
+                    "archive": "ShaTplt.vpk",
+                    "name": "shaders/templates/3.0/alph1_tspec_b1_t1_gls_3_0.vdl",
+                    "sha256": "86dc5184805235db4aeeccb65d1d45c83d334f11f9547298378e0c8e9af11976",
+                    "bytes": 53172
+                  }
+                ],
+                "status": "identity",
+                "uv_set": 0,
+                "routes": [
+                  {
+                    "layer": 0,
+                    "status": "identity",
+                    "uv_set": 0,
+                    "sampler": "tex0Map",
+                    "fragment_coordinates": "texCoords01.xy",
+                    "vertex_coordinate_chain": [
+                      "finalTexCoord0",
+                      "realTexCoord0",
+                      "texCoords0.xy"
+                    ],
+                    "input_semantic": "TEXCOORD0",
+                    "input_stage_index": 0,
+                    "transform_fields": {}
+                  },
+                  {
+                    "layer": 1,
+                    "status": "identity",
+                    "uv_set": 0,
+                    "sampler": "tex0Map",
+                    "fragment_coordinates": "texCoords01.xy",
+                    "vertex_coordinate_chain": [
+                      "finalTexCoord0",
+                      "realTexCoord0",
+                      "texCoords0.xy"
+                    ],
+                    "input_semantic": "TEXCOORD0",
+                    "input_stage_index": 0,
+                    "transform_fields": {}
+                  }
+                ]
+              }
+            ]
+          },
+          "context_source": "verified stock material on both comparison sides",
+          "bump_scale": 0.025,
+          "lighting_note": "Shared approximate preview lighting; source alpha pixels preserved; full game shader effects are not reproduced",
+          "gallery_maps": {
+            "stock": "monster-0-color-stock.png",
+            "pack": "monster-0-color-pack.png"
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "monster-0-bump-stock.png",
+              "pack": "monster-0-bump-pack.png"
+            },
+            "specular": {
+              "stock": "monster-0-specular-stock.png",
+              "pack": "monster-0-specular-pack.png"
+            }
+          },
+          "source_symbols": {
+            "@bump": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_b01.dds",
+            "@bumpScale": "1.000000",
+            "@diffIntensity": "(1.000000 1.000000 1.000000)",
+            "@gloss": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_s01.dds",
+            "@specIntensity": "(1.000000 1.000000 1.000000)",
+            "@tex0": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_c01.dds"
+          },
+          "alpha_test": 0.02
+        },
+        {
+          "reviewed": true,
+          "label": "hellboar_head",
+          "material": "shaders/characters/ap02/hellboar/hellboar_head.vdl",
+          "two_sided": true,
+          "opacity": 1.0,
+          "shininess": 24.0,
+          "maps": {},
+          "notes": [],
+          "sources": [
+            {
+              "archive": "Char_AP02_monster.vpk",
+              "name": "shaders/characters/ap02/hellboar/hellboar_head.vdl",
+              "sha256": "0035956aba097d571fcfe036e33450007036db4955bd91f2158bfb09a2d76521",
+              "bytes": 1121
+            }
+          ],
+          "source_parameters": {
+            "@bumpScale": 1.0
+          },
+          "bump_scale": 0.025,
+          "lighting_note": "Shared preview lights; stock maps where proven; lighting intensity is approximate",
+          "gallery_maps": {
+            "stock": "monster-1-color-stock.png",
+            "pack": "monster-1-color-pack.png"
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "monster-1-bump-stock.png",
+              "pack": "monster-1-bump-pack.png"
+            },
+            "specular": {
+              "stock": "monster-1-specular-stock.png",
+              "pack": "monster-1-specular-pack.png"
+            }
+          },
+          "source_symbols": {
+            "@bump": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_b00.dds",
+            "@bumpScale": "1.000000",
+            "@diffIntensity": "(1.000000 1.000000 1.000000)",
+            "@gloss": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_s00.dds",
+            "@specIntensity": "(1.000000 1.000000 1.000000)",
+            "@tex0": "Cooked/Characters/AP02/HellBoar/sourceimages/hell_boar_c00.dds"
+          }
+        }
+      ],
+      "completeness": {
+        "original_parts": 2,
+        "rendered_parts": 2,
+        "original_index_count": 8772,
+        "rendered_index_count": 8772,
+        "mesh_verification": "released ZIP protected entry",
+        "missing_color_parts": [],
+        "geometry": "All original draw parts retained; original UVs and vertices unchanged."
+      },
       "textures": [
         {
           "archive": "Char_AP02_monster.vpk",
-          "entry": "cooked/characters/ap02/hellboar/sourceimages/hell_boar_c01.dds",
-          "stock_dds_sha256": "23870968567e2aa3b49934af111c6a063acb0f19e74dedf0125f7ec064ef78e1",
-          "shipped_dds_sha256": "bb209e294bbde48a29c0a65e19e498731765525d15cbcce92c873b2005f949be",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
+          "name": "cooked/characters/ap02/hellboar/sourceimages/hell_boar_c01.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "retained stock preview with prior hash receipt",
+            "png_sha256": "258e32e0e7a1f8c8003c321b46ceb610e88142cf53e30fe22e91bb25fe27aa59",
+            "receipt_sha256": "afaa37f5d8062c7f9e2ce1f59be383a82d4413824b81688b7b00947b337026e8"
+          },
+          "images": {
+            "stock": {
+              "url": "monster-0-color-stock.png",
+              "png_sha256": "258e32e0e7a1f8c8003c321b46ceb610e88142cf53e30fe22e91bb25fe27aa59",
+              "dds_sha256": "23870968567e2aa3b49934af111c6a063acb0f19e74dedf0125f7ec064ef78e1",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "monster-0-color-pack.png",
+              "png_sha256": "0d0157bba68f67efe9ea972372004412e8d9a7f14d804e8b2172a0347bf5badf",
+              "dds_sha256": "bb209e294bbde48a29c0a65e19e498731765525d15cbcce92c873b2005f949be",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT1"
+            }
+          }
         },
         {
           "archive": "Char_AP02_monster.vpk",
-          "entry": "cooked/characters/ap02/hellboar/sourceimages/hell_boar_c00.dds",
-          "stock_dds_sha256": "2dcc112f0eba1fe94f7a2cfa10618831d3834b9a598254bb2c32425ececc9dab",
-          "shipped_dds_sha256": "88e8157b697b57cbfc3e24d87382df7c4be09cfabae427e5bd0fa74af41673fa",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
+          "name": "cooked/characters/ap02/hellboar/sourceimages/hell_boar_b01.dds",
+          "role": "bump",
+          "stock_proof": {
+            "kind": "exact retained stock DDS in released pack",
+            "dds_sha256": "1fba5eba4be3b8e0d8410f02f46e231ca6ec02470bba81e1b87f300b5f91518b"
+          },
+          "images": {
+            "stock": {
+              "url": "monster-0-bump-stock.png",
+              "png_sha256": "a7105e9b4d8c0d7d0fe979af96b1f0c4af6515959e007d1c694f8d4f1b54ef26",
+              "dds_sha256": "1fba5eba4be3b8e0d8410f02f46e231ca6ec02470bba81e1b87f300b5f91518b",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "monster-0-bump-pack.png",
+              "png_sha256": "a7105e9b4d8c0d7d0fe979af96b1f0c4af6515959e007d1c694f8d4f1b54ef26",
+              "dds_sha256": "1fba5eba4be3b8e0d8410f02f46e231ca6ec02470bba81e1b87f300b5f91518b",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "Char_AP02_monster.vpk",
+          "name": "cooked/characters/ap02/hellboar/sourceimages/hell_boar_s01.dds",
+          "role": "specular",
+          "stock_proof": {
+            "kind": "exact retained stock DDS in released pack",
+            "dds_sha256": "980acd4586a6f4687456845d521ac82c5a3e287384b7d9596b25a85a2ef60c02"
+          },
+          "images": {
+            "stock": {
+              "url": "monster-0-specular-stock.png",
+              "png_sha256": "e34f24cfb76cf67e01a3fd285adee824b948cc5d19bcaee59f860fc2cd8c45d7",
+              "dds_sha256": "980acd4586a6f4687456845d521ac82c5a3e287384b7d9596b25a85a2ef60c02",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "monster-0-specular-pack.png",
+              "png_sha256": "e34f24cfb76cf67e01a3fd285adee824b948cc5d19bcaee59f860fc2cd8c45d7",
+              "dds_sha256": "980acd4586a6f4687456845d521ac82c5a3e287384b7d9596b25a85a2ef60c02",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "Char_AP02_monster.vpk",
+          "name": "cooked/characters/ap02/hellboar/sourceimages/hell_boar_c00.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "retained stock preview with prior hash receipt",
+            "png_sha256": "5cd4a1a6dea22bbcfbebc2acff5c6242017ac6c2deefdc1d735c70b8ffa5e605",
+            "receipt_sha256": "0e3750374a982309ee3981fee4b9a5b05ffc0c386e72d8751a3f4031dd2fa56f"
+          },
+          "images": {
+            "stock": {
+              "url": "monster-1-color-stock.png",
+              "png_sha256": "5cd4a1a6dea22bbcfbebc2acff5c6242017ac6c2deefdc1d735c70b8ffa5e605",
+              "dds_sha256": "2dcc112f0eba1fe94f7a2cfa10618831d3834b9a598254bb2c32425ececc9dab",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "monster-1-color-pack.png",
+              "png_sha256": "0e9de8b03cfef56f1ffe15e578d7460567d3ef5a82ce85cad5eac524058737f2",
+              "dds_sha256": "88e8157b697b57cbfc3e24d87382df7c4be09cfabae427e5bd0fa74af41673fa",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT1"
+            }
+          }
+        },
+        {
+          "archive": "Char_AP02_monster.vpk",
+          "name": "cooked/characters/ap02/hellboar/sourceimages/hell_boar_b00.dds",
+          "role": "bump",
+          "stock_proof": {
+            "kind": "exact retained stock DDS in released pack",
+            "dds_sha256": "9a0169233505de1126239f20418748778f39a66d4cc8c7c27bdd2c9349fe32f8"
+          },
+          "images": {
+            "stock": {
+              "url": "monster-1-bump-stock.png",
+              "png_sha256": "8f4cd957da5eb116f2b9c4f33ac46c456e57bd81b5e0d7166b5a490b635c0fb8",
+              "dds_sha256": "9a0169233505de1126239f20418748778f39a66d4cc8c7c27bdd2c9349fe32f8",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "monster-1-bump-pack.png",
+              "png_sha256": "8f4cd957da5eb116f2b9c4f33ac46c456e57bd81b5e0d7166b5a490b635c0fb8",
+              "dds_sha256": "9a0169233505de1126239f20418748778f39a66d4cc8c7c27bdd2c9349fe32f8",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "Char_AP02_monster.vpk",
+          "name": "cooked/characters/ap02/hellboar/sourceimages/hell_boar_s00.dds",
+          "role": "specular",
+          "stock_proof": {
+            "kind": "exact retained stock DDS in released pack",
+            "dds_sha256": "65f53f91a01957c9bb6d0738fb5114f3763c874f44a4ad5deb40cd9cc61c46bb"
+          },
+          "images": {
+            "stock": {
+              "url": "monster-1-specular-stock.png",
+              "png_sha256": "f7724f0775b6d9dd1fa27a59d316e60b11493bd8ccdb71c93af6025c2d00fa8d",
+              "dds_sha256": "65f53f91a01957c9bb6d0738fb5114f3763c874f44a4ad5deb40cd9cc61c46bb",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "monster-1-specular-pack.png",
+              "png_sha256": "f7724f0775b6d9dd1fa27a59d316e60b11493bd8ccdb71c93af6025c2d00fa8d",
+              "dds_sha256": "65f53f91a01957c9bb6d0738fb5114f3763c874f44a4ad5deb40cd9cc61c46bb",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
         }
       ]
     },
     {
-      "title": "Bakery sign",
+      "title": "Flesh golem",
+      "image": "images/monster-flesh-golem.png",
+      "image_sha256": "b971b37e1e52d0436636d01cdeb213154907f49f5ca45bc079500aa007522830",
+      "image_size": [
+        1600,
+        960
+      ],
+      "mesh": {
+        "archive": "Char_TU1.vpk",
+        "name": "cooked/characters/creatures/tu/golemflesh/scenes/golemflesh.draw",
+        "sha256": "f03d3799daf5eb7a9f740ae886b465ac3d4c0fad2c207818ed3794d47a174cdd",
+        "bytes": 104724
+      },
+      "geometry_input_sha256": "893b3ac3ecd76ba20280e21df842ca222894cce7aafb175b2c1310efaa33e7ca",
+      "triangles": 3122,
+      "material_groups": 2,
+      "camera_normalized": [
+        0.3,
+        0.5,
+        1.3
+      ],
+      "target_normalized": [
+        0,
+        0.53,
+        0
+      ],
+      "camera_roll_radians": 0,
+      "renderer_code_sha256": "475525085ec108feccc674bc6d2a0cc4e29a547a35b3f3e8638d9c8f939e58b9",
+      "scope": "Complete original model: all geometry/material groups included, both color and proven bump/normal/specular maps restored. Neutral local lighting approximates the original game shaders.",
+      "limitations": [
+        "Static original model pose; local lighting is not the game renderer.",
+        "Ambiguous normal/reflection semantics are retained in material audit and not guessed."
+      ],
+      "material_equation": null,
+      "material_audit": [
+        {
+          "material": "shaders/characters/creatures/tu/golemflesh/head_chest_optimized.vdl",
+          "sources": [
+            {
+              "archive": "Char_TU2.vpk",
+              "name": "shaders/characters/creatures/tu/golemflesh/head_chest_optimized.vdl",
+              "sha256": "96ec87d02343810f8cf30bac88fbda2352842ca758b7fd1afadf900a24fcd679",
+              "bytes": 1195,
+              "verification": "retained shader tree"
+            }
+          ],
+          "symbols": {
+            "@bump": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/head_chest_bump.dds",
+            "@bumpScale": "0.500000",
+            "@diffIntensity": "(1.000000 1.000000 1.000000)",
+            "@gloss": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/head_chest_spec.dds",
+            "@specIntensity": "(1.000000 0.839216 0.839216)",
+            "@tex0": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/head_chest.dds"
+          },
+          "rendered_color": {
+            "archive": "Char_TU1.vpk",
+            "name": "cooked/characters/creatures/tu/golemflesh/sourceimages/optimized/head_chest.dds",
+            "sha256": "efc1515ceba9b04a1b75c52ddd1bdd1e48008a3b049276da0662a556fe65d9a7",
+            "bytes": 174910
+          },
+          "rendered_aux_roles": [
+            "bump",
+            "specular"
+          ],
+          "notes": []
+        },
+        {
+          "material": "shaders/characters/creatures/tu/golemflesh/legs_arms_optimized.vdl",
+          "sources": [
+            {
+              "archive": "Char_TU2.vpk",
+              "name": "shaders/characters/creatures/tu/golemflesh/legs_arms_optimized.vdl",
+              "sha256": "2575768c39dbcd27db832523ae17b6a220072a31891863d897c7c5d022268ca1",
+              "bytes": 1191,
+              "verification": "retained shader tree"
+            }
+          ],
+          "symbols": {
+            "@bump": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/arms_legs_bump.dds",
+            "@bumpScale": "0.500000",
+            "@diffIntensity": "(1.000000 1.000000 1.000000)",
+            "@gloss": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/arms_legs_spec.dds",
+            "@specIntensity": "(1.000000 0.839216 0.839216)",
+            "@tex0": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/arms_legs.dds"
+          },
+          "rendered_color": {
+            "archive": "Char_TU1.vpk",
+            "name": "cooked/characters/creatures/tu/golemflesh/sourceimages/optimized/arms_legs.dds",
+            "sha256": "4b395de3a8253f476cbfe14609e4dd167ec98e075321a4d38c84e38e2ad1c849",
+            "bytes": 174910
+          },
+          "rendered_aux_roles": [
+            "bump",
+            "specular"
+          ],
+          "notes": []
+        }
+      ],
+      "render_material_bindings": [
+        {
+          "reviewed": true,
+          "label": "head_chest_optimized",
+          "material": "shaders/characters/creatures/tu/golemflesh/head_chest_optimized.vdl",
+          "two_sided": true,
+          "opacity": 1.0,
+          "shininess": 24.0,
+          "maps": {},
+          "notes": [],
+          "sources": [
+            {
+              "archive": "Char_TU2.vpk",
+              "name": "shaders/characters/creatures/tu/golemflesh/head_chest_optimized.vdl",
+              "sha256": "96ec87d02343810f8cf30bac88fbda2352842ca758b7fd1afadf900a24fcd679",
+              "bytes": 1195
+            }
+          ],
+          "source_parameters": {
+            "@bumpScale": 0.5
+          },
+          "bump_scale": 0.025,
+          "lighting_note": "Shared preview lights; stock maps where proven; lighting intensity is approximate",
+          "gallery_maps": {
+            "stock": "monster-flesh-golem-0-color-stock.png",
+            "pack": "monster-flesh-golem-0-color-pack.png"
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "monster-flesh-golem-0-bump-stock.png",
+              "pack": "monster-flesh-golem-0-bump-pack.png"
+            },
+            "specular": {
+              "stock": "monster-flesh-golem-0-specular-stock.png",
+              "pack": "monster-flesh-golem-0-specular-pack.png"
+            }
+          },
+          "source_symbols": {
+            "@bump": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/head_chest_bump.dds",
+            "@bumpScale": "0.500000",
+            "@diffIntensity": "(1.000000 1.000000 1.000000)",
+            "@gloss": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/head_chest_spec.dds",
+            "@specIntensity": "(1.000000 0.839216 0.839216)",
+            "@tex0": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/head_chest.dds"
+          }
+        },
+        {
+          "reviewed": false,
+          "label": "legs_arms_optimized",
+          "material": "shaders/characters/creatures/tu/golemflesh/legs_arms_optimized.vdl",
+          "color": "#ffffff",
+          "two_sided": true,
+          "opacity": 1.0,
+          "shininess": 24.0,
+          "maps": {},
+          "notes": [],
+          "sources": [
+            {
+              "archive": "Char_TU2.vpk",
+              "name": "shaders/characters/creatures/tu/golemflesh/legs_arms_optimized.vdl",
+              "sha256": "2575768c39dbcd27db832523ae17b6a220072a31891863d897c7c5d022268ca1",
+              "bytes": 1191
+            }
+          ],
+          "source_parameters": {
+            "@bumpScale": 0.5
+          },
+          "uv_set": 0,
+          "uv_transform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          "diffuse_binding": {
+            "symbol": "@tex0",
+            "texture": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/arms_legs.dds",
+            "variants": [
+              {
+                "variant": "legacy",
+                "templates": [
+                  {
+                    "archive": "ShaTplt.vpk",
+                    "name": "shaders/templates/t1_bmp1_spwml.vdl",
+                    "sha256": "13f5b474882831b65dca96329713bf8e1663372b1b7eb5bba13dac8881b25940",
+                    "bytes": 16710
+                  }
+                ],
+                "status": "identity",
+                "uv_set": 0,
+                "routes": [
+                  {
+                    "layer": 10,
+                    "uv_set": 0,
+                    "coordinate_source": "0",
+                    "status": "identity",
+                    "transform_fields": {},
+                    "address_fields": {}
+                  },
+                  {
+                    "layer": 11,
+                    "uv_set": 0,
+                    "coordinate_source": "0",
+                    "status": "identity",
+                    "transform_fields": {},
+                    "address_fields": {}
+                  }
+                ]
+              },
+              {
+                "variant": "shader3",
+                "templates": [
+                  {
+                    "archive": "ShaTplt.vpk",
+                    "name": "shaders/templates/3.0/t1uv0_bmp1uv0_spwml_3_0.vdl",
+                    "sha256": "fddfd9dbc0115b96e9e4b8300d260f2b4c3c2e789a20feaa163287cf4e9581e4",
+                    "bytes": 54978
+                  }
+                ],
+                "status": "identity",
+                "uv_set": 0,
+                "routes": [
+                  {
+                    "layer": 0,
+                    "status": "identity",
+                    "uv_set": 0,
+                    "sampler": "tex0Map",
+                    "fragment_coordinates": "texCoords01.xy",
+                    "vertex_coordinate_chain": [
+                      "finalTexCoord0",
+                      "realTexCoord0",
+                      "texCoords0.xy"
+                    ],
+                    "input_semantic": "TEXCOORD0",
+                    "input_stage_index": 0,
+                    "transform_fields": {}
+                  },
+                  {
+                    "layer": 1,
+                    "status": "identity",
+                    "uv_set": 0,
+                    "sampler": "tex0Map",
+                    "fragment_coordinates": "texCoords01.xy",
+                    "vertex_coordinate_chain": [
+                      "finalTexCoord0",
+                      "realTexCoord0",
+                      "texCoords0.xy"
+                    ],
+                    "input_semantic": "TEXCOORD0",
+                    "input_stage_index": 0,
+                    "transform_fields": {}
+                  }
+                ]
+              }
+            ]
+          },
+          "context_source": "verified stock material on both comparison sides",
+          "bump_scale": 0.025,
+          "lighting_note": "Shared approximate preview lighting; source alpha pixels preserved; full game shader effects are not reproduced",
+          "gallery_maps": {
+            "stock": "monster-flesh-golem-1-color-stock.png",
+            "pack": "monster-flesh-golem-1-color-pack.png"
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "monster-flesh-golem-1-bump-stock.png",
+              "pack": "monster-flesh-golem-1-bump-pack.png"
+            },
+            "specular": {
+              "stock": "monster-flesh-golem-1-specular-stock.png",
+              "pack": "monster-flesh-golem-1-specular-pack.png"
+            }
+          },
+          "source_symbols": {
+            "@bump": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/arms_legs_bump.dds",
+            "@bumpScale": "0.500000",
+            "@diffIntensity": "(1.000000 1.000000 1.000000)",
+            "@gloss": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/arms_legs_spec.dds",
+            "@specIntensity": "(1.000000 0.839216 0.839216)",
+            "@tex0": "Cooked/Characters/Creatures/TU/golemflesh/sourceimages/optimized/arms_legs.dds"
+          }
+        }
+      ],
+      "completeness": {
+        "original_parts": 2,
+        "rendered_parts": 2,
+        "original_index_count": 9366,
+        "rendered_index_count": 9366,
+        "mesh_verification": "released ZIP protected entry",
+        "missing_color_parts": [],
+        "geometry": "All original draw parts retained; original UVs and vertices unchanged."
+      },
+      "textures": [
+        {
+          "archive": "Char_TU1.vpk",
+          "name": "cooked/characters/creatures/tu/golemflesh/sourceimages/optimized/head_chest.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "retained stock preview with prior hash receipt",
+            "png_sha256": "0df6d67722f613ac201f3e09f1256bc523572384ac890fe83febbe3492999edc",
+            "receipt_sha256": "32037db1e47ee2207f5777c43db6774937dfd6d36715e202d748404b41514a81"
+          },
+          "images": {
+            "stock": {
+              "url": "monster-flesh-golem-0-color-stock.png",
+              "png_sha256": "0df6d67722f613ac201f3e09f1256bc523572384ac890fe83febbe3492999edc",
+              "dds_sha256": "efc1515ceba9b04a1b75c52ddd1bdd1e48008a3b049276da0662a556fe65d9a7",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "monster-flesh-golem-0-color-pack.png",
+              "png_sha256": "6dc431f867a68bdd1c2e49fc8e4916e7ab7b3e722178ab8c19752f457d62ce7f",
+              "dds_sha256": "3b8ebc29b9617bcb6decdb0dcd2e2625c5aed6c3350a48e93b76bee0285979b6",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT1"
+            }
+          }
+        },
+        {
+          "archive": "Char_TU1.vpk",
+          "name": "cooked/characters/creatures/tu/golemflesh/sourceimages/optimized/head_chest_bump.dds",
+          "role": "bump",
+          "stock_proof": {
+            "kind": "exact retained stock DDS in released pack",
+            "dds_sha256": "f5c21a70764e1e602e4fc485d1c58591a21a0dbc6f4a97c70407cca5df176185"
+          },
+          "images": {
+            "stock": {
+              "url": "monster-flesh-golem-0-bump-stock.png",
+              "png_sha256": "3fcb4b6b7a5836d17b805d4bf6e754c5fd9c2efd0d5c42914a3fa86e5b178c0b",
+              "dds_sha256": "f5c21a70764e1e602e4fc485d1c58591a21a0dbc6f4a97c70407cca5df176185",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "monster-flesh-golem-0-bump-pack.png",
+              "png_sha256": "3fcb4b6b7a5836d17b805d4bf6e754c5fd9c2efd0d5c42914a3fa86e5b178c0b",
+              "dds_sha256": "f5c21a70764e1e602e4fc485d1c58591a21a0dbc6f4a97c70407cca5df176185",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "Char_TU1.vpk",
+          "name": "cooked/characters/creatures/tu/golemflesh/sourceimages/optimized/head_chest_spec.dds",
+          "role": "specular",
+          "stock_proof": {
+            "kind": "exact retained stock DDS in released pack",
+            "dds_sha256": "5eadc1b9c6d027b79f913c19e407b56235745876b5b3c1e9787ecaf5d79b85c1"
+          },
+          "images": {
+            "stock": {
+              "url": "monster-flesh-golem-0-specular-stock.png",
+              "png_sha256": "b8e451d20d66d728b404c581620cfc04580a75026a86e140c7a1711fd0bf1942",
+              "dds_sha256": "5eadc1b9c6d027b79f913c19e407b56235745876b5b3c1e9787ecaf5d79b85c1",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "monster-flesh-golem-0-specular-pack.png",
+              "png_sha256": "b8e451d20d66d728b404c581620cfc04580a75026a86e140c7a1711fd0bf1942",
+              "dds_sha256": "5eadc1b9c6d027b79f913c19e407b56235745876b5b3c1e9787ecaf5d79b85c1",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "Char_TU1.vpk",
+          "name": "cooked/characters/creatures/tu/golemflesh/sourceimages/optimized/arms_legs.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "retained decoded stock geometry-map cache",
+            "png_sha256": "e447754f73f6bf77aa461ed86644572f9f7edf612484fd3c94ff88dcf32479b0",
+            "model_receipt_sha256": "ddb0f38b6f84a646592ad4cd40afd1d8507ae1233887691c9a6aa11736714bd6",
+            "source_dds_available": false,
+            "verification_limit": "Original DDS no longer present; preserved source identity and trusted cache writer provenance, not a fresh independent DDS decode."
+          },
+          "images": {
+            "stock": {
+              "url": "monster-flesh-golem-1-color-stock.png",
+              "png_sha256": "c247be9431633efcaf5aba63278179a50bd3a2c042c54764481637a5ec3fcd83",
+              "dds_sha256": "4b395de3a8253f476cbfe14609e4dd167ec98e075321a4d38c84e38e2ad1c849",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "monster-flesh-golem-1-color-pack.png",
+              "png_sha256": "2456dc1cd55119d62b728740db502b691654bcd2249aa03c9bf0c21dc5869861",
+              "dds_sha256": "5515c9002796663f51444c0be79bd6593d8056669696c84ef69e3b4270dea347",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT1"
+            }
+          }
+        },
+        {
+          "archive": "Char_TU1.vpk",
+          "name": "cooked/characters/creatures/tu/golemflesh/sourceimages/optimized/arms_legs_bump.dds",
+          "role": "bump",
+          "stock_proof": {
+            "kind": "exact retained stock DDS in released pack",
+            "dds_sha256": "f6f8a015ecea3b8a5d79151cab777dc24168b0fbf6a71e374b24abb40ed1d8e6"
+          },
+          "images": {
+            "stock": {
+              "url": "monster-flesh-golem-1-bump-stock.png",
+              "png_sha256": "ca469b3e3d52183b424603981ac27508a82949e97cf39ddf32bc70a1f7637b10",
+              "dds_sha256": "f6f8a015ecea3b8a5d79151cab777dc24168b0fbf6a71e374b24abb40ed1d8e6",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "monster-flesh-golem-1-bump-pack.png",
+              "png_sha256": "ca469b3e3d52183b424603981ac27508a82949e97cf39ddf32bc70a1f7637b10",
+              "dds_sha256": "f6f8a015ecea3b8a5d79151cab777dc24168b0fbf6a71e374b24abb40ed1d8e6",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "Char_TU1.vpk",
+          "name": "cooked/characters/creatures/tu/golemflesh/sourceimages/optimized/arms_legs_spec.dds",
+          "role": "specular",
+          "stock_proof": {
+            "kind": "exact retained stock DDS in released pack",
+            "dds_sha256": "0b0b1e90fd099fb5124804c9a9a245a4cad939417872231f04359405dc9f3177"
+          },
+          "images": {
+            "stock": {
+              "url": "monster-flesh-golem-1-specular-stock.png",
+              "png_sha256": "374eaefdd1e9a1fd4e0f255972d5d701bfb6053a98c6f257ac8b66afeea9e3b3",
+              "dds_sha256": "0b0b1e90fd099fb5124804c9a9a245a4cad939417872231f04359405dc9f3177",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "monster-flesh-golem-1-specular-pack.png",
+              "png_sha256": "374eaefdd1e9a1fd4e0f255972d5d701bfb6053a98c6f257ac8b66afeea9e3b3",
+              "dds_sha256": "0b0b1e90fd099fb5124804c9a9a245a4cad939417872231f04359405dc9f3177",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Bakery sign and easel",
       "image": "images/signage-bakery.png",
-      "image_sha256": "63327ffcaf983d073d3b4badae004d967a52be84e5f1bf2f264780afb10d8a36",
+      "image_sha256": "5611c1dbbdef0a0a1961905eb2cf14e0efa52aa4f4c4f6edc709eafded990258",
       "image_size": [
         1600,
         960
@@ -137,72 +1850,555 @@
       "mesh": {
         "archive": "exp01_dun_poets_palace.vpk",
         "name": "_exp01/cooked/zones/objects/painting_tools/djn_easel_square_painting01_l0.draw",
-        "sha256": "717b051d0a529d87ee36465e3084f1e1a949b86a4d7479e7ac7c864875936bc1"
+        "sha256": "717b051d0a529d87ee36465e3084f1e1a949b86a4d7479e7ac7c864875936bc1",
+        "bytes": 22837
       },
-      "geometry_input_sha256": "00b089492e694b122681d15db4957eabc3b0824eeb371ecef0515265e24d12bc",
+      "geometry_input_sha256": "fd0353150dbdf0639a89a2d2b21c8abe907e6870be4edac16595498ccb277f99",
+      "triangles": 586,
+      "material_groups": 3,
       "camera_normalized": [
-        0.3,
-        0.15,
-        2.55
+        0.2,
+        0.45,
+        -1.5
       ],
       "target_normalized": [
         0,
-        0,
+        0.28,
         0
       ],
-      "crop_note": "Selected material part of the original game mesh; other parts omitted equally on both sides.",
+      "camera_roll_radians": 0,
+      "renderer_code_sha256": "475525085ec108feccc674bc6d2a0cc4e29a547a35b3f3e8638d9c8f939e58b9",
+      "scope": null,
+      "limitations": [],
+      "material_equation": null,
+      "material_audit": null,
+      "render_material_bindings": [
+        {
+          "reviewed": true,
+          "label": "shopsignbakery01",
+          "material": "shaders/interiors/cities/marr/shopsignbakery01.vdl",
+          "two_sided": true,
+          "opacity": 1.0,
+          "shininess": 24.0,
+          "notes": [],
+          "sources": [
+            {
+              "archive": "ZShdrs.vpk",
+              "name": "shaders/interiors/cities/marr/shopsignbakery01.vdl",
+              "sha256": "2ff7c8e612373fdb1b44712e340097d389c8ba01290012173d45f67a2c6a2c36",
+              "bytes": 716
+            }
+          ],
+          "source_parameters": {
+            "@bumpScale": 0.4
+          },
+          "bump_scale": 0.025,
+          "lighting_note": "Shared preview lights; stock maps where proven; lighting intensity is approximate",
+          "gallery_maps": {
+            "stock": "signage-0-color-stock.png",
+            "pack": "signage-0-color-pack.png"
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "signage-0-bump-stock.png",
+              "pack": "signage-0-bump-pack.png"
+            }
+          }
+        },
+        {
+          "reviewed": false,
+          "label": "fprt_canvas01",
+          "material": "shaders/interiors/cities/antonica/primary/freeport/fprt_revised/fabric/fprt_canvas01.vdl",
+          "color": "#ffffff",
+          "two_sided": true,
+          "opacity": 1.0,
+          "shininess": 24.0,
+          "notes": [],
+          "sources": [
+            {
+              "archive": "ZShdrs.vpk",
+              "name": "shaders/interiors/cities/antonica/primary/freeport/fprt_revised/fabric/fprt_canvas01.vdl",
+              "sha256": "be67ae3d7ce2cade5266b9cb3af6b91ce9f2ac7d240742768f3eb0a4ff42d400",
+              "bytes": 924
+            }
+          ],
+          "source_parameters": {
+            "@bumpScale": 0.4
+          },
+          "uv_set": 0,
+          "uv_transform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          "diffuse_binding": {
+            "symbol": "@tex0",
+            "texture": "Cooked/Interiors/sourceimages/Fabric/Burlap004.dds",
+            "variants": [
+              {
+                "variant": "legacy",
+                "templates": [
+                  {
+                    "archive": "ShaTplt.vpk",
+                    "name": "shaders/templates/bclr_t1_bmp1.vdl",
+                    "sha256": "30bea7012ef4a86c872bff65eed8e372a8c32f1bb9feba80af2f7fc00abe03ea",
+                    "bytes": 15900
+                  }
+                ],
+                "status": "identity",
+                "uv_set": 0,
+                "routes": [
+                  {
+                    "layer": 8,
+                    "uv_set": 0,
+                    "coordinate_source": "0",
+                    "status": "identity",
+                    "transform_fields": {},
+                    "address_fields": {}
+                  },
+                  {
+                    "layer": 9,
+                    "uv_set": 0,
+                    "coordinate_source": "0",
+                    "status": "identity",
+                    "transform_fields": {},
+                    "address_fields": {}
+                  }
+                ]
+              },
+              {
+                "variant": "shader3",
+                "templates": [
+                  {
+                    "archive": "ShaTplt.vpk",
+                    "name": "shaders/templates/3.0/bclr_t1uv0_bmp1uv0_blenda_3_0.vdl",
+                    "sha256": "6f275d9a8d766aa08dec4b6bf6d4079e96aef3dbf5e9b1f2acc7baf4c9ba7492",
+                    "bytes": 53361
+                  }
+                ],
+                "status": "identity",
+                "uv_set": 0,
+                "routes": [
+                  {
+                    "layer": 0,
+                    "status": "identity",
+                    "uv_set": 0,
+                    "sampler": "tex0Map",
+                    "fragment_coordinates": "texCoords01.xy",
+                    "vertex_coordinate_chain": [
+                      "finalTexCoord0",
+                      "realTexCoord0",
+                      "texCoords0.xy"
+                    ],
+                    "input_semantic": "TEXCOORD0",
+                    "input_stage_index": 0,
+                    "transform_fields": {}
+                  },
+                  {
+                    "layer": 1,
+                    "status": "identity",
+                    "uv_set": 0,
+                    "sampler": "tex0Map",
+                    "fragment_coordinates": "texCoords01.xy",
+                    "vertex_coordinate_chain": [
+                      "finalTexCoord0",
+                      "realTexCoord0",
+                      "texCoords0.xy"
+                    ],
+                    "input_semantic": "TEXCOORD0",
+                    "input_stage_index": 0,
+                    "transform_fields": {}
+                  }
+                ]
+              }
+            ]
+          },
+          "context_source": "verified stock material on both comparison sides",
+          "bump_scale": 0.025,
+          "lighting_note": "Shared approximate preview lighting; source alpha pixels preserved; full game shader effects are not reproduced",
+          "gallery_maps": {
+            "stock": "signage-1-color-stock.png",
+            "pack": "signage-1-color-pack.png"
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "signage-1-bump-stock.png",
+              "pack": "signage-1-bump-pack.png"
+            }
+          }
+        },
+        {
+          "reviewed": false,
+          "label": "iron01",
+          "material": "shaders/interiors/dpo_housing/iron01.vdl",
+          "color": "#ffffff",
+          "two_sided": true,
+          "opacity": 1.0,
+          "shininess": 24.0,
+          "notes": [],
+          "sources": [
+            {
+              "archive": "ZShdrs.vpk",
+              "name": "shaders/interiors/dpo_housing/iron01.vdl",
+              "sha256": "087389eacf269c84cd8c869f0e33bb1160d718bfd1f7e7767159eab1c77f9b1b",
+              "bytes": 1377
+            }
+          ],
+          "source_parameters": {
+            "@bumpScale": 1.0
+          },
+          "uv_set": 0,
+          "uv_transform": [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              1
+            ]
+          ],
+          "diffuse_binding": {
+            "symbol": "@tex0",
+            "texture": "cooked/interiors/sourceimages/dpo_housing/iron01_c.dds",
+            "variants": [
+              {
+                "variant": "legacy",
+                "templates": [
+                  {
+                    "archive": "ShaTplt.vpk",
+                    "name": "shaders/templates/bclr_t1_bmp1_spwml.vdl",
+                    "sha256": "58724ef4b2f9de56bcfafe76158e3768d82c144559efe54f084e4d239d689d99",
+                    "bytes": 16864
+                  }
+                ],
+                "status": "identity",
+                "uv_set": 0,
+                "routes": [
+                  {
+                    "layer": 10,
+                    "uv_set": 0,
+                    "coordinate_source": "0",
+                    "status": "identity",
+                    "transform_fields": {},
+                    "address_fields": {}
+                  },
+                  {
+                    "layer": 11,
+                    "uv_set": 0,
+                    "coordinate_source": "0",
+                    "status": "identity",
+                    "transform_fields": {},
+                    "address_fields": {}
+                  }
+                ]
+              },
+              {
+                "variant": "shader3",
+                "templates": [
+                  {
+                    "archive": "ShaTplt.vpk",
+                    "name": "shaders/templates/3.0/bclr_t1uv0_bmp1uv0_spwml_blenda_3_0.vdl",
+                    "sha256": "db02257071da57c65441bf07c08d1d7dd16bce2dc2dc4f4baaf1a791e79a363e",
+                    "bytes": 55918
+                  }
+                ],
+                "status": "identity",
+                "uv_set": 0,
+                "routes": [
+                  {
+                    "layer": 0,
+                    "status": "identity",
+                    "uv_set": 0,
+                    "sampler": "tex0Map",
+                    "fragment_coordinates": "texCoords01.xy",
+                    "vertex_coordinate_chain": [
+                      "finalTexCoord0",
+                      "realTexCoord0",
+                      "texCoords0.xy"
+                    ],
+                    "input_semantic": "TEXCOORD0",
+                    "input_stage_index": 0,
+                    "transform_fields": {}
+                  },
+                  {
+                    "layer": 1,
+                    "status": "identity",
+                    "uv_set": 0,
+                    "sampler": "tex0Map",
+                    "fragment_coordinates": "texCoords01.xy",
+                    "vertex_coordinate_chain": [
+                      "finalTexCoord0",
+                      "realTexCoord0",
+                      "texCoords0.xy"
+                    ],
+                    "input_semantic": "TEXCOORD0",
+                    "input_stage_index": 0,
+                    "transform_fields": {}
+                  }
+                ]
+              }
+            ]
+          },
+          "context_source": "verified stock material on both comparison sides",
+          "bump_scale": 0.025,
+          "lighting_note": "Shared approximate preview lighting; source alpha pixels preserved; full game shader effects are not reproduced",
+          "gallery_maps": {
+            "stock": "signage-2-color-stock.png",
+            "pack": "signage-2-color-pack.png"
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "signage-2-bump-stock.png",
+              "pack": "signage-2-bump-pack.png"
+            },
+            "specular": {
+              "stock": "signage-2-specular-stock.png",
+              "pack": "signage-2-specular-pack.png"
+            }
+          }
+        }
+      ],
+      "completeness": null,
       "textures": [
         {
           "archive": "dpo_housing1.vpk",
-          "entry": "cooked/interiors/sourceimages/paintings/shopsign_bakery.dds",
-          "stock_dds_sha256": "16d7b219787782d0d3ce659b884a33808943bd284b7b4061e2bef3b678bb251f",
-          "shipped_dds_sha256": "0080f58acd14591a4175862d2676e2e16fb8cf9740774f1832b02c293674ed2f",
-          "stock_size": [
-            128,
-            128
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
+          "name": "cooked/interiors/sourceimages/paintings/shopsign_bakery.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "verified retained stock preview",
+            "receipt_sha256": "1beb716f8013502a30d056ead83d5c73d818f242a67e64923f800c6c04fdb6a4"
+          },
+          "images": {
+            "stock": {
+              "url": "signage-0-color-stock.png",
+              "png_sha256": "7001229d8a807863aef98a38205cdf05d9932037549e7481ee3c3d0d84f28e90",
+              "dds_sha256": "16d7b219787782d0d3ce659b884a33808943bd284b7b4061e2bef3b678bb251f",
+              "size": [
+                128,
+                128
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "signage-0-color-pack.png",
+              "png_sha256": "3e74bb6fcadeedec6da032508802672815446c099f56899735fb38f9961a5ce2",
+              "dds_sha256": "0080f58acd14591a4175862d2676e2e16fb8cf9740774f1832b02c293674ed2f",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT1"
+            }
+          }
+        },
+        {
+          "archive": "dpo_housing1.vpk",
+          "name": "cooked/interiors/sourceimages/paintings/shopsign_bakeryb.dds",
+          "role": "bump",
+          "stock_proof": {
+            "kind": "released protected entry matches prior stock SHA256"
+          },
+          "images": {
+            "stock": {
+              "url": "signage-0-bump-stock.png",
+              "png_sha256": "da94caf10d25c8380289bdabe980f0f6db24c7dc2375ed410e411cdf9ff0f106",
+              "dds_sha256": "6029e8eb78bf18a7155e8fc9730dba2951c200a65cbf49c9bfad48c2025aba11",
+              "size": [
+                128,
+                128
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "signage-0-bump-pack.png",
+              "png_sha256": "da94caf10d25c8380289bdabe980f0f6db24c7dc2375ed410e411cdf9ff0f106",
+              "dds_sha256": "6029e8eb78bf18a7155e8fc9730dba2951c200a65cbf49c9bfad48c2025aba11",
+              "size": [
+                128,
+                128
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
         },
         {
           "archive": "ZDDS4.vpk",
-          "entry": "cooked/interiors/sourceimages/fabric/burlap004.dds",
-          "stock_dds_sha256": "b92cd69491b44830b1ad4baf04c76029882ea33aeefb4a4dbb78928f9c2c92d6",
-          "shipped_dds_sha256": "19dd5f3596171049c4e11f38c30f42da3a9fa597dc80dd3855d2cdc17276d589",
-          "stock_size": [
-            256,
-            256
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
+          "name": "cooked/interiors/sourceimages/fabric/burlap004.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "retained gallery stock PNG with prior DDS+PNG hashes",
+            "png_sha256": "3c76462234e4c160959130ecaec3f8d0914f16e451551e79c66051f4a08f9bb3"
+          },
+          "images": {
+            "stock": {
+              "url": "signage-1-color-stock.png",
+              "png_sha256": "85cf900df26a7ba83492f03a93e3f9cc91539bb54552c367ba86aa4ee6f5fd5d",
+              "dds_sha256": "b92cd69491b44830b1ad4baf04c76029882ea33aeefb4a4dbb78928f9c2c92d6",
+              "size": [
+                256,
+                256
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "signage-1-color-pack.png",
+              "png_sha256": "3ba334c577a415c7a32d362bb588422cd2dcecc03aba871d4124b421df7eb49b",
+              "dds_sha256": "19dd5f3596171049c4e11f38c30f42da3a9fa597dc80dd3855d2cdc17276d589",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT1"
+            }
+          }
+        },
+        {
+          "archive": "ZDDS4.vpk",
+          "name": "cooked/interiors/sourceimages/fabric/burlap002_b.dds",
+          "role": "bump",
+          "stock_proof": {
+            "kind": "released protected entry matches prior stock SHA256"
+          },
+          "images": {
+            "stock": {
+              "url": "signage-1-bump-stock.png",
+              "png_sha256": "4bd1b30abffaf76e35d287074f1ef00015f9f4c95980e65d70edcb77363a45f3",
+              "dds_sha256": "f4b18a058a6cab2b18b49592fc2ce5aebe98c9c4d315ca85287fec0ea40fee15",
+              "size": [
+                256,
+                256
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "signage-1-bump-pack.png",
+              "png_sha256": "4bd1b30abffaf76e35d287074f1ef00015f9f4c95980e65d70edcb77363a45f3",
+              "dds_sha256": "f4b18a058a6cab2b18b49592fc2ce5aebe98c9c4d315ca85287fec0ea40fee15",
+              "size": [
+                256,
+                256
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
         },
         {
           "archive": "dpo_housing.vpk",
-          "entry": "cooked/interiors/sourceimages/dpo_housing/iron01_c.dds",
-          "stock_dds_sha256": "886a4d4bb03749880757caf30f6fb9ed287ae28d03bb6a74e52c0046a7c20f4f",
-          "shipped_dds_sha256": "7f116422592fcf071303472ccc52c79263b07053fa1e7c62a6e52042550a8de0",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
+          "name": "cooked/interiors/sourceimages/dpo_housing/iron01_c.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "retained gallery stock PNG with prior DDS+PNG hashes",
+            "png_sha256": "6023659cd525dff2777efd78e3c381b301984338daeec810d5cc35f0610f9fbe"
+          },
+          "images": {
+            "stock": {
+              "url": "signage-2-color-stock.png",
+              "png_sha256": "69345a1afd7b1ca450bff0249154d3dc8d62793ee59e9ae4b2e4c120c8682121",
+              "dds_sha256": "886a4d4bb03749880757caf30f6fb9ed287ae28d03bb6a74e52c0046a7c20f4f",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "signage-2-color-pack.png",
+              "png_sha256": "fce083d78b907b645ef00e4fd3ca24ec256889c2b638435ab6c8d417d3929fff",
+              "dds_sha256": "7f116422592fcf071303472ccc52c79263b07053fa1e7c62a6e52042550a8de0",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT1"
+            }
+          }
+        },
+        {
+          "archive": "dpo_housing.vpk",
+          "name": "cooked/interiors/sourceimages/dpo_housing/iron01_b.dds",
+          "role": "bump",
+          "stock_proof": {
+            "kind": "released protected entry matches prior stock SHA256"
+          },
+          "images": {
+            "stock": {
+              "url": "signage-2-bump-stock.png",
+              "png_sha256": "2a24f09469aa2e0b12a3f8a0cb7bdcafa2a660d64d54f32015e4f63c970a3f33",
+              "dds_sha256": "9ce9396e5938ae05bd8bdc4bd863ec02a3c165c15422d5ba13c2fb8e1b4dcd4b",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "signage-2-bump-pack.png",
+              "png_sha256": "2a24f09469aa2e0b12a3f8a0cb7bdcafa2a660d64d54f32015e4f63c970a3f33",
+              "dds_sha256": "9ce9396e5938ae05bd8bdc4bd863ec02a3c165c15422d5ba13c2fb8e1b4dcd4b",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "dpo_housing.vpk",
+          "name": "cooked/interiors/sourceimages/dpo_housing/iron01_s.dds",
+          "role": "specular",
+          "stock_proof": {
+            "kind": "released protected entry matches prior stock SHA256"
+          },
+          "images": {
+            "stock": {
+              "url": "signage-2-specular-stock.png",
+              "png_sha256": "93a34bf21675d7a9097b64ec1b085c08b32e4c07b0ab7f7aed461680ad679187",
+              "dds_sha256": "6877c8466d2f412645db37d8ef513a84dbb0074cfd4b54f478df09f084fd099b",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "signage-2-specular-pack.png",
+              "png_sha256": "93a34bf21675d7a9097b64ec1b085c08b32e4c07b0ab7f7aed461680ad679187",
+              "dds_sha256": "6877c8466d2f412645db37d8ef513a84dbb0074cfd4b54f478df09f084fd099b",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
         }
       ]
     },
     {
       "title": "Freeport wooden door",
       "image": "images/wooden-door.png",
-      "image_sha256": "95d0ab397a6e40b2c528bd5406d38eafed2dc065798f6480027b7debf8d2e23d",
+      "image_sha256": "70d04535985a1dcb2bef0794fcd6f4dfd693ea7838b9c7280c5b963ff0a98524",
       "image_size": [
         1600,
         960
@@ -210,42 +2406,196 @@
       "mesh": {
         "archive": "fprt_east.vpk",
         "name": "cooked/interiors/scenes/cities/antonica/primary/freeport_test02/fprt_p33/fprt_p33_ext_depot01_door01_l0.draw",
-        "sha256": "07af8dbf3a8344e68b73eaf0bec15445e728a0dff5f10fde11e5aca2b6f90371"
+        "sha256": "07af8dbf3a8344e68b73eaf0bec15445e728a0dff5f10fde11e5aca2b6f90371",
+        "bytes": 376
       },
-      "geometry_input_sha256": "b585c0d257ceb6eed792acad71f08ddf719df43641de19ebf5084367a0e72924",
+      "geometry_input_sha256": "cf417dab99ccce1f932ebe7a875d7dca076fee2c7b4865a424ed9ca2048983e9",
+      "triangles": 2,
+      "material_groups": 1,
       "camera_normalized": [
-        -1.9,
-        0.08,
-        -0.15
+        2.2,
+        0.15,
+        0.25
       ],
       "target_normalized": [
         0,
         0,
         0
       ],
-      "crop_note": "Selected material part of the original game mesh; other parts omitted equally on both sides.",
+      "camera_roll_radians": 1.57079632679,
+      "renderer_code_sha256": "7951abc6fb71a061bbd99bf03e8e1831e94d1506de6fa9be05319b5b30169929",
+      "scope": null,
+      "limitations": [],
+      "material_equation": null,
+      "material_audit": null,
+      "render_material_bindings": [
+        {
+          "reviewed": true,
+          "label": "fprt_door_big01",
+          "material": "shaders/interiors/cities/antonica/primary/freeport/fprt_revised/objects/fprt_door_big01.vdl",
+          "two_sided": true,
+          "opacity": 1.0,
+          "shininess": 24,
+          "notes": [
+            "@gloss: Stock map UV route differs or is unresolved"
+          ],
+          "sources": [
+            {
+              "archive": "ZShdrs.vpk",
+              "name": "shaders/interiors/cities/antonica/primary/freeport/fprt_revised/objects/fprt_door_big01.vdl",
+              "sha256": "23c2dafa8d24924b80f5d6353bf3668b688d469b1cb77222e4d5995d2ed5ee27",
+              "bytes": 1154
+            }
+          ],
+          "source_parameters": {
+            "@bumpScale": 1.0
+          },
+          "bump_scale": 0.025,
+          "lighting_note": "Shared preview lights; stock maps where proven; lighting intensity is approximate",
+          "gallery_maps": {
+            "stock": "door-0-color-stock.png",
+            "pack": "door-0-color-pack.png"
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "door-0-bump-stock.png",
+              "pack": "door-0-bump-pack.png"
+            },
+            "specular": {
+              "stock": "door-0-specular-stock.png",
+              "pack": "door-0-specular-pack.png"
+            }
+          }
+        }
+      ],
+      "completeness": null,
       "textures": [
         {
           "archive": "ZDDS19.vpk",
-          "entry": "cooked/interiors/sourceimages/wood/fprt_p33_bigdoor02.dds",
-          "stock_dds_sha256": "1623743625b0d724767f15486e18bf0746f379cedd9a9acf1a0f9742264a4bc6",
-          "shipped_dds_sha256": "793d1fd2e17fa9e73993c244dca9d230e140434cbb08e29e6ae5aeb547b4da95",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
+          "name": "cooked/interiors/sourceimages/wood/fprt_p33_bigdoor02.dds",
+          "role": "color",
+          "stock_proof": {
+            "kind": "verified retained stock preview",
+            "receipt_sha256": "35740b7f904f2c06e71bd05d9e58b13c2969ace8cbc3c0026234eba0145a83b4"
+          },
+          "images": {
+            "stock": {
+              "url": "door-0-color-stock.png",
+              "png_sha256": "1f5a745f5b85c085a507b41b2fcd39a2b1c329e4b967c0f617236ae6ae538f78",
+              "dds_sha256": "1623743625b0d724767f15486e18bf0746f379cedd9a9acf1a0f9742264a4bc6",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "door-0-color-pack.png",
+              "png_sha256": "0d8d58c63d8b88bed8ee7c4678cd918f4f7cdd17affbbbcaa182a6709c2d1851",
+              "dds_sha256": "793d1fd2e17fa9e73993c244dca9d230e140434cbb08e29e6ae5aeb547b4da95",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT1"
+            }
+          }
+        },
+        {
+          "archive": "ZDDS19.vpk",
+          "name": "cooked/interiors/sourceimages/wood/fprt_p33_bigdoor02_b.dds",
+          "role": "bump",
+          "stock_proof": {
+            "kind": "released protected entry matches prior stock SHA256"
+          },
+          "images": {
+            "stock": {
+              "url": "door-0-bump-stock.png",
+              "png_sha256": "0a62faa4ac096ae45aab8cdc106912c3179a07ac52a181a4c74d4e8ff21c53e2",
+              "dds_sha256": "207e16612d490e2d01df169e5c746a9769230875dc02dd673e087d1bbdff4f8f",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "door-0-bump-pack.png",
+              "png_sha256": "0a62faa4ac096ae45aab8cdc106912c3179a07ac52a181a4c74d4e8ff21c53e2",
+              "dds_sha256": "207e16612d490e2d01df169e5c746a9769230875dc02dd673e087d1bbdff4f8f",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
+        },
+        {
+          "archive": "ZDDS19.vpk",
+          "name": "cooked/interiors/sourceimages/wood/fprt_p33_bigdoor02_s.dds",
+          "role": "specular",
+          "stock_proof": {
+            "basis": "protected stock entry retained by verified pack; no historical individual entry SHA available",
+            "catalog_sha256": "92cc322ba4ea29215898833c9178f65a5622793b2a20c2324a04ba5f6ecf759d",
+            "classification": {
+              "name": "cooked/interiors/sourceimages/wood/fprt_p33_bigdoor02_s.dds",
+              "key": "f8375c074c9a3322",
+              "fmt": "RGB8(r=0,g=0,b=0,a=0)",
+              "w": 512,
+              "h": 512,
+              "mips": 8,
+              "role": "spec",
+              "reason": "material binds it as gloss/spec data",
+              "material": "wood",
+              "tileable": [
+                false,
+                false
+              ],
+              "sequence": false,
+              "scale": 4,
+              "recipe": "data"
+            },
+            "archive": {
+              "bytes": 92854060,
+              "entries": 218,
+              "member": "ZDDS19.vpk",
+              "name": "ZDDS19.vpk",
+              "sha256": "92b1eb992922cec2397af7836e23ee29905e07410003c233b9e0dcd60bd46ef8"
+            },
+            "completed_protection_receipt": "work/nightly/character_seam_pack_v3/result.json",
+            "completed_protection_receipt_sha256": "0c4275f3506ca7c8dc80f7fbfb430c404af01bdc616db36ab27bc90a48d56737",
+            "replacement_absence": "No canonical replacement for this exact DDS in complete published inventory"
+          },
+          "images": {
+            "stock": {
+              "url": "door-0-specular-stock.png",
+              "png_sha256": "89888ade1a3d18f6ccef8c8ad8314cfa3d24dc473a8495baea2f3805b654ff84",
+              "dds_sha256": "047bbef33584753f6eb49d11570f7e41e076005eb7c27219fc7c9926d385b2cd",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "door-0-specular-pack.png",
+              "png_sha256": "89888ade1a3d18f6ccef8c8ad8314cfa3d24dc473a8495baea2f3805b654ff84",
+              "dds_sha256": "047bbef33584753f6eb49d11570f7e41e076005eb7c27219fc7c9926d385b2cd",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
         }
       ]
     },
     {
-      "title": "Darklight Woods terrain",
+      "title": "Darklight Woods layered terrain",
       "image": "images/terrain-darklight.png",
-      "image_sha256": "5364bc7d24a9c773e06d2ca4d49017dd67fd0c11331de93e1c8c1d32a355e117",
+      "image_sha256": "0eab7dc18a4bc8ea24f2158599ebc49eeef0d8dfde1038baaf4901caa2a36bbb",
       "image_size": [
         1600,
         960
@@ -253,620 +2603,147 @@
       "mesh": {
         "archive": "darklight_wood.vpk",
         "name": "cooked/interiors/scenes/regions/antonica/nektulos_forrest/darklight_wood/terrain/dw_terrain/dw_terrain_r02_geo02_l0.draw",
-        "sha256": "27236abfb840f3b01fa18469613380110589c38e2f7d93a6ab5fe0fdfdb6bfe6"
+        "sha256": "27236abfb840f3b01fa18469613380110589c38e2f7d93a6ab5fe0fdfdb6bfe6",
+        "bytes": 617706
       },
-      "geometry_input_sha256": "32d595e9a42f643002b7c64642121b8e24397eca1d50e9155b89204784bb4e4c",
+      "geometry_input_sha256": "710405ffcf2017ee616e3567cf189103ea228f8b31e690f3518dce67460e16a6",
+      "triangles": 6,
+      "material_groups": 1,
       "camera_normalized": [
-        -0.15,
-        0.32,
-        0.58
+        0,
+        0.55,
+        0.6
       ],
       "target_normalized": [
-        -0.15,
         0,
-        0.28
+        0,
+        0
       ],
-      "crop_note": "Actual Darklight terrain triangles cropped to a local patch; original UV coordinates retained. Additional game blend layers omitted on both sides.",
+      "camera_roll_radians": 0,
+      "renderer_code_sha256": "7951abc6fb71a061bbd99bf03e8e1831e94d1506de6fa9be05319b5b30169929",
+      "scope": "Actual contiguous framed grass material patch; not the whole zone",
+      "limitations": [],
+      "material_equation": "texture0(UV0).RGB * texture1(UV1).RGB, per dw_grass02.vdl MODULATE at UV sets 0/1; original bump on UV0.",
+      "material_audit": null,
+      "render_material_bindings": [
+        {
+          "label": "dw_grass02 complete layered material",
+          "reviewed": true,
+          "material": "shaders/interiors/exp03_soga/darklight_wood/terrain/dw_grass02.vdl",
+          "gallery_maps": {
+            "stock": "terrain-tex0-stock.png",
+            "pack": "terrain-tex0-pack.png"
+          },
+          "gallery_layers": {
+            "kind": "multiply_uv1",
+            "secondary": {
+              "stock": "terrain-tex1-stock.png",
+              "pack": "terrain-tex1-pack.png"
+            }
+          },
+          "gallery_aux": {
+            "bump": {
+              "stock": "terrain-bump-stock.png",
+              "pack": "terrain-bump-pack.png"
+            }
+          },
+          "bump_scale": 0.025,
+          "shininess": 1,
+          "two_sided": true
+        }
+      ],
+      "completeness": true,
       "textures": [
         {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_bkterrainstone_c.dds",
-          "stock_dds_sha256": "cfa10b67d2729164f0051f6f78bcef942542e496c1c2b27d264b634844e70a25",
-          "shipped_dds_sha256": "b36996b35f06a8f7239da677ba7647fd0cf67696ab5b8b459e3a09b7bda6b519",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
+          "archive": "exp03_rgn_greater_faydark1.vpk",
+          "name": "_exp03/cooked/zones/sourceimages/ground/grass_long_01_b.dds",
+          "stock_proof": {
+            "kind": "released protected entry matches prior stock SHA256"
+          },
+          "images": {
+            "stock": {
+              "url": "terrain-bump-stock.png",
+              "png_sha256": "06a9f08d2161cb7c904c1a6285d935455cae19f24f582201c63ee12083983189",
+              "dds_sha256": "c21ba1629edd65fec6b74e3aeb7ac5ba4064217b186dbf12a7055622a2966fcb",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            },
+            "pack": {
+              "url": "terrain-bump-pack.png",
+              "png_sha256": "06a9f08d2161cb7c904c1a6285d935455cae19f24f582201c63ee12083983189",
+              "dds_sha256": "c21ba1629edd65fec6b74e3aeb7ac5ba4064217b186dbf12a7055622a2966fcb",
+              "size": [
+                512,
+                512
+              ],
+              "format": "RGB8(r=0,g=0,b=0,a=0)"
+            }
+          }
         },
         {
           "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
-          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
-          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
+          "name": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
+          "stock_proof": {
+            "kind": "verified retained stock preview",
+            "receipt_sha256": "84e14610b6a49a821f3491b0043e4d63af67b6ad8656b1536a16668c20bb2d41"
+          },
+          "images": {
+            "stock": {
+              "url": "terrain-tex0-stock.png",
+              "png_sha256": "f3560e399297f7e615915e7b35784e09a336be3d7deb404c0c9a69b4a879ac4f",
+              "dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "terrain-tex0-pack.png",
+              "png_sha256": "19f2736474daf5056a2e11c48d556dd322cf705f9cca2caa965a2dec44a806c9",
+              "dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
+              "size": [
+                2048,
+                2048
+              ],
+              "format": "DXT1"
+            }
+          }
         },
         {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
-          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
-          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
-          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
-          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
-          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
-          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
-          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
-          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
-          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
-          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
-          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
-          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
-          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
-          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
-          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
-          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_bkterrainstone_c.dds",
-          "stock_dds_sha256": "cfa10b67d2729164f0051f6f78bcef942542e496c1c2b27d264b634844e70a25",
-          "shipped_dds_sha256": "b36996b35f06a8f7239da677ba7647fd0cf67696ab5b8b459e3a09b7bda6b519",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grass03_c.dds",
-          "stock_dds_sha256": "829b138b9b5b434575db85db3cf0a7bf0f88021dbc05f32f8387b70f8b501581",
-          "shipped_dds_sha256": "711aa4b18ac2aa825365514121bc4775774deae6d3792753607f393ad70b9028",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_dirt_c.dds",
-          "stock_dds_sha256": "7086cc724827d98b3dd5503fd59712e9fd0294e74b82ef9c2521dfa3801098a3",
-          "shipped_dds_sha256": "88ce24cd641037432ccd13383321c4830106c259dd6f697214d7f36d991d2c84",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
-          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
-          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_dirt_c.dds",
-          "stock_dds_sha256": "7086cc724827d98b3dd5503fd59712e9fd0294e74b82ef9c2521dfa3801098a3",
-          "shipped_dds_sha256": "88ce24cd641037432ccd13383321c4830106c259dd6f697214d7f36d991d2c84",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_dirt_c.dds",
-          "stock_dds_sha256": "7086cc724827d98b3dd5503fd59712e9fd0294e74b82ef9c2521dfa3801098a3",
-          "shipped_dds_sha256": "88ce24cd641037432ccd13383321c4830106c259dd6f697214d7f36d991d2c84",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_dirt_c.dds",
-          "stock_dds_sha256": "7086cc724827d98b3dd5503fd59712e9fd0294e74b82ef9c2521dfa3801098a3",
-          "shipped_dds_sha256": "88ce24cd641037432ccd13383321c4830106c259dd6f697214d7f36d991d2c84",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_dirt_c.dds",
-          "stock_dds_sha256": "7086cc724827d98b3dd5503fd59712e9fd0294e74b82ef9c2521dfa3801098a3",
-          "shipped_dds_sha256": "88ce24cd641037432ccd13383321c4830106c259dd6f697214d7f36d991d2c84",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/generictextures/overlays/dw_moutncliff_ov.dds",
-          "stock_dds_sha256": "db1cb28587587f8241050739319e2f861f15eb6c1cb7a3a9f9376c2021060cae",
-          "shipped_dds_sha256": "0cac7ec86fa851bb273836826db2881aa8a7a571aa915733ae61962c853ce122",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
-          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
-          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
-          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
-          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
-          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
-          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grass02_c.dds",
-          "stock_dds_sha256": "b61502b245be76f28210fbfd71ffb7a5a3d3e3b9b8acd30a0591114677f1e3ec",
-          "shipped_dds_sha256": "6c9cd42015a952bd6b1907f16b592c6d4e6414b05f1e2eaee8766fbd3e488770",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
-          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
-          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grass03_c.dds",
-          "stock_dds_sha256": "829b138b9b5b434575db85db3cf0a7bf0f88021dbc05f32f8387b70f8b501581",
-          "shipped_dds_sha256": "711aa4b18ac2aa825365514121bc4775774deae6d3792753607f393ad70b9028",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
-          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
-          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grass04_c.dds",
-          "stock_dds_sha256": "0dfc0637a5fee69944d0f54ce968d7bad43d4a12a188a6b206fb61affae26293",
-          "shipped_dds_sha256": "80fdcfa7e82c910f0d3e900b3d02b3ded838fc9a8bc0d40ace156b84f75c5904",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_bkterrainstone_c.dds",
-          "stock_dds_sha256": "cfa10b67d2729164f0051f6f78bcef942542e496c1c2b27d264b634844e70a25",
-          "shipped_dds_sha256": "b36996b35f06a8f7239da677ba7647fd0cf67696ab5b8b459e3a09b7bda6b519",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_riverside_c.dds",
-          "stock_dds_sha256": "22d2d6bf12b22d9ada1120463401f1ecc70d20fef8e5fb6cd8c32cec5a8968df",
-          "shipped_dds_sha256": "37ef794c0560349762c2484a7fb329449781cf2e4df74b1473bd77c5c595bac5",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_riverside_c.dds",
-          "stock_dds_sha256": "22d2d6bf12b22d9ada1120463401f1ecc70d20fef8e5fb6cd8c32cec5a8968df",
-          "shipped_dds_sha256": "37ef794c0560349762c2484a7fb329449781cf2e4df74b1473bd77c5c595bac5",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
-          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
-          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
-          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
-          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
-          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
-          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
-          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
-          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
-          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
-          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_riverside_c.dds",
-          "stock_dds_sha256": "22d2d6bf12b22d9ada1120463401f1ecc70d20fef8e5fb6cd8c32cec5a8968df",
-          "shipped_dds_sha256": "37ef794c0560349762c2484a7fb329449781cf2e4df74b1473bd77c5c595bac5",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_riverside_c.dds",
-          "stock_dds_sha256": "22d2d6bf12b22d9ada1120463401f1ecc70d20fef8e5fb6cd8c32cec5a8968df",
-          "shipped_dds_sha256": "37ef794c0560349762c2484a7fb329449781cf2e4df74b1473bd77c5c595bac5",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_riverdirt_c.dds",
-          "stock_dds_sha256": "83e9b89a802612fd0364bf065a3e5e708528795e2e56dcd4b583b64d305d85c9",
-          "shipped_dds_sha256": "472aaaf8c00d3361b4332400677039425e55ac8b95c31e96517125b4d0aa07b6",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_riverdirt_c.dds",
-          "stock_dds_sha256": "83e9b89a802612fd0364bf065a3e5e708528795e2e56dcd4b583b64d305d85c9",
-          "shipped_dds_sha256": "472aaaf8c00d3361b4332400677039425e55ac8b95c31e96517125b4d0aa07b6",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            1024,
-            1024
-          ],
-          "dds_format": "DXT1"
-        },
-        {
-          "archive": "darklight_wood.vpk",
-          "entry": "cooked/interiors/sourceimages/exp03_soga/generictextures/overlays/dw_moutncliff_ov.dds",
-          "stock_dds_sha256": "db1cb28587587f8241050739319e2f861f15eb6c1cb7a3a9f9376c2021060cae",
-          "shipped_dds_sha256": "0cac7ec86fa851bb273836826db2881aa8a7a571aa915733ae61962c853ce122",
-          "stock_size": [
-            512,
-            512
-          ],
-          "shipped_size": [
-            2048,
-            2048
-          ],
-          "dds_format": "DXT1"
+          "archive": "neriak.vpk",
+          "name": "cooked/interiors/sourceimages/exp03_soga/generictextures/overlays/terrain_spot_ov.dds",
+          "stock_proof": {
+            "kind": "retained native stock PNG reproduces the prior hash-verified resized reference",
+            "png_sha256": "e377c8fdd0937550faea0c95b2707185374409be9ffcafba978fad4600885d0c",
+            "receipt_sha256": "ad7b23496c13a710bfa5bf202dea3904bc2ce1768abc3c541ad2cf3e5d80ee96",
+            "reference_png_sha256": "3ad685720ca2b937b1cbd66ef52af597e857f78941a472dfbfcfda62d9868820"
+          },
+          "images": {
+            "stock": {
+              "url": "terrain-tex1-stock.png",
+              "png_sha256": "26a65467535b7156a131fbff7d213b5aa53b4ae99839e8c50589f8acf7a40097",
+              "dds_sha256": "6303d83b3ac7135ec8cd60058d9452820c6f1235372603d8ef19bb623ede9042",
+              "size": [
+                512,
+                512
+              ],
+              "format": "DXT1"
+            },
+            "pack": {
+              "url": "terrain-tex1-pack.png",
+              "png_sha256": "8cb06838227c0488421339dadf3049dc2ccfd984d899adc9eb1b2a071a542d27",
+              "dds_sha256": "3a841909ec16c8d343f682fef1305fdafc0c8d50d0cb79d276f56195c6b3b40b",
+              "size": [
+                1024,
+                1024
+              ],
+              "format": "DXT1"
+            }
+          }
         }
       ]
     }

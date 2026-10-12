@@ -1,37 +1,53 @@
 # Stock and TextureQuest, up close
 
-These comparisons use original game meshes and UV coordinates, with the same camera and neutral lighting on both sides. The right side is decoded directly from the released Texture-Pack.zip, including its color finish and DDS compression. Click an image to inspect its full 1600 × 960 resolution.
+Original game geometry, with matching cameras and lighting. **Original stock** uses native texture sizes, often 512 × 512; **TextureQuest 1.0** uses the exact released pack. Each image labels the resolutions. Click for the full 1600 × 960 comparison.
 
-These are **3D material previews, not in-game screenshots**. They isolate texture detail: additional shader layers, effects, animation and world lighting are omitted equally. In-game appearance can differ. Original geometry, seams and repeated UV layouts remain; sharper textures do not repair the underlying models.
+These are **3D previews, not in-game screenshots**. Complete objects and their material layers are assembled; terrain is a cropped mesh patch. Lighting and static poses are approximations. Sharper textures can expose existing seams and repeating patterns.
 
 ## Armor
 
-Mermaid scale armor on the original human male chest mesh, showing scales and trim. The selected color material is isolated from additional shader layers.
+Faydark plate armor on its complete original chest mesh, with embossed metal, scrollwork and fitted trim. Both source tint masks use neutral customization.
 
-![Stock and TextureQuest Mermaid scale armor, side by side](images/armor-mermaid.png)
+![Original stock and TextureQuest Faydark ornate plate armor, side by side](images/armor-faydark-plate.png)
+
+## Weapons and shields
+
+Qeynos Guard, viewed from the front: shield body, gem and rune material are all included. Both tint masks use neutral customization; the two scrolling rune layers share the same frozen instant.
+
+![Original stock and TextureQuest Qeynos Guard shield, side by side](images/shield-qeynos-guard.png)
+
+Dragon Sharp blade on its complete original weapon mesh, with its color, bump and specular inputs.
+
+![Original stock and TextureQuest Dragon Sharp weapon, side by side](images/weapon-dragon-sharp.png)
 
 ## Monsters
 
-Hell Boar, with the original head and body materials: fur, skin, tusks and claws.
+Hell Boar, with both original head and body materials. The camera focuses on the face and upper body; all original geometry remains in the scene.
 
-![Stock and TextureQuest Hell Boar, side by side](images/monster-hell-boar.png)
+![Original stock and TextureQuest Hell Boar, side by side](images/monster-hell-boar.png)
 
-## Signage
+Flesh Golem, including both the head/chest and arms/legs material groups. The close framing emphasizes skin and facial detail.
 
-Bakery sign artwork on its verified in-game painting/easel surface. The camera focuses on the illustrated material, excluding the stand.
+![Original stock and TextureQuest Flesh golem, side by side](images/monster-flesh-golem.png)
 
-![Stock and TextureQuest bakery sign, side by side](images/signage-bakery.png)
+## Architecture and signage
 
-## Wood and metal
+Bakery artwork on the complete original easel assembly, including the sign, canvas backing and iron stand.
 
-Freeport wooden door: wood grain, iron braces, weathering and rivets on the original door geometry.
+![Original stock and TextureQuest Bakery sign and easel, side by side](images/signage-bakery.png)
 
-![Stock and TextureQuest Freeport wooden door, side by side](images/wooden-door.png)
+Freeport wooden door, with original wood grain, iron braces and rivets, plus the protected bump and specular maps.
+
+![Original stock and TextureQuest Freeport wooden door, side by side](images/wooden-door.png)
 
 ## Terrain
 
-A close-up of an actual Darklight Woods terrain mesh patch with its original UVs. This shows the grass base layer; it does not reconstruct the zone's additional blend layers or lighting.
+Darklight Woods grass on a contiguous patch of its actual terrain mesh. The base texture and terrain overlay use their original separate UV sets. This is a close-up patch, not a recreation of the whole zone.
 
-![Stock and TextureQuest Darklight Woods grass, side by side](images/terrain-darklight.png)
+![Original stock and TextureQuest Darklight Woods layered terrain, side by side](images/terrain-darklight.png)
 
-[Image and source provenance](gallery-provenance.json) records the exact released ZIP checksum, DDS sources, game meshes, camera positions and image checksums. Only these small samples were decoded for the gallery; creating a second collection of all original textures was unnecessary.
+## How these comparisons were made
+
+The right-hand textures were decoded from the released DDS files, including the pack's color finish and compression. Original geometry, UV coordinates, cameras and lighting are shared. Proven color layers, tint masks and protected surface maps are included; scrolling layers use a shared frozen instant. Exact game lighting, animation, particles and supplied mip chains are not reproduced.
+
+[Image and source provenance](gallery-provenance.json) records the exact release checksum, sampled source identities, materials, cameras and exported image hashes. Only the needed retained samples were decoded; no second full collection of stock textures was created.

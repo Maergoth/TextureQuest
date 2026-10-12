@@ -28,17 +28,49 @@ Already have `Texture-Pack.zip`? Choose **Maintenance & updates → Use an exist
 
 **Compatibility:** this pack was developed for EverQuest II Origins. Other EQ2 versions and later content updates have not been fully tested. Some textures are intentionally left unchanged for compatibility.
 
-## Close-up comparisons
+## Examples
 
-Original textures and TextureQuest are shown on the same game models with matching cameras and lighting. These are 3D previews; appearance in game will vary with lighting, settings and character customization.
+Close-ups of older Norrath, using the original game models and their material layers with matching cameras and lighting. Original textures are on the left; the released TextureQuest pack is on the right. These are 3D previews; appearance in game will vary with lighting, settings and character customization.
 
-**Armor — scales and metal trim**
+Expand a category to see close-up comparisons.
 
-![Stock and TextureQuest Mermaid scale armor](docs/images/armor-mermaid.png)
+<details open>
+<summary><strong>Armor</strong></summary>
 
-**Monsters — Hell Boar fur, skin and tusks**
+**Faydark plate — engraved metal and scrollwork**
+
+![Stock and TextureQuest Faydark ornate plate armor](docs/images/armor-faydark-plate.png)
+
+</details>
+
+<details>
+<summary><strong>Weapons and shields</strong></summary>
+
+**Qeynos Guard — metalwork, gem and glowing runes**
+
+![Stock and TextureQuest Qeynos Guard shield](docs/images/shield-qeynos-guard.png)
+
+**Dragon Sharp — blade and decorated grip**
+
+![Stock and TextureQuest Dragon Sharp weapon](docs/images/weapon-dragon-sharp.png)
+
+</details>
+
+<details>
+<summary><strong>Monsters</strong></summary>
+
+**Hell Boar — fur, skin and tusks**
 
 ![Stock and TextureQuest Hell Boar](docs/images/monster-hell-boar.png)
+
+**Flesh Golem — face, skin and stitching**
+
+![Stock and TextureQuest Flesh Golem](docs/images/monster-flesh-golem.png)
+
+</details>
+
+<details>
+<summary><strong>Architecture and signage</strong></summary>
 
 **Signage — the bakery sign**
 
@@ -48,9 +80,16 @@ Original textures and TextureQuest are shown on the same game models with matchi
 
 ![Stock and TextureQuest Freeport wooden door](docs/images/wooden-door.png)
 
+</details>
+
+<details>
+<summary><strong>Terrain</strong></summary>
+
 **Terrain — Darklight Woods grass**
 
 ![Stock and TextureQuest Darklight Woods terrain](docs/images/terrain-darklight.png)
+
+</details>
 
 [View the full-size gallery](docs/GALLERY.md), including details about how the comparisons were made.
 
