@@ -13,8 +13,10 @@ from tkinter import filedialog, messagebox, ttk
 import webbrowser
 from texture_swapper import core
 from texturequest_release import load_manifest, prepare_release, download, Paused
+from texturequest_updates import prepare_update
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
+SIDELOAD_WARNING = "We don't know what's more legal, replacing the game files or hooking the process. If Daybreak hates you, they might ban you. Be warned."
 UPDATES = "https://github.com/Maergoth/TextureQuest/releases/latest"
 BG, WHITE, INK, MUTED = "#f3f1ec", "#ffffff", "#23342f", "#67746d"
 GREEN, DARK, GOLD, LINE = "#256851", "#172c26", "#dfc991", "#dedfd8"
@@ -78,7 +80,13 @@ class TextureQuestApp:
         self.state_dir = core._plain(state_dir or state_directory())
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.core = core.Swapper(self.state_dir)
-        self.release = load_manifest(resource("release-manifest.json"))
+        try:
+            from texturequest_build_pin import MANIFEST_SHA256
+        except ImportError:
+            if getattr(sys, "frozen", False):
+                raise ValueError("Installer is missing its bundled release pin")
+            MANIFEST_SHA256 = None
+        self.release = load_manifest(resource("release-manifest.json"), MANIFEST_SHA256)
         self.events = queue.Queue()
         self.busy = None
         self.prepared = self.preflight = None
@@ -90,8 +98,8 @@ class TextureQuestApp:
         self.game = tk.StringVar(value=str(initial_game or ""))
         self.game.trace_add("write", lambda *_: self.game_changed())
         root.title("TextureQuest")
-        root.geometry("840x760")
-        root.minsize(760, 760)
+        root.geometry("840x870")
+        root.minsize(760, 870)
         root.configure(bg=BG)
         root.option_add("*Font", ("Segoe UI", 10))
         self.build()
@@ -136,7 +144,7 @@ class TextureQuestApp:
         header.columnconfigure(0, weight=1)
         tk.Label(header, text="TextureQuest", font=("Georgia", 28), fg=GOLD, bg=DARK, anchor="w").grid(row=0, column=0, sticky="w")
         self.label(header, "More detail. The EverQuest II you remember.", color="#c7d3c9").grid(row=1, column=0, sticky="w", pady=(4, 0))
-        self.label(header, "v1.0", color=GOLD).grid(row=0, column=1, sticky="ne", padx=(18, 0))
+        self.label(header, "v" + self.release["version"], color=GOLD).grid(row=0, column=1, sticky="ne", padx=(18, 0))
         body = tk.Frame(self.root, bg=BG, padx=24, pady=16)
         body.grid(row=1, column=0, sticky="nsew")
         body.columnconfigure(0, weight=1)
@@ -150,7 +158,10 @@ class TextureQuestApp:
         self.game_entry.bind("<Return>", lambda _: self.verify_installation())
         self.button(row, "Browse…", self.choose_game).grid(row=0, column=1)
         pack_card = self.card(body, 1, "2", "Get the complete texture pack")
-        self.label(pack_card, "23,277 textures · 27.8 GB download · 1K / 2K detail", color=MUTED).grid(row=1, column=0, sticky="w", pady=(4, 9))
+        updated = self.release.get("schema") == "texturequest-release-v2"
+        description = (f"{self.release['texture_count']:,} textures · selected 4K upgrades · verified reuse of existing files"
+                       if updated else "23,277 textures · 27.8 GB download · 1K / 2K detail")
+        self.label(pack_card, description, color=MUTED, size=9).grid(row=1, column=0, sticky="w", pady=(4, 9))
         row = tk.Frame(pack_card, bg=WHITE)
         row.grid(row=2, column=0, sticky="ew")
         row.columnconfigure(1, weight=1)
@@ -158,12 +169,22 @@ class TextureQuestApp:
         self.download_button.grid(row=0, column=0, sticky="w")
         self.download_label = self.label(row, "Not downloaded", color=MUTED, wraplength=350, justify="left")
         self.download_label.grid(row=0, column=1, sticky="w", padx=(14, 0))
-        self.label(pack_card, "Allow 56 GB for download/cache, plus 16 GB free on the game drive.", size=9, color=MUTED).grid(row=3, column=0, sticky="w", pady=(9, 0))
+        space = ("Updates reuse matching files; fresh or patched installs may also need the 27.8 GB base."
+                 if updated else "Allow 56 GB for download/cache, plus 16 GB free on the game drive.")
+        self.label(pack_card, space, size=9, color=MUTED, wraplength=620, justify="left").grid(row=3, column=0, sticky="w", pady=(9, 0))
         install_card = self.card(body, 2, "3", "Install TextureQuest")
         self.install_label = self.label(install_card, "Choose a game folder and prepare the download first.", color=MUTED, wraplength=610, justify="left")
         self.install_label.grid(row=1, column=0, sticky="w", pady=(4, 10))
         self.install_button = self.button(install_card, "Install TextureQuest", self.install, primary=True)
         self.install_button.grid(row=2, column=0, sticky="w")
+        self.sideload = tk.BooleanVar(value=False)
+        self.sideload_checkbox = tk.Checkbutton(install_card, text="Sideload (unavailable for this build)",
+            variable=self.sideload, state="disabled", bg=WHITE, fg=MUTED, anchor="w", font=("Segoe UI", 9))
+        self.sideload_checkbox.grid(row=3, column=0, sticky="w", pady=(8, 0))
+        self.label(install_card, "No tested EQ2 texture-injection backend is included. Installation replaces game archives.",
+            size=9, color=MUTED, wraplength=620, justify="left").grid(row=4, column=0, sticky="w")
+        self.label(install_card, SIDELOAD_WARNING, size=9, color="#865d36", wraplength=620,
+            justify="left").grid(row=5, column=0, sticky="w", pady=(5, 0))
         row = tk.Frame(body, bg=BG)
         row.grid(row=3, column=0, sticky="ew", pady=(1, 0))
         row.columnconfigure(0, weight=1)
@@ -232,7 +253,9 @@ class TextureQuestApp:
             self.download_button.configure(text="Verify saved pack")
         else:
             folder = self.state_dir / "downloads"
-            if self.saved_zip_path() or (folder / "Texture-Pack.zip").is_file():
+            if self.release.get("schema") == "texturequest-release-v2":
+                caption, state = "Download / Resume update", "Verified matching files will be reused"
+            elif self.saved_zip_path() or (folder / "Texture-Pack.zip").is_file():
                 caption, state = "Prepare saved pack", "Saved download available"
             elif (folder / "Texture-Pack.zip.download").is_file():
                 caption, state = "Resume download", "Download paused or interrupted"
@@ -261,9 +284,9 @@ class TextureQuestApp:
         self.busy = kind
         self.set_message(message)
         self.refresh_controls()
-        if kind == "download":
+        if kind in ("download", "update"):
             self.pause.clear()
-            self.progress.configure(mode="determinate", value=0, maximum=self.release["archive"]["bytes"])
+            self.progress.configure(mode="determinate", value=0, maximum=100)
             self.pause_button.configure(text="Pause", state="normal")
             self.pause_button.grid()
         else:
@@ -299,11 +322,14 @@ class TextureQuestApp:
         self.begin("verify", "Checking your game folder and installed textures…", lambda: self.inspect(game, prepared))
 
     def choose_zip(self):
-        path = filedialog.askopenfilename(title="Choose TextureQuest 1.0.0 Texture-Pack.zip", filetypes=[("TextureQuest ZIP", "*.zip")])
+        path = filedialog.askopenfilename(title="Choose the saved TextureQuest 1.0.0 base Texture-Pack.zip", filetypes=[("TextureQuest ZIP", "*.zip")])
         if path:
             self.prepare_zip(path)
 
     def prepare_zip(self, path):
+        if self.release.get("schema") == "texturequest-release-v2":
+            self.download_update(base_zip=path)
+            return
         game = self.game.get().strip()
         def work():
             prepared = prepare_release(self.core, path, self.release, self.report)
@@ -312,6 +338,9 @@ class TextureQuestApp:
         self.begin("prepare", "Checking the complete pack and preparing it for installation. This may take a few minutes…", work)
 
     def download_pack(self):
+        if self.release.get("schema") == "texturequest-release-v2":
+            self.download_update()
+            return
         saved = self.saved_zip_path()
         if saved:
             self.prepare_zip(saved)
@@ -330,13 +359,30 @@ class TextureQuestApp:
                 return download(self.release, folder, notify, self.pause.is_set)
         self.begin("download", "Connecting to the TextureQuest release…", work)
 
+    def download_update(self, base_zip=None):
+        game = self.game.get().strip()
+        def notify(message, done, total):
+            now = time.monotonic()
+            if now - self.last_progress > .12 or done == total or total == 1:
+                self.events.put(("download-progress", message, done, total))
+                self.last_progress = now
+        def work():
+            prepared = prepare_update(self.core, self.release, game or None, base_zip,
+                                      notify, self.pause.is_set)
+            status, preflight = self.inspect(game, prepared)
+            return prepared, status, preflight
+        self.begin("update", "Verifying saved and installed archives before downloading the update…", work)
+
     def request_pause(self):
-        if self.busy == "download":
+        if self.busy in ("download", "update"):
             self.pause.set()
             self.pause_button.configure(text="Pausing…", state="disabled")
             self.set_message("Pausing safely. Downloaded data will be kept.")
 
     def install(self):
+        if self.sideload.get():
+            self.set_message("Sideload is unavailable: no tested texture-injection backend is included.", error=True)
+            return
         if not can_install(self.busy, self.prepared, self.preflight):
             return
         prepared, game = self.prepared, self.game.get().strip()
@@ -379,7 +425,7 @@ class TextureQuestApp:
                     continue
                 if event[0] == "download-progress":
                     _, message, done, total = event
-                    self.progress.configure(value=done)
+                    self.progress.configure(value=100 * done / max(total, 1))
                     self.download_label.configure(text=f"{100 * done / total:.1f}% · {human_bytes(done)} of {human_bytes(total)}")
                     self.set_message(message)
                     continue
@@ -397,7 +443,7 @@ class TextureQuestApp:
                 elif kind == "download":
                     if not self.close_after_pause:
                         self.prepare_zip(value)
-                elif kind == "prepare":
+                elif kind in ("prepare", "update"):
                     self.prepared, self.installed, self.preflight = value
                     self.set_message("Pack verified. Click Install when the game and launcher are closed.")
                 elif kind in ("verify", "recover"):
@@ -427,7 +473,7 @@ class TextureQuestApp:
             self.root.after(100, self.poll)
 
     def close(self):
-        if self.busy == "download":
+        if self.busy in ("download", "update"):
             self.close_after_pause = True
             self.request_pause()
         elif self.busy:
@@ -447,7 +493,12 @@ def main():
     args = parser.parse_args()
     if args.verify_runtime:
         from texturequest_runtime_check import run
-        run(args.verify_runtime)
+        try:
+            run(args.verify_runtime)
+        except Exception:
+            # The receipt contains the failure. A windowed frozen executable
+            # must exit nonzero instead of blocking a publisher on a crash dialog.
+            raise SystemExit(1)
         return
     root = tk.Tk()
     app = TextureQuestApp(root, args.data_dir, args.game_dir, args.pack)
@@ -456,7 +507,8 @@ def main():
             root.update_idletasks()
             receipt = {"version": VERSION, "title": root.title(), "game": app.game.get(),
                        "install_enabled": app.install_button.cget("state") != "disabled", "download_button": app.download_button.cget("text"),
-                       "width": root.winfo_width(), "height": root.winfo_height(), "release_sha256": app.release["archive"]["sha256"],
+                       "width": root.winfo_width(), "height": root.winfo_height(), "release_sha256": core._digest(app.release),
+                       "sideload_enabled": app.sideload_checkbox.cget("state") != "disabled",
                        "game_files_touched": False, "interface": "texturequest-three-step-consumer", "explorer": False}
             (app.state_dir / "ui-smoke.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
             root.destroy()

@@ -1,15 +1,17 @@
-# TextureQuest 1.0
+# TextureQuest 1.1
 
-A complete EverQuest II Origins texture pack focused on retaining the original style and art direction while adding detail to armor, creatures, signage, architecture and terrain.
+More detail for some of Norrath's largest creatures and most stretched surfaces: **40 selected textures with a 4K longest edge**, including the Leviathan body and its creature family, dragons, armor and terrain. Rectangular textures retain their proportions. The complete installed set contains 23,282 replacement textures across 310 archives.
 
-**Start with `TextureQuest-Installer-1.0.0-windows-x64.zip`.** Extract it, run TextureQuest.exe, download the pack, select your game folder and click Install with EQ2 and its launcher closed.
+**Start with `TextureQuest-Installer-1.1.0-windows-x64.zip`.** Extract it outside the game and run TextureQuest.exe. Select the game folder, download/prepare the pack, then click Install with EQ2 and its launcher closed.
 
-The pack contains 23,277 textures in 310 complete archives, including the approved character/Ratonga repairs and +15% contrast/+15% saturation finish. Full download: 27.8 GB. Allow about 72 GB free on one drive, or 56 GB on the installer drive plus 16 GB on the game drive.
+If 1.0 is already installed, the installer verifies and reuses unchanged archives. It downloads nine complete updated PAKs. Every updated PAK includes its previous textures and repairs, so replacing it does not remove earlier improvements. A fresh installation automatically obtains the required 1.0 base plus the update. The 1.0 assets remain available and unchanged; the 1.0 installer itself does not install the 1.1 update.
 
-Patch first. Reinstall after game patches. Use EverQuest2.exe directly for ordinary play; the launcher can replace the textures. The app's maintenance menu unlocks files for patching or returning to stock; the official patcher restores original textures.
+The `.zip.001`, `.zip.002`, etc. assets are sequential parts of one update ZIP. Let the installer download and verify them. This update ZIP contains only affected archives; it is not the complete pack by itself. GitHub's Source code downloads do not contain the texture files.
 
-The 14 `.zip.001`–`.zip.014` assets are parts of one exact ZIP; the installer handles them automatically. GitHub's Source code downloads do not contain the pack.
+Patch the game first and reinstall after patches. Use EverQuest2.exe directly for normal play; opening the launcher can replace the textures. Do not skip required game updates.
 
-Higher detail can expose original UV seams and tiling; AI-generated fine detail and some character/material variants remain imperfect. See the README for comparisons, limitations and problem-reporting instructions.
+The original art style, models and animations remain. AI detail can be imperfect; higher resolution can expose UV seams and tiling and increases memory and storage requirements. 4K means output resolution, not a guarantee that every detail matches the original. See the README for comparisons and reporting instructions.
 
-Full reconstructed ZIP SHA256: `9501071759d57c26175ee9245b3f5dfee4d4cee7f19a57c039289d09d2041caf`.
+**Sideload is unavailable in this release.** A texture-injection backend is being investigated separately; the disabled checkbox does not install a hook. We have no confirmation from Daybreak approving either approach. The installer includes this warning:
+
+> We don't know what's more legal, replacing the game files or hooking the process. If Daybreak hates you, they might ban you. Be warned.

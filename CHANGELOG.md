@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0
+
+- Forty selected textures at a 4K longest edge, including the Leviathan body and related creatures, dragons, armor and stretched terrain. Rectangular proportions are preserved.
+- Complete updated PAKs retain all other textures and existing character repairs.
+- The new installer reuses verified unchanged archives and downloads the required update. Fresh installations obtain the existing base automatically.
+- Sideload is displayed as unavailable while a compatible texture-injection backend is investigated.
+
+The release remains unpublished until generation, packing, installer checks and all upload checks finish. See the latest GitHub release for the available version.
+
 ## 1.0.0
 
 Initial complete TextureQuest release for EverQuest II Origins.

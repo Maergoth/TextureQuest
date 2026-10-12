@@ -34,9 +34,16 @@ def run(output):
             swapper = core.Swapper(folder / "state")
             prepared = swapper.prepare([archive])
             assert not swapper.preflight(prepared, game)["missing"]
-            manifest = load_manifest(resource("release-manifest.json"))
+            try:
+                from texturequest_build_pin import MANIFEST_SHA256
+            except ImportError:
+                import sys
+                if getattr(sys, "frozen", False):
+                    raise ValueError("Missing bundled release pin")
+                MANIFEST_SHA256 = None
+            manifest = load_manifest(resource("release-manifest.json"), MANIFEST_SHA256)
             result.update(status="passed", archive_read=True, readonly_roundtrip=True, prepared_archive=True,
-                          release_sha256=manifest["archive"]["sha256"], portable_runtime=True)
+                          release_sha256=core._digest(manifest), portable_runtime=True)
     except Exception as error:
         result["error"] = repr(error)
         raise

@@ -10,7 +10,7 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 ## Download and install
 
-**[Download the Windows installer](https://github.com/Maergoth/TextureQuest/releases/download/v1.0.0/TextureQuest-Installer-1.0.0-windows-x64.zip)** · [Release notes and files](https://github.com/Maergoth/TextureQuest/releases/tag/v1.0.0)
+**[Download the Windows installer from the latest release](https://github.com/Maergoth/TextureQuest/releases/latest)**
 
 1. **Patch the game first**, then close every EQ2 client and the launcher.
 2. Extract the installer ZIP into a writable folder outside the game. Keep its contents together and open **TextureQuest.exe**.
@@ -18,13 +18,13 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 4. Once the pack is ready, click **Install TextureQuest**. Wait for verification to finish.
 5. For normal play, launch **EverQuest2.exe directly**, or make a shortcut to it. Opening the launcher can replace the modified textures.
 
-The full pack downloads **27.8 GB**. Allow about **72 GB free if everything is on one drive**: roughly 56 GB for the downloaded ZIP and prepared archives, plus 16 GB for the game's larger replacement files and installation staging. With separate drives, reserve 56 GB on the installer drive and 16 GB on the game drive. Keep the downloaded pack for reinstalling after patches. The installer does not make original-game backups or install anything until you click Install.
+The 1.0 base download is **27.8 GB**; newer releases may include an additional update. Allow room for downloaded ZIPs, a complete prepared pack and installation staging. The base alone needs about **72 GB free if everything is on one drive**, and updates or retained older caches need additional space. The app checks space as it works. Keep downloaded files for reinstalling after patches. The installer does not make original-game backups or install anything until you click Install.
 
 **For a game patch:** open **Maintenance & updates → Prepare for a game patch**, run the official patcher, close it, and install TextureQuest again. Do not skip required game updates. The read-only file attribute is not protection against the patcher.
 
 **To return to stock:** choose **Maintenance & updates → Return to original textures**, then run the official patcher. The app removes its file protection; the patcher restores the original game files.
 
-Already have `Texture-Pack.zip`? Choose **Maintenance & updates → Use an existing Texture-Pack.zip**, or extract the ZIP's VPK files directly into the game's `paks` folder with the game and launcher closed. Each included archive is a complete replacement, so you do not need to install earlier TextureQuest versions first.
+Already have the full `Texture-Pack.zip`? Choose **Maintenance & updates → Use an existing Texture-Pack.zip**. The installer for an updated release can reuse verified files and fetch its additional PAKs. A fresh installation gets the required base files automatically. Update-only downloads are not a substitute for the full pack; use the installer to assemble the correct set.
 
 **Compatibility:** this pack was developed for EverQuest II Origins. Other EQ2 versions and later content updates have not been fully tested. Some textures are intentionally left unchanged for compatibility.
 
@@ -110,9 +110,17 @@ Choose **Maintenance & updates → Check for updates** to open the [latest relea
 
 After a game patch, you can reapply your downloaded pack without downloading it again.
 
+### Can this leave the game's PAKs untouched?
+
+The supported installer replaces PAK files. **Sideload** is an experimental option under development and is currently unavailable. A texture-injection tool would need to intercept rendering and reliably identify the game's textures; ordinary ReShade color presets cannot load this pack. No injection method has been validated for this release.
+
+We have no confirmation from Daybreak approving either approach. The 1.1 installer displays this warning:
+
+> We don't know what's more legal, replacing the game files or hooking the process. If Daybreak hates you, they might ban you. Be warned.
+
 ### Can I choose only races, armor, weapons or an expansion?
 
-Version 1.0 installs the complete pack. Separate content selections are not available because the game's archives mix equipment, characters and shared world textures.
+The installer installs the complete pack. Separate content selections are not available because the game's archives mix equipment, characters and shared world textures.
 
 ## Technical details and contributing
 

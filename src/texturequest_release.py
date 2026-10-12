@@ -46,6 +46,9 @@ def hash_stream(stream, length=None, pause=None):
 
 
 def validate_manifest(value, pinned=True):
+    if value.get("schema") == "texturequest-release-v2":
+        from texturequest_updates import validate_manifest as validate_update
+        return validate_update(value, pinned=pinned)
     if value.get("schema") != "texturequest-release-v1" or value.get("version") != "1.0.0":
         raise ValueError("Unsupported TextureQuest release manifest")
     archive = value.get("archive", {})
@@ -90,11 +93,14 @@ def validate_manifest(value, pinned=True):
     return value
 
 
-def load_manifest(path):
+def load_manifest(path, expected_sha256=None):
     path = core._plain(path)
     if path.stat().st_size > core.MAX_MANIFEST_BYTES:
         raise ValueError("Release manifest is too large")
-    return validate_manifest(core._json(path.read_bytes()))
+    raw = path.read_bytes()
+    if expected_sha256 and hashlib.sha256(raw).hexdigest() != expected_sha256:
+        raise ValueError("Bundled release manifest changed")
+    return validate_manifest(core._json(raw))
 
 
 def verify_zip(path, manifest, progress=None):
@@ -103,7 +109,7 @@ def verify_zip(path, manifest, progress=None):
     path = core._plain(path)
     expected = manifest["archive"]
     if path.stat().st_size != expected["bytes"]:
-        raise ValueError("Choose the complete TextureQuest 1.0.0 Texture-Pack.zip")
+        raise ValueError("Choose the complete ZIP listed for this release")
     notify("Verifying the complete ZIP checksum…")
     with path.open("rb") as stream:
         if hash_stream(stream) != expected["sha256"]:
@@ -169,8 +175,11 @@ def download(manifest, folder, progress=None, pause=None, opener=urlopen):
     notify = progress or (lambda _text, _done, _total: None)
     folder = core._plain(folder)
     folder.mkdir(parents=True, exist_ok=True)
-    final = core._plain(folder / "Texture-Pack.zip", folder)
-    partial = core._plain(folder / "Texture-Pack.zip.download", folder)
+    name = manifest["archive"]["name"]
+    if not re.fullmatch(r"(?:Texture-Pack|TextureQuest-Update-1\.1\.0)\.zip", name):
+        raise ValueError("Unexpected download output filename")
+    final = core._plain(folder / name, folder)
+    partial = core._plain(folder / (name + ".download"), folder)
     size = manifest["archive"]["bytes"]
     with core._lock(folder / "download.lock"):
         if final.exists():
@@ -201,7 +210,7 @@ def download(manifest, folder, progress=None, pause=None, opener=urlopen):
                     out.truncate()
                     existing = start
                     available = 0
-                headers = {"User-Agent": "TextureQuest/1.0.0", "Accept-Encoding": "identity"}
+                headers = {"User-Agent": "TextureQuest/1.1.0", "Accept-Encoding": "identity"}
                 if available:
                     headers["Range"] = f"bytes={available}-"
                 request = Request(part["url"], headers=headers)
@@ -245,7 +254,7 @@ def download(manifest, folder, progress=None, pause=None, opener=urlopen):
                 existing = start
             out.flush()
             os.fsync(out.fileno())
-            notify("Verifying the full 27.8 GB download…", size, size)
+            notify("Verifying the complete download…", size, size)
             out.seek(0)
             if hash_stream(out, pause=pause) != manifest["archive"]["sha256"]:
                 raise ValueError("Complete download checksum failed; partial retained for inspection")

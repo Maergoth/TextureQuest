@@ -125,8 +125,10 @@ The installer is a separate Python/Tk application. It does not run the AI model.
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r src\texture_swapper\requirements-build.txt
 .\.venv\Scripts\python.exe -m unittest discover -s tests
-.\.venv\Scripts\python.exe build_installer.py
+.\.venv\Scripts\python.exe build_installer.py --manifest release-manifest-1.1.0.json --version 1.1.0
 ```
+
+Save `release-manifest.json` from the **1.1.0 release assets** as `release-manifest-1.1.0.json` before building that version. The repository's original `release-manifest.json` remains the immutable 1.0 base record. A 1.1 build deliberately refuses a 1.0 manifest. The builder stages an exact manifest and its SHA256 into the executable's bundle without modifying source manifests. Use `--output-root` to choose a separate build/output directory.
 
 The portable build is written beneath `dist/`; build records and caches go beneath `build/`. Rebuilding is refused when the existing output contains portable user data. These commands build the application, not a new texture pack. Dependency pins are in [requirements-build.txt](../src/texture_swapper/requirements-build.txt); the shipped bundle includes a build manifest and third-party notices. Rebuilt executables are not promised to have identical bytes.
 
@@ -134,9 +136,18 @@ Relevant source:
 
 - [`texturequest_app.py`](../src/texturequest_app.py): consumer interface and explicit install flow.
 - [`texturequest_release.py`](../src/texturequest_release.py): manifest validation, resumed downloads, part/ZIP integrity and preparation.
+- [`texturequest_updates.py`](../src/texturequest_updates.py): verified base/update overlay, unchanged archive reuse, and resumable preparation of the full effective inventory.
 - [`texture_swapper/core.py`](../src/texture_swapper/core.py): archive validation, installation preflight, copying and receipts.
 - [`tests/`](../tests/): integrity, recovery and UI-state fixtures.
 
 Changes should retain explicit installation, closed-game checks, path containment, interrupted-download recovery, checksum verification and safe handling of changed files. Test against temporary fixtures before a real game installation. Texture reports are most useful with a precise item/NPC/zone or appearance, a screenshot, pack version and verification result.
 
 For a future release, publish a new version and matching manifest rather than replacing the bytes behind 1.0 links. An update containing only changed archives still needs complete archives with every unrelated replacement preserved. Model terms and original game-asset ownership are separate from the installer source; consult the upstream model terms and the project's [ownership notice](../README.md#credits-and-ownership).
+
+### The 1.1 4K update
+
+The 40-map batch preserves 35 saved 1K/2K generations as inputs and uses five verified retained original 1K maps for the previously excluded Leviathan body family. Those five are visible RGB artwork whose duplicate color/alpha shader binding was resolved separately; source alpha remains tint data. The Qwen recipe retains 20 steps, CFG1 and seed0. Output has a 4096-pixel longest edge, preserving aspect ratio; conditioning still runs at approximately one megapixel. Original saved masters are not replaced.
+
+Only nine complete PAKs change. Their verified 1.0 versions provide the baseline; every unselected compressed entry is preserved and compared byte-for-byte. Selected DDS entries use their proven original format, header/trailer convention, source-derived alpha and mip tail, with all generated mip levels checked. The color finish above is applied once to the new raw PNGs. Existing finished DDS entries are copied without reapplying it, preserving the twenty earlier character/creature repairs. The effective manifest retains all310 archives and increases the replacement count from23,277 to23,282.
+
+Versioned manifest v2 embeds the exact v1 base and adds the changed-archive package plus the full effective archive inventory. Cached or installed files are reused only after matching their hashes. Preparation does not write to the game. The installer is pinned to its bundled manifest; Check for updates opens GitHub rather than silently adopting new data or code.

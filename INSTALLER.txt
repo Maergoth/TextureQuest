@@ -1,47 +1,65 @@
-TextureQuest 1.0.0 — Windows x64 installer
+TextureQuest 1.1 — Windows x64 installer
 
 1. Extract this whole folder to a writable location outside your game folder.
    Keep TextureQuest.exe and _internal together. Python is not required.
 2. Patch EverQuest II Origins, then close the game and launcher.
-3. Open TextureQuest.exe, choose your game folder (EverQuest2.exe and paks).
-4. Click Download pack. Pause or resume whenever needed. Already have the ZIP?
-   Use Maintenance & updates > Use an existing Texture-Pack.zip.
-5. Wait for verification, then click Install TextureQuest. Nothing is installed
-   automatically when the download ends.
-6. For ordinary play, open EverQuest2.exe directly or use a shortcut to it.
-   The launcher can overwrite the textures. Do not skip required game updates.
+3. Open TextureQuest.exe and choose the folder containing EverQuest2.exe and paks.
+4. Click Download / Resume update. The app checks saved and installed files,
+   downloads what it needs, and prepares the complete pack. You can pause it.
+5. Click Install TextureQuest after verification. Downloading never installs
+   anything automatically. Wait for installation verification to finish.
+6. For ordinary play, launch EverQuest2.exe directly or use a shortcut to it.
+   The launcher can overwrite textures. Do not skip required game updates.
+
+UPDATING FROM 1.0
+Close the old installer. Extract the new installer into its own folder, then
+move your existing data folder alongside the new TextureQuest.exe to reuse
+saved downloads and keep installation records. Do not discard data/games.
+You can also choose the same game folder to reuse matching installed files.
+
+Version 1.1 downloads complete replacement archives for the 4K update. Every
+unrelated texture in those archives is retained. Unchanged archives are read
+from verified saved or installed files when available. A fresh installation,
+or one whose files changed after patching, may also download the original
+27.8 GB base. The app combines the base and update into a complete install;
+you do not need to run the old installer first.
+
+Keep a saved 1.0 Texture-Pack.zip? Choose Maintenance & updates > Use an
+existing Texture-Pack.zip. The app verifies it and obtains the separate
+1.1 update. The update ZIP by itself is not a full installation.
 
 AFTER A GAME PATCH
 Use Maintenance & updates > Prepare for a game patch to unlock managed files.
 Run and close the official patcher, then prepare the saved pack and Install
-TextureQuest again. Keep the data folder with this app.
-Cached prepared archives are verified and reused; identical game archives
-are skipped. Verify installed textures checks the currently installed bytes.
+TextureQuest again. Cached files are rechecked; identical installed files
+are skipped. Read-only flags do not stop the patcher replacing game files.
+
+SIDELOAD
+The Sideload checkbox is disabled in this build. No tested EQ2 texture-
+injection backend is included. Installation replaces game archives.
+We don't know what's more legal, replacing the game files or hooking the process. If Daybreak hates you, they might ban you. Be warned.
 
 RESTORE STOCK
 Choose Maintenance & updates > Return to original textures, then run the
-official patcher. This clears read-only flags; the patcher restores the original
-bytes. The app does not restore original bytes itself. No backups are made.
-Read-only flags do not prevent the official patcher from replacing textures.
+official patcher. The app clears read-only flags; the patcher restores the
+original bytes. The app does not restore stock bytes or make game backups.
 
 DOWNLOADS AND SPACE
-The pack downloads 27.8 GB. Allow approximately 56 GB free for the downloaded
-ZIP and prepared copies, plus 16 GB free on the game drive for larger archives
-and a staged VPK. Allow about 72 GB free if the app and game share a drive.
-Downloads pause/resume in one file; individual part files are not kept.
-Completed parts, the complete ZIP, and installed archives are SHA-256 checked.
-The full ZIP must match the exact approved release checksum.
+Downloads resume without keeping an additional set of split part files.
+Every part, complete ZIP, prepared VPK and installed VPK is SHA-256 checked.
+The bundled manifest fixes the exact release version and all expected bytes.
+Allow room for downloaded ZIPs and one complete prepared archive set, plus
+growth and one staged archive on the game drive. Older prepared caches are
+preserved during an update and may temporarily require additional space.
 
-Clear downloaded files & cache deletes only this app's downloaded ZIP and
-prepared copies. It keeps game files and installation records.
-Keep a ZIP elsewhere if you need to reinstall without downloading again.
-Never delete data/games if you want this app to manage or unlock its installs.
+Clear downloaded files & cache removes this app's downloads and prepared
+copies, including older versions. Game files and installation records stay.
+Reinstalling after that may require another download or your saved base ZIP.
 
-UPDATES
-Check updates opens https://github.com/Maergoth/TextureQuest/releases/latest.
-Each installer is pinned to its stated pack version. A newer release needs
-its matching installer. Updates are never installed without your action.
-When updating the app, preserve data and replace the executable/_internal.
+FUTURE UPDATES
+Check for updates opens https://github.com/Maergoth/TextureQuest/releases/latest.
+Use the installer supplied with the newer release. Each executable installs
+its bundled pack version; it does not silently switch versions or install.
 
 TextureQuest is an unofficial community project. Original game assets and
 trademarks remain the property of their owners. Third-party notices are in

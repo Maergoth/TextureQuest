@@ -110,9 +110,41 @@ class DesktopTests(unittest.TestCase):
         self.app.refresh_controls()
         self.assertEqual(self.app.download_button.cget("text"), "Prepare saved pack")
     def test_layout_requests_fit_initial_window(self):
-        self.root.geometry("840x760")
+        self.root.geometry("840x870")
         self.root.update_idletasks()
-        self.assertLessEqual(self.root.winfo_reqheight(), 760)
+        self.assertLessEqual(self.root.winfo_reqheight(), 870)
+
+    def test_sideload_is_disabled_and_never_routes_to_install(self):
+        self.assertEqual(self.app.sideload_checkbox.cget("state"), "disabled")
+        self.assertFalse(self.app.sideload.get())
+        self.app.prepared = {"id": "ready"}
+        self.app.preflight = {"missing": []}
+        self.app.sideload.set(True)
+        with patch.object(self.app.core, "install") as install, patch.object(self.app, "begin") as begin:
+            self.app.install()
+            install.assert_not_called()
+            begin.assert_not_called()
+
+    def test_update_preparation_routes_without_automatic_install(self):
+        from test_updates import update_fixture
+        self.app.release = update_fixture()[0]
+        self.app.refresh_controls()
+        self.assertEqual(self.app.download_button.cget("text"), "Download / Resume update")
+        with patch.object(self.app, "download_update") as update:
+            self.app.download_pack()
+            update.assert_called_once_with()
+        with patch.object(self.app.core, "install") as install:
+            self.app.events.put(("done", "update", ({"id": "ready"}, {}, {"missing": []})))
+            self.app.poll()
+            install.assert_not_called()
+            self.assertEqual(self.app.install_button.cget("state"), "normal")
+
+    def test_update_pause_and_warning_text(self):
+        from texturequest_app import SIDELOAD_WARNING
+        self.assertEqual(SIDELOAD_WARNING, "We don't know what's more legal, replacing the game files or hooking the process. If Daybreak hates you, they might ban you. Be warned.")
+        self.app.busy = "update"
+        self.app.request_pause()
+        self.assertTrue(self.app.pause.is_set())
 
 
 if __name__ == "__main__":

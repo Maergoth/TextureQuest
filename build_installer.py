@@ -5,6 +5,7 @@ All outputs and caches stay under this checkout's ignored build/ and dist/ folde
 """
 from __future__ import annotations
 import hashlib
+import argparse
 import importlib.metadata
 import json
 import os
@@ -19,7 +20,7 @@ SRC = ROOT / "src"
 BUILD = ROOT / "build"
 DEST = ROOT / "dist"
 NAME = "TextureQuest"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 
 def sha(path):
@@ -31,30 +32,53 @@ def sha(path):
 
 
 def main():
+    global BUILD, DEST
+    parser = argparse.ArgumentParser(description="Build a manifest-pinned TextureQuest installer")
+    parser.add_argument("--manifest", type=Path, default=ROOT / "release-manifest.json")
+    parser.add_argument("--output-root", type=Path)
+    parser.add_argument("--version", default=VERSION)
+    args = parser.parse_args()
+    output_root = ROOT
+    if args.output_root:
+        output = args.output_root.resolve()
+        output_root = output
+        BUILD, DEST = output / "build", output / "dist"
     if (DEST / NAME / "data").exists():
         raise RuntimeError("Preserve portable user data before rebuilding this output")
     for path in (DEST, BUILD, BUILD / "tmp", BUILD / "pyinstaller-cache"):
         path.mkdir(parents=True, exist_ok=True)
-    manifest = ROOT / "release-manifest.json"
+    manifest = args.manifest.resolve()
     sys.path.insert(0, str(SRC))
     from texturequest_release import load_manifest
-    load_manifest(manifest)
-    shutil.copy2(manifest, SRC / "release-manifest.json")
+    release = load_manifest(manifest)
+    if release["version"] != args.version:
+        raise ValueError("Requested installer version differs from its bundled manifest")
+    stage = BUILD / "source"
+    (stage / "texture_swapper").mkdir(parents=True, exist_ok=True)
+    sources = sorted([*SRC.glob("*.py"), SRC / "texture_swapper/core.py", SRC / "texture_swapper/__init__.py",
+                      SRC / "texture_swapper/requirements-build.txt"])
+    source_hashes = {p.relative_to(ROOT).as_posix(): sha(p) for p in sources}
+    manifest_hash = sha(manifest)
+    for source in sources:
+        shutil.copy2(source, stage / source.relative_to(SRC))
+    for source in (ROOT / "build_installer.py", ROOT / "INSTALLER.txt"):
+        source_hashes[source.relative_to(ROOT).as_posix()] = sha(source)
+    bundled_manifest = stage / "release-manifest.json"
+    shutil.copy2(manifest, bundled_manifest)
+    (stage / "texturequest_build_pin.py").write_text(
+        f'MANIFEST_SHA256 = "{manifest_hash}"\nVERSION = "{release["version"]}"\n', encoding="utf-8")
     env = dict(os.environ, TEMP=str(BUILD / "tmp"), TMP=str(BUILD / "tmp"),
                PYINSTALLER_CONFIG_DIR=str(BUILD / "pyinstaller-cache"),
                PYTHONNOUSERSITE="1", PYTHONDONTWRITEBYTECODE="1")
     command = [sys.executable, "-B", "-m", "PyInstaller", "--noconfirm", "--onedir", "--windowed", "--noupx",
-               "--name", NAME, "--paths", str(SRC), "--distpath", str(DEST), "--workpath", str(BUILD / "pyinstaller"),
-               "--specpath", str(BUILD), "--add-data", str(manifest) + ":."]
+               "--name", NAME, "--paths", str(stage), "--distpath", str(DEST), "--workpath", str(BUILD / "pyinstaller"),
+               "--specpath", str(BUILD), "--add-data", str(bundled_manifest) + ":."]
     for name in ("torch", "transformers", "diffusers", "scipy", "matplotlib", "pandas", "nightly", "nightly_fast", "PIL", "numpy", "texture_swapper.app", "texture_swapper.explorer", "texture_swapper.self_check"):
         command += ["--exclude-module", name]
-    command += [str(SRC / "texturequest_app.py")]
-    sources = sorted([*SRC.glob("*.py"), SRC / "release-manifest.json",
-                      SRC / "texture_swapper/core.py", SRC / "texture_swapper/__init__.py",
-                      SRC / "texture_swapper/requirements-build.txt"])
-    source_hashes = {p.relative_to(ROOT).as_posix(): sha(p) for p in sources}
+    command += [str(stage / "texturequest_app.py")]
     subprocess.run(command, cwd=ROOT, env=env, check=True)
-    if any(sha(ROOT / name) != expected for name, expected in source_hashes.items()):
+    if (sha(manifest) != manifest_hash or sha(bundled_manifest) != manifest_hash
+            or any(sha(ROOT / name) != expected for name, expected in source_hashes.items())):
         raise RuntimeError("Source changed during build")
     folder = DEST / NAME
     shutil.copy2(ROOT / "INSTALLER.txt", folder / "START-HERE.txt")
@@ -77,17 +101,19 @@ def main():
             shutil.copy2(source, licenses / "PYTHON-LICENSE.txt")
             break
     files = sorted(p for p in folder.rglob("*") if p.is_file())
-    receipt = {"application": NAME, "version": VERSION, "runtime": sys.version, "dependencies": versions,
+    receipt = {"application": NAME, "version": release["version"], "runtime": sys.version, "dependencies": versions,
+               "release_manifest_sha256": manifest_hash,
                "source_sha256": source_hashes,
                "files": [{"path": p.relative_to(folder).as_posix(), "bytes": p.stat().st_size, "sha256": sha(p)} for p in files]}
     receipt_path = folder / "BUILD-MANIFEST.json"
     receipt_path.write_text(json.dumps(receipt, indent=2), encoding="utf-8")
-    archive = DEST / f"TextureQuest-Installer-{VERSION}-windows-x64.zip"
+    archive = DEST / f"TextureQuest-Installer-{release['version']}-windows-x64.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zipout:
         for path in files + [receipt_path]:
             zipout.write(path, (Path(NAME) / path.relative_to(folder)).as_posix())
-    result = {"zip": archive.relative_to(ROOT).as_posix(), "bytes": archive.stat().st_size,
-              "sha256": sha(archive), "executable": (folder / (NAME + ".exe")).relative_to(ROOT).as_posix()}
+    result = {"zip": archive.relative_to(output_root).as_posix(), "bytes": archive.stat().st_size, "version": release["version"],
+              "release_manifest_sha256": manifest_hash,
+              "sha256": sha(archive), "executable": (folder / (NAME + ".exe")).relative_to(output_root).as_posix()}
     (BUILD / "installer-receipt.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result, indent=2))
 
