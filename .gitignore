@@ -12,4 +12,14 @@ downloads/
 *.log
 *.spec
 local-release-receipt.json
+# Local copied legacy UI/viewer sources are deliberately not part of TextureQuest.
+/src/texture_swapper/app.py
+/src/texture_swapper/explorer.py
+/src/texture_swapper/geometry.py
+/src/texture_swapper/materials.py
+/src/texture_swapper/self_check.py
+/src/texture_swapper/vemesh.py
+/src/texture_swapper/swapper.ico
+/src/texture_swapper/EXPLORER_NOTES.md
+/src/texture_swapper/web/
 

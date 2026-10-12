@@ -1,0 +1,48 @@
+TextureQuest 1.0.0 — Windows x64 installer
+
+1. Extract this whole folder to a writable location outside your game folder.
+   Keep TextureQuest.exe and _internal together. Python is not required.
+2. Patch EverQuest II Origins, then close the game and launcher.
+3. Open TextureQuest.exe, choose your game folder (EverQuest2.exe and paks).
+4. Click Download pack. Pause or resume whenever needed. Already have the ZIP?
+   Use Maintenance & updates > Use an existing Texture-Pack.zip.
+5. Wait for verification, then click Install TextureQuest. Nothing is installed
+   automatically when the download ends.
+6. For ordinary play, open EverQuest2.exe directly or use a shortcut to it.
+   The launcher can overwrite the textures. Do not skip required game updates.
+
+AFTER A GAME PATCH
+Use Maintenance & updates > Prepare for a game patch to unlock managed files.
+Run and close the official patcher, then prepare the saved pack and Install
+TextureQuest again. Keep the data folder with this app.
+Cached prepared archives are verified and reused; identical game archives
+are skipped. Verify installed textures checks the currently installed bytes.
+
+RESTORE STOCK
+Choose Maintenance & updates > Return to original textures, then run the
+official patcher. This clears read-only flags; the patcher restores the original
+bytes. The app does not restore original bytes itself. No backups are made.
+Read-only flags do not prevent the official patcher from replacing textures.
+
+DOWNLOADS AND SPACE
+The pack downloads 27.8 GB. Allow approximately 56 GB free for the downloaded
+ZIP and prepared copies, plus 16 GB free on the game drive for larger archives
+and a staged VPK. Allow about 72 GB free if the app and game share a drive.
+Downloads pause/resume in one file; individual part files are not kept.
+Completed parts, the complete ZIP, and installed archives are SHA-256 checked.
+The full ZIP must match the exact approved release checksum.
+
+Clear downloaded files & cache deletes only this app's downloaded ZIP and
+prepared copies. It keeps game files and installation records.
+Keep a ZIP elsewhere if you need to reinstall without downloading again.
+Never delete data/games if you want this app to manage or unlock its installs.
+
+UPDATES
+Check updates opens https://github.com/Maergoth/TextureQuest/releases/latest.
+Each installer is pinned to its stated pack version. A newer release needs
+its matching installer. Updates are never installed without your action.
+When updating the app, preserve data and replace the executable/_internal.
+
+TextureQuest is an unofficial community project. Original game assets and
+trademarks remain the property of their owners. Third-party notices are in
+licenses. The executable is not code-signed.

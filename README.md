@@ -14,17 +14,17 @@ The pack uses AI-assisted upscaling with targeted corrections for texture artifa
 
 1. **Patch the game first**, then close every EQ2 client and the launcher.
 2. Extract the installer ZIP into a writable folder outside the game. Keep its contents together and open **TextureQuest.exe**.
-3. Download the pack through the app. Interrupted downloads can be resumed. No Python, AI software or GPU generation is needed.
-4. Select the game folder containing `EverQuest2.exe` and `paks`, then click **Install**. Wait for verification to finish.
+3. Choose the game folder containing `EverQuest2.exe` and `paks`, then download the pack through the app. Interrupted downloads can be resumed. No Python, AI software or GPU generation is needed.
+4. Once the pack is ready, click **Install TextureQuest**. Wait for verification to finish.
 5. For normal play, launch **EverQuest2.exe directly**, or make a shortcut to it. Opening the launcher can replace the modified textures.
 
-The full pack downloads **27.8 GB**. Allow roughly **56 GB of free working space**, in addition to your game installation, for the downloaded ZIP and prepared archives. Keep the downloaded pack for reinstalling after patches. The installer does not make original-game backups or install anything until you click Install.
+The full pack downloads **27.8 GB**. Allow about **72 GB free if everything is on one drive**: roughly 56 GB for the downloaded ZIP and prepared archives, plus 16 GB for the game's larger replacement files and installation staging. With separate drives, reserve 56 GB on the installer drive and 16 GB on the game drive. Keep the downloaded pack for reinstalling after patches. The installer does not make original-game backups or install anything until you click Install.
 
-**After a game patch:** use the app's **Uninstall** action to unlock managed files, run the official patcher, close it, and install TextureQuest again. Do not skip required game updates. The read-only file attribute is not protection against the patcher.
+**For a game patch:** open **Maintenance & updates → Prepare for a game patch**, run the official patcher, close it, and install TextureQuest again. Do not skip required game updates. The read-only file attribute is not protection against the patcher.
 
-**To return to stock:** click **Uninstall**, then run the official patcher. Uninstall removes the installer's file protection; the patcher restores the original game files.
+**To return to stock:** choose **Maintenance & updates → Return to original textures**, then run the official patcher. The app removes its file protection; the patcher restores the original game files.
 
-Already have the verified `Texture-Pack.zip`? Use the installer's local pack selection, or extract the ZIP's VPK files directly into the game's `paks` folder with the game and launcher closed. These are complete replacement archives, retaining untouched entries and previous upscales within each archive.
+Already have the verified `Texture-Pack.zip`? Choose **Maintenance & updates → Use an existing Texture-Pack.zip**, or extract the ZIP's VPK files directly into the game's `paks` folder with the game and launcher closed. These are complete replacement archives, retaining untouched entries and previous upscales within each archive.
 
 ## What's in 1.0
 
@@ -43,7 +43,27 @@ Known control textures, compositor inputs, unsupported formats and other protect
 
 Comparisons show original game textures and TextureQuest on the same geometry, with matching camera and preview lighting. Model previews approximate the game renderer; actual game lighting, character customization, animation and material effects can look different. Comparison images and their provenance are included with the release documentation.
 
-<!-- GALLERY: authentic shipped-pack comparisons added before publication. -->
+**Armor — scales and metal trim**
+
+![Stock and TextureQuest Mermaid scale armor](docs/images/armor-mermaid.png)
+
+**Monsters — Hell Boar fur, skin and tusks**
+
+![Stock and TextureQuest Hell Boar](docs/images/monster-hell-boar.png)
+
+**Signage — the bakery sign**
+
+![Stock and TextureQuest bakery sign](docs/images/signage-bakery.png)
+
+**Wood and metal — a Freeport door**
+
+![Stock and TextureQuest Freeport wooden door](docs/images/wooden-door.png)
+
+**Terrain — Darklight Woods grass**
+
+![Stock and TextureQuest Darklight Woods terrain](docs/images/terrain-darklight.png)
+
+[Full-size gallery, source details and preview limitations](docs/GALLERY.md). These are local 3D material previews, not in-game screenshots. Additional shader layers and effects are omitted equally; the terrain comparison isolates the grass base layer.
 
 ## Limitations
 
@@ -54,7 +74,7 @@ Comparisons show original game textures and TextureQuest on the same geometry, w
 - **Higher-resolution textures use more resources.** Storage, loading behavior and texture memory requirements can increase. Performance depends on your settings and system; no minimum hardware or FPS improvement is claimed.
 - **Game patches can overwrite the pack.** Reinstall after patching, and use the game executable directly for ordinary play.
 
-Please [report a problem](https://github.com/Maergoth/TextureQuest/issues/new/choose) with the game version/server, zone or item/NPC, character race/gender/appearance where relevant, a close-up screenshot, and the TextureQuest version installed. Include whether **Verify installation** passes. Do not include account credentials or private logs.
+Please [report a problem](https://github.com/Maergoth/TextureQuest/issues/new/choose) with the game version/server, zone or item/NPC, character race/gender/appearance where relevant, a close-up screenshot, and the TextureQuest version installed. Include whether **Verify installed textures** passes. Do not include account credentials or private logs.
 
 ## Updates after 1.0
 
@@ -63,6 +83,10 @@ Each version has its own GitHub release, notes, installer and checksums. Release
 When only a few textures change, an update can distribute only the affected **complete PAKs**, preserving the other TextureQuest textures inside each one. A full pack remains available for fresh installations. Any smaller update will state its required base version and installation order explicitly; 1.0 is a complete installation, not an update bundle.
 
 The installer opens the [latest release page](https://github.com/Maergoth/TextureQuest/releases/latest) when checking for updates. It does not update or install a new pack without your action. A game patch and a TextureQuest update are separate: reapplying your existing pack after patching does not require downloading it again.
+
+### Can I choose only races, armor, weapons or an expansion?
+
+Version 1.0 installs the complete pack. The game stores mixed content in the same archives: one file can contain player races, armor, weapons and creatures, and shared textures can appear across expansions. Skipping an archive would also skip unrelated improvements. Accurate content options need separately built and verified variants; the installer does not offer misleading category checkboxes.
 
 ## Manual downloads and integrity
 

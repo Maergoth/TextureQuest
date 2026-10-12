@@ -1,0 +1,874 @@
+{
+  "schema": "texturequest-public-gallery-v1",
+  "source_pack_sha256": "9501071759d57c26175ee9245b3f5dfee4d4cee7f19a57c039289d09d2041caf",
+  "method": "Stock vs top-mip DDS decoded directly from the exact shipped ZIP. Same original mesh, UVs, camera and neutral lighting; no second color finish. Local 3D material preview, not an in-game screenshot. Surface maps omitted equally. The supplied game mip chains are not rendered by this preview.",
+  "render": {
+    "engine": "Three.js r128",
+    "field_of_view_degrees": 38,
+    "material": "MeshLambertMaterial",
+    "color_space": "sRGB",
+    "ambient_intensity": 0.85,
+    "key_intensity": 0.6,
+    "key_position": [
+      2,
+      3,
+      4
+    ],
+    "fill_intensity": 0.18,
+    "fill_position": [
+      -3,
+      1,
+      -1
+    ],
+    "same_camera_lighting_and_sampler_on_both_sides": true,
+    "presentation": "Direct export of both rendered WebGL canvases with title/labels/footer. No AI-generated or retouched comparisons.",
+    "code_sha256": "27f1175280e561126dbb2f0a78b24eb5689692aee5825a1f5976a4385336915a"
+  },
+  "items": [
+    {
+      "title": "Mermaid scale armor",
+      "image": "images/armor-mermaid.png",
+      "image_sha256": "f2fa848dcb903fcdfcffce2d3dadde6bec1ca000f5a3492c97edaaabe05534f6",
+      "image_size": [
+        1600,
+        960
+      ],
+      "mesh": {
+        "archive": "Char_B.vpk",
+        "name": "cooked/characters/accessories/armor/plate/optimizedplate/humanmale/scenes/chest.draw",
+        "sha256": "905ae2b3ffb1306368314e456bb83022d6ce36d0e0040f13c1f97b320f036053"
+      },
+      "geometry_input_sha256": "1c4f23eac5ab10c249847380a213fcf0e80fbdf39bd253f80fe00071f163eb8a",
+      "camera_normalized": [
+        0.25,
+        0.15,
+        2.55
+      ],
+      "target_normalized": [
+        0,
+        0,
+        0
+      ],
+      "crop_note": "Selected material part of the original game mesh; other parts omitted equally on both sides.",
+      "textures": [
+        {
+          "archive": "Char_A.vpk",
+          "entry": "cooked/characters/accessories/wearable_items_textures/exp06/mermaid_scale_armor/mermaid_scale_armor_color.dds",
+          "stock_dds_sha256": "7da66702bdbed832cdec5b16a6fd95fe38c6c53fbbc44a4f23ea684c53b470f2",
+          "shipped_dds_sha256": "da9955828cb64ec8a003277500b03cae6da55cac36be2c6f4d20764076676ed1",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT3"
+        }
+      ]
+    },
+    {
+      "title": "Hell Boar",
+      "image": "images/monster-hell-boar.png",
+      "image_sha256": "d3052dd6ec1ea925afd9daf1450e26f77e35abed326666f73835af2028438f0c",
+      "image_size": [
+        1600,
+        960
+      ],
+      "mesh": {
+        "archive": "Char_AP02_monster.vpk",
+        "name": "cooked/characters/ap02/hellboar/scenes/hell_boar_l0.draw",
+        "sha256": "14eeb2885422d348a2cb7e5f3e17d5116159960ec85f910e087de415c6b2e06a"
+      },
+      "geometry_input_sha256": "dafbdb766da35c796ece1ea9a936a2dd8cb0425603757df3d6619cf9dec2dfd4",
+      "camera_normalized": [
+        1.25,
+        0.55,
+        2.1
+      ],
+      "target_normalized": [
+        0,
+        0,
+        0
+      ],
+      "crop_note": "Original whole mesh framed on its head material.",
+      "textures": [
+        {
+          "archive": "Char_AP02_monster.vpk",
+          "entry": "cooked/characters/ap02/hellboar/sourceimages/hell_boar_c01.dds",
+          "stock_dds_sha256": "23870968567e2aa3b49934af111c6a063acb0f19e74dedf0125f7ec064ef78e1",
+          "shipped_dds_sha256": "bb209e294bbde48a29c0a65e19e498731765525d15cbcce92c873b2005f949be",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "Char_AP02_monster.vpk",
+          "entry": "cooked/characters/ap02/hellboar/sourceimages/hell_boar_c00.dds",
+          "stock_dds_sha256": "2dcc112f0eba1fe94f7a2cfa10618831d3834b9a598254bb2c32425ececc9dab",
+          "shipped_dds_sha256": "88e8157b697b57cbfc3e24d87382df7c4be09cfabae427e5bd0fa74af41673fa",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        }
+      ]
+    },
+    {
+      "title": "Bakery sign",
+      "image": "images/signage-bakery.png",
+      "image_sha256": "63327ffcaf983d073d3b4badae004d967a52be84e5f1bf2f264780afb10d8a36",
+      "image_size": [
+        1600,
+        960
+      ],
+      "mesh": {
+        "archive": "exp01_dun_poets_palace.vpk",
+        "name": "_exp01/cooked/zones/objects/painting_tools/djn_easel_square_painting01_l0.draw",
+        "sha256": "717b051d0a529d87ee36465e3084f1e1a949b86a4d7479e7ac7c864875936bc1"
+      },
+      "geometry_input_sha256": "00b089492e694b122681d15db4957eabc3b0824eeb371ecef0515265e24d12bc",
+      "camera_normalized": [
+        0.3,
+        0.15,
+        2.55
+      ],
+      "target_normalized": [
+        0,
+        0,
+        0
+      ],
+      "crop_note": "Selected material part of the original game mesh; other parts omitted equally on both sides.",
+      "textures": [
+        {
+          "archive": "dpo_housing1.vpk",
+          "entry": "cooked/interiors/sourceimages/paintings/shopsign_bakery.dds",
+          "stock_dds_sha256": "16d7b219787782d0d3ce659b884a33808943bd284b7b4061e2bef3b678bb251f",
+          "shipped_dds_sha256": "0080f58acd14591a4175862d2676e2e16fb8cf9740774f1832b02c293674ed2f",
+          "stock_size": [
+            128,
+            128
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "ZDDS4.vpk",
+          "entry": "cooked/interiors/sourceimages/fabric/burlap004.dds",
+          "stock_dds_sha256": "b92cd69491b44830b1ad4baf04c76029882ea33aeefb4a4dbb78928f9c2c92d6",
+          "shipped_dds_sha256": "19dd5f3596171049c4e11f38c30f42da3a9fa597dc80dd3855d2cdc17276d589",
+          "stock_size": [
+            256,
+            256
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "dpo_housing.vpk",
+          "entry": "cooked/interiors/sourceimages/dpo_housing/iron01_c.dds",
+          "stock_dds_sha256": "886a4d4bb03749880757caf30f6fb9ed287ae28d03bb6a74e52c0046a7c20f4f",
+          "shipped_dds_sha256": "7f116422592fcf071303472ccc52c79263b07053fa1e7c62a6e52042550a8de0",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        }
+      ]
+    },
+    {
+      "title": "Freeport wooden door",
+      "image": "images/wooden-door.png",
+      "image_sha256": "95d0ab397a6e40b2c528bd5406d38eafed2dc065798f6480027b7debf8d2e23d",
+      "image_size": [
+        1600,
+        960
+      ],
+      "mesh": {
+        "archive": "fprt_east.vpk",
+        "name": "cooked/interiors/scenes/cities/antonica/primary/freeport_test02/fprt_p33/fprt_p33_ext_depot01_door01_l0.draw",
+        "sha256": "07af8dbf3a8344e68b73eaf0bec15445e728a0dff5f10fde11e5aca2b6f90371"
+      },
+      "geometry_input_sha256": "b585c0d257ceb6eed792acad71f08ddf719df43641de19ebf5084367a0e72924",
+      "camera_normalized": [
+        -1.9,
+        0.08,
+        -0.15
+      ],
+      "target_normalized": [
+        0,
+        0,
+        0
+      ],
+      "crop_note": "Selected material part of the original game mesh; other parts omitted equally on both sides.",
+      "textures": [
+        {
+          "archive": "ZDDS19.vpk",
+          "entry": "cooked/interiors/sourceimages/wood/fprt_p33_bigdoor02.dds",
+          "stock_dds_sha256": "1623743625b0d724767f15486e18bf0746f379cedd9a9acf1a0f9742264a4bc6",
+          "shipped_dds_sha256": "793d1fd2e17fa9e73993c244dca9d230e140434cbb08e29e6ae5aeb547b4da95",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        }
+      ]
+    },
+    {
+      "title": "Darklight Woods terrain",
+      "image": "images/terrain-darklight.png",
+      "image_sha256": "5364bc7d24a9c773e06d2ca4d49017dd67fd0c11331de93e1c8c1d32a355e117",
+      "image_size": [
+        1600,
+        960
+      ],
+      "mesh": {
+        "archive": "darklight_wood.vpk",
+        "name": "cooked/interiors/scenes/regions/antonica/nektulos_forrest/darklight_wood/terrain/dw_terrain/dw_terrain_r02_geo02_l0.draw",
+        "sha256": "27236abfb840f3b01fa18469613380110589c38e2f7d93a6ab5fe0fdfdb6bfe6"
+      },
+      "geometry_input_sha256": "32d595e9a42f643002b7c64642121b8e24397eca1d50e9155b89204784bb4e4c",
+      "camera_normalized": [
+        -0.15,
+        0.32,
+        0.58
+      ],
+      "target_normalized": [
+        -0.15,
+        0,
+        0.28
+      ],
+      "crop_note": "Actual Darklight terrain triangles cropped to a local patch; original UV coordinates retained. Additional game blend layers omitted on both sides.",
+      "textures": [
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_bkterrainstone_c.dds",
+          "stock_dds_sha256": "cfa10b67d2729164f0051f6f78bcef942542e496c1c2b27d264b634844e70a25",
+          "shipped_dds_sha256": "b36996b35f06a8f7239da677ba7647fd0cf67696ab5b8b459e3a09b7bda6b519",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
+          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
+          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
+          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
+          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
+          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
+          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
+          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
+          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
+          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
+          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
+          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
+          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
+          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
+          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
+          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
+          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
+          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
+          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_bkterrainstone_c.dds",
+          "stock_dds_sha256": "cfa10b67d2729164f0051f6f78bcef942542e496c1c2b27d264b634844e70a25",
+          "shipped_dds_sha256": "b36996b35f06a8f7239da677ba7647fd0cf67696ab5b8b459e3a09b7bda6b519",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grass03_c.dds",
+          "stock_dds_sha256": "829b138b9b5b434575db85db3cf0a7bf0f88021dbc05f32f8387b70f8b501581",
+          "shipped_dds_sha256": "711aa4b18ac2aa825365514121bc4775774deae6d3792753607f393ad70b9028",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_dirt_c.dds",
+          "stock_dds_sha256": "7086cc724827d98b3dd5503fd59712e9fd0294e74b82ef9c2521dfa3801098a3",
+          "shipped_dds_sha256": "88ce24cd641037432ccd13383321c4830106c259dd6f697214d7f36d991d2c84",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
+          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
+          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_dirt_c.dds",
+          "stock_dds_sha256": "7086cc724827d98b3dd5503fd59712e9fd0294e74b82ef9c2521dfa3801098a3",
+          "shipped_dds_sha256": "88ce24cd641037432ccd13383321c4830106c259dd6f697214d7f36d991d2c84",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_dirt_c.dds",
+          "stock_dds_sha256": "7086cc724827d98b3dd5503fd59712e9fd0294e74b82ef9c2521dfa3801098a3",
+          "shipped_dds_sha256": "88ce24cd641037432ccd13383321c4830106c259dd6f697214d7f36d991d2c84",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_dirt_c.dds",
+          "stock_dds_sha256": "7086cc724827d98b3dd5503fd59712e9fd0294e74b82ef9c2521dfa3801098a3",
+          "shipped_dds_sha256": "88ce24cd641037432ccd13383321c4830106c259dd6f697214d7f36d991d2c84",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_dirt_c.dds",
+          "stock_dds_sha256": "7086cc724827d98b3dd5503fd59712e9fd0294e74b82ef9c2521dfa3801098a3",
+          "shipped_dds_sha256": "88ce24cd641037432ccd13383321c4830106c259dd6f697214d7f36d991d2c84",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/generictextures/overlays/dw_moutncliff_ov.dds",
+          "stock_dds_sha256": "db1cb28587587f8241050739319e2f861f15eb6c1cb7a3a9f9376c2021060cae",
+          "shipped_dds_sha256": "0cac7ec86fa851bb273836826db2881aa8a7a571aa915733ae61962c853ce122",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
+          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
+          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
+          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
+          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
+          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
+          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grass02_c.dds",
+          "stock_dds_sha256": "b61502b245be76f28210fbfd71ffb7a5a3d3e3b9b8acd30a0591114677f1e3ec",
+          "shipped_dds_sha256": "6c9cd42015a952bd6b1907f16b592c6d4e6414b05f1e2eaee8766fbd3e488770",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
+          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
+          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grass03_c.dds",
+          "stock_dds_sha256": "829b138b9b5b434575db85db3cf0a7bf0f88021dbc05f32f8387b70f8b501581",
+          "shipped_dds_sha256": "711aa4b18ac2aa825365514121bc4775774deae6d3792753607f393ad70b9028",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
+          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
+          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grass04_c.dds",
+          "stock_dds_sha256": "0dfc0637a5fee69944d0f54ce968d7bad43d4a12a188a6b206fb61affae26293",
+          "shipped_dds_sha256": "80fdcfa7e82c910f0d3e900b3d02b3ded838fc9a8bc0d40ace156b84f75c5904",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_bkterrainstone_c.dds",
+          "stock_dds_sha256": "cfa10b67d2729164f0051f6f78bcef942542e496c1c2b27d264b634844e70a25",
+          "shipped_dds_sha256": "b36996b35f06a8f7239da677ba7647fd0cf67696ab5b8b459e3a09b7bda6b519",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_riverside_c.dds",
+          "stock_dds_sha256": "22d2d6bf12b22d9ada1120463401f1ecc70d20fef8e5fb6cd8c32cec5a8968df",
+          "shipped_dds_sha256": "37ef794c0560349762c2484a7fb329449781cf2e4df74b1473bd77c5c595bac5",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_riverside_c.dds",
+          "stock_dds_sha256": "22d2d6bf12b22d9ada1120463401f1ecc70d20fef8e5fb6cd8c32cec5a8968df",
+          "shipped_dds_sha256": "37ef794c0560349762c2484a7fb329449781cf2e4df74b1473bd77c5c595bac5",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
+          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
+          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_grasslong_purple_c.dds",
+          "stock_dds_sha256": "86626b366a52716b92a9db144e098452a790db827faaf018ec1f23804515663e",
+          "shipped_dds_sha256": "d330911b3cf62f55fd1ad5a95bbd5717ce2e34ab4dca68217a6c437cd5a6fe26",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
+          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
+          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
+          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
+          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_cavestone_c.dds",
+          "stock_dds_sha256": "c20ce91ce15db9f0124e48910c8f5c3957f2f1e74a50b6b373c7752cfd6661ff",
+          "shipped_dds_sha256": "d4ec6780769c37025c746aa4a90d140a9ce80a7e5978cee325c0ac376fb6a9b2",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_riverside_c.dds",
+          "stock_dds_sha256": "22d2d6bf12b22d9ada1120463401f1ecc70d20fef8e5fb6cd8c32cec5a8968df",
+          "shipped_dds_sha256": "37ef794c0560349762c2484a7fb329449781cf2e4df74b1473bd77c5c595bac5",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_riverside_c.dds",
+          "stock_dds_sha256": "22d2d6bf12b22d9ada1120463401f1ecc70d20fef8e5fb6cd8c32cec5a8968df",
+          "shipped_dds_sha256": "37ef794c0560349762c2484a7fb329449781cf2e4df74b1473bd77c5c595bac5",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_riverdirt_c.dds",
+          "stock_dds_sha256": "83e9b89a802612fd0364bf065a3e5e708528795e2e56dcd4b583b64d305d85c9",
+          "shipped_dds_sha256": "472aaaf8c00d3361b4332400677039425e55ac8b95c31e96517125b4d0aa07b6",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/darklight_wood/terrain/dw_riverdirt_c.dds",
+          "stock_dds_sha256": "83e9b89a802612fd0364bf065a3e5e708528795e2e56dcd4b583b64d305d85c9",
+          "shipped_dds_sha256": "472aaaf8c00d3361b4332400677039425e55ac8b95c31e96517125b4d0aa07b6",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            1024,
+            1024
+          ],
+          "dds_format": "DXT1"
+        },
+        {
+          "archive": "darklight_wood.vpk",
+          "entry": "cooked/interiors/sourceimages/exp03_soga/generictextures/overlays/dw_moutncliff_ov.dds",
+          "stock_dds_sha256": "db1cb28587587f8241050739319e2f861f15eb6c1cb7a3a9f9376c2021060cae",
+          "shipped_dds_sha256": "0cac7ec86fa851bb273836826db2881aa8a7a571aa915733ae61962c853ce122",
+          "stock_size": [
+            512,
+            512
+          ],
+          "shipped_size": [
+            2048,
+            2048
+          ],
+          "dds_format": "DXT1"
+        }
+      ]
+    }
+  ]
+}
