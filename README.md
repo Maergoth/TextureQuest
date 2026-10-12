@@ -14,17 +14,14 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 1. **Patch the game first**, then close every EQ2 client and the launcher.
 2. Extract the installer ZIP into a writable folder outside the game. Keep its contents together and open **TextureQuest.exe**.
-3. Choose the game folder containing `EverQuest2.exe` and `paks`, then download the pack through the app. Interrupted downloads can be resumed. No Python, AI software or GPU generation is needed.
+3. Choose the game folder containing `EverQuest2.exe` and `paks`. The installer checks the latest texture release and downloads the files it needs. Interrupted downloads can be resumed. No separate texture ZIP, Python, AI software or GPU generation is needed.
 4. Once the pack is ready, click **Install TextureQuest**. Wait for verification to finish.
-5. For normal play, launch **EverQuest2.exe directly**, or make a shortcut to it. Opening the launcher can replace the modified textures.
 
-The 1.0 base download is **27.8 GB**; newer releases may include an additional update. Allow room for downloaded ZIPs, a complete prepared pack and installation staging. The base alone needs about **72 GB free if everything is on one drive**, and updates or retained older caches need additional space. The app checks space as it works. Keep downloaded files for reinstalling after patches. The installer does not make original-game backups or install anything until you click Install.
+The 1.0 base download is **27.8 GB**; newer releases may include an additional update. Allow room for downloaded ZIPs, a complete prepared pack and installation staging. The base alone needs about **72 GB free if everything is on one drive**, and updates or retained older caches need additional space. The app checks space as it works and saves its downloads for reuse. Keep the installer folder so you can reinstall after patches. Installation starts only when you click Install.
 
-**For a game patch:** open **Maintenance & updates → Prepare for a game patch**, run the official patcher, close it, and install TextureQuest again. Do not skip required game updates. The read-only file attribute is not protection against the patcher.
+**After a game patch:** close the game and launcher, then rerun the TextureQuest installer. It checks for the latest textures and reuses verified downloads. Do not skip required game updates.
 
-**To return to stock:** choose **Maintenance & updates → Return to original textures**, then run the official patcher. The app removes its file protection; the patcher restores the original game files.
-
-Already have the full `Texture-Pack.zip`? Choose **Maintenance & updates → Use an existing Texture-Pack.zip**. The installer for an updated release can reuse verified files and fetch its additional PAKs. A fresh installation gets the required base files automatically. Update-only downloads are not a substitute for the full pack; use the installer to assemble the correct set.
+**To return to stock:** run the official patcher's file validation to restore the original game files.
 
 **Compatibility:** this pack was developed for EverQuest II Origins. Other EQ2 versions and later content updates have not been fully tested. Some textures are intentionally left unchanged for compatibility.
 
@@ -106,15 +103,15 @@ Original 1K artwork beside the released 4K texture on the complete model.
 - **The original geometry still matters.** Low-polygon silhouettes, UV stretching, separate body parts and LOD changes remain. Texture work cannot fix every model or shader issue.
 - **Some appearances may still have issues.** Character variants, facial customization and layered materials can produce results that differ from the previews.
 - **Higher-resolution textures use more resources.** Storage, loading behavior and texture memory requirements can increase. Performance depends on your settings and system; no minimum hardware or FPS improvement is claimed.
-- **Game patches can overwrite the pack.** Reinstall after patching, and use the game executable directly for ordinary play.
+- **Game patches can overwrite the pack.** Rerun the installer after patching.
 
 Please [report a problem](https://github.com/Maergoth/TextureQuest/issues/new/choose) with the game version/server, zone or item/NPC, character race/gender/appearance where relevant, a close-up screenshot, and the TextureQuest version installed. Include whether **Verify installed textures** passes. Do not include account credentials or private logs.
 
 ## Updates
 
-Choose **Maintenance & updates → Check for updates** to open the [latest release page](https://github.com/Maergoth/TextureQuest/releases/latest). Follow that release's installation instructions. Updates are never installed automatically.
+The installer checks the [latest release](https://github.com/Maergoth/TextureQuest/releases/latest) and fetches its required texture files. Installation still requires clicking **Install TextureQuest**.
 
-After a game patch, you can reapply your downloaded pack without downloading it again.
+After a game patch, rerun the installer. Saved files that still match the current release are reused.
 
 ### Can this leave the game's PAKs untouched?
 

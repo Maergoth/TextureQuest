@@ -176,7 +176,7 @@ def download(manifest, folder, progress=None, pause=None, opener=urlopen):
     folder = core._plain(folder)
     folder.mkdir(parents=True, exist_ok=True)
     name = manifest["archive"]["name"]
-    if not re.fullmatch(r"(?:Texture-Pack|TextureQuest-Update-1\.1\.0)\.zip", name):
+    if not re.fullmatch(r"(?:Texture-Pack|TextureQuest-Update-1\.[0-9]{1,4}\.[0-9]{1,4})\.zip", name):
         raise ValueError("Unexpected download output filename")
     final = core._plain(folder / name, folder)
     partial = core._plain(folder / (name + ".download"), folder)

@@ -27,13 +27,12 @@ def run(output):
             vpk = body + struct.pack("<I", len(index) + 12) + index + struct.pack("<III", 0x33744, len(body), 2)
             archive = game / "paks/runtime.vpk"
             archive.write_bytes(vpk)
-            core._set_readonly(archive, True)
-            assert core._readonly(archive)
-            core._set_readonly(archive, False)
             assert core.archive_read(archive, name.decode()) == blob
             swapper = core.Swapper(folder / "state")
             prepared = swapper.prepare([archive])
             assert not swapper.preflight(prepared, game)["missing"]
+            installed = swapper.install(prepared, game)
+            assert installed["status"] == "installed" and not core._readonly(archive)
             try:
                 from texturequest_build_pin import MANIFEST_SHA256
             except ImportError:
@@ -42,7 +41,7 @@ def run(output):
                     raise ValueError("Missing bundled release pin")
                 MANIFEST_SHA256 = None
             manifest = load_manifest(resource("release-manifest.json"), MANIFEST_SHA256)
-            result.update(status="passed", archive_read=True, readonly_roundtrip=True, prepared_archive=True,
+            result.update(status="passed", archive_read=True, writable_install=True, prepared_archive=True,
                           release_sha256=core._digest(manifest), portable_runtime=True)
     except Exception as error:
         result["error"] = repr(error)

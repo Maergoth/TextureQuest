@@ -166,6 +166,50 @@ class UpdateTests(unittest.TestCase):
         with patch.object(release, "download", side_effect=AssertionError("download after complete")):
             self.assertEqual(self.prepare(), ready)
 
+    def test_installer_only_update_reuses_prepared_receipt_without_duplicate_files(self):
+        ready = self.prepare()
+        prior_files = sorted(p.relative_to(self.swapper.state_dir).as_posix() for p in self.swapper.state_dir.rglob("*") if p.is_file())
+        self.manifest["version"] = "1.1.1"
+        self.requests.clear()
+        reused = self.prepare()
+        self.assertEqual(reused, ready)
+        self.assertEqual(self.requests, [])
+        self.assertEqual(prior_files, sorted(p.relative_to(self.swapper.state_dir).as_posix() for p in self.swapper.state_dir.rglob("*") if p.is_file()))
+
+    def test_install_and_reinstall_leave_files_writable_and_preserve_saved_downloads(self):
+        game = self.game()
+        ready = self.prepare()
+        downloaded = {p: p.read_bytes() for p in (self.swapper.state_dir / "downloads").rglob("*.zip")}
+        with patch.object(core, "ensure_game_closed"):
+            self.swapper.install(ready, game)
+            for row in ready["archives"]:
+                self.assertFalse(core._readonly(game / "paks" / row["name"]))
+            patched = game / "paks/b.vpk"
+            patched.write_bytes(vpk(b"official patch bytes"))
+            self.requests.clear()
+            reused = self.prepare(game=game)
+            self.assertEqual(self.requests, [])
+            result = self.swapper.install(reused, game)
+            self.assertEqual(result["status"], "installed")
+            self.assertEqual(result["changed_count"], 0)
+            self.assertFalse(core._readonly(patched))
+        self.assertEqual(downloaded, {p: p.read_bytes() for p in downloaded})
+
+    def test_identical_legacy_protected_files_are_made_writable_once(self):
+        game = self.game(latest=True)
+        ready = self.prepare(game=game)
+        target = game / "paks/a.vpk"
+        before = target.read_bytes(), target.stat().st_mtime_ns
+        core._set_readonly(target, True)
+        try:
+            with patch.object(core, "ensure_game_closed"):
+                status = self.swapper.install(ready, game)
+                self.assertEqual(status["status"], "installed")
+                self.assertEqual((target.read_bytes(), target.stat().st_mtime_ns), before)
+                self.assertFalse(core._readonly(target))
+        finally:
+            core._set_readonly(target, False)
+
     def test_corrupt_matching_cache_is_preserved_and_rejected(self):
         old = self.old_cache(); path = Path(old["archives"][1]["path"])
         path.write_bytes(b"damaged")

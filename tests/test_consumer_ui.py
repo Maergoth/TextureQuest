@@ -53,6 +53,7 @@ class DesktopTests(unittest.TestCase):
         self.root = tk.Tk()
         self.root.withdraw()
         self.app = TextureQuestApp(self.root, self.tmp.name)
+        self.app.release_checked = True  # Offline tests supply a verified release.
         self.root.update_idletasks()
     def tearDown(self):
         for callback in self.root.tk.call("after", "info"):
@@ -62,7 +63,7 @@ class DesktopTests(unittest.TestCase):
     def test_clean_start_and_three_step_consumer_controls(self):
         self.assertEqual(self.app.game.get(), "")
         self.assertEqual(self.app.install_button.cget("state"), "disabled")
-        self.assertEqual(self.app.download_button.cget("text"), "Download pack")
+        self.assertIn(self.app.download_button.cget("text"), ("Download pack", "Download / Resume"))
         self.assertFalse(hasattr(self.app, "tree"))
         self.assertFalse(hasattr(self.app, "explorer_button"))
         self.assertFalse(self.app.menu.winfo_ismapped())
@@ -94,13 +95,18 @@ class DesktopTests(unittest.TestCase):
         self.app.busy = "download"
         self.app.request_pause()
         self.assertTrue(self.app.pause.is_set())
-    def test_saved_external_zip_is_reused_without_download(self):
+    def test_optional_external_zip_checks_latest_before_preparation(self):
         saved = Path(self.tmp.name) / "outside-download-cache.zip"
         saved.write_bytes(b"fixture")
-        self.app.prepared = {"source_paths": [str(saved)]}
-        with patch.object(self.app, "prepare_zip") as prepare, patch("texturequest_app.download") as network:
-            self.app.download_pack()
-            prepare.assert_called_once_with(saved)
+        from test_release import fixture
+        manifest = fixture()[2]
+        with patch.object(self.app, "begin") as begin, patch("texturequest_app.fetch_latest", return_value=manifest) as latest, \
+             patch("texturequest_app.prepare_release", return_value={"id": "ready"}) as prepare, \
+             patch("texturequest_app.download") as network, patch.object(self.app, "inspect", return_value=({}, None)):
+            self.app.prepare_zip(saved)
+            begin.call_args.args[2]()
+            latest.assert_called_once()
+            prepare.assert_called_once_with(self.app.core, saved, manifest, self.app.report)
             network.assert_not_called()
     def test_restart_finds_prior_selected_zip(self):
         saved = Path(self.tmp.name) / "retained.zip"
@@ -108,7 +114,8 @@ class DesktopTests(unittest.TestCase):
         core._save(self.app.state_dir / "texturequest-prepared.json", {"source_paths": [str(saved)]})
         self.assertEqual(self.app.saved_zip_path(), saved)
         self.app.refresh_controls()
-        self.assertEqual(self.app.download_button.cget("text"), "Prepare saved pack")
+        expected = "Download / Resume" if self.app.release.get("schema") == "texturequest-release-v2" else "Prepare saved pack"
+        self.assertEqual(self.app.download_button.cget("text"), expected)
     def test_layout_requests_fit_initial_window(self):
         self.root.geometry("840x870")
         self.root.update_idletasks()
@@ -129,15 +136,45 @@ class DesktopTests(unittest.TestCase):
         from test_updates import update_fixture
         self.app.release = update_fixture()[0]
         self.app.refresh_controls()
-        self.assertEqual(self.app.download_button.cget("text"), "Download / Resume update")
+        self.assertEqual(self.app.download_button.cget("text"), "Download / Resume")
         with patch.object(self.app, "download_update") as update:
             self.app.download_pack()
             update.assert_called_once_with()
         with patch.object(self.app.core, "install") as install:
-            self.app.events.put(("done", "update", ({"id": "ready"}, {}, {"missing": []})))
+            self.app.events.put(("done", "update", (self.app.release, {"id": "ready"}, {}, {"missing": []})))
             self.app.poll()
             install.assert_not_called()
             self.assertEqual(self.app.install_button.cget("state"), "normal")
+
+    def test_latest_check_invalidates_install_until_verified(self):
+        self.app.prepared = {"id": "ready"}
+        self.app.preflight = {"missing": []}
+        with patch.object(self.app, "begin") as begin:
+            self.app.check_updates()
+            begin.assert_called_once()
+        self.app.refresh_controls()
+        self.assertFalse(self.app.release_checked)
+        self.assertEqual(self.app.install_button.cget("state"), "disabled")
+
+    def test_download_checks_latest_and_requires_no_user_supplied_zip(self):
+        from test_updates import update_fixture
+        latest = update_fixture()[0]
+        with patch.object(self.app, "begin") as begin, patch("texturequest_app.fetch_latest", return_value=latest) as fetch, \
+             patch("texturequest_app.prepare_update", return_value={"id": "ready"}) as prepare, \
+             patch.object(self.app, "inspect", return_value=({}, None)), patch.object(self.app.core, "install") as install:
+            self.app.download_pack()
+            result = begin.call_args.args[2]()
+            fetch.assert_called_once()
+            self.assertIs(prepare.call_args.args[1], latest)
+            self.assertIsNone(prepare.call_args.args[3])
+            self.assertEqual(result[0], latest)
+            install.assert_not_called()
+
+    def test_maintenance_has_no_protection_or_user_zip_step(self):
+        labels = [self.app.menu.entrycget(i, "label") for i in range(self.app.menu.index("end") + 1)
+                  if self.app.menu.type(i) != "separator"]
+        self.assertIn("Check for updates", labels)
+        self.assertFalse(any("protection" in label.lower() or "prepare for" in label.lower() or "zip" in label.lower() for label in labels))
 
     def test_update_pause_and_warning_text(self):
         from texturequest_app import SIDELOAD_WARNING

@@ -1,65 +1,58 @@
-TextureQuest 1.1 — Windows x64 installer
+TextureQuest — Windows x64 installer
 
 1. Extract this whole folder to a writable location outside your game folder.
    Keep TextureQuest.exe and _internal together. Python is not required.
 2. Patch EverQuest II Origins, then close the game and launcher.
 3. Open TextureQuest.exe and choose the folder containing EverQuest2.exe and paks.
-4. Click Download / Resume update. The app checks saved and installed files,
-   downloads what it needs, and prepares the complete pack. You can pause it.
+4. Click Download / Resume. The installer checks GitHub's latest published
+   release and downloads what it needs. You do not need a texture ZIP already.
+   You can pause and resume; saved downloads are kept and reused automatically.
 5. Click Install TextureQuest after verification. Downloading never installs
    anything automatically. Wait for installation verification to finish.
-6. For ordinary play, launch EverQuest2.exe directly or use a shortcut to it.
-   The launcher can overwrite textures. Do not skip required game updates.
-
-UPDATING FROM 1.0
-Close the old installer. Extract the new installer into its own folder, then
-move your existing data folder alongside the new TextureQuest.exe to reuse
-saved downloads and keep installation records. Do not discard data/games.
-You can also choose the same game folder to reuse matching installed files.
-
-Version 1.1 downloads complete replacement archives for the 4K update. Every
-unrelated texture in those archives is retained. Unchanged archives are read
-from verified saved or installed files when available. A fresh installation,
-or one whose files changed after patching, may also download the original
-27.8 GB base. The app combines the base and update into a complete install;
-you do not need to run the old installer first.
-
-Keep a saved 1.0 Texture-Pack.zip? Choose Maintenance & updates > Use an
-existing Texture-Pack.zip. The app verifies it and obtains the separate
-1.1 update. The update ZIP by itself is not a full installation.
 
 AFTER A GAME PATCH
-Use Maintenance & updates > Prepare for a game patch to unlock managed files.
-Run and close the official patcher, then prepare the saved pack and Install
-TextureQuest again. Cached files are rechecked; identical installed files
-are skipped. Read-only flags do not stop the patcher replacing game files.
+Rerun this installer, click Download / Resume, then Install TextureQuest.
+Saved downloads are rechecked and reused, so patching does not require the
+whole pack to download again. Files that already match are skipped.
+
+UPDATES
+The app checks for the latest release on startup and before preparing a pack.
+Maintenance & updates > Check for updates performs the same check in the app.
+Compatible releases are downloaded by this installer; a changed release format
+requires the newer installer linked on GitHub. Checking never installs files.
+If the latest release cannot be verified, retry when the connection is working.
+Your saved downloads stay intact.
+
+Keep the data folder alongside TextureQuest.exe. When moving to a new installer
+folder, move data with it to retain downloads, caches and installation records.
+Do not discard data/games. Matching installed textures can also be reused.
+
+WHAT IS DOWNLOADED
+The current pack combines the original 27.8 GB base with complete updated
+archives. You do not need to run an old installer first. The latest manifest
+chooses the exact packages automatically; each archive retains unrelated files.
+The installer checks GitHub's manifest asset SHA-256 and size, then verifies
+every download, prepared VPK and installed VPK against that manifest.
+
+DOWNLOADS AND SPACE
+Allow room for downloaded ZIPs and one complete prepared archive set, plus
+growth and one staged archive on the game drive. Saved downloads remain for
+future reinstalls. Older prepared caches remain available during an update.
+No extra set of split download chunks or original game backups is created.
+
+Clear downloaded files & cache explicitly removes this app's saved downloads
+and prepared copies. Game files and installation records stay. Reinstalling
+after clearing them may require downloading the pack again.
 
 SIDELOAD
-The Sideload checkbox is disabled in this build. No tested EQ2 texture-
-injection backend is included. Installation replaces game archives.
+The Sideload checkbox is disabled in this build. No tested EQ2 texture-injection
+backend is included. Installation replaces game archives.
 We don't know what's more legal, replacing the game files or hooking the process. If Daybreak hates you, they might ban you. Be warned.
 
 RESTORE STOCK
 Choose Maintenance & updates > Return to original textures, then run the
-official patcher. The app clears read-only flags; the patcher restores the
-original bytes. The app does not restore stock bytes or make game backups.
-
-DOWNLOADS AND SPACE
-Downloads resume without keeping an additional set of split part files.
-Every part, complete ZIP, prepared VPK and installed VPK is SHA-256 checked.
-The bundled manifest fixes the exact release version and all expected bytes.
-Allow room for downloaded ZIPs and one complete prepared archive set, plus
-growth and one staged archive on the game drive. Older prepared caches are
-preserved during an update and may temporarily require additional space.
-
-Clear downloaded files & cache removes this app's downloads and prepared
-copies, including older versions. Game files and installation records stay.
-Reinstalling after that may require another download or your saved base ZIP.
-
-FUTURE UPDATES
-Check for updates opens https://github.com/Maergoth/TextureQuest/releases/latest.
-Use the installer supplied with the newer release. Each executable installs
-its bundled pack version; it does not silently switch versions or install.
+official EQ2 patcher. Modified bytes remain until the patcher replaces them.
+The installer does not restore stock bytes or make game backups.
 
 TextureQuest is an unofficial community project. Original game assets and
 trademarks remain the property of their owners. Third-party notices are in

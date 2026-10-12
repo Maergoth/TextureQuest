@@ -20,7 +20,7 @@ SRC = ROOT / "src"
 BUILD = ROOT / "build"
 DEST = ROOT / "dist"
 NAME = "TextureQuest"
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 
 
 def sha(path):

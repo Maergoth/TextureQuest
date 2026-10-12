@@ -12,7 +12,7 @@ import zipfile
 from texture_swapper import core
 import texturequest_release as release
 
-VERSION = "1.1.0"
+VERSION = "1.1.0"  # Immutable texture package used by the 1.1 installer series.
 UPDATE_NAME = f"TextureQuest-Update-{VERSION}.zip"
 UPDATE_URL = f"https://github.com/Maergoth/TextureQuest/releases/download/v{VERSION}/"
 
@@ -37,14 +37,24 @@ def inventory(rows):
 
 
 def validate_manifest(value, pinned=True):
-    if value.get("schema") != "texturequest-release-v2" or value.get("version") != VERSION:
+    version = value.get("version", "")
+    if (value.get("schema") != "texturequest-release-v2"
+            or not isinstance(version, str) or not re.fullmatch(r"1\.(?:0|[1-9][0-9]{0,3})\.(?:0|[1-9][0-9]{0,3})", version)
+            or tuple(map(int, version.split("."))) <= (1, 0, 0)):
         raise ValueError("Unsupported TextureQuest update")
     if value.get("base", {}).get("schema") != "texturequest-release-v1":
         raise ValueError("Update requires the immutable 1.0 base manifest")
     base = release.validate_manifest(value.get("base", {}), pinned=pinned)
     update = value.get("update", {})
     archive = update.get("archive", {})
-    if (update.get("version") != VERSION or archive.get("name") != UPDATE_NAME
+    package_version = update.get("version", "")
+    if (not isinstance(package_version, str)
+            or not re.fullmatch(r"1\.(?:0|[1-9][0-9]{0,3})\.(?:0|[1-9][0-9]{0,3})", package_version)
+            or not (1, 0, 0) < tuple(map(int, package_version.split("."))) <= tuple(map(int, version.split(".")))):
+        raise ValueError("Invalid texture package version")
+    update_name = f"TextureQuest-Update-{package_version}.zip"
+    update_url = f"https://github.com/Maergoth/TextureQuest/releases/download/v{package_version}/"
+    if (archive.get("name") != update_name
             or type(archive.get("bytes")) is not int or archive["bytes"] <= 0
             or not re.fullmatch(r"[0-9a-f]{64}", str(archive.get("sha256", "")))):
         raise ValueError("Invalid update package")
@@ -52,8 +62,8 @@ def validate_manifest(value, pinned=True):
     if not isinstance(parts, list) or not 1 <= len(parts) <= 100:
         raise ValueError("Invalid update download parts")
     for i, part in enumerate(parts, 1):
-        name = UPDATE_NAME + f".{i:03d}"
-        if (part.get("name") != name or part.get("url") != UPDATE_URL + name
+        name = update_name + f".{i:03d}"
+        if (part.get("name") != name or part.get("url") != update_url + name
                 or type(part.get("bytes")) is not int or not 0 < part["bytes"] < 2**31
                 or not re.fullmatch(r"[0-9a-f]{64}", str(part.get("sha256", "")))):
             raise ValueError("Invalid update part or release URL")
@@ -64,8 +74,6 @@ def validate_manifest(value, pinned=True):
         raise ValueError("Effective inventory must retain every unchanged base archive")
     if type(value.get("texture_count")) is not int or value["texture_count"] <= 0:
         raise ValueError("Invalid texture count")
-    if pinned and (len(effective) != 310 or value["texture_count"] != 23282):
-        raise ValueError("Unexpected complete update inventory")
     return value
 
 
@@ -186,6 +194,30 @@ def prepare_update(swapper, manifest, game=None, base_zip=None, progress=None, p
                 if not matches(Path(row["path"]), row, pause):
                     raise ValueError("Prepared update changed")
             return saved
+        # An installer-only release can describe exactly the same pack. Reuse
+        # the verified prepared receipt itself instead of duplicating 28 GB.
+        prior_root = core._plain(swapper.state_dir / "prepared", swapper.state_dir)
+        if prior_root.exists():
+            for prior in sorted(prior_root.iterdir()):
+                release.check_pause(pause)
+                if not re.fullmatch(r"[0-9a-f]{32}", prior.name):
+                    continue
+                prior = core._plain(prior, prior_root)
+                prior_receipt = core._plain(prior / "manifest.json", prior_root)
+                if not prior_receipt.is_file():
+                    continue
+                saved = swapper._prepared(core._load(prior_receipt))
+                try:
+                    release.verify_prepared(saved, manifest)
+                except ValueError:
+                    continue
+                for row in saved["archives"]:
+                    text("Verifying saved " + row["name"])
+                    if not matches(Path(row["path"]), row, pause):
+                        raise ValueError("Prepared cache changed; preserve or clear it before continuing")
+                core._atomic(swapper.state_dir / "texturequest-prepared.json", saved)
+                notify("Saved complete pack verified. Click Install to apply it.", 1, 1)
+                return saved
         sources = cached_sources(swapper, manifest, game, pause, text)
         folder.mkdir(parents=True, exist_ok=True)
         missing = []

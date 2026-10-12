@@ -1,8 +1,8 @@
 """Portable, bounded EQ2 pack installation. No AI imports, backups or sideloads.
 
 Install is an explicit API action. Receipts are committed before any destination
-mutation, so Uninstall also covers an interrupted install. Uninstall unlocks
-managed files; the official patcher restores their original contents.
+mutation, so recovery also covers an interrupted install. Installed archives
+stay writable; the official patcher restores their original contents.
 """
 from __future__ import annotations
 
@@ -715,10 +715,13 @@ class Swapper:
                         ensure_game_closed()
                         _set_readonly(target, False)
                         os.replace(staged, target)
-                    _set_readonly(target, True)
+                    # Clear flags left by an older installer, never protect files
+                    # against the official patcher. New staged files are writable.
+                    if _readonly(target):
+                        _set_readonly(target, False)
                     if _hash(target) != row["sha256"]:
                         raise ValueError("Installed archive failed final verification")
-                    record.update(status="installed", installed_at=_now(), readonly=True)
+                    record.update(status="installed", installed_at=_now(), readonly=False)
                     _save(path, value)
                 value.update(status="installed", completed_at=_now())
                 _save(path, value)
@@ -728,7 +731,7 @@ class Swapper:
                 _save(path, value)
                 _save(path.parent / "attempts" / (attempt + ".json"), dict(value))
                 raise
-            notify("Installed and verified. Read-only flags applied; the patcher may still replace these files.")
+            notify("Installed and verified. Rerun TextureQuest after a game patch.")
             return self.status(game_dir)
 
     def uninstall(self, game_dir, progress=None):
@@ -781,14 +784,13 @@ class Swapper:
         issues = [f"{counts[key]} {description}" for key, description in (
             ("changed_count", "changed from the installed pack"),
             ("missing_count", "missing"),
-            ("unprotected_count", "without the read-only flag"),
             ("unverified_count", "could not be verified")) if counts[key]]
         recorded_status = value["status"]
         operation_incomplete = recorded_status in ("installing", "uninstalling", "interrupted", "error")
         status = recorded_status if operation_incomplete or not issues else "needs_attention"
         if managed:
             message = ("Archive verification: " + "; ".join(issues) + ".") if issues else (
-                f"All {len(managed)} managed archives match the installed pack; {readonly} have the read-only flag.")
+                f"All {len(managed)} managed archives match the installed pack.")
             if operation_incomplete:
                 reason = value.get("error") or f"The last {value.get('operation', 'operation')} did not complete."
                 message = str(reason) + " " + message
