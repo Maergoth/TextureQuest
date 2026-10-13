@@ -125,10 +125,10 @@ The installer is a separate Python/Tk application. It does not run the AI model.
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r src\texture_swapper\requirements-build.txt
 .\.venv\Scripts\python.exe -m unittest discover -s tests
-.\.venv\Scripts\python.exe build_installer.py --manifest release-manifest-1.1.0.json --version 1.1.0
+.\.venv\Scripts\python.exe build_installer.py --manifest release-manifest-1.2.0.json --version 1.2.1
 ```
 
-Save `release-manifest.json` from the **1.1.0 release assets** as `release-manifest-1.1.0.json` before building that version. The repository's original `release-manifest.json` remains the immutable 1.0 base record. A 1.1 build deliberately refuses a 1.0 manifest. The builder stages an exact manifest and its SHA256 into the executable's bundle without modifying source manifests. Use `--output-root` to choose a separate build/output directory.
+Save `release-manifest.json` from the **1.2.0 release assets** as `release-manifest-1.2.0.json` before running this example. `--version` is the **application build version**, independent of the texture manifest version. The builder stages an exact manifest, its SHA256, the actual app version and the actual texture-data version into the bundle without modifying source manifests. Thus a new app can retain an unchanged texture manifest. Use `--output-root` to choose a separate build/output directory. The example demonstrates the version contract; it does not announce a published 1.2.1 app.
 
 The portable build is written beneath `dist/`; build records and caches go beneath `build/`. Rebuilding is refused when the existing output contains portable user data. These commands build the application, not a new texture pack. Dependency pins are in [requirements-build.txt](../src/texture_swapper/requirements-build.txt); the shipped bundle includes a build manifest and third-party notices. Rebuilt executables are not promised to have identical bytes.
 
@@ -137,12 +137,36 @@ Relevant source:
 - [`texturequest_app.py`](../src/texturequest_app.py): consumer interface and explicit install flow.
 - [`texturequest_release.py`](../src/texturequest_release.py): manifest validation, resumed downloads, part/ZIP integrity and preparation.
 - [`texturequest_updates.py`](../src/texturequest_updates.py): verified base/update overlay, unchanged archive reuse, and resumable preparation of the full effective inventory.
+- [`texturequest_version_check.py`](../src/texturequest_version_check.py): independent app/texture notices, saved version floors and official upgrade links.
 - [`texture_swapper/core.py`](../src/texture_swapper/core.py): archive validation, installation preflight, copying and receipts.
 - [`tests/`](../tests/): integrity, recovery and UI-state fixtures.
 
 Changes should retain explicit installation, closed-game checks, path containment, interrupted-download recovery, checksum verification and safe handling of changed files. Test against temporary fixtures before a real game installation. Texture reports are most useful with a precise item/NPC/zone or appearance, a screenshot, pack version and verification result.
 
-For a future release, publish a new version and matching manifest rather than replacing the bytes behind 1.0 links. An update containing only changed archives still needs complete archives with every unrelated replacement preserved. Model terms and original game-asset ownership are separate from the installer source; consult the upstream model terms and the project's [ownership notice](../README.md#credits-and-ownership).
+For a future release, publish new immutable assets rather than replacing the bytes behind existing links. An update containing only changed archives still needs complete archives with every unrelated replacement preserved. Model terms and original game-asset ownership are separate from the installer source; consult the upstream model terms and the project's [ownership notice](../README.md#credits-and-ownership).
+
+### App and texture update versions
+
+The application build version, the GitHub publication tag, the manifest envelope version and the texture package version are separate values. `texturequest_build_pin.py` embeds `APP_VERSION`, `TEXTURE_VERSION` and `MANIFEST_SHA256`; frozen UI/runtime checks report those actual values. `src/texturequest_version.py` is only the source default. The texture-data version is `update.version` for manifest v2, or the base version for v1. Texture byte identity hashes the sorted complete archive names, sizes and SHA256 values, excluding display metadata and envelope versions.
+
+The builder emits a small `dist/texturequest-version.json` for publication alongside the installer ZIP and exact `release-manifest.json`. Its `texturequest-version-v1` contract has exactly these fields:
+
+```json
+{
+  "schema": "texturequest-version-v1",
+  "app_version": "1.2.1",
+  "texture_version": "1.2.0",
+  "manifest_version": "1.2.1",
+  "manifest_sha256": "<SHA256 of the exact release-manifest.json asset>",
+  "installer_name": "TextureQuest-Installer-1.2.1-windows-x64.zip"
+}
+```
+
+The GitHub release API supplies the version asset's size and SHA256. Its verified contents must bind the published manifest and installer asset; every URL belongs to `Maergoth/TextureQuest`. **For an app-only 1.2.1 publication, retain legacy compatibility by changing only the manifest's top-level `version` to `1.2.1`. Keep `update.version` at `1.2.0` and every archive identity, base record, update record and package URL unchanged.** Publish this small wrapper manifest, the version metadata and the new installer under `v1.2.1`; no texture package is reuploaded. The already shipped checker requires the envelope version to equal the GitHub tag. An old byte-exact 1.2.0 manifest under `v1.2.1` is supported by the new explicit metadata checker, but would break those old apps and is not the recommended publication shape. A texture-only release may retain the same application version. Already published releases without the metadata asset remain compatible: the actual app version comes from a unique, checksum-bearing official Windows installer asset, and the texture version comes from the validated manifest.
+
+Startup and manual checks fetch one stable published release record and report the two channels independently. A missing/invalid installer does not prevent a compatible pack check; a manifest download/schema error does not hide an available app update. Invalid shared release/version metadata fails both channels. Drafts, prereleases, foreign URLs, older texture data and changed bytes under an unchanged texture version are refused. Network and GitHub limit errors remain unavailable states, never an "up to date" claim. A failed texture check retains the saved release and downloads. A locally saved receipt establishes the selected version floor on restart; it is not a successful live check and cannot enable installation by itself.
+
+The app upgrade action opens the verified official release page. It does not fetch executable code, overwrite the running app, clear downloads or install game files. Preparation rechecks the latest compatible pack; installation remains an explicit click with all existing integrity and closed-game gates. Sideload is still disabled in this change.
 
 ### The 1.1 4K update
 
@@ -150,4 +174,4 @@ The 40-map batch preserves 35 saved 1K/2K generations as inputs and uses five ve
 
 Only nine complete PAKs change. Their verified 1.0 versions provide the baseline; every unselected compressed entry is preserved and compared byte-for-byte. Selected DDS entries use their proven original format, header/trailer convention, source-derived alpha and mip tail, with all generated mip levels checked. The color finish above is applied once to the new raw PNGs. Existing finished DDS entries are copied without reapplying it, preserving the twenty earlier character/creature repairs. The effective manifest retains all310 archives and increases the replacement count from23,277 to23,282.
 
-Versioned manifest v2 embeds the exact v1 base and adds the changed-archive package plus the full effective archive inventory. Cached or installed files are reused only after matching their hashes. Preparation does not write to the game. The installer verifies its bundled manifest, then checks GitHub's latest published release on startup and before preparing a pack. It verifies the downloaded manifest against the release asset's SHA-256 and size, requires matching release versions and same-repository package URLs, and accepts compatible v1/v2 manifests without downloading new executable code. Unsupported formats require a newer installer. An installer-only release may reference unchanged texture packages; an identical complete prepared pack is reused without making another archive copy.
+Versioned manifest v2 embeds the exact v1 base and adds the changed-archive package plus the full effective archive inventory. Cached or installed files are reused only after matching their hashes. Preparation does not write to the game. The installer verifies its bundled manifest, then checks GitHub's latest published release on startup and before preparing a pack. It verifies the downloaded manifest against the release asset's SHA-256 and size and requires same-repository package URLs. Legacy release envelopes must match their publication tag; explicit version metadata provides separate application and texture pins as described above. Compatible v1/v2 textures do not require new executable code. Unsupported formats require a newer installer. An app-only release may reference unchanged texture packages; an identical complete prepared pack is reused without making another archive copy.

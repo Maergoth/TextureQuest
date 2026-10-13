@@ -16,15 +16,19 @@ Saved downloads are rechecked and reused, so patching does not require the
 whole pack to download again. Files that already match are skipped.
 
 UPDATES
-The app checks for the latest release on startup and before preparing a pack.
-Maintenance & updates > Check for updates performs the same check in the app.
-Compatible releases are downloaded by this installer; a changed release format
-requires the newer installer linked on GitHub. Checking never installs files.
-If the latest release cannot be verified, retry when the connection is working.
-Your saved downloads stay intact.
+The app checks texture updates and app updates separately on startup.
+Maintenance & updates > Check for updates checks both again. New textures are
+prepared with Download / Resume. Get app update opens the official GitHub
+release page; this app does not replace its own running executable.
+An app update may use exactly the same textures. The app shows its own version,
+the selected texture version, saved/prepared textures and installed textures.
+Compatible textures are downloaded here; a changed format needs a newer app.
+Checking never installs files. If either check cannot be verified, it says so;
+retry when connected. Saved downloads and the saved release remain intact.
 
-Keep the data folder alongside TextureQuest.exe. When moving to a new installer
-folder, move data with it to retain downloads, caches and installation records.
+Keep the data folder alongside TextureQuest.exe. To upgrade the app, close the
+old copy, extract the new installer to a new folder and move data alongside the
+new TextureQuest.exe to retain downloads, caches and installation records.
 Do not discard data/games. Matching installed textures can also be reused.
 
 WHAT IS DOWNLOADED

@@ -176,6 +176,30 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(self.requests, [])
         self.assertEqual(prior_files, sorted(p.relative_to(self.swapper.state_dir).as_posix() for p in self.swapper.state_dir.rglob("*") if p.is_file()))
 
+    def test_1_2_1_app_wrapper_reuses_exact_1_2_0_cache_and_downloads(self):
+        self.manifest["version"] = "1.2.0"
+        update = self.manifest["update"]
+        update["version"] = "1.2.0"
+        update["archive"]["name"] = "TextureQuest-Update-1.2.0.zip"
+        for part in update["parts"]:
+            data = self.parts.pop(part["url"])
+            part["name"] = part["name"].replace("1.1.0", "1.2.0")
+            part["url"] = part["url"].replace("1.1.0", "1.2.0")
+            self.parts[part["url"]] = data
+        ready = self.prepare()
+        snapshot = {p: (p.stat().st_ino, p.read_bytes()) for p in self.swapper.state_dir.rglob("*") if p.is_file()}
+        directories = {p for p in (self.swapper.state_dir / "prepared").iterdir() if p.is_dir()}
+        self.manifest["version"] = "1.2.1"
+        self.requests.clear()
+        with patch.object(self.swapper, "install", side_effect=AssertionError("automatic install")):
+            reused = self.prepare()
+        self.assertEqual(reused, ready)
+        self.assertEqual(self.requests, [])
+        self.assertEqual(directories, {p for p in (self.swapper.state_dir / "prepared").iterdir() if p.is_dir()})
+        self.assertEqual({p: data for p, (_inode, data) in snapshot.items()}, {p: p.read_bytes() for p in snapshot})
+        payloads = {p: inode for p, (inode, _data) in snapshot.items() if p.suffix in (".zip", ".vpk", ".pak")}
+        self.assertEqual(payloads, {p: p.stat().st_ino for p in payloads})
+
     def test_install_and_reinstall_leave_files_writable_and_preserve_saved_downloads(self):
         game = self.game()
         ready = self.prepare()

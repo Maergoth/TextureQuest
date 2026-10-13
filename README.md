@@ -21,6 +21,10 @@ The 1.0 base download is **27.8 GB**; newer releases may include an additional u
 
 **After a game patch:** close the game and launcher, then rerun the TextureQuest installer. It checks for the latest textures and reuses verified downloads. Do not skip required game updates.
 
+The app checks **texture updates and app updates separately** on startup. Use **Maintenance & updates → Check for updates** to check again. New textures are downloaded and prepared in this app; **Get app update** opens the official GitHub release page for a newer installer. Downloading never installs anything automatically. If a check fails, the app says it could not verify that update and keeps saved files.
+
+When upgrading the app, close the old copy, extract the new installer into a new folder, and move your existing `data` folder alongside the new `TextureQuest.exe` to keep downloads and installation records. An app update can use the same textures you already have.
+
 **To return to stock:** run the official patcher's file validation to restore the original game files.
 
 **Compatibility:** this pack was developed for EverQuest II Origins. Other EQ2 versions and later content updates have not been fully tested. Some textures are intentionally left unchanged for compatibility.

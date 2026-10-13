@@ -9,7 +9,8 @@ import zlib
 def run(output):
     from texture_swapper import core
     from texturequest_release import load_manifest
-    from texturequest_app import resource
+    from texturequest_app import resource, APP_VERSION
+    from texturequest_version_check import texture_version
     output = Path(output).absolute()
     output.parent.mkdir(parents=True, exist_ok=True)
     result = {"status": "error", "game_files_touched": False, "gui_opened": False}
@@ -42,7 +43,8 @@ def run(output):
                 MANIFEST_SHA256 = None
             manifest = load_manifest(resource("release-manifest.json"), MANIFEST_SHA256)
             result.update(status="passed", archive_read=True, writable_install=True, prepared_archive=True,
-                          release_sha256=core._digest(manifest), portable_runtime=True)
+                          release_sha256=core._digest(manifest), portable_runtime=True,
+                          app_version=APP_VERSION, texture_version=texture_version(manifest))
     except Exception as error:
         result["error"] = repr(error)
         raise

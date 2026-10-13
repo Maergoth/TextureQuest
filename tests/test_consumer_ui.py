@@ -120,6 +120,83 @@ class DesktopTests(unittest.TestCase):
         self.root.geometry("840x870")
         self.root.update_idletasks()
         self.assertLessEqual(self.root.winfo_reqheight(), 870)
+        self.assertTrue(self.app.body_canvas.cget("scrollregion"))
+
+    def test_app_only_update_retains_prepared_textures_and_shows_official_action(self):
+        from test_version_notices import fixture
+        from texturequest_version_check import pack_identity
+        self.app.release = fixture()[0]
+        current = self.app.release
+        same = copy.deepcopy(current); same["version"] = "1.2.1"
+        self.app.prepared = {"id": "ready", "archives": copy.deepcopy(current["archives"])}
+        self.app.preflight = {"missing": []}
+        result = {"installer": {"status": "verified", "version": "9.0.0", "update_available": True,
+                               "local_newer": False, "release_url": "https://github.com/Maergoth/TextureQuest/releases/tag/v9.0.0"},
+                  "pack": {"status": "verified", "version": "1.1.0", "manifest": same,
+                           "identity": pack_identity(same), "update_available": False}}
+        self.app.events.put(("done", "check", result))
+        with patch.object(self.app.core, "install") as install:
+            self.app.poll()
+            install.assert_not_called()
+        self.assertIsNotNone(self.app.prepared)
+        self.assertEqual(self.app.install_button.cget("state"), "normal")
+        self.assertIn("App update available", self.app.app_update_label.cget("text"))
+        self.assertIn("Latest textures: 1.1.0", self.app.pack_update_label.cget("text"))
+        with patch("texturequest_app.webbrowser.open") as browser:
+            self.app.open_app_update()
+            browser.assert_called_once_with(result["installer"]["release_url"])
+
+    def test_offline_check_keeps_selection_and_disables_false_current_install(self):
+        current = self.app.release
+        self.app.prepared = {"id": "ready"}; self.app.preflight = {"missing": []}
+        with patch.object(self.app, "begin") as begin:
+            self.app.check_updates()
+            self.assertEqual(begin.call_args.args[0], "check")
+        unavailable = {"status": "unavailable", "message": "Could not reach GitHub."}
+        self.app.events.put(("done", "check", {"installer": unavailable, "pack": unavailable}))
+        self.app.poll()
+        self.assertIs(self.app.release, current)
+        self.assertIsNotNone(self.app.prepared)
+        self.assertFalse(self.app.release_checked)
+        self.assertEqual(self.app.install_button.cget("state"), "disabled")
+        self.assertIn("unavailable", self.app.app_update_label.cget("text"))
+        self.assertIn("unavailable", self.app.pack_update_label.cget("text"))
+        with patch("texturequest_app.webbrowser.open") as browser:
+            self.app.open_app_update()
+            browser.assert_not_called()
+
+    def test_app_check_failure_keeps_pack_update_downloadable(self):
+        from test_version_notices import fixture
+        manifest, _, _ = fixture(texture="1.2.0", manifest_version="1.2.0")
+        result = {"installer": {"status": "unavailable", "message": "No unique installer"},
+                  "pack": {"status": "verified", "version": "1.2.0", "manifest": manifest, "update_available": True}}
+        self.app.prepared = {"id": "old"}; self.app.preflight = {"missing": []}
+        self.app.events.put(("done", "check", result)); self.app.poll()
+        self.assertIsNone(self.app.prepared)
+        self.assertTrue(self.app.release_checked)
+        self.assertIn("New textures available: 1.2.0", self.app.pack_update_label.cget("text"))
+        self.assertEqual(self.app.download_button.cget("state"), "normal")
+        self.assertEqual(self.app.install_button.cget("state"), "disabled")
+
+    def test_header_reports_application_build_version_separately(self):
+        from texturequest_version_check import texture_version
+        self.assertEqual(self.app.version_label.cget("text"), "App " + self.app.app_version)
+        self.assertIn("Selected textures " + texture_version(self.app.release), self.app.pack_versions_label.cget("text"))
+
+    def test_startup_and_manual_check_use_both_version_channels(self):
+        from test_version_notices import fixture
+        manifest, _, _ = fixture()
+        self.app.release = manifest
+        with patch.object(self.app, "begin") as begin, patch("texturequest_app.check_versions", return_value="both") as check:
+            self.root.after(300, self.root.quit)
+            self.root.mainloop()
+            begin.assert_called_once()
+            self.assertEqual(begin.call_args.args[0], "check")
+            self.assertEqual(begin.call_args.args[2](), "both")
+            self.app.check_updates()
+            self.assertEqual(begin.call_args.args[2](), "both")
+            self.assertEqual(check.call_count, 2)
+            check.assert_called_with(manifest, self.app.app_version, self.app.state_dir)
 
     def test_sideload_is_disabled_and_never_routes_to_install(self):
         self.assertEqual(self.app.sideload_checkbox.cget("state"), "disabled")

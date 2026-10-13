@@ -9,6 +9,7 @@ import argparse
 import importlib.metadata
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -20,7 +21,27 @@ SRC = ROOT / "src"
 BUILD = ROOT / "build"
 DEST = ROOT / "dist"
 NAME = "TextureQuest"
-VERSION = "1.1.1"
+sys.path.insert(0, str(SRC))
+from texturequest_version import APP_VERSION
+VERSION = APP_VERSION
+
+
+def version_metadata(app_version, manifest, manifest_hash):
+    from texturequest_latest import version_number
+    from texturequest_version_check import texture_version
+    version_number(app_version)
+    if not isinstance(manifest_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", manifest_hash):
+        raise ValueError("Invalid build manifest pin")
+    return {"schema": "texturequest-version-v1", "app_version": app_version,
+            "texture_version": texture_version(manifest), "manifest_version": manifest["version"],
+            "manifest_sha256": manifest_hash,
+            "installer_name": f"TextureQuest-Installer-{app_version}-windows-x64.zip"}
+
+
+def build_pin(app_version, manifest, manifest_hash):
+    metadata = version_metadata(app_version, manifest, manifest_hash)
+    return (f'MANIFEST_SHA256 = "{manifest_hash}"\nAPP_VERSION = "{metadata["app_version"]}"\n'
+            f'TEXTURE_VERSION = "{metadata["texture_version"]}"\nVERSION = APP_VERSION\n')
 
 
 def sha(path):
@@ -51,8 +72,7 @@ def main():
     sys.path.insert(0, str(SRC))
     from texturequest_release import load_manifest
     release = load_manifest(manifest)
-    if release["version"] != args.version:
-        raise ValueError("Requested installer version differs from its bundled manifest")
+    metadata = version_metadata(args.version, release, sha(manifest))
     stage = BUILD / "source"
     (stage / "texture_swapper").mkdir(parents=True, exist_ok=True)
     sources = sorted([*SRC.glob("*.py"), SRC / "texture_swapper/core.py", SRC / "texture_swapper/__init__.py",
@@ -66,7 +86,7 @@ def main():
     bundled_manifest = stage / "release-manifest.json"
     shutil.copy2(manifest, bundled_manifest)
     (stage / "texturequest_build_pin.py").write_text(
-        f'MANIFEST_SHA256 = "{manifest_hash}"\nVERSION = "{release["version"]}"\n', encoding="utf-8")
+        build_pin(args.version, release, manifest_hash), encoding="utf-8")
     env = dict(os.environ, TEMP=str(BUILD / "tmp"), TMP=str(BUILD / "tmp"),
                PYINSTALLER_CONFIG_DIR=str(BUILD / "pyinstaller-cache"),
                PYTHONNOUSERSITE="1", PYTHONDONTWRITEBYTECODE="1")
@@ -101,17 +121,22 @@ def main():
             shutil.copy2(source, licenses / "PYTHON-LICENSE.txt")
             break
     files = sorted(p for p in folder.rglob("*") if p.is_file())
-    receipt = {"application": NAME, "version": release["version"], "runtime": sys.version, "dependencies": versions,
+    receipt = {"application": NAME, "version": args.version, "texture_version": metadata["texture_version"],
+               "manifest_version": release["version"], "runtime": sys.version, "dependencies": versions,
                "release_manifest_sha256": manifest_hash,
                "source_sha256": source_hashes,
                "files": [{"path": p.relative_to(folder).as_posix(), "bytes": p.stat().st_size, "sha256": sha(p)} for p in files]}
     receipt_path = folder / "BUILD-MANIFEST.json"
     receipt_path.write_text(json.dumps(receipt, indent=2), encoding="utf-8")
-    archive = DEST / f"TextureQuest-Installer-{release['version']}-windows-x64.zip"
+    archive = DEST / metadata["installer_name"]
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zipout:
         for path in files + [receipt_path]:
             zipout.write(path, (Path(NAME) / path.relative_to(folder)).as_posix())
-    result = {"zip": archive.relative_to(output_root).as_posix(), "bytes": archive.stat().st_size, "version": release["version"],
+    version_asset = DEST / "texturequest-version.json"
+    version_asset.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    result = {"zip": archive.relative_to(output_root).as_posix(), "bytes": archive.stat().st_size, "version": args.version,
+              "texture_version": metadata["texture_version"], "manifest_version": release["version"],
+              "version_asset": version_asset.relative_to(output_root).as_posix(), "version_asset_sha256": sha(version_asset),
               "release_manifest_sha256": manifest_hash,
               "sha256": sha(archive), "executable": (folder / (NAME + ".exe")).relative_to(output_root).as_posix()}
     (BUILD / "installer-receipt.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
