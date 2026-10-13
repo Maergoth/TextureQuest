@@ -1,0 +1,611 @@
+{
+  "schema": "texturequest-public-face-comparisons-v1",
+  "method": "Authentic native stock color pixels compared with released Dark Elf DDS or explicitly unreleased Ratonga local-trial DDS. Complete original models with shared cameras, UVs and lighting. Actual browser canvas exports copied verbatim; no AI retouching or image crop. No extra color finish applied by previews.",
+  "dark_elf": {
+    "schema": "texturequest-darkelf-stock-shipped-browser-comparison-v1",
+    "character": "Classic Dark Elf female",
+    "release": "TextureQuest 1.1.1 (unchanged 1.0/1.1 texture data)",
+    "model_id": "0f656713b6eb6f705739777e4f4f6bbe3c3567c9be40625d63a241ab3ad1d040",
+    "geometry": {
+      "triangles": 4176,
+      "parts": 9,
+      "bones": 113,
+      "draw": "cooked/characters/ec/pc/darkelffemale/scenes/optimized/darkelffemale_lod0.draw",
+      "sha256": "fb7d145bb4528229f54b3a280331506f492af15364f992708e082298a2395737",
+      "complete_lod0": true,
+      "pose": "Stored bind pose; no separate hairstyle"
+    },
+    "color_sources": [
+      {
+        "key": "skin",
+        "task_id": "86a780e9c7dea4c0f11dcc60e835e489d12dc64226bd559d6625b2425c6203d4",
+        "native_dds_sha256": "dc445457a22307712080791176b831ae8dab5f93653d8937fb5cec887e7e0a98",
+        "native_rgba_sha256": "67db6566716bb84d1a782a1f5bf2cb696de9795e0f0a797d71f6b2f2b19ce294",
+        "native_png_sha256": "8108019c0c26e0696b9f198bfb12666686550397e60c20805a21679889caab7b",
+        "extraction_receipt_sha256": "ced288de91cf595845adeeb80b682d4a26be3515eb6c8302056bf85ee6335616",
+        "native_dimensions": [
+          512,
+          512
+        ],
+        "shipped_dds": {
+          "archive": "Char_ECA.vpk",
+          "name": "cooked/characters/ec/pc/darkelffemale/sourceimages/wip/darkelf_female_lod0_c.dds",
+          "sha256": "eebe55c148f8eb2b910eef0fcdda17baa9ce7e8d53591aa93088db25f1e758a1",
+          "bytes": 1398246,
+          "native_byte_identity_proven": false
+        },
+        "shipped_dimensions": [
+          1024,
+          1024
+        ],
+        "shipped_rgba_sha256": "ec65913a0327a7e4e0b20840d480c1fd7fe1cb25b9eec12198d2d1b88a6f32a0",
+        "shipped_format": "DXT5",
+        "shipped_mips": 9,
+        "exact_release_decoded": true,
+        "finish_reapplied": false
+      },
+      {
+        "key": "eyes_mouth",
+        "task_id": "1937c38721cbee0ac63c77294370e73a20cfce351e33f2b232dd49e3e5e7ef27",
+        "native_dds_sha256": "808879a3510c383a1f8c600ac6359d32a1e3ad5a60325ec34af519a10d8ea3a8",
+        "native_rgba_sha256": "a4830a3dd615e0298be82a8d4c441f92a75d17b64f3e5cb50fa0f4d93898b293",
+        "native_png_sha256": "7ce94d3efd6041bd549e856c118f92e593fff4a73a1a37f608d94a2010c6f48b",
+        "extraction_receipt_sha256": "3d5980b6dcd2d3468c3a7fbef2db92383ab2fa12ccfba03b437b42e8d290acae",
+        "native_dimensions": [
+          256,
+          256
+        ],
+        "shipped_dds": {
+          "archive": "Char_ECA2.vpk",
+          "name": "cooked/characters/ec/pc/woodelffemale/sourceimages/eyemouth_se_c.dds",
+          "sha256": "6f98d3c6815dcd2ed557cd6c888a29813ff1c821b9000d2d3b734bdee95d497e",
+          "bytes": 1398246,
+          "native_byte_identity_proven": false
+        },
+        "shipped_dimensions": [
+          1024,
+          1024
+        ],
+        "shipped_rgba_sha256": "b256acbe8c00e7e483d77c198e25782351a07186c95fa6097ba9cf183c3438fb",
+        "shipped_format": "DXT3",
+        "shipped_mips": 9,
+        "exact_release_decoded": true,
+        "finish_reapplied": false
+      }
+    ],
+    "material_sources": [
+      {
+        "archive": "Char_ECA3.vpk",
+        "name": "shaders/characters/ec/pc/darkelffemale/darkelffem_fullbody_lod0.vdl",
+        "sha256": "311c9e4709f7a25d85deae4502d5d25bcaaad419eab2e20639aa301749aaeb63",
+        "bytes": 1793,
+        "native_byte_identity_proven": true
+      },
+      {
+        "archive": "Char_ECA3.vpk",
+        "name": "shaders/characters/ec/pc/woodelffemale/eyemouth.vdl",
+        "sha256": "0105ce7dc35ae8d1394c460019567872a8558d61d55b5c0cf98def110078c25b",
+        "bytes": 1606,
+        "native_byte_identity_proven": true
+      }
+    ],
+    "limitations": "Complete base LOD0 model, all nine parts including eyes/teeth; native bind pose and default white tint, no separate hairstyle. Matched approximate browser lighting, height-map conversion and Phong specular; not a game screenshot. Original color pixels are native extraction originals; right colors decode exact shipped DDS without a second finish.",
+    "finish_reapplied": false,
+    "capture": {
+      "file": "darkelf-stock-vs-shipped-face.png",
+      "sha256": "46f80bd46623ed219a1b8bc859e7bda19dfa740a185265e2938583f7a814220e",
+      "dimensions": [
+        2526,
+        1068
+      ],
+      "method": "Actual browser WebGL canvases combined by the visible Prepare comparison image button; no crop, retouch, AI render or automatic download",
+      "camera": {
+        "model_id": "0f656713b6eb6f705739777e4f4f6bbe3c3567c9be40625d63a241ab3ad1d040",
+        "stock_color_native": [
+          512,
+          256
+        ],
+        "shipped_color": 1024,
+        "source": "exact shipped DDS decoded; no second finish",
+        "theta": 0.42,
+        "phi": 1.5707963267948966,
+        "dist": 0.5597971686922723,
+        "target": [
+          0,
+          1.9988389015197754,
+          0.034200310707092285
+        ],
+        "focus": "head",
+        "lighting": true,
+        "parts": [
+          {
+            "part": 0,
+            "name": "arms",
+            "count": 1242
+          },
+          {
+            "part": 1,
+            "name": "chest",
+            "count": 1296
+          },
+          {
+            "part": 2,
+            "name": "ears",
+            "count": 936
+          },
+          {
+            "part": 3,
+            "name": "feet",
+            "count": 612
+          },
+          {
+            "part": 4,
+            "name": "hands",
+            "count": 1698
+          },
+          {
+            "part": 5,
+            "name": "head",
+            "count": 3336
+          },
+          {
+            "part": 6,
+            "name": "legs",
+            "count": 1764
+          },
+          {
+            "part": 7,
+            "name": "teetheyes",
+            "count": 1080
+          },
+          {
+            "part": 8,
+            "name": "upperchest",
+            "count": 564
+          }
+        ],
+        "triangles": 4176,
+        "limitations": "Complete base LOD0 model, all nine parts including eyes/teeth; native bind pose and default white tint, no separate hairstyle. Matched approximate browser lighting, height-map conversion and Phong specular; not a game screenshot. Original color pixels are native extraction originals; right colors decode exact shipped DDS without a second finish."
+      },
+      "shared_camera_lighting": true,
+      "visually_checked": true
+    },
+    "renderer": {
+      "files": {
+        "compare.js": "e9f6290b6969940c6586782182af83638f9dd91cad69e74f986e00a982b511f9",
+        "index.html": "a303f81cff785a8cbc08f90a5980f5d70d548230426d0026a199e213e57813dd",
+        "manifest.json": "aaa35c5d0db431994b571f63ad85fa9f23c720eb46689537c05427432435a052",
+        "model.json": "124254c68e928a8580b10ac0bb9e35b434cc4b7bec5a9103b35fc02cd28e8333"
+      },
+      "independent_cpu_checks": 22,
+      "independent_verification_sha256": "efaf08b4188b68f15e45aec8198650e38154dbf77417483b20184887a0dd20a3"
+    },
+    "created_at": "2026-10-13T03:12:22.556252+00:00",
+    "public_image": "images/face-dark-elf.png",
+    "source_provenance_file_sha256": "a1421e66929229a0315783fd748a01aefaabd7e1d3865e7cd135bf1f92d6a7a8"
+  },
+  "ratonga_local_trial": {
+    "schema": "eq2-ratonga-actual-trial-browser-canvas-comparison-v2",
+    "captured_at": 1791861855.1719422,
+    "images": [
+      {
+        "image": {
+          "path": "images/face-ratonga-candidate.png",
+          "sha256": "2991a1fd4b9cd3f03559652e8e1533d04bfef7fc3f2f12905cc3adb0651a8cf3"
+        },
+        "dimensions": [
+          2504,
+          1080
+        ],
+        "camera": {
+          "model": "female",
+          "material": "ratonga_female_01",
+          "layer": "composed",
+          "left_source": "stock-all",
+          "eye_source": "native_fallback",
+          "coat_source": "native_hole",
+          "eye_lobe": "native",
+          "lighting": true,
+          "theta": 0.5,
+          "phi": 1.5707963267948966,
+          "dist": 0.647475269835845,
+          "target": [
+            0.029371310154015805,
+            2.081782817840576,
+            0.07998469096400894
+          ],
+          "focus": "face-detail",
+          "packet_vertices": 3020,
+          "packet_triangles": 4260,
+          "groups": [
+            {
+              "part": 0,
+              "name": "arms",
+              "count": 1308
+            },
+            {
+              "part": 1,
+              "name": "chest",
+              "count": 1164
+            },
+            {
+              "part": 2,
+              "name": "ears",
+              "count": 384
+            },
+            {
+              "part": 3,
+              "name": "eye",
+              "count": 1074
+            },
+            {
+              "part": 4,
+              "name": "feet",
+              "count": 1260
+            },
+            {
+              "part": 5,
+              "name": "hands",
+              "count": 3006
+            },
+            {
+              "part": 6,
+              "name": "head",
+              "count": 2040
+            },
+            {
+              "part": 7,
+              "name": "legs",
+              "count": 1470
+            },
+            {
+              "part": 8,
+              "name": "tail",
+              "count": 624
+            },
+            {
+              "part": 9,
+              "name": "upperchest",
+              "count": 450
+            }
+          ],
+          "candidate_released": false,
+          "packed_trial": {
+            "plan_sha256": "32c37a1ff4136c88389bbc2467c6daf0ddc0ba10bca487e021fe1ee2fca6253c",
+            "archive_sha256": "10d5156ed8e3a36cce61942544a2648f137861ea2977865f12f7f5ce978df614",
+            "zip_sha256": "dd509994fbbc3cf59d8f0e86ee6d4f4f18d5c67def83d4cbf8e19426ae85fa00",
+            "installed": false,
+            "published": false,
+            "approved": false,
+            "actual_dds_previews": true,
+            "texture_count": 11
+          },
+          "trial_texture_hashes": [
+            {
+              "key": "allratcolor",
+              "dds_sha256": "294518a6114b6e6eb0700eefa2bcb99ac8e301427bc16a9997932136192036d5",
+              "png_sha256": "35dc2bf6feaab507530325e67d9f1e3d30d9994060d314ab325e06bd6bb4500b",
+              "finish_applications": 1
+            },
+            {
+              "key": "darkstriper",
+              "dds_sha256": "07736c4b208e46e2eea0d0fea283bdf1a376b1de656f8aace6121e452b3c8c87",
+              "png_sha256": "e746461b8ed40742e4dd99189ff2cce9344e742554c030d1a8ebe8d181c029f6",
+              "finish_applications": 1
+            },
+            {
+              "key": "evilrat",
+              "dds_sha256": "39365b13e49d6cc75c91415d909e12f0492e6238c985f8500919cea04ada3a53",
+              "png_sha256": "bdc2631d4ed595d15e669f53d1137c67de5087ad9084630790d6243ad1392b4f",
+              "finish_applications": 1
+            },
+            {
+              "key": "executioner",
+              "dds_sha256": "14a2cea455f4e0ec0cbbd870e29b2bd831a01b31eb3068ae3886d4eab3b2863b",
+              "png_sha256": "5dc287e752a433ac8261039c727c0a7d1b54ff0e4458328c1f904e3e109e4c60",
+              "finish_applications": 1
+            },
+            {
+              "key": "neweyetint",
+              "dds_sha256": "547c52e0379aff4e45bcdbc38b196c6c480f06180147c99c8ee7936d96ff1eca",
+              "png_sha256": "e494402b0a04ab493afed82183fc09102e94cf53096681fb04d8e4dd2cd4d605",
+              "finish_applications": 0
+            },
+            {
+              "key": "olddarkmouse",
+              "dds_sha256": "783a3306af6de44628c414a4769c4af6f320566224145581d645993db57650cb",
+              "png_sha256": "2306e6014b78a3bb1b6f1bdb133934fbde93ec09ab22b3eaec77b38cdeaf860b",
+              "finish_applications": 1
+            },
+            {
+              "key": "ratbatman",
+              "dds_sha256": "bcc06a7919318bb2b06e8a7e57ae6b131650f8bf52a904f818f09be38647de64",
+              "png_sha256": "511b4ceb7a09de19d4990c44bbd9a07a281b4af3f6448c2c48c021758aafc5db",
+              "finish_applications": 1
+            },
+            {
+              "key": "scrolly",
+              "dds_sha256": "831138689eb452085e317e94887b8b1127d1a921776e9cf495624e03cdc87d3b",
+              "png_sha256": "c9de2609c7e612743cc0c4a4374a5fbe436bc586cc3876f0e2ce21eceef35b26",
+              "finish_applications": 1
+            },
+            {
+              "key": "spots",
+              "dds_sha256": "a626eb899d733893b3f38f34cdab615bb82e394fa901627b131d95b19cdd4407",
+              "png_sha256": "4e713b43b42340132ae41128a6236af1faecbcbf0394fe6956f14473db5b839e",
+              "finish_applications": 1
+            },
+            {
+              "key": "subtlestripe",
+              "dds_sha256": "15fbe4db688e515bdbe8874e2e0cf01765c04d237602d530ccb7ed4c24e2f6da",
+              "png_sha256": "7eaaea3f443cdc2d406da5cb736b303b17144bc147198365a78b5e91facbf744",
+              "finish_applications": 1
+            },
+            {
+              "key": "zebra",
+              "dds_sha256": "8e4122b33de2701170ccc5676111712542b7b39b8c7932f97e631dc2fb0ea74a",
+              "png_sha256": "5045cdf1876af494f8fdecd11da07b8ae2c095767e678fd2a57e2be360cc7a9b",
+              "finish_applications": 1
+            }
+          ]
+        },
+        "camera_file": {
+          "path": "work/texturequest_ratonga_eyes/public_comparison_v2/female-camera.json",
+          "sha256": "160fc4f0c278a9202ebc4f63d307e4660275419544e25de46736e40080fc8de1"
+        },
+        "native_geometry": {
+          "archive": "Char_ECA2.vpk",
+          "name": "cooked/characters/ec/pc/ratongafemale/scenes/optimized/ratongafemale_lod0.draw",
+          "bytes": 138683,
+          "sha256": "abeb095d20ed0d4f447e6a974bfedfb294ec3bab03245f8205bfcfba372a83d2"
+        },
+        "native_palette": {
+          "archive": "Char_ECA2.vpk",
+          "name": "cooked/characters/ec/pc/ratongafemale/scenes/optimized/ratongafemale_lod0.sp",
+          "bytes": 521,
+          "sha256": "b73ce1ddd928970786b97cbdd3fa53c9762adcf2b434fbadb65a220c6d7b1352"
+        },
+        "model_packet_sha256": "cd376c5babe78723f1a5e7155fe4a0f31fe46f7d1b0a80290ee5c36a65d74e32"
+      },
+      {
+        "image": {
+          "path": "images/face-ratonga-male-candidate.png",
+          "sha256": "e4fa7996cc937d323b146f0801702d731c8973098bef9f6eb18ca58411e3e3fb"
+        },
+        "dimensions": [
+          2504,
+          1080
+        ],
+        "camera": {
+          "model": "male",
+          "material": "ratman",
+          "layer": "composed",
+          "left_source": "stock-all",
+          "eye_source": "native_fallback",
+          "coat_source": "native_hole",
+          "eye_lobe": "native",
+          "lighting": true,
+          "theta": 0.5,
+          "phi": 1.5707963267948966,
+          "dist": 0.6767936899617534,
+          "target": [
+            0.02662743200195998,
+            2.08321475982666,
+            0.11123822043203352
+          ],
+          "focus": "face-detail",
+          "packet_vertices": 2990,
+          "packet_triangles": 4212,
+          "groups": [
+            {
+              "part": 0,
+              "name": "arms",
+              "count": 1206
+            },
+            {
+              "part": 1,
+              "name": "chest",
+              "count": 1194
+            },
+            {
+              "part": 2,
+              "name": "ears",
+              "count": 384
+            },
+            {
+              "part": 3,
+              "name": "feet",
+              "count": 1260
+            },
+            {
+              "part": 4,
+              "name": "hands",
+              "count": 3090
+            },
+            {
+              "part": 5,
+              "name": "head",
+              "count": 2040
+            },
+            {
+              "part": 6,
+              "name": "legs",
+              "count": 1470
+            },
+            {
+              "part": 7,
+              "name": "tail",
+              "count": 624
+            },
+            {
+              "part": 8,
+              "name": "teetheyes",
+              "count": 1074
+            },
+            {
+              "part": 9,
+              "name": "upperchest",
+              "count": 294
+            }
+          ],
+          "candidate_released": false,
+          "packed_trial": {
+            "plan_sha256": "32c37a1ff4136c88389bbc2467c6daf0ddc0ba10bca487e021fe1ee2fca6253c",
+            "archive_sha256": "10d5156ed8e3a36cce61942544a2648f137861ea2977865f12f7f5ce978df614",
+            "zip_sha256": "dd509994fbbc3cf59d8f0e86ee6d4f4f18d5c67def83d4cbf8e19426ae85fa00",
+            "installed": false,
+            "published": false,
+            "approved": false,
+            "actual_dds_previews": true,
+            "texture_count": 11
+          },
+          "trial_texture_hashes": [
+            {
+              "key": "allratcolor",
+              "dds_sha256": "294518a6114b6e6eb0700eefa2bcb99ac8e301427bc16a9997932136192036d5",
+              "png_sha256": "35dc2bf6feaab507530325e67d9f1e3d30d9994060d314ab325e06bd6bb4500b",
+              "finish_applications": 1
+            },
+            {
+              "key": "darkstriper",
+              "dds_sha256": "07736c4b208e46e2eea0d0fea283bdf1a376b1de656f8aace6121e452b3c8c87",
+              "png_sha256": "e746461b8ed40742e4dd99189ff2cce9344e742554c030d1a8ebe8d181c029f6",
+              "finish_applications": 1
+            },
+            {
+              "key": "evilrat",
+              "dds_sha256": "39365b13e49d6cc75c91415d909e12f0492e6238c985f8500919cea04ada3a53",
+              "png_sha256": "bdc2631d4ed595d15e669f53d1137c67de5087ad9084630790d6243ad1392b4f",
+              "finish_applications": 1
+            },
+            {
+              "key": "executioner",
+              "dds_sha256": "14a2cea455f4e0ec0cbbd870e29b2bd831a01b31eb3068ae3886d4eab3b2863b",
+              "png_sha256": "5dc287e752a433ac8261039c727c0a7d1b54ff0e4458328c1f904e3e109e4c60",
+              "finish_applications": 1
+            },
+            {
+              "key": "neweyetint",
+              "dds_sha256": "547c52e0379aff4e45bcdbc38b196c6c480f06180147c99c8ee7936d96ff1eca",
+              "png_sha256": "e494402b0a04ab493afed82183fc09102e94cf53096681fb04d8e4dd2cd4d605",
+              "finish_applications": 0
+            },
+            {
+              "key": "olddarkmouse",
+              "dds_sha256": "783a3306af6de44628c414a4769c4af6f320566224145581d645993db57650cb",
+              "png_sha256": "2306e6014b78a3bb1b6f1bdb133934fbde93ec09ab22b3eaec77b38cdeaf860b",
+              "finish_applications": 1
+            },
+            {
+              "key": "ratbatman",
+              "dds_sha256": "bcc06a7919318bb2b06e8a7e57ae6b131650f8bf52a904f818f09be38647de64",
+              "png_sha256": "511b4ceb7a09de19d4990c44bbd9a07a281b4af3f6448c2c48c021758aafc5db",
+              "finish_applications": 1
+            },
+            {
+              "key": "scrolly",
+              "dds_sha256": "831138689eb452085e317e94887b8b1127d1a921776e9cf495624e03cdc87d3b",
+              "png_sha256": "c9de2609c7e612743cc0c4a4374a5fbe436bc586cc3876f0e2ce21eceef35b26",
+              "finish_applications": 1
+            },
+            {
+              "key": "spots",
+              "dds_sha256": "a626eb899d733893b3f38f34cdab615bb82e394fa901627b131d95b19cdd4407",
+              "png_sha256": "4e713b43b42340132ae41128a6236af1faecbcbf0394fe6956f14473db5b839e",
+              "finish_applications": 1
+            },
+            {
+              "key": "subtlestripe",
+              "dds_sha256": "15fbe4db688e515bdbe8874e2e0cf01765c04d237602d530ccb7ed4c24e2f6da",
+              "png_sha256": "7eaaea3f443cdc2d406da5cb736b303b17144bc147198365a78b5e91facbf744",
+              "finish_applications": 1
+            },
+            {
+              "key": "zebra",
+              "dds_sha256": "8e4122b33de2701170ccc5676111712542b7b39b8c7932f97e631dc2fb0ea74a",
+              "png_sha256": "5045cdf1876af494f8fdecd11da07b8ae2c095767e678fd2a57e2be360cc7a9b",
+              "finish_applications": 1
+            }
+          ]
+        },
+        "camera_file": {
+          "path": "work/texturequest_ratonga_eyes/public_comparison_v2/male-camera.json",
+          "sha256": "20d22007eb6e757abe8d66acbd659965df2b3e0e11d0afc50d2566ba3f26432b"
+        },
+        "native_geometry": {
+          "archive": "Char_ECA2.vpk",
+          "name": "cooked/characters/ec/pc/ratman/scenes/optimize/ratman_lod0.draw",
+          "bytes": 160639,
+          "sha256": "2f606e938fb65fd506ff2afc4f31973fe4ff923b1b5dc72796dfbe62fbdf6d01"
+        },
+        "native_palette": {
+          "archive": "Char_ECA2.vpk",
+          "name": "cooked/characters/ec/pc/ratman/scenes/optimize/ratman_lod0.sp",
+          "bytes": 476,
+          "sha256": "c6a13e3d96b1fdbd3708bff94e4ef8e60d7269aa86227c69536aadda2858d261"
+        },
+        "model_packet_sha256": "aac14d8f6c5a2de27686b4d7bfa67215efb2e0840d0e40ef87df7c0b581e1bfc"
+      }
+    ],
+    "renderer": [
+      {
+        "path": "reports/nightly/ratonga-shader-diagnostic-v9/index.html",
+        "sha256": "311196ecf177148d9ca16c7267f74d1ccb18011d53e92001145e5aa71fa03368"
+      },
+      {
+        "path": "reports/nightly/ratonga-shader-diagnostic-v9/compare.js",
+        "sha256": "193bfaf2df3170a8978e43611c4b97f211468996c6deb4d542f4f456ac3b700c"
+      },
+      {
+        "path": "reports/nightly/ratonga-shader-diagnostic-v9/sources.js",
+        "sha256": "c554c9e64dcdee402c9a1081e4568e0ae94e8b623bdd975f52641f6818c66b0d"
+      },
+      {
+        "path": "reports/nightly/ratonga-shader-diagnostic-v9/eye_lighting.js",
+        "sha256": "0aafb9d7cf587f27e5b149d6d40872da02a0dcfb1f8d2039512cbe1e7efef996"
+      },
+      {
+        "path": "reports/nightly/ratonga-shader-diagnostic-v9/manifest.json",
+        "sha256": "5daa5d65fe4b95c8fb21629ad0cce238ee7d697029503e2880c61635537d4d9c"
+      }
+    ],
+    "stock_source_receipts": [
+      {
+        "path": "work/nightly/ratonga_review_v1/assets.json",
+        "sha256": "f6943dcf7e6a1b1b0ed07dd28a6a57140849ffc8f30175da6fc751c16d21fac7"
+      },
+      {
+        "path": "work/texturequest_ratonga_eyes/v1/investigation.json",
+        "sha256": "2deb32babcc66674b39ce70cea61bd07bb279d6fddbe0b1830d5aee2cc6b1f04"
+      }
+    ],
+    "packed_trial_receipt": {
+      "path": "work/texturequest_ratonga_pack_trial/native_trial_v2/result.json",
+      "sha256": "444981c0e6535b3175de551187d170efa1a06ce4c3893a57c4a938e21420354a"
+    },
+    "native_eye_receipt": {
+      "path": "work/texturequest_ratonga_eyes/native_fallback_v2/receipt.json",
+      "sha256": "8417447884746a5a3fa54b6deef86e3438576e1a738db82ff397cfb7ae3138bb"
+    },
+    "labels": [
+      "Original stock",
+      "Ratonga local packed trial - not released"
+    ],
+    "source_statement": "Left: authentic original native color pixels. Right: actual complete local trial VPK DDS colors decoded without further finish, including all ten coat revisions and the reconstructed native256 eye atlas.",
+    "export": "Browser button draws both live WebGL canvases immediately into visible2D export canvas; renderer adds concise labels. No cropping, retouching, AI or saved-image alteration.",
+    "geometry_statement": "Complete original male4212/female4260triangle LOD0 geometry and all10 groups/materials retained on both sides. Shared camera, UVs, stored pose, neutral color customization and approximate lighting.",
+    "console_errors": [],
+    "local_trial_only": true,
+    "visual_approval": false,
+    "installed": false,
+    "in_game_success_verified": false,
+    "limitations": [
+      "The native eye DDS is reconstructed from exact original top-level RGBA; RGB is recompressed and lower alpha mips are source-derived. It is not a byte-exact original DDS.",
+      "Browser displays actual DDS decoded top-level PNGs with browser mip/filtering; it does not prove game residency, sampler/animation/morph behavior or complete native shader equivalence.",
+      "The stock side also displays a gray dome and pink ring. These are honest repair-in-testing comparisons, not a solved or released Ratonga eye claim."
+    ],
+    "source_record_seal": "de78385dcb5a6da3bb337be99331961137e5c1a3d2b458e149e71ca3001d0c56",
+    "candidate_in_public_texture_release": false,
+    "source_provenance_file_sha256": "7d2508891dd0542ea5ddfd0eacaf26478d12ebddf23e754ff137ea77d0aa4412"
+  }
+}

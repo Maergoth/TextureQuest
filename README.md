@@ -27,7 +27,7 @@ The 1.0 base download is **27.8 GB**; newer releases may include an additional u
 
 ## Examples
 
-Close-ups of older Norrath, using the original game models and their material layers with matching cameras and lighting. Original textures are on the left; released TextureQuest textures are on the right. These are 3D previews; appearance in game will vary with lighting, settings and character customization.
+Close-ups of older Norrath, using the original game models and their material layers with matching cameras and lighting. Original textures are on the left; released TextureQuest textures are on the right, except for the clearly labeled Ratonga repair candidate. These are 3D previews; appearance in game will vary with lighting, settings and character customization.
 
 Expand a category to see close-up comparisons.
 
@@ -69,6 +69,21 @@ Original 1K artwork beside the released 4K texture on the complete model.
 **Flesh Golem — face, skin and stitching**
 
 ![Stock and TextureQuest Flesh Golem](docs/images/monster-flesh-golem.png)
+
+</details>
+
+<details>
+<summary><strong>Player faces</strong></summary>
+
+**Dark Elf — skin and facial detail**
+
+![Original stock and released TextureQuest Dark Elf face, side by side](docs/images/face-dark-elf.png)
+
+**Ratonga — repair in testing**
+
+This repair candidate is **not included in the installer yet**. Its eye appearance still needs an in-game check.
+
+![Original stock and unreleased Ratonga repair candidate, side by side](docs/images/face-ratonga-candidate.png)
 
 </details>
 

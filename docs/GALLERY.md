@@ -1,6 +1,6 @@
 # Stock and TextureQuest, up close
 
-Original game geometry, with matching cameras and lighting. **Original stock** uses native texture sizes, often 512 × 512; the Leviathan body is originally 1024 × 1024. **TextureQuest** uses the exact released textures: the Leviathan's 4K texture from **1.1**, and the unchanged base textures for the other examples. Each image labels the resolutions. Click for the full 1600 × 960 comparison.
+Original game geometry, with matching cameras and lighting. **Original stock** uses native texture sizes, often 512 × 512; the Leviathan body is originally 1024 × 1024. Released examples use exact packed TextureQuest textures. The Ratonga image is a separately labeled **unreleased repair candidate**. Click an image for the full-size comparison.
 
 These are **3D previews, not in-game screenshots**. Complete objects and their material layers are assembled; terrain is a cropped mesh patch. Lighting and static poses are approximations. Sharper textures can expose existing seams and repeating patterns.
 
@@ -36,6 +36,22 @@ Flesh Golem, including both the head/chest and arms/legs material groups. The cl
 
 ![Original stock and TextureQuest Flesh golem, side by side](images/monster-flesh-golem.png)
 
+## Player faces
+
+Dark Elf, with the complete original female model and its separate eye and mouth material. Left: native 512-square skin and 256-square eye/mouth artwork. Right: the exact released 1024-square DDS textures. The close-up uses the same pose, customization, camera and lighting on both sides.
+
+![Original stock and released TextureQuest Dark Elf face, side by side](images/face-dark-elf.png)
+
+Ratonga female, with the complete original model and combined fur layers. This is a **local repair candidate, not a released feature or a verified in-game fix**. The right side uses the actual packed trial textures. It restores source artwork around the eye openings and returns the shared eye atlas to its native resolution. The preview still shows a cloudy eye under its approximate lighting; in-game validation is pending.
+
+![Original stock and unreleased Ratonga repair candidate, side by side](images/face-ratonga-candidate.png)
+
+The male model uses the same shared eye-atlas fallback, with its complete original geometry and fur layers. This comparison is also an unreleased trial.
+
+![Original stock and unreleased male Ratonga repair candidate, side by side](images/face-ratonga-male-candidate.png)
+
+[Face comparison provenance](face-comparison-provenance.json) records native sources, released or trial DDS identities, complete geometry, shared cameras and exact browser exports. Technical details and reconstruction limits are kept there.
+
 ## Architecture and signage
 
 Bakery artwork on the complete original easel assembly, including the sign, canvas backing and iron stand.
@@ -54,6 +70,6 @@ Darklight Woods grass on a contiguous patch of its actual terrain mesh. The base
 
 ## How these comparisons were made
 
-The right-hand textures were decoded from the released DDS files, including the pack's color finish and compression. The previews apply no extra color correction. Original geometry, UV coordinates, cameras and lighting are shared. Proven color layers, tint masks and protected surface maps are included; scrolling layers use a shared frozen instant. Exact game lighting, animation, particles and supplied mip chains are not reproduced.
+Released examples were decoded from the released DDS files, including the pack's color finish and compression. The Ratonga candidate uses its local trial DDS files. The previews apply no extra color correction. Original geometry, UV coordinates, cameras and lighting are shared. Proven color layers, tint masks and protected surface maps are included; scrolling layers use a shared frozen instant. Exact game lighting, animation, particles and supplied mip chains are not reproduced.
 
 [Image and source provenance](gallery-provenance.json) records the exact release checksum, sampled source identities, materials, cameras and exported image hashes. Only the needed retained samples were decoded; no second full collection of stock textures was created.
