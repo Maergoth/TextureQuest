@@ -87,5 +87,31 @@ class DirectVersions(unittest.TestCase):
         del self.manifest["texture_version"]
         with self.assertRaises(ValueError): versions.texture_version(self.manifest)
 
+    def old_server(self, request, **_):
+        _, metadata, payloads = fixture(texture="1.2.0", manifest_version="1.2.1", tag="v1.2.1", app="1.2.1", explicit=True)
+        data = json.dumps(metadata).encode() if request.full_url == latest.LATEST_API else payloads[request.full_url.rsplit("/", 1)[1]]
+        return Response(data, 200, {"Content-Length": str(len(data))})
+
+    def test_direct_app_refuses_legacy_latest_format_without_install_or_zip_download(self):
+        result = versions.check_updates(self.manifest, "1.3.0", opener=self.old_server)
+        self.assertEqual(result["pack"]["status"], "unavailable")
+        self.assertIn("direct VPK", result["pack"]["message"])
+        self.assertNotIn("manifest", result["pack"])
+        self.assertEqual(result["installer"]["status"], "verified")
+
+    def test_direct_preparation_cannot_select_legacy_zip_format(self):
+        with self.assertRaisesRegex(ValueError, "direct VPK"):
+            latest.fetch_latest(opener=self.old_server, current_manifest=self.manifest)
+
+    def test_saved_legacy_selection_cannot_downgrade_direct_delivery(self):
+        temporary_root = Path(__file__).resolve().parents[1] / "test-temp"
+        temporary_root.mkdir(exist_ok=True)
+        old, metadata, payloads = fixture(texture="1.2.0", manifest_version="1.2.1", tag="v1.2.1", app="1.2.1", explicit=True)
+        with tempfile.TemporaryDirectory(dir=temporary_root) as name:
+            latest.save_receipt(name, metadata, dict(manifest=old, version="1.2.0",
+                manifest_url=latest.REPOSITORY + "/releases/download/v1.2.1/release-manifest.json",
+                manifest_sha256=hashlib.sha256(payloads["release-manifest.json"]).hexdigest()))
+            self.assertEqual(versions.saved_manifest(name, self.manifest), self.manifest)
+
 
 if __name__ == "__main__": unittest.main()

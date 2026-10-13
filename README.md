@@ -10,7 +10,7 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 ## Download and install
 
-**[Download the Windows installer from the latest release](https://github.com/Maergoth/TextureQuest/releases/latest)**
+**[Download TextureQuest 1.3 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/TextureQuest-Installer-1.3.0-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
 
 1. **Patch the game first**, then close every EQ2 client and the launcher.
 2. Extract the installer ZIP into a writable folder outside the game. Keep its contents together and open **TextureQuest.exe**.
@@ -25,7 +25,7 @@ The app checks **texture updates and app updates separately** on startup. Use **
 
 When upgrading the app, close the old copy, extract the new installer into a new folder, and move your existing `data` folder alongside the new `TextureQuest.exe` to keep downloads and installation records. An app update can use the same textures you already have.
 
-App 1.3 moves verified archives from the old `prepared` cache into `downloads` and removes recognized redundant texture ZIPs after the complete cache verifies. This reuses your saved textures without downloading the whole pack again. Unrecognized or changed files are kept.
+App 1.3 moves verified archives from the old `prepared` cache into `downloads` and removes recognized redundant texture ZIPs and superseded saved VPKs after the complete cache verifies. This reuses your saved textures without downloading the whole pack again. Unrecognized or changed files are kept.
 
 **To return to stock:** run the official patcher's file validation to restore the original game files.
 

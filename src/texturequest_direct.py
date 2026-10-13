@@ -18,6 +18,8 @@ from urllib.request import Request, urlopen
 
 from texture_swapper import core
 import texturequest_release as release
+from texturequest_custody import FileCustody, DirectoryCustody
+from texturequest_legacy import LEGACY_ARCHIVES
 
 SCHEMA = "texturequest-direct-prepared-v1"
 REPOSITORY = "https://github.com/Maergoth/TextureQuest"
@@ -142,12 +144,124 @@ def _resume_journal(path, row, partial):
     return value
 
 
+def _native_id(value):
+    return (type(value) is dict and set(value) == {"volume", "file_id"}
+            and type(value["volume"]) is int and 0 <= value["volume"] < 2**32
+            and type(value["file_id"]) is int and 0 < value["file_id"] < 2**64)
+
+
+def _retirement_record(folder, row, old):
+    path = core._plain(folder / (row["name"] + ".retirement.json"), folder)
+    if not path.exists():
+        return None
+    value = core._load(path)
+    fields = {"schema", "target", "partial", "retired", "old_archive", "new_archive", "old_file_id", "new_file_id",
+              "phase", "updated_at", "record_sha256"}
+    retired = core._plain(value.get("retired", ""), folder)
+    pattern = re.escape("." + row["name"] + ".retired-") + r"[0-9a-f]{32}\.vpk"
+    if (set(value) != fields or value["schema"] != "texturequest-direct-retirement-v1"
+            or old is None or value["old_archive"] != _identity(old) or value["new_archive"] != row
+            or value["target"] != str(folder / row["name"])
+            or value["partial"] != str(folder / (row["name"] + ".pending"))
+            or retired.parent != folder or not re.fullmatch(pattern, retired.name)
+            or not _native_id(value["old_file_id"]) or not _native_id(value["new_file_id"])
+            or value["phase"] not in {"prepared", "old-retired", "new-committed"}):
+        raise ValueError("Unknown cache retirement is preserved")
+    return value
+
+
+def _complete_retirement(folder, journal, binding, new, old, row, pause):
+    new.checked(row, pause)
+    if new.identity() != binding["new_file_id"]:
+        raise ValueError("Committed cache identity changed")
+    if old is not None:
+        old.checked(binding["old_archive"], pause)
+        if old.identity() != binding["old_file_id"]:
+            raise ValueError("Retired cache identity changed")
+        old.remove()
+    receipt = core._plain(folder.parent / "cache-commits" / (uuid.uuid4().hex + ".json"), folder.parent)
+    core._atomic(receipt, dict(binding, phase="complete", completed_at=core._now()))
+    journal.unlink()
+
+
+def _commit_download(folder, partial, target, row, old, notify, pause):
+    with DirectoryCustody(folder) as directories, ExitStack() as leases:
+        held_new = leases.enter_context(FileCustody(partial))
+        held_new.checked(row, pause)
+        held_old = leases.enter_context(FileCustody(target)) if target.exists() else None
+        if held_old is not None:
+            if old is None:
+                raise ValueError("New cache destination appeared; preserved")
+            held_old.checked(old, pause)
+            retired = core._plain(folder / ("." + row["name"] + ".retired-" + uuid.uuid4().hex + ".vpk"), folder)
+            journal = core._plain(folder / (row["name"] + ".retirement.json"), folder)
+            if journal.exists():
+                raise ValueError("Unresolved cache retirement is preserved")
+            binding = {"schema": "texturequest-direct-retirement-v1", "target": str(target), "partial": str(partial),
+                       "retired": str(retired), "old_archive": _identity(old), "new_archive": dict(row),
+                       "old_file_id": held_old.identity(), "new_file_id": held_new.identity(), "phase": "prepared"}
+            core._save(journal, binding)
+            release.check_pause(pause)
+            notify("Retiring saved " + row["name"], 0, 1)
+            held_old.rename_new(retired, directories)
+            binding["phase"] = "old-retired"
+            core._save(journal, binding)
+        release.check_pause(pause)
+        notify("Committing downloaded " + row["name"], 0, 1)
+        held_new.rename_new(target, directories)
+        if held_old is not None:
+            binding["phase"] = "new-committed"
+            core._save(journal, binding)
+            _complete_retirement(folder, journal, binding, held_new, held_old, row, pause)
+
+
+def _recover_retirement(folder, row, old, notify, pause):
+    binding = _retirement_record(folder, row, old)
+    if binding is None:
+        return
+    target, partial, retired = map(Path, (binding["target"], binding["partial"], binding["retired"]))
+    journal = folder / (row["name"] + ".retirement.json")
+    with DirectoryCustody(folder) as directories, ExitStack() as leases:
+        held_target = leases.enter_context(FileCustody(target)) if target.exists() else None
+        held_retired = leases.enter_context(FileCustody(retired)) if retired.exists() else None
+        if held_target is not None and held_target.identity() == binding["new_file_id"]:
+            _complete_retirement(folder, journal, binding, held_target, held_retired, row, pause)
+            return
+        if held_target is not None:
+            if held_target.identity() != binding["old_file_id"] or held_retired is not None:
+                raise ValueError("Unrecognized cache destination preserved during recovery")
+            held_target.checked(old, pause)
+        elif held_retired is None:
+            raise ValueError("Journaled old cache is missing; preserved for recovery")
+        if held_retired is not None:
+            held_retired.checked(old, pause)
+            if held_retired.identity() != binding["old_file_id"]:
+                raise ValueError("Retired cache identity differs")
+        held_new = leases.enter_context(FileCustody(partial))
+        held_new.checked(row, pause)
+        if held_new.identity() != binding["new_file_id"]:
+            raise ValueError("Journaled new cache identity differs")
+        if held_target is not None:
+            release.check_pause(pause)
+            held_target.rename_new(retired, directories)
+            held_retired = held_target
+            binding["phase"] = "old-retired"
+            core._save(journal, binding)
+        release.check_pause(pause)
+        notify("Committing downloaded " + row["name"], 0, 1)
+        held_new.rename_new(target, directories)
+        binding["phase"] = "new-committed"
+        core._save(journal, binding)
+        _complete_retirement(folder, journal, binding, held_new, held_retired, row, pause)
+
+
 def _download(row, folder, old=None, notify=None, pause=None, opener=urlopen):
     notify = notify or (lambda *_: None)
     folder = core._plain(folder)
     target = core._plain(folder / row["name"], folder)
     partial = core._plain(folder / (row["name"] + ".pending"), folder)
     journal = core._plain(folder / (row["name"] + ".pending.json"), folder)
+    _recover_retirement(folder, row, old, notify, pause)
     if target.exists():
         if _matches(target, row, pause):
             if len(core.validate_archive(target)) != row["entries"]:
@@ -217,10 +331,7 @@ def _download(row, folder, old=None, notify=None, pause=None, opener=urlopen):
                 if response.read(1):
                     raise ValueError("Archive response exceeds advertised length")
     _checked_archive(partial, row, pause)
-    if target.exists() and (old is None or not _matches(target, old, pause)):
-        raise ValueError("Cached archive changed before replacement; preserved")
-    release.check_pause(pause)
-    os.replace(core._plain(partial, folder), core._plain(target, folder))
+    _commit_download(folder, partial, target, row, old, notify, pause)
     journal.unlink()
     return target
 
@@ -231,22 +342,31 @@ def _migration(swapper, source, row, notify, pause):
     target = core._plain(folder / row["name"], folder)
     source = core._plain(source, swapper.state_dir / "prepared")
     journal = core._plain(folder / (row["name"] + ".migration.json"), folder)
-    binding = {"schema": "texturequest-direct-migration-v1", "source": str(source),
-               "target": str(target), "archive": _identity(row)}
-    if journal.exists():
-        if journal.stat().st_size > core.MAX_MANIFEST_BYTES or core._json(journal.read_bytes()) != binding:
-            raise ValueError("Unknown cache migration is preserved")
-    else:
-        core._atomic(journal, binding)
-    _checked_archive(source, row, pause)
-    if target.exists():
-        _checked_archive(target, row, pause)
-    release.check_pause(pause)
-    notify("Moving saved " + row["name"], 0, 1)
-    os.replace(core._plain(source, swapper.state_dir / "prepared"), core._plain(target, folder))
-    receipt = core._plain(swapper.state_dir / "cache-migrations" / (uuid.uuid4().hex + ".json"), swapper.state_dir)
-    core._atomic(receipt, dict(binding, completed_at=core._now()))
-    journal.unlink()
+    with DirectoryCustody(source.parent, folder) as directories, ExitStack() as leases:
+        held_source = leases.enter_context(FileCustody(source))
+        held_source.checked(row, pause)
+        held_target = leases.enter_context(FileCustody(target)) if target.exists() else None
+        if held_target is not None:
+            held_target.checked(row, pause)
+        binding = {"schema": "texturequest-direct-migration-v2", "source": str(source), "target": str(target),
+                   "archive": _identity(row), "source_file_id": held_source.identity(),
+                   "target_file_id": held_target.identity() if held_target is not None else held_source.identity()}
+        if journal.exists():
+            if journal.stat().st_size > core.MAX_MANIFEST_BYTES or core._json(journal.read_bytes()) != binding:
+                raise ValueError("Unknown cache migration is preserved")
+        else:
+            core._atomic(journal, binding)
+        release.check_pause(pause)
+        notify("Moving saved " + row["name"], 0, 1)
+        if held_target is None:
+            held_source.rename_new(target, directories)
+        else:
+            # Keep the existing verified target in custody. Only the exact
+            # duplicate source is deleted; the target is never replaced.
+            held_source.remove()
+        receipt = core._plain(swapper.state_dir / "cache-migrations" / (uuid.uuid4().hex + ".json"), swapper.state_dir)
+        core._atomic(receipt, dict(binding, completed_at=core._now()))
+        journal.unlink()
 
 
 def _recover_migrations(swapper, rows, pause):
@@ -259,8 +379,8 @@ def _recover_migrations(swapper, rows, pause):
             raise ValueError("Unknown migration journal size")
         saved = core._json(journal.read_bytes())
         target = core._plain(folder / row["name"], folder)
-        if (not isinstance(saved, dict) or set(saved) != {"schema", "source", "target", "archive"}
-                or saved["schema"] != "texturequest-direct-migration-v1" or saved["archive"] != _identity(row)
+        if (not isinstance(saved, dict) or set(saved) != {"schema", "source", "target", "archive", "source_file_id", "target_file_id"}
+                or saved["schema"] != "texturequest-direct-migration-v2" or saved["archive"] != _identity(row)
                 or saved["target"] != str(target)):
             raise ValueError("Unknown migration journal is preserved")
         source = core._plain(saved["source"], swapper.state_dir / "prepared")
@@ -273,108 +393,146 @@ def _recover_migrations(swapper, rows, pause):
         if source.exists():
             _migration(swapper, source, row, lambda *_: None, pause)
         else:
-            _checked_archive(target, row, pause)
-            receipt = core._plain(swapper.state_dir / "cache-migrations" / (uuid.uuid4().hex + ".json"), swapper.state_dir)
-            core._atomic(receipt, dict(saved, completed_at=core._now()))
-            journal.unlink()
+            with DirectoryCustody(source.parent, folder), FileCustody(target) as held:
+                held.checked(row, pause)
+                if held.identity() != saved["target_file_id"]:
+                    raise ValueError("Migrated cache file identity changed")
+                receipt = core._plain(swapper.state_dir / "cache-migrations" / (uuid.uuid4().hex + ".json"), swapper.state_dir)
+                core._atomic(receipt, dict(saved, completed_at=core._now()))
+                journal.unlink()
 
 
 def _remove_exact_download(path, package, pause):
-    """On Windows, delete the exact fully hashed file through its retained handle.
-
-    Denying write/delete sharing prevents a pathname swap or mutation between
-    hash verification and deletion. Failure leaves the download intact.
-    """
+    """Remove only the same verified file, with its ancestors kept in custody."""
     path = core._plain(path)
-    if os.name == "nt":
-        import ctypes
-        from ctypes import wintypes
-        import msvcrt
-        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
-        kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p,
-                                     wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
-        kernel.CreateFileW.restype = wintypes.HANDLE
-        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
-        kernel.SetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
-        kernel.SetFileInformationByHandle.restype = wintypes.BOOL
-        handle = kernel.CreateFileW(str(path), 0x80000000 | 0x10000, 1, None, 3, 0x80, None)
-        if not handle or handle == wintypes.HANDLE(-1).value:
-            raise ctypes.WinError(ctypes.get_last_error())
-        try:
-            fd = msvcrt.open_osfhandle(int(handle), os.O_RDONLY | os.O_BINARY)
-        except BaseException:
-            kernel.CloseHandle(handle)
-            raise
-        with os.fdopen(fd, "rb") as stream:
-            info = os.fstat(stream.fileno())
-            if info.st_nlink != 1 or info.st_size != package["bytes"]:
-                return False
-            if release.hash_stream(stream, pause=pause) != package["sha256"]:
-                return False
-            release.check_pause(pause)
-            core._plain(path)
-            class Disposition(ctypes.Structure):
-                _fields_ = [("DeleteFile", ctypes.c_ubyte)]
-            disposition = Disposition(1)
-            if not kernel.SetFileInformationByHandle(handle, 4, ctypes.byref(disposition), ctypes.sizeof(disposition)):
-                raise ctypes.WinError(ctypes.get_last_error())
-        return True
-    # Portable author fixtures; the consumer build is Windows-only.
-    with path.open("rb") as stream:
-        info = os.fstat(stream.fileno())
-        if info.st_nlink != 1 or info.st_size != package["bytes"] or release.hash_stream(stream, pause=pause) != package["sha256"]:
+    with DirectoryCustody(path.parent), FileCustody(path) as held:
+        if not held.matches(package, pause):
             return False
-        current = core._plain(path).stat()
-        if (current.st_dev, current.st_ino, current.st_size, current.st_mtime_ns) != (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns):
-            raise ValueError("Legacy download changed before deletion")
         release.check_pause(pause)
-        path.unlink()
+        held.remove()
     return True
 
+def _obsolete_archives(swapper, prepared, previous):
+    """Recognize only published historical bytes and exact app receipt paths."""
+    candidates = {}
+    desired = {row["name"].casefold() for row in prepared["archives"]}
+    legacy = core._plain(swapper.state_dir / "prepared", swapper.state_dir)
+    if legacy.exists():
+        children = list(legacy.iterdir())
+        if len(children) > core.MAX_ARCHIVES:
+            raise ValueError("Too many historical caches; preserved for review")
+        for child in sorted(children):
+            if not re.fullmatch(r"[0-9a-f]{32}", child.name):
+                continue
+            try:
+                child = core._plain(child, legacy)
+                receipt = core._plain(child / "manifest.json", child)
+                saved = core.Swapper._prepared(swapper, core._load(receipt))
+                receipt_bytes = receipt.read_bytes()
+                if core._json(receipt_bytes) != saved:
+                    continue
+                owner = {"path": str(receipt), "bytes": len(receipt_bytes),
+                         "sha256": hashlib.sha256(receipt_bytes).hexdigest()}
+                for row in saved["archives"]:
+                    key = (row["name"].casefold(), row["bytes"], row["sha256"])
+                    if key not in LEGACY_ARCHIVES or not Path(row["path"]).exists():
+                        continue
+                    path = core._plain(row["path"], child)
+                    candidate = (path, _identity(row), "legacy-prepared-vpk", owner)
+                    prior = candidates.get(str(path).casefold())
+                    if prior is not None and prior[1] != candidate[1]:
+                        raise ValueError("Ambiguous historical cache inventory")
+                    candidates[str(path).casefold()] = candidate
+            except (ValueError, OSError, KeyError, TypeError):
+                continue  # Unknown/custom receipts and pixels remain untouched.
+    if previous is not None:
+        for row in previous["archives"]:
+            if row["name"].casefold() in desired:
+                continue
+            path = core._plain(row["path"], swapper.state_dir / "downloads")
+            if path != swapper.state_dir / "downloads" / row["name"]:
+                raise ValueError("Historical direct cache path changed")
+            if path.exists():
+                candidates[str(path).casefold()] = (path, _identity(row), "obsolete-direct-vpk", None)
+    if len(candidates) > core.MAX_ARCHIVES:
+        raise ValueError("Too many historical archives; preserved for review")
+    return list(candidates.values())
 
-def _retire_legacy_downloads(swapper, prepared, notify, pause, idle):
+
+def _retire_legacy_downloads(swapper, prepared, notify, pause, idle, previous=None):
     """Called only while operation, helper and download locks remain held."""
     downloads = core._plain(swapper.state_dir / "downloads", swapper.state_dir)
     candidates = [(downloads / item["version"] / item["name"], item) for item in LEGACY_PACKAGES]
     candidates.insert(0, (downloads / "Texture-Pack.zip", LEGACY_PACKAGES[0]))
     candidates = [(path, item) for path, item in candidates if path.exists() or path.is_symlink()]
-    if not candidates:
+    obsolete = _obsolete_archives(swapper, prepared, previous)
+    if not candidates and not obsolete:
         return
-    # Complete new custody must exist and be verified before reclaiming bytes.
-    swapper._prepared(prepared)
-    if core._load(swapper.state_dir / "texturequest-prepared.json") != prepared:
-        raise ValueError("Current direct cache pointer changed")
-    for row in prepared["archives"]:
-        idle()
-        notify("Verifying ready cache before reclaiming downloads: " + row["name"], 0, 1)
-        _checked_archive(row["path"], row, pause)
-    result = {"schema": "texturequest-legacy-download-retirement-v1", "prepared_id": prepared["id"],
-              "release_sha256": prepared["release_sha256"], "created_at": core._now(), "files": []}
-    receipt = core._plain(swapper.state_dir / "cache-migrations" / (uuid.uuid4().hex + "-legacy-downloads.json"), swapper.state_dir)
-    core._save(receipt, result)
-    with ExitStack() as locks:
-        # Old installers lock their version directories; take the same locks.
-        for folder in sorted({path.parent for path, _ in candidates} - {downloads}):
-            locks.enter_context(core._lock(core._plain(folder / "download.lock", downloads)))
-        for path, item in candidates:
+    with DirectoryCustody(downloads), ExitStack() as retained:
+        # Complete new custody must exist and be verified before reclaiming bytes.
+        swapper._prepared(prepared)
+        if core._load(swapper.state_dir / "texturequest-prepared.json") != prepared:
+            raise ValueError("Current direct cache pointer changed")
+        for pointer in (swapper.state_dir / "direct-prepared.json", swapper.state_dir / "texturequest-prepared.json"):
+            owner = retained.enter_context(FileCustody(pointer))
+            owner.stream.seek(0)
+            raw = owner.stream.read(core.MAX_MANIFEST_BYTES + 1)
+            if len(raw) > core.MAX_MANIFEST_BYTES or core._json(raw) != prepared:
+                raise ValueError("Current direct cache receipt changed")
+        for row in prepared["archives"]:
+            idle()
+            notify("Verifying ready cache before reclaiming downloads: " + row["name"], 0, 1)
+            held = retained.enter_context(FileCustody(row["path"]))
+            held.checked(row, pause)
+        result = {"schema": "texturequest-legacy-download-retirement-v1", "prepared_id": prepared["id"],
+                  "release_sha256": prepared["release_sha256"], "created_at": core._now(), "files": []}
+        receipt = core._plain(swapper.state_dir / "cache-migrations" / (uuid.uuid4().hex + "-legacy-downloads.json"), swapper.state_dir)
+        core._save(receipt, result)
+        for path, row, kind, owner in obsolete:
             idle()
             release.check_pause(pause)
-            record = {**item, "path": str(path), "status": "planned"}
+            record = dict(row, path=str(path), kind=kind, status="planned")
             result["files"].append(record)
             core._save(receipt, result)
-            notify("Reclaiming verified legacy download: " + item["name"], 0, 1)
             try:
-                path = core._plain(path, downloads)
-                if not path.is_file():
-                    record["status"] = "preserved-unknown"
-                else:
-                    record["status"] = "removed" if _remove_exact_download(path, item, pause) else "preserved-mismatch"
+                with DirectoryCustody(path.parent), ExitStack() as old_leases:
+                    if owner is not None:
+                        held_receipt = old_leases.enter_context(FileCustody(owner["path"]))
+                        if not held_receipt.matches(owner, pause):
+                            raise ValueError("Historical receipt changed")
+                    held = old_leases.enter_context(FileCustody(path))
+                    held.checked(row, pause)
+                    notify("Reclaiming verified obsolete cache: " + row["name"], 0, 1)
+                    release.check_pause(pause)
+                    held.remove()
+                record["status"] = "removed"
             except (OSError, ValueError) as error:
-                # Busy, linked, changed or foreign bytes never justify removal.
                 record.update(status="preserved-unknown", reason=type(error).__name__)
             core._save(receipt, result)
-    result.update(completed_at=core._now(), removed_bytes=sum(row["bytes"] for row in result["files"] if row["status"] == "removed"))
-    core._save(receipt, result)
+        with ExitStack() as locks:
+            # Old installers lock their version directories; take the same locks.
+            for folder in sorted({path.parent for path, _ in candidates} - {downloads}):
+                locks.enter_context(core._lock(core._plain(folder / "download.lock", downloads)))
+            for path, item in candidates:
+                idle()
+                release.check_pause(pause)
+                record = {**item, "path": str(path), "status": "planned"}
+                result["files"].append(record)
+                core._save(receipt, result)
+                notify("Reclaiming verified legacy download: " + item["name"], 0, 1)
+                try:
+                    path = core._plain(path, downloads)
+                    if not path.is_file():
+                        record["status"] = "preserved-unknown"
+                    else:
+                        record["status"] = "removed" if _remove_exact_download(path, item, pause) else "preserved-mismatch"
+                except (OSError, ValueError) as error:
+                    # Busy, linked, changed or foreign bytes never justify removal.
+                    record.update(status="preserved-unknown", reason=type(error).__name__)
+                core._save(receipt, result)
+        result.update(completed_at=core._now(), removed_bytes=sum(row["bytes"] for row in result["files"] if row["status"] == "removed"))
+        core._save(receipt, result)
+
 
 
 def prepare_direct(swapper, manifest, progress=None, pause=None, opener=urlopen, cache_in_use=None):
@@ -397,9 +555,11 @@ def prepare_direct(swapper, manifest, progress=None, pause=None, opener=urlopen,
         locks.enter_context(core._lock(folder / "download.lock"))
         _recover_migrations(swapper, manifest["archives"], pause)
         previous = {}
+        previous_direct = None
         receipt = core._plain(swapper.state_dir / "direct-prepared.json", swapper.state_dir)
         if receipt.exists():
             old = swapper._prepared(core._load(receipt))
+            previous_direct = old
             previous = {row["name"].casefold(): row for row in old["archives"]}
         legacy = core._plain(swapper.state_dir / "prepared", swapper.state_dir)
         if legacy.exists():
@@ -446,6 +606,6 @@ def prepare_direct(swapper, manifest, progress=None, pause=None, opener=urlopen,
         core._save(receipt, value)
         swapper._prepared(value)
         core._atomic(core._plain(swapper.state_dir / "texturequest-prepared.json", swapper.state_dir), value)
-        _retire_legacy_downloads(swapper, value, notify, pause, idle)
+        _retire_legacy_downloads(swapper, value, notify, pause, idle, previous_direct)
         notify("Ready VPKs verified. Click Install to apply them.", 1, 1)
         return value

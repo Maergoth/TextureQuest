@@ -60,6 +60,9 @@ def fetch_latest(state_dir=None, minimum_version="1.0.0", opener=urlopen, pause=
     if current_manifest is None and version_number(metadata["tag_name"][1:]) < version_number(minimum_version):
         raise ValueError("Latest release is older than the saved version")
     pack = _pack(metadata, _version_asset(metadata, opener, pause), opener, pause)
+    if (current_manifest is not None and current_manifest.get("schema") == "texturequest-release-v3"
+            and pack["manifest"].get("schema") != "texturequest-release-v3"):
+        raise ValueError("This app requires direct VPK downloads. The latest release is using an older format.")
     if current_manifest is not None:
         current_version = texture_version(current_manifest)
         if version_number(pack["version"]) < version_number(current_version):

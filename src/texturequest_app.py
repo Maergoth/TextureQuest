@@ -660,6 +660,8 @@ def main():
     root = tk.Tk()
     app = TextureQuestApp(root, args.data_dir, args.game_dir, args.pack, startup_check=not args.smoke_test)
     if args.smoke_test:
+        root.update_idletasks()
+        root.withdraw()
         def smoke():
             root.update_idletasks()
             receipt = {"version": app.app_version, "texture_version": texture_version(app.release),

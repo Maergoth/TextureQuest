@@ -184,6 +184,8 @@ def saved_manifest(state_dir, bundled):
         return bundled
     if comparison[0] == comparison[1] and pack_identity(manifest) != pack_identity(bundled):
         raise ValueError("Saved texture bytes differ without a version change")
+    if bundled.get("schema") == "texturequest-release-v3" and manifest.get("schema") != "texturequest-release-v3":
+        return bundled  # Reuse legacy VPK bytes through migration, never the legacy ZIP workflow.
     return manifest
 
 
@@ -211,7 +213,9 @@ def check_updates(current_manifest, app_version, state_dir=None, opener=urlopen,
             result[key] = {"status": "unavailable", "message": error_message(error)}
     pack = result["pack"]
     if pack["status"] == "verified":
-        if latest.version_number(pack["version"]) < latest.version_number(current_version):
+        if current_manifest.get("schema") == "texturequest-release-v3" and pack["manifest"].get("schema") != "texturequest-release-v3":
+            result["pack"] = {"status": "unavailable", "message": "This app requires direct VPK downloads. The latest release is using an older format."}
+        elif latest.version_number(pack["version"]) < latest.version_number(current_version):
             result["pack"] = {"status": "unavailable", "message": "GitHub returned older textures. Saved version is kept."}
         elif pack["version"] == current_version and pack["identity"] != current_identity:
             result["pack"] = {"status": "unavailable", "message": "Published texture bytes changed without a texture version change. Saved version is kept."}

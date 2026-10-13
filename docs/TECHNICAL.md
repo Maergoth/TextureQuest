@@ -125,16 +125,17 @@ The installer is a separate Python/Tk application. It does not run the AI model.
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r src\texture_swapper\requirements-build.txt
 .\.venv\Scripts\python.exe -m unittest discover -s tests
-.\.venv\Scripts\python.exe build_installer.py --manifest release-manifest-1.2.0.json --version 1.2.1
+.\.venv\Scripts\python.exe build_installer.py --manifest release-manifest-1.3.0.json --version 1.3.0
 ```
 
-Save `release-manifest.json` from the **1.2.0 release assets** as `release-manifest-1.2.0.json` before running this example. `--version` is the **application build version**, independent of the texture manifest version. The builder stages an exact manifest, its SHA256, the actual app version and the actual texture-data version into the bundle without modifying source manifests. Thus a new app can retain an unchanged texture manifest. Use `--output-root` to choose a separate build/output directory. The example demonstrates the version contract; it does not announce a published 1.2.1 app.
+The versioned `release-manifest-1.3.0.json` in this checkout describes direct VPK delivery. `--version` is the **application build version**, independent of the texture-data version (1.2.0 for this release). The builder stages the exact manifest, its SHA256, the app version and texture-data version into the bundle without modifying source manifests. Use `--output-root` to choose a separate build/output directory. The generic `release-manifest.json` remains a legacy test fixture; use the versioned manifest for this build.
 
 The portable build is written beneath `dist/`; build records and caches go beneath `build/`. Rebuilding is refused when the existing output contains portable user data. These commands build the application, not a new texture pack. Dependency pins are in [requirements-build.txt](../src/texture_swapper/requirements-build.txt); the shipped bundle includes a build manifest and third-party notices. Rebuilt executables are not promised to have identical bytes.
 
 Relevant source:
 
 - [`texturequest_app.py`](../src/texturequest_app.py): consumer interface and explicit install flow.
+- [`texturequest_direct.py`](../src/texturequest_direct.py): direct VPK downloads, one ready cache and migration from legacy prepared files.
 - [`texturequest_release.py`](../src/texturequest_release.py): manifest validation, resumed downloads, part/ZIP integrity and preparation.
 - [`texturequest_updates.py`](../src/texturequest_updates.py): verified base/update overlay, unchanged archive reuse, and resumable preparation of the full effective inventory.
 - [`texturequest_version_check.py`](../src/texturequest_version_check.py): independent app/texture notices, saved version floors and official upgrade links.
@@ -146,6 +147,23 @@ Changes should retain explicit installation, closed-game checks, path containmen
 For a future release, publish new immutable assets rather than replacing the bytes behind existing links. An update containing only changed archives still needs complete archives with every unrelated replacement preserved. Model terms and original game-asset ownership are separate from the installer source; consult the upstream model terms and the project's [ownership notice](../README.md#credits-and-ownership).
 
 ### App and texture update versions
+
+Manifest v3 publishes each complete VPK as an individual immutable GitHub
+release asset. Its `texture_version` describes the artwork; its top-level
+`version` describes the publication. App 1.3 retains texture contents 1.2.0.
+Every archive row gives its name, byte count, SHA256, native entry count and
+official download URL. Size rejects an obvious mismatch quickly; SHA256
+determines whether equal-size files have the same bytes. Unchanged archives can
+keep their earlier direct-asset URL in future releases.
+
+Ready files live once in `data/downloads`. Preparation verifies existing files,
+resumes interrupted downloads and moves matching legacy prepared files into that
+cache. Only recognized obsolete containers are removed after the entire ready
+inventory is verified. Changed or unrecognized files are preserved. Installation
+copies from the same cache; a future sideloader can read it without another full
+dataset. There is no texture ZIP extraction step in direct delivery.
+
+The v1/v2 contracts below document older releases and retained test fixtures.
 
 The application build version, the GitHub publication tag, the manifest envelope version and the texture package version are separate values. `texturequest_build_pin.py` embeds `APP_VERSION`, `TEXTURE_VERSION` and `MANIFEST_SHA256`; frozen UI/runtime checks report those actual values. `src/texturequest_version.py` is only the source default. The texture-data version is `update.version` for manifest v2, or the base version for v1. Texture byte identity hashes the sorted complete archive names, sizes and SHA256 values, excluding display metadata and envelope versions.
 

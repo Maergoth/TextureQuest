@@ -48,7 +48,7 @@ are created. Saved archives remain for future reinstalls.
 
 UPGRADING AN OLDER CACHE
 Keep the existing data folder. The app verifies and moves known prepared VPKs
-into downloads, then removes recognized redundant texture ZIPs only after the
+into downloads, then removes recognized redundant texture ZIPs and superseded saved VPKs only after the
 complete cache verifies. Unrecognized or changed files are preserved. This
 avoids downloading a full pack you already have.
 

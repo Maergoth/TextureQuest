@@ -187,6 +187,7 @@ class DirectTests(unittest.TestCase):
         folder.mkdir()
         (folder / "a.vpk").write_bytes(self.blobs["a.vpk"])
         ids = {row["name"]: Path(row["path"]).stat().st_ino for row in old["archives"]}
+        ids["a.vpk"] = (folder / "a.vpk").stat().st_ino  # Preserve the held duplicate target.
         ready = self.prepare()
         self.assertEqual(self.requests, [])
         for row in ready["archives"]:
