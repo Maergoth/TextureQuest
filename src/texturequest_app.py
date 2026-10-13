@@ -14,6 +14,7 @@ import webbrowser
 from texture_swapper import core
 from texturequest_release import load_manifest, prepare_release, download, Paused
 from texturequest_updates import prepare_update
+from texturequest_direct import DirectSwapper, prepare_direct
 from texturequest_latest import fetch_latest
 from texturequest_version import APP_VERSION
 from texturequest_version_check import check_updates as check_versions, texture_version, pack_identity, saved_manifest, installer_page
@@ -103,7 +104,8 @@ class TextureQuestApp:
         self.root = root
         self.state_dir = core._plain(state_dir or state_directory())
         self.state_dir.mkdir(parents=True, exist_ok=True)
-        self.core = core.Swapper(self.state_dir)
+        self.core = DirectSwapper(self.state_dir)
+        self.cache_guard = None  # Future sideload panel supplies its ownership guard.
         try:
             from texturequest_build_pin import MANIFEST_SHA256
         except ImportError:
@@ -228,6 +230,7 @@ class TextureQuestApp:
         self.button(row, "Browse…", self.choose_game).grid(row=0, column=1)
         pack_card = self.card(body, 1, "2", "Get the complete texture pack")
         updated = self.release.get("schema") == "texturequest-release-v2"
+        direct = self.release.get("schema") == "texturequest-release-v3"
         self.pack_description = self.label(pack_card, "Saved downloads are reused. Checking for updates never installs files.", color=MUTED, size=9)
         self.pack_description.grid(row=1, column=0, sticky="w", pady=(4, 9))
         row = tk.Frame(pack_card, bg=WHITE)
@@ -237,7 +240,8 @@ class TextureQuestApp:
         self.download_button.grid(row=0, column=0, sticky="w")
         self.download_label = self.label(row, "Not downloaded", color=MUTED, wraplength=350, justify="left")
         self.download_label.grid(row=0, column=1, sticky="w", padx=(14, 0))
-        space = ("Updates reuse matching files; fresh or patched installs may also need the 27.8 GB base."
+        space = ("One saved texture set. Downloaded VPKs are ready for installation; no ZIP or extracted duplicate."
+                 if direct else "Updates reuse matching files; fresh or patched installs may also need the 27.8 GB base."
                  if updated else "Allow 56 GB for download/cache, plus 16 GB free on the game drive.")
         self.label(pack_card, space, size=9, color=MUTED, wraplength=620, justify="left").grid(row=3, column=0, sticky="w", pady=(9, 0))
         self.pack_update_label = self.label(pack_card, "Texture updates have not been checked.", size=9, color=GREEN, wraplength=620, justify="left")
@@ -250,6 +254,8 @@ class TextureQuestApp:
         self.install_button = self.button(install_card, "Install TextureQuest", self.install, primary=True)
         self.install_button.grid(row=2, column=0, sticky="w")
         self.sideload = tk.BooleanVar(value=False)
+        self.sideload_requested = False
+        self.sideload.trace_add("write", lambda *_: setattr(self, "sideload_requested", self.sideload.get()))
         self.sideload_checkbox = tk.Checkbutton(install_card, text="Sideload (unavailable for this build)",
             variable=self.sideload, state="disabled", bg=WHITE, fg=MUTED, anchor="w", font=("Segoe UI", 9))
         self.sideload_checkbox.grid(row=3, column=0, sticky="w", pady=(8, 0))
@@ -271,7 +277,7 @@ class TextureQuestApp:
         footer = tk.Frame(self.root, bg=BG, padx=24, pady=12)
         footer.grid(row=2, column=0, sticky="ew")
         footer.columnconfigure(0, weight=1)
-        self.label(footer, "After a game patch, rerun this installer. Saved downloads are kept for reuse.", size=9, color=MUTED).grid(row=0, column=0, sticky="w")
+        self.label(footer, "After a game patch, rerun this installer. Saved textures are reused.", size=9, color=MUTED).grid(row=0, column=0, sticky="w")
         self.menu_button = tk.Menubutton(footer, text="Maintenance & updates ▾", bg=BG, fg=GREEN, activebackground="#e8ede6", relief="flat", cursor="hand2", padx=8, pady=6)
         self.menu_button.grid(row=1, column=0, sticky="w", pady=(5, 0))
         self.menu = tk.Menu(self.menu_button, tearoff=False, bg=WHITE, fg=INK)
@@ -353,11 +359,13 @@ class TextureQuestApp:
         current = installation_current(self.installed, self.release)
         self.install_button.configure(text="Reinstall TextureQuest" if current else "Install TextureQuest")
         if self.prepared:
-            self.download_label.configure(text="Downloaded and verified")
+            self.download_label.configure(text="Saved texture files verified" if self.prepared.get("schema") == "texturequest-direct-prepared-v1" else "Downloaded and verified")
             self.download_button.configure(text="Verify saved pack")
         else:
             folder = self.state_dir / "downloads"
-            if self.release.get("schema") == "texturequest-release-v2":
+            if self.release.get("schema") == "texturequest-release-v3":
+                caption, state = "Download / Resume", "Matching saved VPKs are reused; each file is downloaded once"
+            elif self.release.get("schema") == "texturequest-release-v2":
                 caption, state = "Download / Resume", "Saved downloads and matching files will be reused"
             elif self.saved_zip_path() or (folder / "Texture-Pack.zip").is_file():
                 caption, state = "Prepare saved pack", "Saved download available"
@@ -445,6 +453,11 @@ class TextureQuestApp:
             return
         self._download_latest()
 
+    def cache_in_use(self):
+        # Background cache workers never query Tk state. An integrated panel
+        # provides a thread-safe ownership snapshot through cache_guard.
+        return bool(self.sideload_requested or (self.cache_guard is not None and self.cache_guard()))
+
     def download_update(self, base_zip=None):
         self._download_latest(base_zip)
 
@@ -469,7 +482,10 @@ class TextureQuestApp:
                 self.last_progress = now
         def work():
             latest = fetch_latest(self.state_dir, minimum_version=minimum, pause=self.pause.is_set, current_manifest=self.release)
-            if latest.get("schema") == "texturequest-release-v2":
+            if latest.get("schema") == "texturequest-release-v3":
+                prepared = prepare_direct(self.core, latest, notify, self.pause.is_set,
+                                          cache_in_use=self.cache_in_use)
+            elif latest.get("schema") == "texturequest-release-v2":
                 prepared = prepare_update(self.core, latest, game or None, base_zip,
                                           notify, self.pause.is_set)
             else:
@@ -511,10 +527,14 @@ class TextureQuestApp:
         self.begin("stock", "Preparing to return to original textures…", work)
 
     def clear_cache(self):
-        if self.busy or not messagebox.askyesno("Clear downloaded files", "Remove this app's downloaded ZIP and prepared copies?\n\nInstalled game textures and installation records stay intact. Reinstalling will need a new download or a saved ZIP.", parent=self.root):
+        if self.busy or self.cache_in_use():
+            return
+        if not messagebox.askyesno("Clear saved textures", "Remove this app's saved texture files?\n\nInstalled game textures and installation records stay intact. Reinstalling will need a new download.", parent=self.root):
             return
         def work():
-            with core._lock(self.state_dir / "operation.lock"):
+            with core._lock(self.state_dir / "operation.lock"), core._lock(self.state_dir / "sideload/helper-owner.lock"):
+                if self.cache_in_use():
+                    raise RuntimeError("Stop sideload before clearing saved textures")
                 for name in ("downloads", "prepared", "explorer"):
                     target = core._plain(self.state_dir / name, self.state_dir)
                     if target.exists():
@@ -522,6 +542,7 @@ class TextureQuestApp:
                             core._plain(entry, target)
                         shutil.rmtree(target)
                 core._plain(self.state_dir / "texturequest-prepared.json", self.state_dir).unlink(missing_ok=True)
+                core._plain(self.state_dir / "direct-prepared.json", self.state_dir).unlink(missing_ok=True)
         self.begin("clear", "Clearing downloaded files. Game textures and installation records are kept…", work)
 
     def poll(self):

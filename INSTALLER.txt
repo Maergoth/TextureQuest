@@ -32,20 +32,28 @@ new TextureQuest.exe to retain downloads, caches and installation records.
 Do not discard data/games. Matching installed textures can also be reused.
 
 WHAT IS DOWNLOADED
-The current pack combines the original 27.8 GB base with complete updated
-archives. You do not need to run an old installer first. The latest manifest
-chooses the exact packages automatically; each archive retains unrelated files.
+The app downloads ready-to-use VPK archives directly from GitHub Releases into
+data/downloads. This single cache is used to install or reinstall the pack.
+The current texture contents remain version 1.2.0; app 1.3 changes their delivery
+and storage. Each complete archive retains unrelated game resources.
 The installer checks GitHub's manifest asset SHA-256 and size, then verifies
-every download, prepared VPK and installed VPK against that manifest.
+every downloaded VPK and installed VPK against that manifest. Only missing or
+changed archives need downloading; interrupted files can be resumed.
 
 DOWNLOADS AND SPACE
-Allow room for downloaded ZIPs and one complete prepared archive set, plus
-growth and one staged archive on the game drive. Saved downloads remain for
-future reinstalls. Older prepared caches remain available during an update.
-No extra set of split download chunks or original game backups is created.
+The current cache needs about 28.4 GB. Allow additional room for the game and
+one staged archive during installation; the largest current archive is about
+512 MB. No second extracted pack, texture ZIP, split chunks or game backups
+are created. Saved archives remain for future reinstalls.
+
+UPGRADING AN OLDER CACHE
+Keep the existing data folder. The app verifies and moves known prepared VPKs
+into downloads, then removes recognized redundant texture ZIPs only after the
+complete cache verifies. Unrecognized or changed files are preserved. This
+avoids downloading a full pack you already have.
 
 Clear downloaded files & cache explicitly removes this app's saved downloads
-and prepared copies. Game files and installation records stay. Reinstalling
+and any remaining legacy prepared copies. Game files and installation records stay. Reinstalling
 after clearing them may require downloading the pack again.
 
 SIDELOAD

@@ -46,6 +46,9 @@ def hash_stream(stream, length=None, pause=None):
 
 
 def validate_manifest(value, pinned=True):
+    if value.get("schema") == "texturequest-release-v3":
+        from texturequest_direct import validate_manifest as validate_direct
+        return validate_direct(value, pinned=pinned)
     if value.get("schema") == "texturequest-release-v2":
         from texturequest_updates import validate_manifest as validate_update
         return validate_update(value, pinned=pinned)

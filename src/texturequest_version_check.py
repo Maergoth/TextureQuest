@@ -22,7 +22,8 @@ CHECK_SCHEMA = "texturequest-update-check-v1"
 
 
 def texture_version(manifest):
-    version = manifest.get("update", {}).get("version", manifest.get("version"))
+    version = (manifest.get("texture_version") if manifest.get("schema") == "texturequest-release-v3"
+               else manifest.get("update", {}).get("version", manifest.get("version")))
     latest.version_number(version)
     return version
 
