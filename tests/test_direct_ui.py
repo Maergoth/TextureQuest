@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from texture_swapper import core
 import texturequest_app as app_module
 from test_direct import fixture
+import texturequest_direct as direct
 
 
 class DirectDesktop(unittest.TestCase):
@@ -30,6 +31,49 @@ class DirectDesktop(unittest.TestCase):
             self.root.after_cancel(callback)
         self.root.destroy()
         self.temp.cleanup()
+
+    def test_matching_saved_ready_survives_unavailable_update_without_installing(self):
+        from test_release import vpk
+        source = Path(self.temp.name) / 'own-input'
+        source.mkdir()
+        blobs, manifest = fixture()
+        paths = []
+        for name, blob in blobs.items():
+            path = source / name
+            path.write_bytes(blob)
+            paths.append(path)
+        saved = core.Swapper.prepare(self.app.core, paths)
+        core._atomic(self.app.state_dir / 'texturequest-prepared.json', saved)
+        original = direct.validate_manifest
+        with patch.object(direct, 'validate_manifest', side_effect=lambda value,pinned=True: original(value,pinned=False)):
+            self.app.release_checked = False
+            unavailable = {'status':'unavailable','message':'Latest release still uses the older public format.'}
+            with patch.object(self.app.core,'install',side_effect=AssertionError('must stay explicit')), patch.object(self.app,'begin'):
+                self.app.events.put(('done','check',{'installer':unavailable,'pack':unavailable}))
+                self.app.poll()
+            self.assertEqual(self.app.prepared, saved)
+            self.assertTrue(self.app.release_checked)
+            self.assertTrue(all(Path(row['path']).exists() for row in saved['archives']))
+            self.assertFalse((self.app.state_dir / 'downloads').exists())
+            self.assertIn('unavailable', self.app.pack_update_label.cget('text'))
+
+    def test_download_action_reuses_bundled_ready_on_old_server(self):
+        source = Path(self.temp.name) / 'own-input'
+        source.mkdir()
+        blobs, _ = fixture()
+        paths = []
+        for name, blob in blobs.items():
+            path = source / name
+            path.write_bytes(blob)
+            paths.append(path)
+        saved = core.Swapper.prepare(self.app.core, paths)
+        core._atomic(self.app.state_dir / 'texturequest-prepared.json', saved)
+        original = direct.validate_manifest
+        with patch.object(direct,'validate_manifest',side_effect=lambda value,pinned=True: original(value,pinned=False)), patch.object(app_module,'fetch_latest',side_effect=ValueError('older format')), patch.object(app_module,'prepare_direct',side_effect=AssertionError('no forced migration')), patch.object(self.app,'begin') as begin:
+            self.app._download_latest()
+            result = begin.call_args.args[2]()
+        self.assertEqual(result[1], saved)
+        self.assertFalse((self.app.state_dir / 'downloads').exists())
 
     def test_direct_download_checks_latest_without_any_zip_or_install(self):
         with patch.object(self.app, "begin") as begin, patch.object(app_module, "fetch_latest", return_value=self.manifest) as fetch, \

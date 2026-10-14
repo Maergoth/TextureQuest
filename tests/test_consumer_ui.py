@@ -114,7 +114,7 @@ class DesktopTests(unittest.TestCase):
         core._save(self.app.state_dir / "texturequest-prepared.json", {"source_paths": [str(saved)]})
         self.assertEqual(self.app.saved_zip_path(), saved)
         self.app.refresh_controls()
-        expected = "Download / Resume" if self.app.release.get("schema") == "texturequest-release-v2" else "Prepare saved pack"
+        expected = "Download / Resume" if self.app.release.get("schema") in ("texturequest-release-v2", "texturequest-release-v3") else "Prepare saved pack"
         self.assertEqual(self.app.download_button.cget("text"), expected)
     def test_layout_requests_fit_initial_window(self):
         self.root.geometry("840x870")

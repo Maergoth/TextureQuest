@@ -8,12 +8,13 @@ TextureQuest — Windows x64 installer
    release and downloads what it needs. You do not need a texture ZIP already.
    You can pause and resume; saved downloads are kept and reused automatically.
 5. Click Install TextureQuest after verification. Downloading never installs
-   anything automatically. Wait for installation verification to finish.
+   anything automatically. Wait for copying to finish.
 
 AFTER A GAME PATCH
 Rerun this installer, click Download / Resume, then Install TextureQuest.
 Saved downloads are rechecked and reused, so patching does not require the
-whole pack to download again. Files that already match are skipped.
+whole pack to download again. Recorded installed files with unchanged file
+identity and modification metadata are skipped; patched files are recopied.
 
 UPDATES
 The app checks texture updates and app updates separately on startup.
@@ -24,7 +25,9 @@ An app update may use exactly the same textures. The app shows its own version,
 the selected texture version, saved/prepared textures and installed textures.
 Compatible textures are downloaded here; a changed format needs a newer app.
 Checking never installs files. If either check cannot be verified, it says so;
-retry when connected. Saved downloads and the saved release remain intact.
+retry when connected. A saved ready pack that matches this app's bundled
+manifest can still be installed without downloading again or moving its cache.
+Saved downloads and the saved release remain intact.
 
 Keep the data folder alongside TextureQuest.exe. To upgrade the app, close the
 old copy, extract the new installer to a new folder and move data alongside the
@@ -37,7 +40,10 @@ data/downloads. This single cache is used to install or reinstall the pack.
 The current texture contents remain version 1.2.0; app 1.3 changes their delivery
 and storage. Each complete archive retains unrelated game resources.
 The installer checks GitHub's manifest asset SHA-256 and size, then verifies
-every downloaded VPK and installed VPK against that manifest. Only missing or
+each downloaded VPK against that manifest. Installation hashes bytes while
+copying, without decompressing every resource or rereading each installed file.
+Normal status uses recorded file metadata; Verify performs an optional full
+checksum check. Only missing or
 changed archives need downloading; interrupted files can be resumed.
 
 DOWNLOADS AND SPACE

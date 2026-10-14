@@ -142,6 +142,13 @@ class FileCustody:
         self.identity()
 
     def rename_new(self, target, directories):
+        return self._rename(target, directories, False)
+
+    def rename_replace(self, target, directories):
+        """Explicit installer replacement of the named game archive only."""
+        return self._rename(target, directories, True)
+
+    def _rename(self, target, directories, replace):
         target = core._plain(target)
         core._member(target.name)
         self.identity()
@@ -153,7 +160,7 @@ class FileCustody:
         size = max(ctypes.sizeof(Rename), Rename.FileName.offset + len(name) + 2)
         buffer = ctypes.create_string_buffer(size)
         value = Rename.from_buffer(buffer)
-        value.Flags = 0  # ReplaceIfExists=FALSE, never overwrite a surprise target.
+        value.Flags = 1 if replace else 0
         value.RootDirectory = None
         value.FileNameLength = len(name)
         ctypes.memmove(ctypes.addressof(buffer) + Rename.FileName.offset, name, len(name))

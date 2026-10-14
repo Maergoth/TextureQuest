@@ -5,7 +5,7 @@ downloads, journals and interrupted bytes are preserved for recovery.
 """
 from __future__ import annotations
 
-from contextlib import ExitStack
+from contextlib import ExitStack, nullcontext
 import copy
 import hashlib
 import os
@@ -18,7 +18,9 @@ from urllib.request import Request, urlopen
 
 from texture_swapper import core
 import texturequest_release as release
-from texturequest_custody import FileCustody, DirectoryCustody
+from texturequest_custody import DirectoryCustody
+from texturequest_fast_install import FastFileCustody as FileCustody, DownloadCustody
+import texturequest_fast_install as fast_install
 from texturequest_legacy import LEGACY_ARCHIVES
 
 SCHEMA = "texturequest-direct-prepared-v1"
@@ -92,12 +94,36 @@ def _checked_archive(path, row, pause=None):
     if not _matches(path, row, pause):
         raise ValueError("Archive checksum differs: " + row["name"])
     release.check_pause(pause)
-    if len(core.validate_archive(path)) != row["entries"]:
-        raise ValueError("Archive index differs: " + row["name"])
 
 
 class DirectSwapper(core.Swapper):
     """Inherit game locks/staging/install guards; specialize only cache custody."""
+    trusted_manifest = None
+
+    def trusted_prepared(self, value, manifest):
+        """Recognize an existing official ready receipt without moving or rehashing."""
+        try:
+            validate_manifest(manifest)
+            saved = self._prepared(value)
+            wanted = {row['name'].casefold(): (row['bytes'], row['sha256']) for row in manifest['archives']}
+            rows = saved['archives']
+            if len(rows) != len(wanted):
+                return False
+            actual = {row['name'].casefold(): (row['bytes'], row['sha256']) for row in rows}
+            if actual != wanted or len(actual) != len(rows):
+                return False
+            return all(core._plain(row['path']).is_file() and Path(row['path']).stat().st_size == row['bytes'] for row in rows)
+        except (OSError, ValueError, KeyError, TypeError):
+            return False
+
+    def saved_ready(self, manifest):
+        pointer = core._plain(self.state_dir / 'texturequest-prepared.json', self.state_dir)
+        try:
+            value = core._load(pointer)
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
+        return value if self.trusted_prepared(value, manifest) else None
+
     def _prepared(self, value):
         if not isinstance(value, dict) or value.get("schema") != SCHEMA:
             return super()._prepared(value)
@@ -118,7 +144,13 @@ class DirectSwapper(core.Swapper):
 
     def install(self, prepared, game_dir, progress=None):
         with core._lock(self.state_dir / "sideload/helper-owner.lock"):
+            if (prepared.get("schema") == SCHEMA or self.trusted_manifest is not None
+                    and self.trusted_prepared(prepared, self.trusted_manifest)):
+                return fast_install.install(self, prepared, game_dir, progress)
             return super().install(prepared, game_dir, progress)
+
+    def status(self, game_dir, verify=False):
+        return super().status(game_dir) if verify else fast_install.status(self, game_dir)
 
 
 def _resume_journal(path, row, partial):
@@ -184,9 +216,9 @@ def _complete_retirement(folder, journal, binding, new, old, row, pause):
     journal.unlink()
 
 
-def _commit_download(folder, partial, target, row, old, notify, pause):
+def _commit_download(folder, partial, target, row, old, notify, pause, new_owner=None):
     with DirectoryCustody(folder) as directories, ExitStack() as leases:
-        held_new = leases.enter_context(FileCustody(partial))
+        held_new = new_owner if new_owner is not None else leases.enter_context(FileCustody(partial))
         held_new.checked(row, pause)
         held_old = leases.enter_context(FileCustody(target)) if target.exists() else None
         if held_old is not None:
@@ -264,76 +296,77 @@ def _download(row, folder, old=None, notify=None, pause=None, opener=urlopen):
     _recover_retirement(folder, row, old, notify, pause)
     if target.exists():
         if _matches(target, row, pause):
-            if len(core.validate_archive(target)) != row["entries"]:
-                raise ValueError("Archive index differs: " + row["name"])
             return target
         if old is None or not _matches(target, old, pause):
             raise ValueError("Unrecognized cached archive is preserved: " + target.name)
     saved = _resume_journal(journal, row, partial)
-    digest = hashlib.sha256()
-    if partial.exists():
-        with partial.open("rb") as stream:
-            while chunk := stream.read(core.CHUNK):
-                release.check_pause(pause)
-                digest.update(chunk)
-    if digest.hexdigest() != saved["prefix_sha256"]:
-        raise ValueError("Interrupted download prefix changed; preserved for recovery")
-    count = saved["bytes_written"]
-    if shutil.disk_usage(folder).free < row["bytes"] - count + 64 * core.CHUNK:
-        raise OSError("Not enough free space for " + row["name"])
-    if count < row["bytes"]:
-        headers = {"User-Agent": "TextureQuest/1.3.0", "Accept-Encoding": "identity"}
-        if count:
-            headers["Range"] = f"bytes={count}-"
-        with opener(Request(row["url"], headers=headers), timeout=45) as response:
-            final = urlsplit(response.geturl())
-            if (final.scheme != "https" or final.username or final.password or final.port not in (None, 443)
-                    or final.hostname not in {"github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"}):
-                raise ValueError("Unexpected direct archive response")
-            status = response.getcode()
-            if status == 206:
-                if response.headers.get("Content-Range") != f"bytes {count}-{row['bytes'] - 1}/{row['bytes']}":
-                    raise ValueError("Direct archive range differs")
-                received = count
-            elif status == 200:
-                received = 0
-            else:
-                raise OSError("Archive server returned HTTP " + str(status))
-            length = response.headers.get("Content-Length")
-            if length is not None and int(length) != row["bytes"] - received:
-                raise ValueError("Direct archive response length differs")
-            if not received and count:
-                with partial.open("rb") as prefix:
-                    left = count
-                    while left:
-                        release.check_pause(pause)
-                        expected = prefix.read(min(core.CHUNK, left))
-                        if response.read(len(expected)) != expected:
-                            raise ValueError("Server resume prefix differs; saved bytes preserved")
-                        left -= len(expected)
-            with partial.open("ab" if partial.exists() else "xb") as output:
-                while count < row["bytes"]:
+    with DownloadCustody(partial) as owner:
+        digest = hashlib.sha256()
+        if saved["bytes_written"]:
+            with nullcontext(owner.stream) as stream:
+                while chunk := stream.read(core.CHUNK):
                     release.check_pause(pause)
-                    maximum = min(CHECKPOINT, row["bytes"] - count)
-                    chunk = response.read(maximum)
-                    if not chunk:
-                        raise OSError("Download interrupted; resume will use the verified prefix")
-                    if len(chunk) > maximum:
-                        raise ValueError("Archive response exceeded the requested bound")
-                    output.write(chunk)
-                    output.flush()
-                    os.fsync(output.fileno())
                     digest.update(chunk)
-                    count += len(chunk)
-                    saved.update(bytes_written=count, prefix_sha256=digest.hexdigest())
-                    core._atomic(journal, saved)
-                    notify("Downloading " + row["name"], count, row["bytes"])
-                if response.read(1):
-                    raise ValueError("Archive response exceeds advertised length")
-    _checked_archive(partial, row, pause)
-    _commit_download(folder, partial, target, row, old, notify, pause)
-    journal.unlink()
-    return target
+        if digest.hexdigest() != saved["prefix_sha256"]:
+            raise ValueError("Interrupted download prefix changed; preserved for recovery")
+        count = saved["bytes_written"]
+        if shutil.disk_usage(folder).free < row["bytes"] - count + 64 * core.CHUNK:
+            raise OSError("Not enough free space for " + row["name"])
+        if count < row["bytes"]:
+            headers = {"User-Agent": "TextureQuest/1.3.1", "Accept-Encoding": "identity"}
+            if count:
+                headers["Range"] = f"bytes={count}-"
+            with opener(Request(row["url"], headers=headers), timeout=45) as response:
+                final = urlsplit(response.geturl())
+                if (final.scheme != "https" or final.username or final.password or final.port not in (None, 443)
+                        or final.hostname not in {"github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"}):
+                    raise ValueError("Unexpected direct archive response")
+                status = response.getcode()
+                if status == 206:
+                    if response.headers.get("Content-Range") != f"bytes {count}-{row['bytes'] - 1}/{row['bytes']}":
+                        raise ValueError("Direct archive range differs")
+                    received = count
+                elif status == 200:
+                    received = 0
+                else:
+                    raise OSError("Archive server returned HTTP " + str(status))
+                length = response.headers.get("Content-Length")
+                if length is not None and int(length) != row["bytes"] - received:
+                    raise ValueError("Direct archive response length differs")
+                if not received and count:
+                    with nullcontext(owner.stream) as prefix:
+                        prefix.seek(0)
+                        left = count
+                        while left:
+                            release.check_pause(pause)
+                            expected = prefix.read(min(core.CHUNK, left))
+                            if response.read(len(expected)) != expected:
+                                raise ValueError("Server resume prefix differs; saved bytes preserved")
+                            left -= len(expected)
+                with nullcontext(owner.stream) as output:
+                    output.seek(count)
+                    while count < row["bytes"]:
+                        release.check_pause(pause)
+                        maximum = min(CHECKPOINT, row["bytes"] - count)
+                        chunk = response.read(maximum)
+                        if not chunk:
+                            raise OSError("Download interrupted; resume will use the verified prefix")
+                        if len(chunk) > maximum:
+                            raise ValueError("Archive response exceeded the requested bound")
+                        output.write(chunk)
+                        output.flush()
+                        os.fsync(output.fileno())
+                        digest.update(chunk)
+                        count += len(chunk)
+                        saved.update(bytes_written=count, prefix_sha256=digest.hexdigest())
+                        core._atomic(journal, saved)
+                        notify("Downloading " + row["name"], count, row["bytes"])
+                    if response.read(1):
+                        raise ValueError("Archive response exceeds advertised length")
+        owner.remember_verified(row, digest.hexdigest())
+        _commit_download(folder, partial, target, row, old, notify, pause, new_owner=owner)
+        journal.unlink()
+        return target
 
 
 def _migration(swapper, source, row, notify, pause):

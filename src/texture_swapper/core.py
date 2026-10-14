@@ -372,12 +372,8 @@ def ensure_game_closed():
     """Fail closed if Windows process enumeration cannot be verified."""
     guarded = {"everquest2.exe", "eq2.exe", "launchpad.exe", "eq2patch.exe", "eq2patcher.exe"}
     if os.name == "nt":
-        result = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True,
-                                text=True, timeout=20, creationflags=subprocess.CREATE_NO_WINDOW)
-        rows = list(csv.reader(io.StringIO(result.stdout)))
-        if result.returncode or result.stderr.strip() or not rows or any(len(r) != 5 or not r[1].isdigit() for r in rows):
-            raise RuntimeError("Unable to verify that EQ2 and its patcher are closed")
-        active = [r[0] for r in rows if r[0].casefold() in guarded]
+        from texturequest_processes import ensure_closed
+        return ensure_closed()
     else:
         import psutil
         active = [p.info["name"] for p in psutil.process_iter(["name"]) if (p.info["name"] or "").casefold() in guarded]

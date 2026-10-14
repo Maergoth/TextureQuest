@@ -6,6 +6,27 @@ from pathlib import Path
 import struct
 import tempfile
 import zlib
+from contextlib import contextmanager
+
+
+@contextmanager
+def _fixture_closed_guard(folder, swapper, game):
+    """Only --verify-runtime's fresh D-only fake game may use this predicate."""
+    from texture_swapper import core
+    folder = folder.absolute()
+    game = game.absolute()
+    def fixture_closed():
+        if (folder.drive.casefold() != 'd:' or game != folder / 'fixture-game'
+                or not swapper.state_dir.is_relative_to(folder)
+                or core.validate_game(game) != folder / 'fixture-game/paks'):
+            raise ValueError('Runtime fixture guard cannot accept a real game path')
+    fixture_closed()
+    original = core.ensure_game_closed
+    core.ensure_game_closed = fixture_closed
+    try:
+        yield
+    finally:
+        core.ensure_game_closed = original
 
 
 def _direct_runtime(folder, vpk):
@@ -38,8 +59,21 @@ def _direct_runtime(folder, vpk):
     assert all(Path(row["path"]).parent == cache.state_dir / "downloads" for row in ready["archives"])
     assert not (cache.state_dir / "prepared").exists()
     requests.clear()
-    prepare_direct(cache, manifest, opener=opener)
+    ready = prepare_direct(cache, manifest, opener=opener)
     assert not requests, "Matching direct cache must not download again"
+
+    # Actual frozen/source direct installation, restricted to this helper's
+    # own freshly generated D fake game. Product/UI process guard is unchanged.
+    game = folder / 'fixture-game'
+    for name in names:
+        (game / 'paks' / name).write_bytes(b'own tiny fixture stock bytes')
+    with _fixture_closed_guard(folder, cache, game):
+        installed = cache.install(ready, game)
+        assert installed['intact_count'] == 310
+        identities = [(game / 'paks' / name).stat().st_ino for name in names]
+        cache.install(ready, game)
+        assert identities == [(game / 'paks' / name).stat().st_ino for name in names]
+    assert all((game / 'paks' / name).read_bytes() == vpk for name in names)
 
     source = folder / "legacy-input"
     source.mkdir()
@@ -57,7 +91,9 @@ def _direct_runtime(folder, vpk):
     assert all(not Path(row["path"]).exists() for row in legacy["archives"])
     assert core._load(migrated.state_dir / "texturequest-prepared.json") == complete
     return dict(direct_fixture_archives=310, single_ready_cache=True,
-                matching_cache_network_free=True, legacy_migration_network_free=True)
+                matching_cache_network_free=True, legacy_migration_network_free=True,
+                direct_fast_install=True, matching_installed_copy_skipped=True,
+                runtime_install_guard='own-fresh-D-fixture-only')
 
 
 def run(output):
@@ -66,6 +102,8 @@ def run(output):
     from texturequest_app import resource, APP_VERSION
     from texturequest_version_check import texture_version
     output = Path(output).absolute()
+    if output.drive.casefold() != 'd:':
+        raise ValueError('Internal runtime fixture outputs must be on D:')
     output.parent.mkdir(parents=True, exist_ok=True)
     result = {"status": "error", "game_files_touched": False, "gui_opened": False}
     try:
@@ -86,7 +124,8 @@ def run(output):
             swapper = core.Swapper(folder / "state")
             prepared = swapper.prepare([archive])
             assert not swapper.preflight(prepared, game)["missing"]
-            installed = swapper.install(prepared, game)
+            with _fixture_closed_guard(folder, swapper, game):
+                installed = swapper.install(prepared, game)
             assert installed["status"] == "installed" and not core._readonly(archive)
             direct_result = _direct_runtime(folder, vpk)
             try:

@@ -56,7 +56,7 @@ def installation_current(status, manifest):
 
 def installation_summary(status, manifest):
     if installation_current(status, manifest):
-        return "TextureQuest is installed and verified."
+        return "TextureQuest is installed."
     if status.get("managed_count"):
         return "Installed files need attention. Reinstall TextureQuest after patching."
     return "TextureQuest has not been installed by this app yet."
@@ -113,6 +113,8 @@ class TextureQuestApp:
                 raise ValueError("Installer is missing its bundled release pin")
             MANIFEST_SHA256 = None
         self.release = load_manifest(resource("release-manifest.json"), MANIFEST_SHA256)
+        self.bundled_release = self.release
+        self.core.trusted_manifest = self.bundled_release
         if getattr(sys, "frozen", False):
             from texturequest_build_pin import TEXTURE_VERSION
             if TEXTURE_VERSION != texture_version(self.release):
@@ -144,6 +146,7 @@ class TextureQuestApp:
         self.events = queue.Queue()
         self.busy = None
         self.prepared = self.preflight = None
+        self.restore_saved_ready()
         self.installed = {}
         self.pause = threading.Event()
         self.closing = self.close_after_pause = False
@@ -299,6 +302,17 @@ class TextureQuestApp:
         if hasattr(self, "install_button"):
             self.refresh_controls()
 
+    def restore_saved_ready(self):
+        """Bundled manifest plus an owned matching ready receipt permits offline use."""
+        if pack_identity(self.release) != pack_identity(self.bundled_release):
+            return False
+        saved = self.core.saved_ready(self.bundled_release)
+        if saved is None:
+            return False
+        self.prepared = saved
+        self.release_checked = True
+        return True
+
     def saved_zip_path(self):
         prepared = self.prepared
         if not prepared:
@@ -352,7 +366,7 @@ class TextureQuestApp:
         installed_text = "Installed version not checked"
         if installed_version:
             installed_text = "Installed textures " + installed_version
-            installed_text += " (verified)" if all(row.get("integrity") == "intact" for row in rows) else " (files need attention)"
+            installed_text += " (installed)" if all(row.get("integrity") == "intact" for row in rows) else " (files need attention)"
         elif self.installed and not self.installed.get("managed_count"):
             installed_text = "No pack installed by this app"
         self.pack_versions_label.configure(text="Selected textures " + texture_version(self.release) + " · " + cache_text + "\n" + installed_text)
@@ -376,7 +390,7 @@ class TextureQuestApp:
             self.download_label.configure(text=state)
             self.download_button.configure(text=caption)
         if current:
-            text = "Installed and verified. Rerun this installer after a game patch."
+            text = "Installed. Rerun this installer after a game patch."
         elif self.preflight and self.preflight.get("missing"):
             text = "Required archives are missing. Patch this game folder fully, then try again."
         elif self.prepared and self.game.get().strip() and self.preflight:
@@ -425,24 +439,27 @@ class TextureQuestApp:
     def report(self, text):
         self.events.put(("progress", str(text)))
 
-    def inspect(self, game, prepared=None):
+    def inspect(self, game, prepared=None, verify=False):
         if not game:
             return {}, None
         core.validate_game(game)
-        return self.core.status(game), self.core.preflight(prepared, game) if prepared else None
+        status = self.core.status(game, verify=True) if verify else self.core.status(game)
+        return status, self.core.preflight(prepared, game) if prepared else None
 
     def choose_game(self):
         folder = filedialog.askdirectory(title="Choose the folder containing EverQuest2.exe and paks", initialdir=self.game.get() or None)
         if folder:
             self.game.set(folder)
-            self.verify_installation()
+            self.verify_installation(full=False)
 
-    def verify_installation(self):
+    def verify_installation(self, full=True):
         game, prepared = self.game.get().strip(), self.prepared
         if not game:
             self.set_message("Choose your EverQuest II folder first.")
             return
-        self.begin("verify", "Checking your game folder and installed textures…", lambda: self.inspect(game, prepared))
+        self.restore_saved_ready()
+        prepared = self.prepared
+        self.begin("verify", "Checking your game folder and installed textures…", lambda: self.inspect(game, prepared, verify=full))
 
     def prepare_zip(self, path):
         self._download_latest(base_zip=path)
@@ -481,7 +498,15 @@ class TextureQuestApp:
                 self.events.put(("download-progress", message, done, total))
                 self.last_progress = now
         def work():
-            latest = fetch_latest(self.state_dir, minimum_version=minimum, pause=self.pause.is_set, current_manifest=self.release)
+            try:
+                latest = fetch_latest(self.state_dir, minimum_version=minimum, pause=self.pause.is_set, current_manifest=self.release)
+            except (OSError, ValueError):
+                prepared = self.core.saved_ready(self.bundled_release) if pack_identity(self.release) == pack_identity(self.bundled_release) else None
+                if prepared is None:
+                    raise
+                status, preflight = self.inspect(game, prepared)
+                notify("Update check unavailable; reusing saved files matching this app's bundled manifest.", 1, 1)
+                return self.bundled_release, prepared, status, preflight
             if latest.get("schema") == "texturequest-release-v3":
                 prepared = prepare_direct(self.core, latest, notify, self.pause.is_set,
                                           cache_in_use=self.cache_in_use)
@@ -516,7 +541,7 @@ class TextureQuestApp:
             if shutil.disk_usage(ready["paks_dir"]).free < needed:
                 raise OSError(f"Free at least {human_bytes(needed)} on the game drive for the larger textures and a staged archive.")
             return self.core.install(prepared, game, progress=self.report)
-        self.begin("install", "Installing TextureQuest. Keep the game and launcher closed until verification finishes…",
+        self.begin("install", "Installing TextureQuest. Keep the game and launcher closed until copying finishes…",
                    work)
 
     def return_to_stock(self):
@@ -591,6 +616,8 @@ class TextureQuestApp:
                         self.release = pack["manifest"]
                         self.release_checked = True
                         self.remember_pack_version()
+                    else:
+                        self.restore_saved_ready()
                     failures = [channel["message"] for channel in (value["pack"], value["installer"]) if channel.get("status") == "unavailable"]
                     self.set_message(" ".join(dict.fromkeys(failures)) if failures else
                                      "Version checks complete. App updates open on GitHub; texture downloads are prepared here.", error=bool(failures))
@@ -599,7 +626,7 @@ class TextureQuestApp:
                             initial, self.initial_pack = self.initial_pack, None
                             self.prepare_zip(initial)
                         else:
-                            self.verify_installation()
+                            self.verify_installation(full=False)
                     elif self.release_checked and self.initial_pack:
                         initial, self.initial_pack = self.initial_pack, None
                         self.prepare_zip(initial)

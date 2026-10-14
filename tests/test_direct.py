@@ -175,11 +175,11 @@ class DirectTests(unittest.TestCase):
         self.assertEqual(target.read_bytes(), original)
         self.assertTrue(target.with_name("a.vpk.pending").exists())
 
-    def test_archive_index_must_match_after_full_download_hash(self):
+    def test_trusted_download_uses_sha_identity_without_resource_revalidation(self):
         self.manifest["archives"][0]["entries"] = 2
-        with self.assertRaisesRegex(ValueError, "index differs"):
-            self.prepare()
-        self.assertFalse((self.swapper.state_dir / "downloads/a.vpk").exists())
+        with patch.object(core, "validate_archive", side_effect=AssertionError("redundant resource validation")):
+            ready = self.prepare()
+        self.assertEqual(Path(ready["archives"][0]["path"]).read_bytes(), self.blobs["a.vpk"])
 
     def test_legacy_same_drive_move_and_exact_duplicate_coalesce(self):
         old = self.legacy()

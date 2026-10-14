@@ -10,12 +10,12 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 ## Download and install
 
-**[Download TextureQuest 1.3 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/TextureQuest-Installer-1.3.0-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
+**[Download TextureQuest 1.3.1 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.3.1/TextureQuest-Installer-1.3.1-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
 
 1. **Patch the game first**, then close every EQ2 client and the launcher.
 2. Extract the installer ZIP into a writable folder outside the game. Keep its contents together and open **TextureQuest.exe**.
 3. Choose the game folder containing `EverQuest2.exe` and `paks`. The installer checks the latest texture release and downloads the files it needs. Interrupted downloads can be resumed. No separate texture ZIP, Python, AI software or GPU generation is needed.
-4. Once the pack is ready, click **Install TextureQuest**. Wait for verification to finish.
+4. Once the pack is ready, click **Install TextureQuest**. Wait for copying to finish.
 
 The current textures take about **28.4 GB** in one cache of ready-to-use archives under `data/downloads`. There is no second extracted pack or texture ZIP. Allow additional room for the installed game and one temporary archive during installation; the largest current archive is about 512 MB. The app checks space as it works, resumes interrupted downloads, and reuses unchanged files. Keep the app's `data` folder so you can reinstall after patches. Installation starts only when you click Install.
 
@@ -24,6 +24,12 @@ The current textures take about **28.4 GB** in one cache of ready-to-use archive
 The app checks **texture updates and app updates separately** on startup. Use **Maintenance & updates → Check for updates** to check again. New textures are downloaded and prepared in this app; **Get app update** opens the official GitHub release page for a newer installer. Downloading never installs anything automatically. If a check fails, the app says it could not verify that update and keeps saved files.
 
 When upgrading the app, close the old copy, extract the new installer into a new folder, and move your existing `data` folder alongside the new `TextureQuest.exe` to keep downloads and installation records. An app update can use the same textures you already have.
+
+App 1.3.1 speeds up normal installation: it hashes bytes as it copies, uses a
+native game/launcher check, and avoids decompressing every texture or repeatedly
+reading the installed pack. Unchanged recorded files are skipped using file
+identity and modification metadata. **Verify** remains available for a full
+checksum check when you want one. Texture contents remain version 1.2.0.
 
 App 1.3 moves verified archives from the old `prepared` cache into `downloads` and removes recognized redundant texture ZIPs and superseded saved VPKs after the complete cache verifies. This reuses your saved textures without downloading the whole pack again. Unrecognized or changed files are kept.
 
