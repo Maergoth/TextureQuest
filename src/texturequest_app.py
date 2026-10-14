@@ -151,6 +151,8 @@ class TextureQuestApp:
         self.pause = threading.Event()
         self.closing = self.close_after_pause = False
         self.last_progress = 0
+        self.last_overall_progress = 0
+        self.overall_active = False
         self.controls = []
         self.game = tk.StringVar(value=str(initial_game or ""))
         self.game.trace_add("write", lambda *_: self.game_changed())
@@ -271,6 +273,8 @@ class TextureQuestApp:
         row.columnconfigure(0, weight=1)
         self.progress = ttk.Progressbar(row, mode="determinate", maximum=100, style="Quest.Horizontal.TProgressbar")
         self.progress.grid(row=0, column=0, sticky="ew")
+        self.overall_label = self.label(row, "", size=9, color=MUTED)
+        self.overall_label.grid(row=1, column=0, sticky="w", pady=(4, 0))
         self.pause_button = tk.Button(row, text="Pause", command=self.request_pause, font=("Segoe UI", 9), bg="#e8ede6", fg=INK, relief="flat", padx=10, pady=3)
         self.pause_button.grid(row=0, column=1, padx=(10, 0))
         self.pause_button.grid_remove()
@@ -421,12 +425,19 @@ class TextureQuestApp:
         self.busy = kind
         self.set_message(message)
         self.refresh_controls()
+        self.overall_active = False
+        self.last_progress = self.last_overall_progress = 0
+        self.overall_label.configure(text="")
+        if kind in ("download", "update", "install"):
+            self.progress.configure(mode="determinate", value=0, maximum=100)
+            caption = "Overall install" if kind == "install" else "Overall download"
+            self.overall_label.configure(text=caption + ": preparing…")
         if kind in ("download", "update"):
             self.pause.clear()
             self.progress.configure(mode="determinate", value=0, maximum=100)
             self.pause_button.configure(text="Pause", state="normal")
             self.pause_button.grid()
-        else:
+        elif kind != "install":
             self.progress.configure(mode="indeterminate")
             self.progress.start(12)
         def work():
@@ -438,6 +449,18 @@ class TextureQuestApp:
 
     def report(self, text):
         self.events.put(("progress", str(text)))
+
+    def report_overall(self, message, done, total, completed, files):
+        now = time.monotonic()
+        if now - self.last_overall_progress > .1 or completed == files or done == 0:
+            self.events.put(("overall-progress", message, done, total, completed, files))
+            self.last_overall_progress = now
+
+    def finish_progress(self, kind):
+        self.progress.configure(value=100)
+        caption = "Overall install" if kind == "install" else "Overall download"
+        rows = self.release["archives"]
+        self.overall_label.configure(text=f"{caption}: 100% · {len(rows)}/{len(rows)} PAKs · {human_bytes(sum(row['bytes'] for row in rows))}")
 
     def inspect(self, game, prepared=None, verify=False):
         if not game:
@@ -509,7 +532,7 @@ class TextureQuestApp:
                 return self.bundled_release, prepared, status, preflight
             if latest.get("schema") == "texturequest-release-v3":
                 prepared = prepare_direct(self.core, latest, notify, self.pause.is_set,
-                                          cache_in_use=self.cache_in_use)
+                                          cache_in_use=self.cache_in_use, overall_progress=self.report_overall)
             elif latest.get("schema") == "texturequest-release-v2":
                 prepared = prepare_update(self.core, latest, game or None, base_zip,
                                           notify, self.pause.is_set)
@@ -540,7 +563,7 @@ class TextureQuestApp:
             needed = game_space_needed(ready)
             if shutil.disk_usage(ready["paks_dir"]).free < needed:
                 raise OSError(f"Free at least {human_bytes(needed)} on the game drive for the larger textures and a staged archive.")
-            return self.core.install(prepared, game, progress=self.report)
+            return self.core.install(prepared, game, progress=self.report, overall_progress=self.report_overall)
         self.begin("install", "Installing TextureQuest. Keep the game and launcher closed until copying finishes…",
                    work)
 
@@ -579,14 +602,28 @@ class TextureQuestApp:
                     continue
                 if event[0] == "download-progress":
                     _, message, done, total = event
-                    self.progress.configure(value=100 * done / max(total, 1))
-                    self.download_label.configure(text=f"{100 * done / total:.1f}% · {human_bytes(done)} of {human_bytes(total)}")
+                    if not self.overall_active:
+                        self.progress.configure(value=100 * done / max(total, 1))
+                    if total > 1:
+                        self.download_label.configure(text=f"Current file: {100 * done / total:.1f}% · {human_bytes(done)} of {human_bytes(total)}")
+                    self.set_message(message)
+                    continue
+                if event[0] == "overall-progress":
+                    _, message, done, total, completed, files = event
+                    self.overall_active = True
+                    # Commit/final preparation may still fail after the last byte.
+                    percent = min(100 * done / max(total, 1), 99.9)
+                    self.progress.configure(mode="determinate", value=percent)
+                    caption = "Overall install" if self.busy == "install" else "Overall download"
+                    self.overall_label.configure(text=f"{caption}: {percent:.1f}% · {completed}/{files} PAKs · {human_bytes(done)} of {human_bytes(total)}")
                     self.set_message(message)
                     continue
                 event_type, kind, value = event
                 self.busy = None
+                saved_progress = float(self.progress.cget("value"))
                 self.progress.stop()
-                self.progress.configure(mode="determinate", value=0, maximum=100)
+                self.progress.configure(mode="determinate", maximum=100,
+                                        value=saved_progress if kind in ("download", "update", "install") else 0)
                 self.pause_button.grid_remove()
                 if event_type == "error":
                     self.set_message(str(value), error=not isinstance(value, Paused))
@@ -607,6 +644,7 @@ class TextureQuestApp:
                     if self.update_check.get("pack", {}).get("status") == "verified":
                         self.update_check["pack"]["update_available"] = False
                     self.set_message("Pack verified. Click Install when the game and launcher are closed.")
+                    self.finish_progress("download")
                 elif kind == "check":
                     self.update_check = value
                     pack = value["pack"]
@@ -637,7 +675,7 @@ class TextureQuestApp:
                     self.installed = value
                     self.remember_pack_version()
                     self.set_message("TextureQuest is ready. After a game patch, rerun this installer to reapply the textures.")
-                    self.progress.configure(value=100)
+                    self.finish_progress("install")
                 elif kind == "stock":
                     self.installed = value
                     guidance = "Run the official EQ2 patcher to restore the original textures. Modified bytes remain until the patcher replaces them."
@@ -691,12 +729,29 @@ def main():
         root.withdraw()
         def smoke():
             root.update_idletasks()
+            total = sum(row['bytes'] for row in app.release['archives'])
+            files = len(app.release['archives'])
+            app.busy = "update"
+            app.events.put(("overall-progress", "Downloading fixture.vpk", total // 2, total, files // 2, files))
+            app.events.put(("download-progress", "Current file commit", 0, 1))
+            app.poll()
+            overall_download = float(app.progress.cget("value"))
+            assert 49.9 < overall_download < 50.1 and "Overall download" in app.overall_label.cget("text")
+            app.busy = "install"
+            app.events.put(("overall-progress", "Installing fixture.vpk", total // 4, total, files // 4, files))
+            app.poll()
+            overall_install = float(app.progress.cget("value"))
+            assert 24.9 < overall_install < 25.1 and "Overall install" in app.overall_label.cget("text")
+            assert str(app.progress.cget("mode")) == "determinate"
+            app.busy = None
             receipt = {"version": app.app_version, "texture_version": texture_version(app.release),
                        "app_update_status": app.app_update_label.cget("text"), "texture_update_status": app.pack_update_label.cget("text"),
                        "title": root.title(), "game": app.game.get(),
                        "install_enabled": app.install_button.cget("state") != "disabled", "download_button": app.download_button.cget("text"),
                        "width": root.winfo_width(), "height": root.winfo_height(), "release_sha256": core._digest(app.release),
                        "scrollable_body": True,
+                       "overall_download_progress": overall_download, "overall_install_progress": overall_install,
+                       "overall_progress_label": app.overall_label.cget("text"), "current_file_keeps_overall": True,
                        "sideload_enabled": app.sideload_checkbox.cget("state") != "disabled",
                        "game_files_touched": False, "interface": "texturequest-three-step-consumer", "explorer": False}
             (app.state_dir / "ui-smoke.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")

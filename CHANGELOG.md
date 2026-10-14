@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.2
+
+- Overall download/install percentage, bytes and PAK count; current-file status remains visible.
+- Includes the fast streamed verification/copy path without per-texture decompression or repeated finished-file scans.
+- Texture1.2.0 and all310 existing public VPK identities/URLs remain unchanged.
+
 ## 1.1.1
 
 - The installer checks the latest published texture release in the app and before downloads.

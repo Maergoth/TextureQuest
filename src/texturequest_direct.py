@@ -22,6 +22,7 @@ from texturequest_custody import DirectoryCustody
 from texturequest_fast_install import FastFileCustody as FileCustody, DownloadCustody
 import texturequest_fast_install as fast_install
 from texturequest_legacy import LEGACY_ARCHIVES
+from texturequest_progress import OverallProgress
 
 SCHEMA = "texturequest-direct-prepared-v1"
 REPOSITORY = "https://github.com/Maergoth/TextureQuest"
@@ -142,11 +143,11 @@ class DirectSwapper(core.Swapper):
                 raise ValueError("Direct prepared path changed")
         return saved
 
-    def install(self, prepared, game_dir, progress=None):
+    def install(self, prepared, game_dir, progress=None, overall_progress=None):
         with core._lock(self.state_dir / "sideload/helper-owner.lock"):
             if (prepared.get("schema") == SCHEMA or self.trusted_manifest is not None
                     and self.trusted_prepared(prepared, self.trusted_manifest)):
-                return fast_install.install(self, prepared, game_dir, progress)
+                return fast_install.install(self, prepared, game_dir, progress, overall_progress=overall_progress)
             return super().install(prepared, game_dir, progress)
 
     def status(self, game_dir, verify=False):
@@ -568,11 +569,16 @@ def _retire_legacy_downloads(swapper, prepared, notify, pause, idle, previous=No
 
 
 
-def prepare_direct(swapper, manifest, progress=None, pause=None, opener=urlopen, cache_in_use=None):
+def prepare_direct(swapper, manifest, progress=None, pause=None, opener=urlopen, cache_in_use=None,
+                   overall_progress=None):
     """Verify/download ready VPKs. Game files change only through explicit install."""
     manifest = copy.deepcopy(manifest)
     validate_manifest(manifest)
-    notify = progress or (lambda *_: None)
+    legacy_notify = progress or (lambda *_: None)
+    overall = OverallProgress(manifest["archives"], overall_progress)
+    def notify(message, done, total):
+        legacy_notify(message, done, total)
+        overall.emit(message)
     if cache_in_use is not None and not callable(cache_in_use):
         raise ValueError("Invalid cache ownership guard")
     def idle():
@@ -630,9 +636,23 @@ def prepare_direct(swapper, manifest, progress=None, pause=None, opener=urlopen,
         for number, row in enumerate(manifest["archives"], 1):
             release.check_pause(pause)
             idle()
-            notify(f"Verifying archive {number}/{len(manifest['archives'])}: " + row["name"], 0, 1)
-            path = _download(row, folder, previous.get(row["name"].casefold()), notify, pause, opener)
+            message = f"Verifying archive {number}/{len(manifest['archives'])}: " + row["name"]
+            overall.start(row, message)
+            legacy_notify(message, 0, 1)
+            def archive_notify(message, done, total):
+                legacy_notify(message, done, total)
+                if total == row["bytes"]:
+                    overall.update(done, message)
+                else:
+                    overall.emit(message)
+            path = _download(row, folder, previous.get(row["name"].casefold()), archive_notify, pause, opener)
             records.append(dict(_identity(row), path=str(path)))
+            if number < len(manifest["archives"]):
+                overall.complete("Saved " + row["name"])
+            else:
+                # Full bytes do not mean the prepared receipts/reclamation have
+                # committed. Retain the final file until preparation succeeds.
+                overall.update(row["bytes"], "Finishing saved texture cache…")
         value = {"schema": SCHEMA, "id": core._digest([_identity(row) for row in manifest["archives"]])[:32],
                  "created_at": core._now(), "archives": records, "total_bytes": sum(row["bytes"] for row in records),
                  "source_paths": [], "release": manifest, "release_sha256": core._digest(manifest)}
@@ -640,5 +660,7 @@ def prepare_direct(swapper, manifest, progress=None, pause=None, opener=urlopen,
         swapper._prepared(value)
         core._atomic(core._plain(swapper.state_dir / "texturequest-prepared.json", swapper.state_dir), value)
         _retire_legacy_downloads(swapper, value, notify, pause, idle, previous_direct)
-        notify("Ready VPKs verified. Click Install to apply them.", 1, 1)
+        message = "Ready VPKs verified. Click Install to apply them."
+        legacy_notify(message, 1, 1)
+        overall.complete(message)
         return value

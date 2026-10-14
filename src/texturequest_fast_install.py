@@ -19,6 +19,7 @@ import uuid
 from texture_swapper import core
 from texturequest_custody import FileCustody, DirectoryCustody, KERNEL, _information
 import texturequest_release as release
+from texturequest_progress import OverallProgress
 
 
 def stamp(path):
@@ -93,7 +94,7 @@ def unchanged(path, record, row):
         return False
 
 
-def copy_archive(source, output, row):
+def copy_archive(source, output, row, progress=None):
     """One source read while copying; verifies incoming bytes without rereading."""
     source.seek(0)
     digest = hashlib.sha256()
@@ -104,6 +105,8 @@ def copy_archive(source, output, row):
             raise ValueError('Prepared archive length changed')
         output.write(chunk)
         digest.update(chunk)
+        if progress is not None:
+            progress(total)
     output.flush()
     os.fsync(output.fileno())
     if total != row['bytes'] or digest.hexdigest() != row['sha256']:
@@ -141,12 +144,13 @@ def _commit(staged, target, directories, expected):
         held.rename_replace(target, directories)
 
 
-def install(swapper, prepared, game_dir, progress=None):
+def install(swapper, prepared, game_dir, progress=None, overall_progress=None):
     notify = progress or (lambda _: None)
     with core._lock(swapper.state_dir / 'operation.lock'), core._game_lock(core.validate_game(game_dir)):
         ready = swapper.preflight(prepared, game_dir)
         if ready['missing']:
             raise ValueError('These archives are not installed in the selected game: ' + ', '.join(ready['missing']))
+        overall = OverallProgress(ready['archives'], overall_progress)
         paks, path = swapper._game_manifest(game_dir)
         core.ensure_game_closed()
         value = swapper._manifest(paks, path)
@@ -159,12 +163,14 @@ def install(swapper, prepared, game_dir, progress=None):
             with DirectoryCustody(paks) as directories:
                 for row in ready['archives']:
                     target = core._plain(row['target'], paks)
+                    overall.start(row, 'Installing ' + target.name)
                     old = managed.get(target.name.casefold(), {})
                     if unchanged(target, old, row):
                         if core._readonly(target):
                             core.ensure_game_closed()
                             core._set_readonly(target, False)
                         notify('Already installed: ' + target.name)
+                        overall.complete('Already installed: ' + target.name)
                         continue
                     # Lost acknowledgment after rename: same exact copied file
                     # now exists at target, so finish its receipt without reread.
@@ -172,6 +178,7 @@ def install(swapper, prepared, game_dir, progress=None):
                             and old.get('bytes') == row['bytes'] and stamp(target) == old.get('staged_file')):
                         old.update(status='installed', installed_at=core._now(), installed_file=stamp(target), readonly=False)
                         core._save(path, value)
+                        overall.complete('Already installed: ' + target.name)
                         continue
                     if old.get('staged_name'):
                         _recover_partial(paks, old)
@@ -196,7 +203,11 @@ def install(swapper, prepared, game_dir, progress=None):
                             raise ValueError('Prepared archive length changed')
                         record['staged_file'] = stream_stamp(output)
                         core._save(path, value)
-                        copied = copy_archive(source.stream, output, row)
+                        if overall_progress is None:
+                            copied = copy_archive(source.stream, output, row)
+                        else:
+                            copied = copy_archive(source.stream, output, row,
+                                                  lambda done: overall.update(done, 'Installing ' + target.name))
                         if stream_stamp(source.stream) != before:
                             raise ValueError('Prepared archive changed during copy')
                         record.update(status='staged', copied_sha256=copied)
@@ -208,6 +219,7 @@ def install(swapper, prepared, game_dir, progress=None):
                     _commit(staged, target, directories, record['staged_file'])
                     record.update(status='installed', installed_at=core._now(), installed_file=stamp(target), readonly=False)
                     core._save(path, value)
+                    overall.complete('Installed ' + target.name)
             value.update(status='installed', completed_at=core._now())
             core._save(path, value)
             core._save(path.parent / 'attempts' / (attempt + '.json'), dict(value))

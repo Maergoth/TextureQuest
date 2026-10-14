@@ -55,7 +55,7 @@ def sha(path):
 def main():
     global BUILD, DEST
     parser = argparse.ArgumentParser(description="Build a manifest-pinned TextureQuest installer")
-    parser.add_argument("--manifest", type=Path, default=ROOT / "release-manifest-1.3.1.json")
+    parser.add_argument("--manifest", type=Path, default=ROOT / "release-manifest-1.3.2.json")
     parser.add_argument("--output-root", type=Path)
     parser.add_argument("--version", default=VERSION)
     args = parser.parse_args()

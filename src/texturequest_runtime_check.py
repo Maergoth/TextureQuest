@@ -54,7 +54,11 @@ def _direct_runtime(folder, vpk):
         return Response(vpk)
 
     cache = DirectSwapper(folder / "direct-data")
-    ready = prepare_direct(cache, manifest, opener=opener)
+    downloads = []
+    ready = prepare_direct(cache, manifest, opener=opener, overall_progress=lambda *row: downloads.append(row))
+    assert downloads[0][1] == 0 and downloads[-1][1] == downloads[-1][2] == sum(row['bytes'] for row in rows)
+    assert downloads[-1][3:] == (310, 310)
+    assert [row[1] for row in downloads] == sorted(row[1] for row in downloads)
     assert len(requests) == 310
     assert all(Path(row["path"]).parent == cache.state_dir / "downloads" for row in ready["archives"])
     assert not (cache.state_dir / "prepared").exists()
@@ -68,7 +72,11 @@ def _direct_runtime(folder, vpk):
     for name in names:
         (game / 'paks' / name).write_bytes(b'own tiny fixture stock bytes')
     with _fixture_closed_guard(folder, cache, game):
-        installed = cache.install(ready, game)
+        installs = []
+        installed = cache.install(ready, game, overall_progress=lambda *row: installs.append(row))
+        assert installs[0][1] == 0 and installs[-1][1] == installs[-1][2] == sum(row['bytes'] for row in rows)
+        assert installs[-1][3:] == (310, 310)
+        assert [row[1] for row in installs] == sorted(row[1] for row in installs)
         assert installed['intact_count'] == 310
         identities = [(game / 'paks' / name).stat().st_ino for name in names]
         cache.install(ready, game)
@@ -93,6 +101,7 @@ def _direct_runtime(folder, vpk):
     return dict(direct_fixture_archives=310, single_ready_cache=True,
                 matching_cache_network_free=True, legacy_migration_network_free=True,
                 direct_fast_install=True, matching_installed_copy_skipped=True,
+                overall_download_progress=True, overall_install_progress=True,
                 runtime_install_guard='own-fresh-D-fixture-only')
 
 

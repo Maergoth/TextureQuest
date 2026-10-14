@@ -10,7 +10,7 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 ## Download and install
 
-**[Download TextureQuest 1.3.1 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.3.1/TextureQuest-Installer-1.3.1-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
+**[Download TextureQuest 1.3.2 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.3.2/TextureQuest-Installer-1.3.2-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
 
 1. **Patch the game first**, then close every EQ2 client and the launcher.
 2. Extract the installer ZIP into a writable folder outside the game. Keep its contents together and open **TextureQuest.exe**.
@@ -25,7 +25,9 @@ The app checks **texture updates and app updates separately** on startup. Use **
 
 When upgrading the app, close the old copy, extract the new installer into a new folder, and move your existing `data` folder alongside the new `TextureQuest.exe` to keep downloads and installation records. An app update can use the same textures you already have.
 
-App 1.3.1 speeds up normal installation: it hashes bytes as it copies, uses a
+App 1.3.2 shows overall percentage, bytes and PAK count for downloads and installation.
+The current file remains visible while the overall bar continues across the whole pack.
+It includes the fast download and install path: it hashes bytes as it copies, uses a
 native game/launcher check, and avoids decompressing every texture or repeatedly
 reading the installed pack. Unchanged recorded files are skipped using file
 identity and modification metadata. **Verify** remains available for a full

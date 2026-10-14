@@ -215,13 +215,13 @@ class EnvelopeTests(unittest.TestCase):
         from texturequest_version import APP_VERSION
         root = Path(__file__).resolve().parents[1]
         old = json.loads((root / 'release-manifest-1.3.0.json').read_bytes())
-        new = json.loads((root / 'release-manifest-1.3.1.json').read_bytes())
-        self.assertEqual(APP_VERSION, '1.3.1')
+        new = json.loads((root / 'release-manifest-1.3.2.json').read_bytes())
+        self.assertEqual(APP_VERSION, '1.3.2')
         self.assertEqual(new['schema'], 'texturequest-release-v3')
         self.assertEqual(new['texture_version'], '1.2.0')
         self.assertEqual(new['archives'], old['archives'])
         self.assertEqual(len(new['archives']), 310)
-        self.assertEqual((root / 'src/release-manifest.json').read_bytes(), (root / 'release-manifest-1.3.1.json').read_bytes())
+        self.assertEqual((root / 'src/release-manifest.json').read_bytes(), (root / 'release-manifest-1.3.2.json').read_bytes())
 
 
 class ProcessTests(unittest.TestCase):
