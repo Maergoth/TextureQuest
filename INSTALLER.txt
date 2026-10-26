@@ -22,8 +22,11 @@ identity and modification metadata are skipped; patched files are recopied.
 UPDATES
 The app checks texture updates and app updates separately on startup.
 Settings > Check for updates checks both again. New textures are
-prepared with Download / Resume. Get app update opens the official GitHub
-release page; this app does not replace its own running executable.
+prepared with Download / Resume and installed only when you click Install.
+Get app update downloads and verifies the new app, stages its managed files,
+closes this app, applies the update, and restarts TextureQuest. The data folder,
+downloaded textures and installation history are kept. Updating the app does
+not install textures or start the game.
 An app update may use exactly the same textures. The app shows its own version,
 the selected texture version, saved/prepared textures and installed textures.
 Compatible textures are downloaded here; a changed format needs a newer app.
@@ -32,13 +35,14 @@ retry when connected. A saved ready pack that matches this app's bundled
 manifest can still be installed without downloading again or moving its cache.
 Saved downloads and the saved release remain intact.
 
-App 1.3.4 is unchanged in release 1.3.6. Its bundled offline fallback remains
-texture version 1.2.2. Connect to GitHub and use Download / Resume to prepare
-the current texture version 1.2.3; offline use does not acquire new textures.
+App 1.3.5 bundles the current texture version 1.2.3 manifest. Release 1.3.7
+changes the app only: all 310 texture archive files and their download URLs
+are unchanged. Online checks can select newer published textures.
 
-Keep the data folder alongside TextureQuest.exe. To upgrade the app, close the
-old copy, extract the new installer to a new folder and move data alongside the
-new TextureQuest.exe to retain downloads, caches and installation records.
+Keep the data folder alongside TextureQuest.exe. App 1.3.4 or earlier needs
+one final manual upgrade: close the old copy, extract app 1.3.5 into a new
+writable folder outside the game, and move data alongside TextureQuest.exe.
+Future updates from app 1.3.5 use Get app update to update and restart the app.
 Do not discard data/games. Matching installed textures can also be reused.
 
 WHAT IS DOWNLOADED

@@ -18,7 +18,7 @@ from texturequest_direct import DirectSwapper, prepare_direct
 from texturequest_latest import fetch_latest
 from texturequest_launch import game_executable, launch_game as start_game
 from texturequest_version import APP_VERSION
-from texturequest_version_check import check_updates as check_versions, texture_version, pack_identity, saved_manifest, installer_page
+from texturequest_version_check import check_updates as check_versions, texture_version, pack_identity, saved_manifest
 
 try:
     from texturequest_build_pin import APP_VERSION
@@ -478,6 +478,8 @@ class TextureQuestApp:
         self.app_update_label.configure(text=app_text)
         self.pack_update_label.configure(text=pack_text)
         app = self.update_check.get("installer", {})
+        self.button_state(self.installer_update_button, not self.busy and app.get("status") == "verified" and app.get("update_available") is True)
+        self.installer_update_button.configure(text="Updating app…" if self.busy == "app-update" else "Get app update")
         if app.get("status") == "verified" and app.get("update_available"):
             self.installer_update_button.grid()
         else:
@@ -543,11 +545,26 @@ class TextureQuestApp:
         self.menu.entryconfigure(1, state="normal" if self.game.get().strip() else "disabled")
 
     def open_app_update(self):
+        if self.busy:
+            return False
         app = self.update_check.get("installer", {})
-        if app.get("status") == "verified" and app.get("update_available"):
-            # This URL was verified against the fixed repository and published tag.
-            # Open the release page so users keep control of downloading/upgrading.
-            webbrowser.open(installer_page(app))
+        if app.get("status") != "verified" or app.get("update_available") is not True:
+            return False
+        if not getattr(sys, "frozen", False):
+            self.set_message("Automatic app updates are available in the distributed TextureQuest app. Install the latest app once to enable them.", error=True)
+            return False
+        app_dir = Path(sys.executable).resolve().parent
+        def work():
+            from texturequest_self_update import stage_update, launch_updater
+            request = stage_update(dict(app), app_dir=app_dir, data_dir=self.state_dir,
+                current_version=self.app_version, report=lambda value: self.events.put(("app-update-progress", dict(value))))
+            ready = launch_updater(request)
+            if (type(ready) is not dict or ready.get("status") != "helper_ready"
+                    or ready.get("request_path") != request.get("request_path") or ready.get("nonce") != request.get("nonce")):
+                raise ValueError("The app updater did not confirm the matching restart request. TextureQuest remains open.")
+            return ready
+        self.begin("app-update", "Downloading and verifying the app update…", work)
+        return True
 
     def remember_pack_version(self):
         self.known_pack_versions[pack_identity(self.release)] = texture_version(self.release)
@@ -563,16 +580,16 @@ class TextureQuestApp:
         self.overall_active = False
         self.last_progress = self.last_overall_progress = 0
         self.overall_label.configure(text="")
-        if kind in ("download", "update", "install"):
+        if kind in ("download", "update", "install", "app-update"):
             self.progress.configure(mode="determinate", value=0, maximum=100)
-            caption = "Overall install" if kind == "install" else "Overall download"
+            caption = "App update" if kind == "app-update" else "Overall install" if kind == "install" else "Overall download"
             self.overall_label.configure(text=caption + ": preparing…")
         if kind in ("download", "update"):
             self.pause.clear()
             self.progress.configure(mode="determinate", value=0, maximum=100)
             self.pause_button.configure(text="Pause", state="normal")
             self.pause_button.grid()
-        elif kind != "install":
+        elif kind not in ("install", "app-update"):
             self.progress.configure(mode="indeterminate")
             self.progress.start(12)
         def work():
@@ -735,6 +752,19 @@ class TextureQuestApp:
                 if event[0] == "progress":
                     self.set_message(event[1])
                     continue
+                if event[0] == "app-update-progress":
+                    value = event[1]
+                    if self.busy != "app-update" or type(value) is not dict:
+                        continue
+                    done, total = value.get("done"), value.get("total")
+                    if type(done) in (int, float) and type(total) in (int, float) and total > 0 and 0 <= done <= total:
+                        percent = min(99.9, 100 * done / total)
+                        self.progress.configure(mode="determinate", value=percent, maximum=100)
+                        self.overall_label.configure(text=f"App update: {percent:.1f}%")
+                    else:
+                        self.overall_label.configure(text="App update: " + str(value.get("phase", "preparing")))
+                    self.set_message(str(value.get("message") or "Preparing the app update…"))
+                    continue
                 if event[0] == "download-progress":
                     _, message, done, total = event
                     if not self.overall_active:
@@ -758,7 +788,7 @@ class TextureQuestApp:
                 saved_progress = float(self.progress.cget("value"))
                 self.progress.stop()
                 self.progress.configure(mode="determinate", maximum=100,
-                                        value=saved_progress if kind in ("download", "update", "install") else 0)
+                                        value=saved_progress if kind in ("download", "update", "install", "app-update") else 0)
                 self.pause_button.grid_remove()
                 if event_type == "error":
                     self.set_message(str(value), error=not isinstance(value, Paused))
@@ -766,6 +796,14 @@ class TextureQuestApp:
                         self.recover_message = str(value)
                         game, prepared = self.game.get().strip(), self.prepared
                         self.begin("recover", str(value), lambda: self.inspect(game, prepared))
+                elif kind == "app-update":
+                    if type(value) is not dict or value.get("status") != "helper_ready":
+                        self.set_message("The app updater did not confirm it is ready. TextureQuest remains open.", error=True)
+                    else:
+                        self.set_message("Restarting TextureQuest to finish the app update…")
+                        self.closing = True
+                        self.root.destroy()
+                        return
                 elif kind == "download":
                     if not self.close_after_pause:
                         self.prepare_zip(value)
@@ -793,7 +831,7 @@ class TextureQuestApp:
                         self.restore_saved_ready()
                     failures = [channel["message"] for channel in (value["pack"], value["installer"]) if channel.get("status") == "unavailable"]
                     self.set_message(" ".join(dict.fromkeys(failures)) if failures else
-                                     "Version checks complete. App updates open on GitHub; texture downloads are prepared here.", error=bool(failures))
+                                     "Version checks complete. Use Get app update to update and restart; texture downloads are prepared here.", error=bool(failures))
                     if self.release_checked and self.game.get().strip():
                         if self.initial_pack:
                             initial, self.initial_pack = self.initial_pack, None
@@ -841,14 +879,49 @@ class TextureQuestApp:
             self.root.destroy()
 
 
-def main():
+def finish_app_update_startup(app, request, nonce, *, failed=False, smoke_test=False):
+    """Acknowledge only an initialized visible app; rollback notices never ack."""
+    app.root.update_idletasks()
+    if not smoke_test and not app.root.winfo_viewable():
+        app.root.after(100, lambda: finish_app_update_startup(app, request, nonce, failed=failed))
+        return
+    try:
+        from texturequest_self_update import acknowledge_startup, failure_message
+        if failed:
+            app.set_message(failure_message(request, nonce), error=True)
+        else:
+            acknowledge_startup(request, nonce, app_dir=Path(sys.executable).resolve().parent,
+                data_dir=app.state_dir, version=app.app_version)
+            app.set_message("App updated to " + app.app_version + ". Your saved textures and settings were kept.")
+            if not smoke_test:
+                app.root.after(200, app.check_updates)
+    except Exception as error:
+        app.set_message("The app update could not be confirmed: " + str(error), error=True)
+
+
+def main(argv=None):
     parser = argparse.ArgumentParser(description="TextureQuest portable installer")
     parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--game-dir", type=Path)
     parser.add_argument("--pack", type=Path)
     parser.add_argument("--smoke-test", action="store_true")
     parser.add_argument("--verify-runtime", type=Path, help=argparse.SUPPRESS)
-    args = parser.parse_args()
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument("--apply-app-update", type=Path, help=argparse.SUPPRESS)
+    modes.add_argument("--app-update-ack", type=Path, help=argparse.SUPPRESS)
+    modes.add_argument("--app-update-failed", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--update-nonce", help=argparse.SUPPRESS)
+    args = parser.parse_args(argv)
+    update_mode = args.apply_app_update or args.app_update_ack or args.app_update_failed
+    if bool(update_mode) != bool(args.update_nonce):
+        parser.error("App update requests require their matching nonce")
+    if args.apply_app_update:
+        if args.data_dir or args.game_dir or args.pack or args.verify_runtime:
+            parser.error("The app updater helper cannot run a GUI or another operation")
+        from texturequest_self_update import apply_update
+        return apply_update(args.apply_app_update, args.update_nonce, smoke_test=args.smoke_test)
+    if update_mode and args.verify_runtime:
+        parser.error("App update startup cannot run the runtime verifier")
     if args.verify_runtime:
         from texturequest_runtime_check import run
         try:
@@ -859,7 +932,11 @@ def main():
             raise SystemExit(1)
         return
     root = tk.Tk()
-    app = TextureQuestApp(root, args.data_dir, args.game_dir, args.pack, startup_check=not args.smoke_test)
+    app = TextureQuestApp(root, args.data_dir, args.game_dir, args.pack,
+        startup_check=not args.smoke_test and not bool(update_mode))
+    if args.app_update_ack or args.app_update_failed:
+        root.after_idle(lambda: finish_app_update_startup(app, args.app_update_ack or args.app_update_failed,
+            args.update_nonce, failed=bool(args.app_update_failed), smoke_test=args.smoke_test))
     if args.smoke_test:
         root.update_idletasks()
         root.withdraw()
@@ -899,4 +976,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

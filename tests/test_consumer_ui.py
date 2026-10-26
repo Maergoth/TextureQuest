@@ -158,9 +158,10 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(self.app.install_button.cget("state"), "normal")
         self.assertIn("App update available", self.app.app_update_label.cget("text"))
         self.assertIn("Latest textures: 1.1.0", self.app.pack_update_label.cget("text"))
-        with patch("texturequest_app.webbrowser.open") as browser:
-            self.app.open_app_update()
-            browser.assert_called_once_with(result["installer"]["release_url"])
+        with patch.object(sys, "frozen", False, create=True), patch.object(self.app, "begin") as begin:
+            self.assertFalse(self.app.open_app_update())
+            begin.assert_not_called()
+        self.assertIn("distributed TextureQuest app", self.app.message.get("1.0", "end-1c"))
 
     def test_offline_check_keeps_selection_and_disables_false_current_install(self):
         current = self.app.release
@@ -177,9 +178,9 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(self.app.install_button.cget("state"), "disabled")
         self.assertIn("unavailable", self.app.app_update_label.cget("text"))
         self.assertIn("unavailable", self.app.pack_update_label.cget("text"))
-        with patch("texturequest_app.webbrowser.open") as browser:
-            self.app.open_app_update()
-            browser.assert_not_called()
+        with patch.object(self.app, "begin") as begin:
+            self.assertFalse(self.app.open_app_update())
+            begin.assert_not_called()
 
     def test_app_check_failure_keeps_pack_update_downloadable(self):
         manifest = ui_manifest("1.2.0")

@@ -10,9 +10,9 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 ## Download and install
 
-**[Download TextureQuest 1.3.4 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.3.6/TextureQuest-Installer-1.3.4-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
+**[Download TextureQuest 1.3.5 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.3.7/TextureQuest-Installer-1.3.5-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
 
-App **1.3.4** has a compact launcher layout with **Launch Game** in the main window and after installation. Both buttons start the selected game's **EverQuest2.exe** directly. The app is unchanged in this texture release.
+App **1.3.5** adds automatic app updates. **Get app update** downloads and verifies the new app, replaces its managed app files, and restarts TextureQuest while keeping your `data` folder, saved texture downloads and installation history. **Launch Game** still starts the selected game's **EverQuest2.exe** directly.
 
 The latest texture update, **1.2.3**, adds **312 recovered 2K textures**: 137 from the Maj'Dul recovery and 175 other Desert of Flames textures. They are delivered in one complete updated archive. All **310 archives** remain in the pack, including the earlier 1,099 missed textures, effects and alpha maps, Ratonga skin repair and 4K updates. Existing TextureQuest apps detect the texture update and reuse unchanged downloads.
 
@@ -27,13 +27,13 @@ The app keeps one cache of ready-to-use archives under `data/downloads`. There i
 
 **After a game patch:** close the game and launcher, then rerun the TextureQuest installer. It checks for the latest textures and reuses verified downloads. Do not skip required game updates.
 
-The app checks **texture updates and app updates separately** on startup. Use **Settings → Check for updates** to check again. New textures are downloaded and prepared in this app; **Get app update** opens the official GitHub release page for a newer installer. Downloading never installs anything automatically. If a check fails, the app says it could not verify that update and keeps saved files.
+The app checks **texture updates and app updates separately** on startup. Use **Settings → Check for updates** to check again. New textures are downloaded and prepared with **Download / Resume**; installing them still requires clicking **Install TextureQuest**. **Get app update** updates the app itself and restarts it after verification. If an update cannot be verified or applied, the app reports the problem and keeps your `data` folder.
 
-The app 1.3.4 download is reused unchanged. On first launch online, it checks GitHub for the current textures. Its bundled offline fallback remains texture version 1.2.2; connect and use **Download / Resume** to prepare 1.2.3.
+App 1.3.5 includes the current texture version 1.2.3 manifest and checks GitHub for newer releases online. This app release changes no texture archives: all **24,693 textures across 310 archives**, including the recovered Maj'Dul textures and previous repairs, are unchanged.
 
-When upgrading the app, close the old copy, extract the new installer into a new folder, and move your existing `data` folder alongside the new `TextureQuest.exe` to keep downloads and installation records. An app update can use the same textures you already have.
+**One manual upgrade is needed from app 1.3.4 or earlier:** close the old copy, extract app 1.3.5 into a new writable folder, and move your existing `data` folder alongside the new `TextureQuest.exe`. Those older apps open the release page rather than updating themselves. Future updates from app 1.3.5 use **Get app update**. Keep the app outside the game folder; an app update does not reinstall textures or launch the game.
 
-App **1.3.4** keeps the launcher, progress and Pause together without scrolling the main window. Longer status messages scroll independently, and their scrollbar appears only when needed. The overall bar continues across the whole pack while the current file remains visible.
+App **1.3.5** keeps the launcher, progress and Pause together without scrolling the main window. Longer status messages scroll independently, and their scrollbar appears only when needed. The overall bar continues across the whole pack while the current file remains visible.
 It includes the fast download and install path: it hashes bytes as it copies, uses a
 native game/launcher check, and avoids decompressing every texture or repeatedly
 reading the installed pack. Unchanged recorded files are skipped using file
