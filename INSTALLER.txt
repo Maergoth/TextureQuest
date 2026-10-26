@@ -32,6 +32,10 @@ retry when connected. A saved ready pack that matches this app's bundled
 manifest can still be installed without downloading again or moving its cache.
 Saved downloads and the saved release remain intact.
 
+App 1.3.4 is unchanged in release 1.3.6. Its bundled offline fallback remains
+texture version 1.2.2. Connect to GitHub and use Download / Resume to prepare
+the current texture version 1.2.3; offline use does not acquire new textures.
+
 Keep the data folder alongside TextureQuest.exe. To upgrade the app, close the
 old copy, extract the new installer to a new folder and move data alongside the
 new TextureQuest.exe to retain downloads, caches and installation records.
@@ -40,8 +44,12 @@ Do not discard data/games. Matching installed textures can also be reused.
 WHAT IS DOWNLOADED
 The app downloads ready-to-use VPK archives directly from GitHub Releases into
 data/downloads. This single cache is used to install or reinstall the pack.
-Texture version 1.2.2 contains 24,381 replacement textures across 310 complete
-archives, including 1,099 added missed textures, effects and alpha maps.
+Texture version 1.2.3 contains 24,693 replacement textures across 310 complete
+archives. It adds 312 recovered 2K textures: 137 from the Maj'Dul recovery and
+175 other Desert of Flames textures, in one complete updated archive.
+The earlier 1,099 missed textures, effects, alpha maps, Ratonga repair and 4K
+updates remain included. Other missed-texture generation is still underway;
+this release does not claim that all low-resolution textures are complete.
 Each complete archive retains unrelated game resources.
 The installer checks GitHub's manifest asset SHA-256 and size, then verifies
 each downloaded VPK against that manifest. Installation hashes bytes while
