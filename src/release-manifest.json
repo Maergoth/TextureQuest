@@ -1,8 +1,8 @@
 {
   "schema": "texturequest-release-v3",
-  "version": "1.3.2",
-  "texture_version": "1.2.0",
-  "texture_count": 23282,
+  "version": "1.3.4",
+  "texture_version": "1.2.2",
+  "texture_count": 24381,
   "archives": [
     {
       "name": "AP3_Bird_Man_SOGA.vpk",
@@ -55,45 +55,45 @@
     },
     {
       "name": "Char_A.vpk",
-      "bytes": 419709244,
-      "sha256": "58ad543a851cd388b431287af7ccbc3fba80b2bec1679245f59f62aec53130ee",
+      "bytes": 428446638,
+      "sha256": "52a4674af721211d7f2c7f38a25a8a5dfc1cd071f1bc6fb56f6277a450b109c3",
       "entries": 5122,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_A.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_A.vpk"
     },
     {
       "name": "Char_A1.vpk",
-      "bytes": 497219305,
-      "sha256": "ff697d2811534f38b8037a348653e952b3b01f067fe98fa0fa36e99a4342b6f3",
+      "bytes": 512059114,
+      "sha256": "78bff26d88e72af9ca347d46648edc11d85d72a18d053fe8bae01f4066ec9053",
       "entries": 8545,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_A1.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_A1.vpk"
     },
     {
       "name": "Char_ACC.vpk",
-      "bytes": 503612001,
-      "sha256": "be607fe4c995d45d28f3ba6e24a1c9f0316877c985336fd117fcc7b5bd772adb",
+      "bytes": 509747929,
+      "sha256": "5fea8632fb53369bff601b441fcaa552ddfe809480fe8f8466e08db3e7da5af7",
       "entries": 5409,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_ACC.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_ACC.vpk"
     },
     {
       "name": "Char_ACC1.vpk",
-      "bytes": 466259243,
-      "sha256": "8ff47829dda6dd296e5487f2d2cbaa7af9485f4ce65aed9ee7c8e1c456bb77fb",
+      "bytes": 468542952,
+      "sha256": "37a04741c502de5700281279caa82ba543341c8dccb33df18e6048eadbcfc8e9",
       "entries": 6038,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_ACC1.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_ACC1.vpk"
     },
     {
       "name": "Char_ACC2.vpk",
-      "bytes": 452393196,
-      "sha256": "ac8588a599eaaa12d5af2a403524d7f347793374619f341af87a33656b32a5d6",
+      "bytes": 458223851,
+      "sha256": "451988cbdcaa3207a71f7c04b20deb4fbbb286ce815d6c3a72e344e150f09f6a",
       "entries": 3834,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_ACC2.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_ACC2.vpk"
     },
     {
       "name": "Char_ANM.vpk",
-      "bytes": 237555231,
-      "sha256": "d10be0111e24d528caa86b9c4c300bddff940a79ea0be649cb699c328ec58eef",
+      "bytes": 237892015,
+      "sha256": "4c4edd36370aa06f2d5b7cd210d247dab7140eb0ee4de8fa54703038cb757701",
       "entries": 1566,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_ANM.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_ANM.vpk"
     },
     {
       "name": "Char_AP02_monster.vpk",
@@ -104,80 +104,80 @@
     },
     {
       "name": "Char_B.vpk",
-      "bytes": 326651577,
-      "sha256": "4cb2a2f4e66b45c7af593b0bc4dcd786efef9ec1e87b4ed1a1bc1960d1d01c7f",
+      "bytes": 331239547,
+      "sha256": "6aae88f0fb893915107bd2bc4c259c946ea438eca5bee6f4aadccd513c13faee",
       "entries": 28745,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_B.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_B.vpk"
     },
     {
       "name": "Char_B1.vpk",
-      "bytes": 379026177,
-      "sha256": "57009d7ad75b2e0bd0e53b5ed56bd572b6722ea1877bccd3d8eb7d6f432a9f41",
+      "bytes": 380990563,
+      "sha256": "ba50abb76f853cc38a386a53fd58b9816ff4f30cd3bf9aacb38f4a50491c90e8",
       "entries": 4103,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_B1.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_B1.vpk"
     },
     {
       "name": "Char_B2.vpk",
-      "bytes": 445964295,
-      "sha256": "258404608cc0f6ee0cf87c159827a62bd6a2997f266cf61b14b6a65db934de12",
+      "bytes": 449247923,
+      "sha256": "6b428ea31560d7e4ebbd070ed3a573ac6e090087d3270c29bdfa3bb744698c58",
       "entries": 3966,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_B2.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_B2.vpk"
     },
     {
       "name": "Char_B3.vpk",
-      "bytes": 350243469,
-      "sha256": "22e99e2003f775cb8c5cbab2ee4c94e2d17565bb0faea395eea4a30d0b5f2786",
+      "bytes": 353197825,
+      "sha256": "4a790695cd62d107d87132cb7e11348d155ca6b85a2854e3121e2e244b575377",
       "entries": 6301,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_B3.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_B3.vpk"
     },
     {
       "name": "Char_C.vpk",
-      "bytes": 317876963,
-      "sha256": "57e2f354e2db232fc23701bfd9e5602c99858471838d4f10fd70592944691a46",
+      "bytes": 322091185,
+      "sha256": "1d7ac6238766c453d0315b387887aad391b82740fec07cff35803107a7b19eb8",
       "entries": 5796,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_C.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_C.vpk"
     },
     {
       "name": "Char_C1.vpk",
-      "bytes": 348898242,
-      "sha256": "73fcc3fafebed78576d137cde4f05fe73766461556ec7d2695e6e6cc3e3f32d4",
+      "bytes": 355602378,
+      "sha256": "563cb03659819482f2ac4beaf2ecf4c02ae8d855659a1662b9af71e93e8e8bc7",
       "entries": 3729,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_C1.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_C1.vpk"
     },
     {
       "name": "Char_CS.vpk",
-      "bytes": 298904054,
-      "sha256": "29edf920f1e1fff4f27bf35c442b604aada8c99bd463fdf3add9372ed06c4784",
+      "bytes": 300102924,
+      "sha256": "00a173927d467c975ae3ce603792be213980283d6f00ec38bb8d53b094be3709",
       "entries": 4624,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_CS.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_CS.vpk"
     },
     {
       "name": "Char_D.vpk",
-      "bytes": 395535518,
-      "sha256": "517411e42919b39f99c90878af11544d8dd7039a736e491859afbf88d0a94271",
+      "bytes": 400212298,
+      "sha256": "ea94d70980cc27e5012b75bd0b075864f8152c7689b7a56961d8afda568782fd",
       "entries": 4045,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_D.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_D.vpk"
     },
     {
       "name": "Char_D1.vpk",
-      "bytes": 512154989,
-      "sha256": "b91a9b8f1d31d2bcfc53f69ba92ae8c36d5b7ab8112edd0dc785cfdaeb4ba3d7",
+      "bytes": 512821074,
+      "sha256": "26e7f324cd34fc230d80dfe05471d57d579ed3a21befc0439c47e34a00e28478",
       "entries": 6964,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_D1.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_D1.vpk"
     },
     {
       "name": "Char_D2.vpk",
-      "bytes": 361766325,
-      "sha256": "577654292788e3b623997e89f89a10ca36c1c41452699e3e1f6a5f0929d77921",
+      "bytes": 364649668,
+      "sha256": "e0a344a39cb9bcb47a3519216193e7dc096a6554e9047fe38457ab571292fd48",
       "entries": 5175,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_D2.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_D2.vpk"
     },
     {
       "name": "Char_D3.vpk",
-      "bytes": 224023326,
-      "sha256": "efab3f69daeb20062a7b88c126e47fd9539c9f56149187485a2df8311563a010",
+      "bytes": 228965546,
+      "sha256": "99c043a25bdf4b59885a99e361e4c161528b36734d5b60f3101beaf001b29f28",
       "entries": 2698,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_D3.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_D3.vpk"
     },
     {
       "name": "Char_DDS_SOGA.vpk",
@@ -188,38 +188,38 @@
     },
     {
       "name": "Char_ECA.vpk",
-      "bytes": 276429417,
-      "sha256": "24714753352a21c6d2fa6349e0f2bd8d1efb51b38a157590662feeee1f63ad8c",
+      "bytes": 283605119,
+      "sha256": "78959acbf8a6b5dcd57c87ef5947f2a8363a33d7d3a2c4f4d9bb5ac05a4ae65f",
       "entries": 4240,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_ECA.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_ECA.vpk"
     },
     {
       "name": "Char_ECA1.vpk",
-      "bytes": 291830334,
-      "sha256": "334f786f70e063e82c01fecac420815db28c92e2e33268f9c421de219ace3aab",
+      "bytes": 297815996,
+      "sha256": "a27f818ee972695a96b8439b1d12a63e5bef7f1767daa51902a146b756d91ae0",
       "entries": 4937,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_ECA1.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_ECA1.vpk"
     },
     {
       "name": "Char_ECA2.vpk",
-      "bytes": 312825126,
-      "sha256": "71c72f14ee1e4f0aeec9a21affc9e156f5120b126883bad3e15bf90aff9a1b09",
+      "bytes": 328300329,
+      "sha256": "ef37ab855a63c0606dccd74d3d2751e6edd1b56fc60eec2770c5f65946449e02",
       "entries": 3322,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_ECA2.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.3/Char_ECA2.vpk"
     },
     {
       "name": "Char_ECA3.vpk",
-      "bytes": 360960869,
-      "sha256": "5df38f8b687001441f1462999a28b244819c7974e3449626db4c25fa681eb398",
+      "bytes": 364873884,
+      "sha256": "78dbbd910c487c28269393a87f316216b7d594b0a102f9e928a06a9187e100b9",
       "entries": 5537,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_ECA3.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_ECA3.vpk"
     },
     {
       "name": "Char_ECB.vpk",
-      "bytes": 278239026,
-      "sha256": "f6faa34cf923d4212fc628c8daac6ef1a1a7178be5d00a3d2f558f82a9ae1a32",
+      "bytes": 278938063,
+      "sha256": "2e7908cb65f9256df5022a8a5bcd1127758291662c7c91129d0bc504ed3256cd",
       "entries": 4155,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_ECB.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_ECB.vpk"
     },
     {
       "name": "Char_SOGA.vpk",
@@ -237,52 +237,52 @@
     },
     {
       "name": "Char_Shd_SOGA.vpk",
-      "bytes": 71612530,
-      "sha256": "e59ea67104560d648637d37af9607c64af91f01689004eb11e184c630a08589a",
+      "bytes": 72917917,
+      "sha256": "d3352fead4295e40b5639af1af90234275e2ec76c1f1b793384f2b35fabf6222",
       "entries": 876,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_Shd_SOGA.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_Shd_SOGA.vpk"
     },
     {
       "name": "Char_TU.vpk",
-      "bytes": 243710381,
-      "sha256": "5a3f5be7a8cd8920262571c2818b7e5e9f43b077c6fa0ac0c9632ce4fb78ff33",
+      "bytes": 244098376,
+      "sha256": "9fe6c10ace8cdf3d341ff85218c07b140a2f67543d8d24e738c060f5f4341755",
       "entries": 2571,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_TU.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_TU.vpk"
     },
     {
       "name": "Char_TU1.vpk",
-      "bytes": 260828469,
-      "sha256": "6f68a3a5c8cbcefb7db2ddc411553d06fddfe9c3e3b292ac6571de0d25b85bb4",
+      "bytes": 262270247,
+      "sha256": "af524fe68b8e2c41117d104d151a7d929841d90f99af67002ebb5fa34a19afcb",
       "entries": 2507,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_TU1.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_TU1.vpk"
     },
     {
       "name": "Char_TU2.vpk",
-      "bytes": 268000434,
-      "sha256": "bfa60d901e168dd37718226be31774d4e75bdd18fc3b1fafd4978c6d0f608177",
+      "bytes": 272245893,
+      "sha256": "68f118452db9f29af76707cf9b88037c4074ff0281cce17142c32d2b16c233da",
       "entries": 2854,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_TU2.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_TU2.vpk"
     },
     {
       "name": "Char_TU3.vpk",
-      "bytes": 292056233,
-      "sha256": "7ad1f9031282bd904db09c71bd8065b3134b7da10ee40bd861ae908ec1ccc126",
+      "bytes": 295382431,
+      "sha256": "56ac4c3f25afbd048b36067de60d7e8c90b690923f05c8d883ee2df842a2949c",
       "entries": 2509,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_TU3.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_TU3.vpk"
     },
     {
       "name": "Char_WEP.vpk",
-      "bytes": 95920810,
-      "sha256": "0145388b7a5f4457a80e6802786566d930738eeafef68fbb1d8295500ebf9569",
+      "bytes": 96098804,
+      "sha256": "362fcd6ed7707c8ce243a05cff95ce6d07006838a2a97328e36ee2c0542b0958",
       "entries": 668,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_WEP.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_WEP.vpk"
     },
     {
       "name": "Char_exp01_animals.vpk",
-      "bytes": 106324427,
-      "sha256": "1b12932e2d2e2f245c2e6691c081f442eaf539f4452029100ee396b9e218611a",
+      "bytes": 107876948,
+      "sha256": "89f4b2ae521d290b5398595af200cf9b0d51723bd5f62562443ba9601d043b78",
       "entries": 1200,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_exp01_animals.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_exp01_animals.vpk"
     },
     {
       "name": "Char_exp01_cyclops.vpk",
@@ -433,10 +433,10 @@
     },
     {
       "name": "Char_exp02_misc.vpk",
-      "bytes": 168827072,
-      "sha256": "63fc56fc32eed255d0cbe8adecbbb77d4d982eb7beb88e64c1173d5864ea2261",
+      "bytes": 172724383,
+      "sha256": "36e4250b7bbbe4c80cb3b235aa64f93ad45e1e7464f3805fc40f6817be7b304b",
       "entries": 928,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_exp02_misc.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_exp02_misc.vpk"
     },
     {
       "name": "Char_exp02_otyugh.vpk",
@@ -531,24 +531,24 @@
     },
     {
       "name": "Char_exp03_global_01.vpk",
-      "bytes": 110710775,
-      "sha256": "740665ea9c90108f45a57798b8dc198670b8ae68036c8799c8eeef5236d44caa",
+      "bytes": 110859605,
+      "sha256": "33cf777ed4c5145b5c099e5986413535a709b58f50269d16d5acf2070109d89e",
       "entries": 971,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_exp03_global_01.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_exp03_global_01.vpk"
     },
     {
       "name": "Char_exp03_global_02.vpk",
-      "bytes": 98451507,
-      "sha256": "23de8fb98a540d3371f2c2c21fa844254932d74468ec69a3d251f1f5c6059da6",
+      "bytes": 101210632,
+      "sha256": "3d72c902989527319a73aa439749b29ecc5495547ec2ef422395b398de9dd2cb",
       "entries": 892,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_exp03_global_02.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_exp03_global_02.vpk"
     },
     {
       "name": "Char_exp03_golem.vpk",
-      "bytes": 13662084,
-      "sha256": "2ed427c5a84571dd05ad956f756957b33fc40365292c1d700672d35eef4701db",
+      "bytes": 15019014,
+      "sha256": "95c727f89a74d2e63fef3e0027b8d7b934ba278f4bfc4dd9c411fb85c9ecddc2",
       "entries": 94,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_exp03_golem.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_exp03_golem.vpk"
     },
     {
       "name": "Char_exp03_honor_elf.vpk",
@@ -650,17 +650,17 @@
     },
     {
       "name": "Char_exp04_cinder_wasp.vpk",
-      "bytes": 3466526,
-      "sha256": "d8ad8a5b3b602d092e7f69a7cbb8e1131972692c8137a14ba585175aa5b33486",
+      "bytes": 4149077,
+      "sha256": "844a749737ebe0dc8818a8c31eafbc3f2be8187d1842b6539bba8213eae2dd33",
       "entries": 17,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_exp04_cinder_wasp.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_exp04_cinder_wasp.vpk"
     },
     {
       "name": "Char_exp04_clay_golem.vpk",
-      "bytes": 7917692,
-      "sha256": "2a129884789d030a3f2f68be46dba2825d810d31d64c6eff7f705d526824e35e",
+      "bytes": 8004420,
+      "sha256": "972a60bf814a199054cd9a23948ea3c19cb7c4cbc7e158a8d0ac2aafee508e8a",
       "entries": 56,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_exp04_clay_golem.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_exp04_clay_golem.vpk"
     },
     {
       "name": "Char_exp04_cocatrice.vpk",
@@ -762,10 +762,10 @@
     },
     {
       "name": "Char_exp04_succulent.vpk",
-      "bytes": 4530456,
-      "sha256": "7fe204bfce9fd2f3bfc36346c3c56ab4a1ede9e76d68693e5045c290c49d7c82",
+      "bytes": 4696620,
+      "sha256": "4adf790c9d2180473f5748d5cf747d2b0108bc64b2b4a42a437485a8b00cad72",
       "entries": 44,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_exp04_succulent.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_exp04_succulent.vpk"
     },
     {
       "name": "Char_exp04_trakanon.vpk",
@@ -783,10 +783,10 @@
     },
     {
       "name": "Char_exp04_wep01.vpk",
-      "bytes": 68773580,
-      "sha256": "4ead422d6c437c5887488dd1baa3fd9dfc8fe461b6132d34bf913f545a541162",
+      "bytes": 70036990,
+      "sha256": "99e44b53a27fc2b701b5d252b9620c16cad0aeb2b0eaf0e1e473ed35d35a945b",
       "entries": 707,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_exp04_wep01.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_exp04_wep01.vpk"
     },
     {
       "name": "Char_exp04_wurm.vpk",
@@ -839,59 +839,59 @@
     },
     {
       "name": "Char_monkey.vpk",
-      "bytes": 44580596,
-      "sha256": "1c8cd0f75f1b735889bea278f566c05c9f6fce3d8654dbacd02c5888971658e8",
+      "bytes": 46283430,
+      "sha256": "e88cbd8bc570b1a91433fc44df739ed5a82016fb65d34c76ab91084ffcbe0b59",
       "entries": 383,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_monkey.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_monkey.vpk"
     },
     {
       "name": "Char_monsters.vpk",
-      "bytes": 255612500,
-      "sha256": "fe124ff317b99b1302750e90a07a05ae4825cb50b5b41fa9093ea4361867b2b1",
+      "bytes": 256911282,
+      "sha256": "9a36d961bef9ee634f573d6d6ef62e333f9abb765eafc138ecc19031b05ec22c",
       "entries": 2808,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_monsters.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_monsters.vpk"
     },
     {
       "name": "Char_monsters1.vpk",
-      "bytes": 340746746,
-      "sha256": "07cd62284b2ec4447183d5e1912db561ee04dfa73da3778fd15f29ccb5a9ba16",
+      "bytes": 341205627,
+      "sha256": "927dec2dfa9ccd144b558ae40e967d2cec085734f9548ca9cab683b706784e1e",
       "entries": 2001,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_monsters1.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_monsters1.vpk"
     },
     {
       "name": "Char_monsters2.vpk",
-      "bytes": 270068751,
-      "sha256": "6edf663de2b9a1e7165fc4458ee13397b399a977efb13f363bb926e312f3dddb",
+      "bytes": 272087210,
+      "sha256": "da2d522fb70c0134808e95f07d0fb5654ae634f4e5a1b03ae1973ef52d4f0148",
       "entries": 2469,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_monsters2.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_monsters2.vpk"
     },
     {
       "name": "Char_monsters3.vpk",
-      "bytes": 275723496,
-      "sha256": "5c89f511cc506d47167d89b3b1995bccd0f759062d4347f35b95a9188f2ef93c",
+      "bytes": 278917278,
+      "sha256": "4514c7ef65481cdf92368f9e8f89eead62a8d9de158d2d926d4408b3fe0266dc",
       "entries": 1829,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_monsters3.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_monsters3.vpk"
     },
     {
       "name": "Char_monsters4.vpk",
-      "bytes": 300844594,
-      "sha256": "6325fc50f2cf225d1b4a7043db875753b811ba894fb126f612417f3fe8c90977",
+      "bytes": 302582270,
+      "sha256": "38e11977d01c7535173595928c9c8160e6679e44133c2ea4aed432203020ff41",
       "entries": 3005,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_monsters4.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_monsters4.vpk"
     },
     {
       "name": "Char_monsters5.vpk",
-      "bytes": 270961658,
-      "sha256": "30cba99be6016dc69d7f9eba878883e354096d898103f056f503ae68a73b0520",
+      "bytes": 275075271,
+      "sha256": "868b7eb5ad435c231de4d8414e8e7ce073181abe081292d57830a19100fbf2a9",
       "entries": 2144,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_monsters5.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_monsters5.vpk"
     },
     {
       "name": "Char_mounts.vpk",
-      "bytes": 240130585,
-      "sha256": "238f8258097945b393c0b0b7b483a365e7e945fdf834d80ba77e2f160c9b3e27",
+      "bytes": 242276343,
+      "sha256": "143a67b05963ba0d2210dd9a55928675fc8a06219fcf1053bfbe8ef88146cacb",
       "entries": 3213,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_mounts.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_mounts.vpk"
     },
     {
       "name": "Char_mummy.vpk",
@@ -902,10 +902,10 @@
     },
     {
       "name": "Char_pets.vpk",
-      "bytes": 137133265,
-      "sha256": "3913c331f5a6493571e0386f391bc7716b93c8b5f56ec4b769d90cc9aceca34a",
+      "bytes": 141150823,
+      "sha256": "217b754f5f7086355904659d0348c96c0a29be8a85b71b3c1c00f18fe55f8c3c",
       "entries": 1415,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_pets.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_pets.vpk"
     },
     {
       "name": "Char_warg.vpk",
@@ -916,10 +916,10 @@
     },
     {
       "name": "Char_wearables_01.vpk",
-      "bytes": 28203204,
-      "sha256": "3298f61ded5ea63a9d9617b0848b9b6fd7fcfd1df67ad656a1c983c992f0782a",
+      "bytes": 28422597,
+      "sha256": "ee9fdad063e885f2120ccb390f30b1c8f0e69572db1a06f3abe936e17105921b",
       "entries": 309,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/Char_wearables_01.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/Char_wearables_01.vpk"
     },
     {
       "name": "FXPartText2.vpk",
@@ -979,10 +979,10 @@
     },
     {
       "name": "ZDDS14.vpk",
-      "bytes": 118986625,
-      "sha256": "0be1b504ca940d4a7729516735565d5478d2c1c5d427a39237c051078f9611d4",
+      "bytes": 119643349,
+      "sha256": "8e9ab4f1cdd27e24e65a46f3a9f37aaa65b5b5e36711525095e51a743cb42561",
       "entries": 345,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/ZDDS14.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/ZDDS14.vpk"
     },
     {
       "name": "ZDDS15.vpk",
@@ -993,17 +993,17 @@
     },
     {
       "name": "ZDDS16.vpk",
-      "bytes": 83144046,
-      "sha256": "b0fa03437d2a8f4c6d7f15e35d5d9ca4772d735a44b719402c59b67118ae60f2",
+      "bytes": 84820282,
+      "sha256": "4b9b7ffbee564561c2b11bf2e9063c01938b70d97a18531a75b654d5fcc99239",
       "entries": 217,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/ZDDS16.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/ZDDS16.vpk"
     },
     {
       "name": "ZDDS17.vpk",
-      "bytes": 94232778,
-      "sha256": "aa1b51c3d38b25076d59aa366f6c767a60155aa0d8d3d79300b3cee104a652d5",
+      "bytes": 94458884,
+      "sha256": "7a41ca9125d9d427c5b80ee3e1a876b8bdb880abf8c304200e28be7eb72e77b7",
       "entries": 218,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/ZDDS17.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/ZDDS17.vpk"
     },
     {
       "name": "ZDDS18.vpk",
@@ -1014,17 +1014,17 @@
     },
     {
       "name": "ZDDS19.vpk",
-      "bytes": 92854060,
-      "sha256": "92b1eb992922cec2397af7836e23ee29905e07410003c233b9e0dcd60bd46ef8",
+      "bytes": 93080562,
+      "sha256": "fe1fd560eb4c02fd06402a2a74266f6b69ee1fdd06acbf88aa59f4fcccd7046d",
       "entries": 218,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/ZDDS19.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/ZDDS19.vpk"
     },
     {
       "name": "ZDDS2.vpk",
-      "bytes": 89438237,
-      "sha256": "a9bbf050e752d578e76b871c40902b908c89f4c7ddf38277a23e330a437ef649",
+      "bytes": 89658754,
+      "sha256": "28aaf1ce53ec0d46459fd30ba85b63f20ac26f04795e2f47e262711d178bb09e",
       "entries": 212,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/ZDDS2.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/ZDDS2.vpk"
     },
     {
       "name": "ZDDS20.vpk",
@@ -1035,10 +1035,10 @@
     },
     {
       "name": "ZDDS21.vpk",
-      "bytes": 29224150,
-      "sha256": "58fd1af8da6e3334d044357f204adb31c57f65a6c58a1316db0b99976d204f50",
+      "bytes": 31018979,
+      "sha256": "aa5ec65e26ceff1c60a0ea79e845e43f9f89091ce67f2e867847a68e65b4a737",
       "entries": 93,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/ZDDS21.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/ZDDS21.vpk"
     },
     {
       "name": "ZDDS3.vpk",
@@ -1049,10 +1049,10 @@
     },
     {
       "name": "ZDDS4.vpk",
-      "bytes": 107297684,
-      "sha256": "49bf960de4d274a5e58e8016ec16821cce8355ac4137377dfe958d8b9683978f",
+      "bytes": 107318362,
+      "sha256": "a15005423199e437abb19ae013ca6543276d05d1775a2fff46948f9933aa8344",
       "entries": 276,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/ZDDS4.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/ZDDS4.vpk"
     },
     {
       "name": "ZDDS5.vpk",
@@ -1105,10 +1105,10 @@
     },
     {
       "name": "adv02_dun_sundered_splitpaw.vpk",
-      "bytes": 8436737,
-      "sha256": "2021c9abf2bdce97bd1877624184ddf6985fe97e11c007132cca271a56972773",
+      "bytes": 8950960,
+      "sha256": "995c284790c7c63d1bd92e9ecd0810cb2245432ab9b53c6f99f829e1ed075ae4",
       "entries": 1178,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/adv02_dun_sundered_splitpaw.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/adv02_dun_sundered_splitpaw.vpk"
     },
     {
       "name": "adv04_dun_bird_cage.vpk",
@@ -1147,24 +1147,24 @@
     },
     {
       "name": "antonica.vpk",
-      "bytes": 82948087,
-      "sha256": "e697d70471cccf72a37bc067d6b19679cf6f59f903e9dc1f84aa669a2c7a9ef5",
+      "bytes": 83269769,
+      "sha256": "7a008f3a92978596ed2913460e716263b30dbb45480362c61ab640477d902daa",
       "entries": 2895,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/antonica.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/antonica.vpk"
     },
     {
       "name": "battleground.vpk",
-      "bytes": 141256406,
-      "sha256": "4a41bd87b4abcdfd3d93bd73e6a451964c62898cbaa8da23ddad09e4aea7153b",
+      "bytes": 142718237,
+      "sha256": "9544644b8e2333eb7170406878bb5126524a646ca0203492c5e6dbdf99c43b27",
       "entries": 894,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/battleground.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/battleground.vpk"
     },
     {
       "name": "battleground_defense.vpk",
-      "bytes": 27605952,
-      "sha256": "c5fd38846b86f078bc99c7f9acf165cf4078436bdfec12483f6e6dab246c9562",
+      "bytes": 28795078,
+      "sha256": "91229eee3bb4ba82545143358b877bc592b0e6b260487af8e5be11a3473c1c70",
       "entries": 529,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/battleground_defense.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/battleground_defense.vpk"
     },
     {
       "name": "character_create.vpk",
@@ -1175,17 +1175,17 @@
     },
     {
       "name": "commonlands.vpk",
-      "bytes": 102540941,
-      "sha256": "f8e888933ca0f3415e8988efc5ae1b92ca6b3b7c4c2e303d07070abfb83b4811",
+      "bytes": 102956066,
+      "sha256": "96812241bb8cc4e614d061cf42099733cd1dda07f35202468b8efc03bda98288",
       "entries": 1291,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/commonlands.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/commonlands.vpk"
     },
     {
       "name": "darklight_wood.vpk",
-      "bytes": 141040627,
-      "sha256": "f8140967a59fbc3592da186ddee5997a4063c576296ad0776563281fc9b79684",
+      "bytes": 141917305,
+      "sha256": "01440c7505debae599f083a83d4a9698fb5b30d59107146ae21fd7b85591f8e8",
       "entries": 1863,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/darklight_wood.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/darklight_wood.vpk"
     },
     {
       "name": "dpo_exp01_objects.vpk",
@@ -1196,24 +1196,24 @@
     },
     {
       "name": "dpo_exp03_objects.vpk",
-      "bytes": 53568625,
-      "sha256": "1170232ee409824b46789075193a485c83cae873c695bb5c4673f6b3ac223965",
+      "bytes": 54246761,
+      "sha256": "d6701f32e4cfb8b5d9197f18ec5d0a04a86828780e5923ea43dbe4d781fa74b5",
       "entries": 257,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/dpo_exp03_objects.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/dpo_exp03_objects.vpk"
     },
     {
       "name": "dpo_exp04_objects.vpk",
-      "bytes": 107627446,
-      "sha256": "e5b94db07231d0974a96f7f64e01fc3ce727758c3acbf74c74c00b5f1b3a47e2",
+      "bytes": 109555071,
+      "sha256": "d5ae0d8f78f776ca880d1bd350c419f7e1e9a264d1340130f56736f9af12ffa8",
       "entries": 377,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/dpo_exp04_objects.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/dpo_exp04_objects.vpk"
     },
     {
       "name": "dpo_exp05_objects.vpk",
-      "bytes": 125552988,
-      "sha256": "0a88a9a29c0439e618ae2d5496c6a8c940e297ce484ac6d66381ff07bae34028",
+      "bytes": 126320644,
+      "sha256": "bf28e25c3a949cfd888c05aa23a4a00bd712b4b3173f2c2fe5d4c01609e25775",
       "entries": 452,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/dpo_exp05_objects.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/dpo_exp05_objects.vpk"
     },
     {
       "name": "dpo_harvesting.vpk",
@@ -1224,10 +1224,10 @@
     },
     {
       "name": "dpo_housing.vpk",
-      "bytes": 296633553,
-      "sha256": "cfe5e433332fccd215933691a32af459efb8cce26313a5d7419fdafd4c3b770f",
+      "bytes": 297192960,
+      "sha256": "a692bdeacfb2b15e0f2babc84e8975dc47e7c7d9e838be835a0259b5a9752e06",
       "entries": 1891,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/dpo_housing.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/dpo_housing.vpk"
     },
     {
       "name": "dpo_housing1.vpk",
@@ -1238,10 +1238,10 @@
     },
     {
       "name": "dpo_housing_adv04.vpk",
-      "bytes": 166651386,
-      "sha256": "d3e5955d1d5e0ce4e26d687ff19153ee7e0970aa382aafb37d2fe13890f33316",
+      "bytes": 167604082,
+      "sha256": "9992e981b4a30603347332c36928e0eeb56776b269a7a0d87fb454cda5654bab",
       "entries": 2989,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/dpo_housing_adv04.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/dpo_housing_adv04.vpk"
     },
     {
       "name": "everfrost_frostfell.vpk",
@@ -1315,31 +1315,31 @@
     },
     {
       "name": "exp02_dun_dragon_necropolis.vpk",
-      "bytes": 97390305,
-      "sha256": "349042ab681387b569caa8b7c2ed9955017750ed26a246d8c63f090db05f7c2b",
+      "bytes": 97818275,
+      "sha256": "5074f09c6a4d0849e6201debc8faac2273510aa8c910b2eba548a15e71cc6c8a",
       "entries": 589,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp02_dun_dragon_necropolis.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp02_dun_dragon_necropolis.vpk"
     },
     {
       "name": "exp02_dun_halls_of_fate.vpk",
-      "bytes": 117635443,
-      "sha256": "04efc6f8093dcef091a1d81fc2da0ca4c0aa8330998f7e4be79cf06167840fd3",
+      "bytes": 118185068,
+      "sha256": "9daa02b070161929b5b2199f5fb8633ca9533afb9315e34fa0a5ef925f227edd",
       "entries": 998,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp02_dun_halls_of_fate.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp02_dun_halls_of_fate.vpk"
     },
     {
       "name": "exp02_dun_lair_of_scale.vpk",
-      "bytes": 80438690,
-      "sha256": "f0281c37a913fa1b4a666d9cd7521a064c690564d4da40419415b2605843bff2",
+      "bytes": 80538180,
+      "sha256": "98a547e0d18ea474e8ad58e5eb1f394cbb996aef89d893766de4ddaca3366dd0",
       "entries": 1079,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp02_dun_lair_of_scale.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp02_dun_lair_of_scale.vpk"
     },
     {
       "name": "exp02_dun_shrines_of_sky.vpk",
-      "bytes": 103523166,
-      "sha256": "bca81e9dcd8ce588ca80da0aeb61f096605a4587ad2e61c85c093b25272a0564",
+      "bytes": 105622423,
+      "sha256": "282eb333f9111038863d9b0657bc84c841e276efa9dd93feb2641f9c3474bbcc",
       "entries": 1142,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp02_dun_shrines_of_sky.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp02_dun_shrines_of_sky.vpk"
     },
     {
       "name": "exp02_dun_shrines_of_sky_epic01_vaults.vpk",
@@ -1357,10 +1357,10 @@
     },
     {
       "name": "exp02_rgn_realm_of_night.vpk",
-      "bytes": 64379873,
-      "sha256": "d443f84d784d33d6d19981fddb73d9895fcab0732bbbc1f0623ee33c36e0fcf6",
+      "bytes": 65162099,
+      "sha256": "67b68139d6fbd22b9123d491bf05a1b2f48ffbea6cc0b0eb4002a160391501c2",
       "entries": 847,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp02_rgn_realm_of_night.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp02_rgn_realm_of_night.vpk"
     },
     {
       "name": "exp02_rgn_realm_of_twilight.vpk",
@@ -1392,10 +1392,10 @@
     },
     {
       "name": "exp03_dun_estate_of_unrest.vpk",
-      "bytes": 104259997,
-      "sha256": "afc29256cd75a849eedf1ec42e5d004a2f4446922b317b54caaf0b88f073202c",
+      "bytes": 105592756,
+      "sha256": "1dcb709660f788c1b8410f863bd855e8daeec42af900c26d041308788bc7707b",
       "entries": 1037,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp03_dun_estate_of_unrest.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp03_dun_estate_of_unrest.vpk"
     },
     {
       "name": "exp03_dun_estate_of_unrest1.vpk",
@@ -1420,10 +1420,10 @@
     },
     {
       "name": "exp03_dun_hollow_stump.vpk",
-      "bytes": 9823257,
-      "sha256": "525efe496891c8c527ce0b72e3384ddc037b60f743f6e2ea7aeddc53f1071e42",
+      "bytes": 10184894,
+      "sha256": "5ffa3f53f6f7977ceb0aafc24c82b191a9a1e17b1860c8c9babda613843413ea",
       "entries": 138,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp03_dun_hollow_stump.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp03_dun_hollow_stump.vpk"
     },
     {
       "name": "exp03_dun_kaladim.vpk",
@@ -1448,17 +1448,17 @@
     },
     {
       "name": "exp03_dun_mistmoore_catacombs.vpk",
-      "bytes": 59336733,
-      "sha256": "63b7730369c7a2cc8ba82cd7bbff2c01894fe8c3f03ee5a990546858f969e821",
+      "bytes": 60015785,
+      "sha256": "093c420f42c667a3d4b9e1b6b420887156de065a0f836b21965f22067e2a386b",
       "entries": 755,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp03_dun_mistmoore_catacombs.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp03_dun_mistmoore_catacombs.vpk"
     },
     {
       "name": "exp03_misc.vpk",
-      "bytes": 44594572,
-      "sha256": "57591734c5fa858e8a499364235624c3042d628b26b9637b6b2851d8fbdb932d",
+      "bytes": 45264410,
+      "sha256": "ce80dd0321ce37d6f2cbb8a2f21796f81bcf7a29144c19b1a4e42f2b2ccb292e",
       "entries": 264,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp03_misc.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp03_misc.vpk"
     },
     {
       "name": "exp03_rgn_butcherblock.vpk",
@@ -1497,17 +1497,17 @@
     },
     {
       "name": "exp03_rgn_greater_faydark.vpk",
-      "bytes": 87942254,
-      "sha256": "88be1c183389d7f8daa7f57f7c2d2f0bb4079e2f2cccbab13871cb7abac9f9d1",
+      "bytes": 89779481,
+      "sha256": "1c3710ff102b8e1713bbdaa524901c8159f947512c4179efb43943d6a803a5ea",
       "entries": 2584,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp03_rgn_greater_faydark.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp03_rgn_greater_faydark.vpk"
     },
     {
       "name": "exp03_rgn_greater_faydark1.vpk",
-      "bytes": 159881109,
-      "sha256": "ca8e7516751df8c0322913b3561bd9468d8434ccd7da752826a124f3e775a357",
+      "bytes": 160298832,
+      "sha256": "9de61621034c59de7ba4629acfc9763d412d36a8aebeaff2e972ab6af1df6970",
       "entries": 1071,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp03_rgn_greater_faydark1.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp03_rgn_greater_faydark1.vpk"
     },
     {
       "name": "exp03_rgn_lesser_faydark.vpk",
@@ -1518,17 +1518,17 @@
     },
     {
       "name": "exp03_rgn_lesser_faydark1.vpk",
-      "bytes": 19801257,
-      "sha256": "b8761b294cb51e1391fc758351dcd848290904c992176e0d30a1690ecbe83c56",
+      "bytes": 20902113,
+      "sha256": "3320fe50456d688c8109a745a1981b1a521bade21a0ef22090779e1741593bf6",
       "entries": 378,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp03_rgn_lesser_faydark1.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp03_rgn_lesser_faydark1.vpk"
     },
     {
       "name": "exp03_rgn_loping_plains.vpk",
-      "bytes": 50593018,
-      "sha256": "21a17ab0ebacf165a244fc95f304afcb3e8d4a082ea5664e816b22ef74058067",
+      "bytes": 50978164,
+      "sha256": "ea0901334f7a9eadc52f282aefd106178fca4fa21590a58504944f186c5e1686",
       "entries": 1398,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp03_rgn_loping_plains.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp03_rgn_loping_plains.vpk"
     },
     {
       "name": "exp03_rgn_steamfont.vpk",
@@ -1539,38 +1539,38 @@
     },
     {
       "name": "exp04_dun_charasis_epic01_queens.vpk",
-      "bytes": 44345130,
-      "sha256": "2ae41cb1b655e4c766a3e6fee1178aba4986372c7b856cc2e84281febbe005b2",
+      "bytes": 45230881,
+      "sha256": "66bb05d7cc6240434ce2965467c21f48eda8507d9ade75d928a7d11c6d19bdd3",
       "entries": 224,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_dun_charasis_epic01_queens.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_dun_charasis_epic01_queens.vpk"
     },
     {
       "name": "exp04_dun_charasis_north.vpk",
-      "bytes": 23829387,
-      "sha256": "dfa6a97cca952cf24cbde66a72c5aac575e8306b43e6d439ba2bea23b7c1c37f",
+      "bytes": 23891749,
+      "sha256": "9cc1fb98326655f686c5b2e65254f7f416442c9bf4f83aa72c96e5c825680998",
       "entries": 456,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_dun_charasis_north.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_dun_charasis_north.vpk"
     },
     {
       "name": "exp04_dun_charasis_south.vpk",
-      "bytes": 14094400,
-      "sha256": "825c282cc9781cba90ee5b335bd9dd7c69b872400be2304b67a2cb3cc8020c51",
+      "bytes": 14531010,
+      "sha256": "e0a4e6068ef2aee6e1f307486947cd93771535c71f7772cb764184c575ddd92a",
       "entries": 289,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_dun_charasis_south.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_dun_charasis_south.vpk"
     },
     {
       "name": "exp04_dun_charasis_west.vpk",
-      "bytes": 7996833,
-      "sha256": "fe1be34be7aba0a298d77423a65a33ce7bd39cfee2d8c01e2ebbc82a21d87dda",
+      "bytes": 8030972,
+      "sha256": "9ee44956208c88eee1307d02c6d89fae4ddc0e166af8e715a2b528e32064de87",
       "entries": 351,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_dun_charasis_west.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_dun_charasis_west.vpk"
     },
     {
       "name": "exp04_dun_chardok.vpk",
-      "bytes": 155919099,
-      "sha256": "c9ce341cc2e0eb6ceddc6783962ca5d37fd75cf05042f9658a1b09dea8a0f70f",
+      "bytes": 157269759,
+      "sha256": "5de9a5b044c3c4120d71dd61fb8d1265054d4bd6bf61360ab2a8976a14194ad0",
       "entries": 1226,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_dun_chardok.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_dun_chardok.vpk"
     },
     {
       "name": "exp04_dun_chardok_epic01_throne.vpk",
@@ -1581,31 +1581,31 @@
     },
     {
       "name": "exp04_dun_chelsith.vpk",
-      "bytes": 104183650,
-      "sha256": "bf324f67454e853d233263ef49bfaeb894407db82720e8c8bf45d93c4b8fa71d",
+      "bytes": 104274549,
+      "sha256": "9fe972a86b29b4b23471de2485a5dac435c5452aa986d946051914c414447feb",
       "entries": 488,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_dun_chelsith.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_dun_chelsith.vpk"
     },
     {
       "name": "exp04_dun_chelsith_epic01_behemoth.vpk",
-      "bytes": 22281361,
-      "sha256": "bc5be0a503b19e6e1e2d63aaa92018c4c3cafb9be35bd7f154a9df7c6c6bc679",
+      "bytes": 23364188,
+      "sha256": "6426480b20e8383ca0f277ac2b9afe814734e6aa43f4edf7bf939517643e197b",
       "entries": 162,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_dun_chelsith_epic01_behemoth.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_dun_chelsith_epic01_behemoth.vpk"
     },
     {
       "name": "exp04_dun_droga_nurga.vpk",
-      "bytes": 70208442,
-      "sha256": "382c1e4d1e7256be5e9f972bc7137cf76434b2efef7bc83e0983b85192c6006a",
+      "bytes": 71151985,
+      "sha256": "125837a46662cbdb6e199bf6f4724d6767943a8a17fa44276265500383efda88",
       "entries": 404,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_dun_droga_nurga.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_dun_droga_nurga.vpk"
     },
     {
       "name": "exp04_dun_karnors_castle.vpk",
-      "bytes": 40296537,
-      "sha256": "242829f7d1028be7dddc1d49bb74e3f793c6b3536d6a210b15a071e446e20e93",
+      "bytes": 40742849,
+      "sha256": "820c82d2e3123867e166ec510706bc4d74b397b2db2cbe3240e5c465e644d229",
       "entries": 1006,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_dun_karnors_castle.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_dun_karnors_castle.vpk"
     },
     {
       "name": "exp04_dun_kurns_tower.vpk",
@@ -1616,24 +1616,24 @@
     },
     {
       "name": "exp04_dun_sebilis.vpk",
-      "bytes": 93191851,
-      "sha256": "f3a3c5a3537f632cabf4451b71b43b977570f23c5325657d8be115589a1066d0",
+      "bytes": 93542338,
+      "sha256": "91ba76826d79944eaff20c55be03329cedd3329e8840042b5db8c4195a3983a0",
       "entries": 1669,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_dun_sebilis.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_dun_sebilis.vpk"
     },
     {
       "name": "exp04_dun_veeshans_peak.vpk",
-      "bytes": 147537343,
-      "sha256": "0de0b68a6c70d001cd75cf6a719a7885a9087773a75e000f636e796336217353",
+      "bytes": 150267799,
+      "sha256": "60ec3fa796a5caec62c7333df36ef52f41c625d537e2063c2a306b20aa179668",
       "entries": 1152,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_dun_veeshans_peak.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_dun_veeshans_peak.vpk"
     },
     {
       "name": "exp04_rgn_fens_of_nathsar.vpk",
-      "bytes": 129636764,
-      "sha256": "2b287d52a2624a0d6d2ef5984868d3ec8e9bab98e843e196463bc2588cb0b89a",
+      "bytes": 130107311,
+      "sha256": "e1c20c04f3180d87d80772b74bfde858cc094cba14c3c5286f9a952870c018fa",
       "entries": 2200,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_rgn_fens_of_nathsar.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_rgn_fens_of_nathsar.vpk"
     },
     {
       "name": "exp04_rgn_gorowyn_ph_1room.vpk",
@@ -1658,31 +1658,31 @@
     },
     {
       "name": "exp04_rgn_jarsath_wastes.vpk",
-      "bytes": 136343954,
-      "sha256": "4819d8f3ee308063bc7c79f9c41678778d0ab84d52042d1bc577e5aee894ee7d",
+      "bytes": 136697075,
+      "sha256": "6e10c15d0f14bfaf68d4036ed2f4d923a0151e19f97391f0c44c4b5724307bf4",
       "entries": 2031,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_rgn_jarsath_wastes.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_rgn_jarsath_wastes.vpk"
     },
     {
       "name": "exp04_rgn_kunzar_jungle.vpk",
-      "bytes": 148857621,
-      "sha256": "c59e1857aeb8391a88cef263cdbdba0b64d18a5bc70c96750c31fae9a6d8bb98",
+      "bytes": 149690483,
+      "sha256": "2b97c36038affc0bb24e676499ee9979711a307ce0bc579afb332ff659542f9d",
       "entries": 1997,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_rgn_kunzar_jungle.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_rgn_kunzar_jungle.vpk"
     },
     {
       "name": "exp04_rgn_kylong_plains.vpk",
-      "bytes": 199771290,
-      "sha256": "c8499b7171710e436e74c0d7e24b2537373d7e6b5c5e1659c33a390a5b8b0371",
+      "bytes": 200543097,
+      "sha256": "750fe6ef908f3df2701dee3f173eb98c1e532525f7a5b16ef485638c61997390",
       "entries": 2224,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_rgn_kylong_plains.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_rgn_kylong_plains.vpk"
     },
     {
       "name": "exp04_rgn_timorous_deep.vpk",
-      "bytes": 89426763,
-      "sha256": "147099b3e53285787d36528c15dbec6c1dc72f641c770c1e9745d4377d316c6b",
+      "bytes": 89526406,
+      "sha256": "a24a666489e93c19115788dfb85e1e462e11fdc78e2845ce68c9b672a5f36bac",
       "entries": 2427,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp04_rgn_timorous_deep.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp04_rgn_timorous_deep.vpk"
     },
     {
       "name": "exp04_wearable01.vpk",
@@ -1721,10 +1721,10 @@
     },
     {
       "name": "exp05_dun_guk_lower.vpk",
-      "bytes": 50285350,
-      "sha256": "f5daeb6afb7674e68092a3418d0b98d2b3af756224cf32a1e45b5cb844b1db25",
+      "bytes": 50698616,
+      "sha256": "d5b9e6ffe56e17bdea72570dd3b24e824b271a069e57f85a91acf7a203fd3e89",
       "entries": 360,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp05_dun_guk_lower.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp05_dun_guk_lower.vpk"
     },
     {
       "name": "exp05_dun_guk_spire.vpk",
@@ -1735,17 +1735,17 @@
     },
     {
       "name": "exp05_dun_guk_stronghold.vpk",
-      "bytes": 26164867,
-      "sha256": "513188a55c42587c372d2a0bde96d36adeec382c42d1de54bf9f17a830faa003",
+      "bytes": 26296788,
+      "sha256": "07119df02ace1b6892a44a410b74beb75cbfa4d68be3c2dda02234839b116f01",
       "entries": 348,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp05_dun_guk_stronghold.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp05_dun_guk_stronghold.vpk"
     },
     {
       "name": "exp05_dun_guk_upper.vpk",
-      "bytes": 49633138,
-      "sha256": "96e8b9674e7ea209d0ad2466744765bfd42a1d7838e9680e7ff097175f5f73d1",
+      "bytes": 50439403,
+      "sha256": "7029f4379b8ec46f6d2a902a4a0c94b20059b2cd9264f9d2b8b886919686d651",
       "entries": 512,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp05_dun_guk_upper.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp05_dun_guk_upper.vpk"
     },
     {
       "name": "exp05_dun_miragul_lower.vpk",
@@ -1812,10 +1812,10 @@
     },
     {
       "name": "exp05_dun_void_palace.vpk",
-      "bytes": 145166265,
-      "sha256": "ddf65a95872e57103b375eb37a0a20a211942efc6db5b4d1e00bb84424c14c0a",
+      "bytes": 146912641,
+      "sha256": "4b2cf36a177e9cdbac72117b735b352b2a79d267f47e184bdb263ce31a710fa2",
       "entries": 547,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp05_dun_void_palace.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp05_dun_void_palace.vpk"
     },
     {
       "name": "exp05_dun_void_pit.vpk",
@@ -1847,17 +1847,17 @@
     },
     {
       "name": "exp06_dun_sentinal.vpk",
-      "bytes": 49710577,
-      "sha256": "30645d7ace27685fba1c8528f3b81d1749444c2a02292a894a07b1a9c2583941",
+      "bytes": 49934693,
+      "sha256": "aa9a2171af44c6c2d20262d68039309f59c1994f485430b4bd85b82ba8d73e76",
       "entries": 1682,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp06_dun_sentinal.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp06_dun_sentinal.vpk"
     },
     {
       "name": "exp06_dun_thehole.vpk",
-      "bytes": 149062109,
-      "sha256": "fe80b32f0debc33df24b5e9063292cac6afc721ea43ca71078779bebbb7c5d3c",
+      "bytes": 149341202,
+      "sha256": "4628e942239d3bfb0dd0c2c9c94dfb7f8ee957a2da3d42424f22209378155f9e",
       "entries": 1211,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp06_dun_thehole.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp06_dun_thehole.vpk"
     },
     {
       "name": "exp06_dun_toxxulia_mound01.vpk",
@@ -1868,10 +1868,10 @@
     },
     {
       "name": "exp06_dun_vastydeep.vpk",
-      "bytes": 202043364,
-      "sha256": "56265d417b3aeae2271c02d4b57387fd48ed376a73e465a2b675ab2c745b631b",
+      "bytes": 202657159,
+      "sha256": "856849b4a1caf160799cfaea7ea4dda526ebf68c4157e4254712fd68ae4f2567",
       "entries": 1958,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp06_dun_vastydeep.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp06_dun_vastydeep.vpk"
     },
     {
       "name": "exp06_misc.vpk",
@@ -1889,10 +1889,10 @@
     },
     {
       "name": "exp06_rgn_odus_south.vpk",
-      "bytes": 162348138,
-      "sha256": "9dd397240cdedd68ca46949c5cf0bf5347f7ad042fcdfe5950379d817a0600a1",
+      "bytes": 163244216,
+      "sha256": "661d9776764fd28970e4ddefdd33a802998959c86407fb51435f890e2f70ba73",
       "entries": 3086,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp06_rgn_odus_south.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp06_rgn_odus_south.vpk"
     },
     {
       "name": "exp07_dun_crystalcavern.vpk",
@@ -1903,10 +1903,10 @@
     },
     {
       "name": "exp07_dun_drunder.vpk",
-      "bytes": 133003034,
-      "sha256": "a426a9aeb0e67ca9fb13541a29d673669e2c58d93ac776141dfb56f00a32667e",
+      "bytes": 134187884,
+      "sha256": "7015b0fac70e65880cf069a199c806c5cc055481eb3fdaa2bf6663510861c3ca",
       "entries": 1853,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp07_dun_drunder.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp07_dun_drunder.vpk"
     },
     {
       "name": "exp07_dun_drunder_fortress.vpk",
@@ -1917,24 +1917,24 @@
     },
     {
       "name": "exp07_dun_kael_drakkel.vpk",
-      "bytes": 268503070,
-      "sha256": "ef588be928018a2d2d5a559cc1cd936d22fa0eac8667bd149522b8c166518c5f",
+      "bytes": 268975950,
+      "sha256": "8f7f40b2ee2327200e9a3595c012b5739670c46ec4c7db14be60286b87bb90be",
       "entries": 2018,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp07_dun_kael_drakkel.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp07_dun_kael_drakkel.vpk"
     },
     {
       "name": "exp07_dun_kraytocs_fortress.vpk",
-      "bytes": 50740179,
-      "sha256": "88fdc783b4731c11f2fb892a85d276e3d64943bc41c0115f2e1234800d5f6317",
+      "bytes": 51112095,
+      "sha256": "14e20962da979fc0e0bb4cbd0c1324efaa11add5e5c5dc7f15599a2a1d4c2221",
       "entries": 573,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp07_dun_kraytocs_fortress.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp07_dun_kraytocs_fortress.vpk"
     },
     {
       "name": "exp07_dun_toweroffrozenshadow.vpk",
-      "bytes": 169142227,
-      "sha256": "8f3f8e56f50fa4614fcdcf258d1706003288ecdf12f2d7df5c467c60afbe1b6f",
+      "bytes": 170507565,
+      "sha256": "cc863584e8be3f3952a875972accc7eafcc5b58461bb3e19b846a7a38261b6e3",
       "entries": 2565,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp07_dun_toweroffrozenshadow.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp07_dun_toweroffrozenshadow.vpk"
     },
     {
       "name": "exp07_dun_velks_forgotten_pools.vpk",
@@ -1945,73 +1945,73 @@
     },
     {
       "name": "exp07_dun_velks_the_ascent.vpk",
-      "bytes": 50401725,
-      "sha256": "400efbefb4e58e41b3bc73912dc35faf89553eed112edf51105fdb4b5d16c1e4",
+      "bytes": 50673039,
+      "sha256": "21b48314bef177d4ea884e09e80d26c72c95eeb4ed07342b303602aea02a795c",
       "entries": 299,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp07_dun_velks_the_ascent.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp07_dun_velks_the_ascent.vpk"
     },
     {
       "name": "exp07_rgn_eastern_wastes.vpk",
-      "bytes": 246675847,
-      "sha256": "9892d0a678b9dbfc817dc4b4d091faddb0be64a62dee3ae3e6e1c598e4bab5d3",
+      "bytes": 248178303,
+      "sha256": "78e6e42c97a6b2d6709008ee5419e084d4e9b47cc646c01d071c76e3206a8853",
       "entries": 1925,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp07_rgn_eastern_wastes.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp07_rgn_eastern_wastes.vpk"
     },
     {
       "name": "exp07_rgn_great_divide.vpk",
-      "bytes": 48555551,
-      "sha256": "9fda6d1f6de0ec20e2b2f115dfe6eee5403f9007390f2bf4609fe4dc5277e0d0",
+      "bytes": 48855898,
+      "sha256": "96517c4002a6c9d12dcc7cc1456d61aeccf2bbf005c17f164e1e0e85e83a60f9",
       "entries": 1553,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp07_rgn_great_divide.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp07_rgn_great_divide.vpk"
     },
     {
       "name": "exp08_dun_sleepers_tomb.vpk",
-      "bytes": 116328813,
-      "sha256": "9418fd1166347f08c30b2a077d2255df391905bb6232cf284fef1424e2549f84",
+      "bytes": 116446344,
+      "sha256": "eb3c417f5d581ff49ba1f5db2ffa44b0473609ff5a48400012084f1a108b3b3b",
       "entries": 692,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp08_dun_sleepers_tomb.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp08_dun_sleepers_tomb.vpk"
     },
     {
       "name": "exp08_dungeon.vpk",
-      "bytes": 303007125,
-      "sha256": "f158373187b6f33674df68dd1d006f3a8774236b2aa63f13fbd401f8620554d5",
+      "bytes": 305652931,
+      "sha256": "7af6b33b526ce0995baf32fc4d06059dfea0c4c56a3610334adc123b15e09f13",
       "entries": 4858,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp08_dungeon.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp08_dungeon.vpk"
     },
     {
       "name": "exp08_overland.vpk",
-      "bytes": 308166606,
-      "sha256": "a418f6ba5d41e8fd3af05ed75fe1c0c82afe87e72515e81d31c2640fb5768333",
+      "bytes": 311111963,
+      "sha256": "fadc5076d8ab48f959385b438162d6e4de83764dddf92c19660766674ba67d86",
       "entries": 2778,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp08_overland.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp08_overland.vpk"
     },
     {
       "name": "exp09_dungeon.vpk",
-      "bytes": 275173775,
-      "sha256": "033448ae98e87d617a15c1cea00ff0d2a39e006c0f08973b2b72484d4140a91f",
+      "bytes": 275254417,
+      "sha256": "fb0833ed72388d72712d56f3fc22140ec4493adb76bb37ee1cdc20cc96dcfa5f",
       "entries": 2405,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp09_dungeon.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp09_dungeon.vpk"
     },
     {
       "name": "exp09_dungeon2.vpk",
-      "bytes": 211495304,
-      "sha256": "f1e11635e589dada52ce4b1f7fe389785f72840e459a8e79b95e00bd85df281f",
+      "bytes": 213441236,
+      "sha256": "6b2d12a6237f40ead2f351079bd68dd6c4bc41c38a7c61901da43cfab718c46d",
       "entries": 2524,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp09_dungeon2.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp09_dungeon2.vpk"
     },
     {
       "name": "exp09_overland.vpk",
-      "bytes": 280618149,
-      "sha256": "9996f262eefc0ff9f36e6d44316217256f8c5760b4919ce93f94490518c3f2a4",
+      "bytes": 281228699,
+      "sha256": "796f51ecefe210c32ae43d7bbb7ee9b54c7304987a4a61a94f9a5ddc141b4862",
       "entries": 3747,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp09_overland.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp09_overland.vpk"
     },
     {
       "name": "exp_07_thurgadin_velious.vpk",
-      "bytes": 87745958,
-      "sha256": "4bbf217b7d11b3470d4d32844bc809d5915b9ad10fc25ae7ae23855abc70e721",
+      "bytes": 88252382,
+      "sha256": "6d1fc78fe714449da44bc2e84fc8bf08c825641409ecc460b5bded7664068501",
       "entries": 625,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/exp_07_thurgadin_velious.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/exp_07_thurgadin_velious.vpk"
     },
     {
       "name": "fprt_east.vpk",
@@ -2022,10 +2022,10 @@
     },
     {
       "name": "fprt_guildhall_tier3.vpk",
-      "bytes": 91701262,
-      "sha256": "f27d85402dc0e684dd0180ba87f6e3451f561cf3cfa4c87369aedfcc84c451e0",
+      "bytes": 91778390,
+      "sha256": "d928e47a1f8e1f45b2d76cc99ec09e5ea17c9547c3768c21dfc343e82e96ec96",
       "entries": 935,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/fprt_guildhall_tier3.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/fprt_guildhall_tier3.vpk"
     },
     {
       "name": "fprt_guildhall_tier4.vpk",
@@ -2043,10 +2043,10 @@
     },
     {
       "name": "halas.vpk",
-      "bytes": 106650881,
-      "sha256": "3755e54ac9946efcd33adb80b5f21304d54162af178d3edae88414a5cb702653",
+      "bytes": 107416741,
+      "sha256": "c83b4961a28fa4902b78319930fb9f5ef46deea2e91569f991e37725fc5b7703",
       "entries": 1759,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/halas.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/halas.vpk"
     },
     {
       "name": "lavastorm1.vpk",
@@ -2057,31 +2057,31 @@
     },
     {
       "name": "live_epic_mystic.vpk",
-      "bytes": 361165861,
-      "sha256": "fe2ce2e8fd5f4774d138766313b2f42604ccfcb6511061a68ad556a1a7e642a0",
+      "bytes": 362810064,
+      "sha256": "0c50200b585e7707fb6a7924532c0efacaeb0cb69a2e9b48dc800a6a635013d6",
       "entries": 3986,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/live_epic_mystic.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/live_epic_mystic.vpk"
     },
     {
       "name": "live_epic_mystic_odus.vpk",
-      "bytes": 441751377,
-      "sha256": "d582ae7c45f3aca967f2fcc7797f309dffe427b3f3695e3d1452882fd0a48a62",
+      "bytes": 443879430,
+      "sha256": "954a4dad10e80a535406544dbd08372085f57509b95b315e2cd9e130683eb424",
       "entries": 4352,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/live_epic_mystic_odus.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/live_epic_mystic_odus.vpk"
     },
     {
       "name": "live_haunted_cauldroncove.vpk",
-      "bytes": 404507826,
-      "sha256": "bb744c946099b826d9d676b3f179e12e0a8bee069539021e10d843d86d331aae",
+      "bytes": 405972025,
+      "sha256": "05c196609358a5f8d453abac79b1fdfde6099f57581ec558df94250474f2e283",
       "entries": 4668,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/live_haunted_cauldroncove.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/live_haunted_cauldroncove.vpk"
     },
     {
       "name": "live_haunted_unrest.vpk",
-      "bytes": 97745894,
-      "sha256": "bde0e7f2337a67c62dc8382ed5f6d2e8fc9c51ce9d7fd62ab88e08ccb9c166a9",
+      "bytes": 98855753,
+      "sha256": "fcecea3ca3d079e4947fdea708489a856a3bc4f16fe056c3c6dc4c3e75c0964e",
       "entries": 645,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/live_haunted_unrest.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/live_haunted_unrest.vpk"
     },
     {
       "name": "misc.vpk",
@@ -2092,10 +2092,10 @@
     },
     {
       "name": "misc1.vpk",
-      "bytes": 105016809,
-      "sha256": "eeb8a90ff720cfa41b1a2bb99f3294b4ae3d06457852bd4fa8f6a6258b649faa",
+      "bytes": 105461816,
+      "sha256": "f657ce493e39ba7631e893dfb8c19a674ca711e4bd586c62d3f90150cedc74d8",
       "entries": 2261,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/misc1.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/misc1.vpk"
     },
     {
       "name": "mod01_dun_crypt_of_thaen.vpk",
@@ -2106,10 +2106,10 @@
     },
     {
       "name": "neriak.vpk",
-      "bytes": 306512194,
-      "sha256": "1672b53cbb8b12017d35478218cfe12c92660a67d7642d652065e09339242241",
+      "bytes": 306955935,
+      "sha256": "7e168676262561a194067447d776a360107374a2d95b52a4de4b5ec5b374f08a",
       "entries": 2872,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/neriak.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/neriak.vpk"
     },
     {
       "name": "obelisk_of_lostsouls.vpk",
@@ -2141,10 +2141,10 @@
     },
     {
       "name": "qey_north.vpk",
-      "bytes": 76151409,
-      "sha256": "b12fc2eca9799f52ba71dad73f9256c50e62f88f4fe1caba4de66775682e330a",
+      "bytes": 76533209,
+      "sha256": "efa806e967b85634f77fd957b5ea9431b1574d1143107410a01a42f54734b94b",
       "entries": 2190,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/qey_north.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/qey_north.vpk"
     },
     {
       "name": "sc_items.vpk",
@@ -2169,10 +2169,10 @@
     },
     {
       "name": "shard_of_love.vpk",
-      "bytes": 93130225,
-      "sha256": "bc3f3eca6ee59c9ebee632830ac8cda46bfb111c08ee357f6204fafb0f938886",
+      "bytes": 93622028,
+      "sha256": "13d4b975ef7d716b4a0312ea0015f83ee605df91bfac6beadb3e141e432e73b0",
       "entries": 894,
-      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.0/shard_of_love.vpk"
+      "url": "https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/shard_of_love.vpk"
     }
   ]
 }

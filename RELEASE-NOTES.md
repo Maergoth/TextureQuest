@@ -1,7 +1,7 @@
-TextureQuest app1.3.2 adds overall download and installation progress: cumulative percentage, bytes and PAK count across the complete pack, with current-file status retained. The bar no longer resets between PAKs or spins indefinitely during installation.
+TextureQuest release 1.3.4 adds 1,099 missed textures, including glow, effects and alpha maps, through 125 complete updated archives. The full pack now contains 24,381 textures across 310 archives and preserves the existing Ratonga skin repair, 4K updates and other released textures.
 
-This release includes the fast1.3.1 path: downloaded files are verified from their incoming byte stream, without decompressing each texture or repeatedly scanning each finished archive between downloads. Installation hashes bytes as it copies and uses inexpensive native game/launcher checks. Matching prepared downloads and unchanged installed files are reused. Explicit Verify remains available.
+App 1.3.3 keeps overall progress and Pause visible on shorter screens and at higher display scaling. Status text scrolls separately. Successful installation shows exactly: “Textures Installed. Launch via the EQ2 EXE, not the launcher!”
 
-Texture contents remain1.2.0: the same310 full VPKs,23,282 replacements,74 selected4K maps and20 prior repairs. Existing1.3.0 VPK downloads are reused; no texture was rebuilt or uploaded again.
+Texture version: 1.2.2. App version: 1.3.3. Existing TextureQuest apps detect app and texture updates separately. Saved matching archives are reused; only changed archives need downloading. Keep the app's data folder when upgrading.
 
-Close the app before upgrading. Extract the new installer and retain your existing data folder alongside TextureQuest.exe. Downloads/preparation never install game files automatically; click Install after patching and closing EQ2 and its launcher. Sideload remains unavailable.
+Patch the game first, then close EQ2 and its launcher. Use Download / Resume, then Install. After installation, launch via the EQ2 executable; the game launcher may replace modified archives. Downloads never install automatically. Sideload remains unavailable.

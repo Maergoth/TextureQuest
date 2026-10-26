@@ -29,6 +29,14 @@ SIDELOAD_WARNING = "We don't know what's more legal, replacing the game files or
 UPDATES = "https://github.com/Maergoth/TextureQuest/releases/latest"
 BG, WHITE, INK, MUTED = "#f3f1ec", "#ffffff", "#23342f", "#67746d"
 GREEN, DARK, GOLD, LINE = "#256851", "#172c26", "#dfc991", "#dedfd8"
+INSTALL_SUCCESS_MESSAGE = "Textures Installed. Launch via the EQ2 EXE, not the launcher!"
+
+
+def window_size(screen_width, screen_height, dpi):
+    """Leave room for desktop chrome; scrolling handles smaller client areas."""
+    scale = max(1.0, dpi / 96.0)
+    return (min(840, max(1, screen_width - round(48 * scale))),
+            min(870, max(1, screen_height - round(80 * scale))))
 
 
 def resource(name):
@@ -157,8 +165,10 @@ class TextureQuestApp:
         self.game = tk.StringVar(value=str(initial_game or ""))
         self.game.trace_add("write", lambda *_: self.game_changed())
         root.title("TextureQuest")
-        root.geometry(f"840x{min(870, max(640, root.winfo_screenheight() - 80))}")
-        root.minsize(760, 640)
+        width, height = window_size(root.winfo_screenwidth(), root.winfo_screenheight(), root.winfo_fpixels("1i"))
+        root.geometry(f"{width}x{height}")
+        root.minsize(min(640, width), min(360, height))
+        root.resizable(True, True)
         root.configure(bg=BG)
         root.option_add("*Font", ("Segoe UI", 10))
         self.build()
@@ -169,8 +179,11 @@ class TextureQuestApp:
             root.after(200, self.check_updates)
 
     def label(self, parent, text, size=10, color=INK, bold=False, **kwargs):
-        return tk.Label(parent, text=text, bg=parent.cget("bg"), fg=color, anchor="w",
-                        font=("Segoe UI Semibold" if bold else "Segoe UI", size), **kwargs)
+        label = tk.Label(parent, text=text, bg=parent.cget("bg"), fg=color, anchor="w",
+                         font=("Segoe UI Semibold" if bold else "Segoe UI", size), **kwargs)
+        if "wraplength" in kwargs:
+            label.bind("<Configure>", lambda event: label.configure(wraplength=max(1, event.width - 2)))
+        return label
 
     def button(self, parent, text, command, primary=False):
         button = tk.Button(parent, text=text, command=command, bg=GREEN if primary else "#e8ede6",
@@ -196,33 +209,38 @@ class TextureQuestApp:
         style.theme_use("clam")
         style.configure("Quest.Horizontal.TProgressbar", troughcolor="#e1e6dd", background=GREEN, borderwidth=0)
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(1, weight=1)
-        header = tk.Frame(self.root, bg=DARK, padx=28, pady=16)
-        header.grid(row=0, column=0, sticky="ew")
-        header.columnconfigure(0, weight=1)
-        tk.Label(header, text="TextureQuest", font=("Georgia", 28), fg=GOLD, bg=DARK, anchor="w").grid(row=0, column=0, sticky="w")
-        self.label(header, "More detail. The EverQuest II you remember.", color="#c7d3c9").grid(row=1, column=0, sticky="w", pady=(4, 0))
-        self.version_label = self.label(header, "App " + self.app_version, color=GOLD)
-        self.version_label.grid(row=0, column=1, sticky="ne", padx=(18, 0))
-        self.app_update_label = self.label(header, "App updates have not been checked.", color="#c7d3c9", size=9, wraplength=610)
-        self.app_update_label.grid(row=2, column=0, sticky="w", pady=(9, 0))
-        self.installer_update_button = self.button(header, "Get app update", self.open_app_update)
-        self.installer_update_button.grid(row=2, column=1, sticky="e", padx=(10, 0))
-        self.installer_update_button.grid_remove()
+        self.root.rowconfigure(0, weight=1)
         viewport = tk.Frame(self.root, bg=BG)
-        viewport.grid(row=1, column=0, sticky="nsew")
+        viewport.grid(row=0, column=0, sticky="nsew")
         viewport.columnconfigure(0, weight=1)
         viewport.rowconfigure(0, weight=1)
-        self.body_canvas = tk.Canvas(viewport, bg=BG, highlightthickness=0, height=500)
+        self.body_canvas = tk.Canvas(viewport, bg=BG, highlightthickness=0, height=1)
         self.body_canvas.grid(row=0, column=0, sticky="nsew")
         scrollbar = ttk.Scrollbar(viewport, orient="vertical", command=self.body_canvas.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.body_canvas.configure(yscrollcommand=scrollbar.set)
-        body = tk.Frame(self.body_canvas, bg=BG, padx=24, pady=16)
-        body_window = self.body_canvas.create_window(0, 0, window=body, anchor="nw")
-        body.bind("<Configure>", lambda _: self.body_canvas.configure(scrollregion=self.body_canvas.bbox("all")))
+        content = tk.Frame(self.body_canvas, bg=BG)
+        content.columnconfigure(0, weight=1)
+        body_window = self.body_canvas.create_window(0, 0, window=content, anchor="nw")
+        content.bind("<Configure>", lambda _: self.body_canvas.configure(scrollregion=self.body_canvas.bbox("all")))
         self.body_canvas.bind("<Configure>", lambda event: self.body_canvas.itemconfigure(body_window, width=event.width))
         self.root.bind("<MouseWheel>", lambda event: self.body_canvas.yview_scroll(-int(event.delta / 120), "units"))
+        # Everything except progress can scroll, including the header and footer
+        # when a small display or larger fonts leave very little vertical space.
+        header = tk.Frame(content, bg=DARK, padx=28, pady=16)
+        header.grid(row=0, column=0, sticky="ew")
+        header.columnconfigure(0, weight=1)
+        tk.Label(header, text="TextureQuest", font=("Georgia", 28), fg=GOLD, bg=DARK, anchor="w").grid(row=0, column=0, sticky="w")
+        self.label(header, "More detail. The EverQuest II you remember.", color="#c7d3c9", wraplength=610, justify="left").grid(row=1, column=0, sticky="ew", pady=(4, 0))
+        self.version_label = self.label(header, "App " + self.app_version, color=GOLD)
+        self.version_label.grid(row=0, column=1, sticky="ne", padx=(18, 0))
+        self.app_update_label = self.label(header, "App updates have not been checked.", color="#c7d3c9", size=9, wraplength=610)
+        self.app_update_label.grid(row=2, column=0, sticky="ew", pady=(9, 0))
+        self.installer_update_button = self.button(header, "Get app update", self.open_app_update)
+        self.installer_update_button.grid(row=2, column=1, sticky="e", padx=(10, 0))
+        self.installer_update_button.grid_remove()
+        body = tk.Frame(content, bg=BG, padx=24, pady=16)
+        body.grid(row=1, column=0, sticky="ew")
         body.columnconfigure(0, weight=1)
         game_card = self.card(body, 0, "1", "Choose your EverQuest II folder")
         self.label(game_card, "Patch first, then close the game and launcher.", color=MUTED).grid(row=1, column=0, sticky="w", pady=(4, 9))
@@ -236,26 +254,26 @@ class TextureQuestApp:
         pack_card = self.card(body, 1, "2", "Get the complete texture pack")
         updated = self.release.get("schema") == "texturequest-release-v2"
         direct = self.release.get("schema") == "texturequest-release-v3"
-        self.pack_description = self.label(pack_card, "Saved downloads are reused. Checking for updates never installs files.", color=MUTED, size=9)
-        self.pack_description.grid(row=1, column=0, sticky="w", pady=(4, 9))
+        self.pack_description = self.label(pack_card, "Saved downloads are reused. Checking for updates never installs files.", color=MUTED, size=9, wraplength=620, justify="left")
+        self.pack_description.grid(row=1, column=0, sticky="ew", pady=(4, 9))
         row = tk.Frame(pack_card, bg=WHITE)
         row.grid(row=2, column=0, sticky="ew")
         row.columnconfigure(1, weight=1)
         self.download_button = self.button(row, "Download pack", self.download_pack)
         self.download_button.grid(row=0, column=0, sticky="w")
         self.download_label = self.label(row, "Not downloaded", color=MUTED, wraplength=350, justify="left")
-        self.download_label.grid(row=0, column=1, sticky="w", padx=(14, 0))
+        self.download_label.grid(row=0, column=1, sticky="ew", padx=(14, 0))
         space = ("One saved texture set. Downloaded VPKs are ready for installation; no ZIP or extracted duplicate."
                  if direct else "Updates reuse matching files; fresh or patched installs may also need the 27.8 GB base."
                  if updated else "Allow 56 GB for download/cache, plus 16 GB free on the game drive.")
-        self.label(pack_card, space, size=9, color=MUTED, wraplength=620, justify="left").grid(row=3, column=0, sticky="w", pady=(9, 0))
+        self.label(pack_card, space, size=9, color=MUTED, wraplength=620, justify="left").grid(row=3, column=0, sticky="ew", pady=(9, 0))
         self.pack_update_label = self.label(pack_card, "Texture updates have not been checked.", size=9, color=GREEN, wraplength=620, justify="left")
-        self.pack_update_label.grid(row=4, column=0, sticky="w", pady=(8, 0))
+        self.pack_update_label.grid(row=4, column=0, sticky="ew", pady=(8, 0))
         self.pack_versions_label = self.label(pack_card, "", size=9, color=MUTED, wraplength=620, justify="left")
-        self.pack_versions_label.grid(row=5, column=0, sticky="w", pady=(3, 0))
+        self.pack_versions_label.grid(row=5, column=0, sticky="ew", pady=(3, 0))
         install_card = self.card(body, 2, "3", "Install TextureQuest")
         self.install_label = self.label(install_card, "Choose a game folder and prepare the download first.", color=MUTED, wraplength=610, justify="left")
-        self.install_label.grid(row=1, column=0, sticky="w", pady=(4, 10))
+        self.install_label.grid(row=1, column=0, sticky="ew", pady=(4, 10))
         self.install_button = self.button(install_card, "Install TextureQuest", self.install, primary=True)
         self.install_button.grid(row=2, column=0, sticky="w")
         self.sideload = tk.BooleanVar(value=False)
@@ -265,26 +283,39 @@ class TextureQuestApp:
             variable=self.sideload, state="disabled", bg=WHITE, fg=MUTED, anchor="w", font=("Segoe UI", 9))
         self.sideload_checkbox.grid(row=3, column=0, sticky="w", pady=(8, 0))
         self.label(install_card, "No tested EQ2 texture-injection backend is included. Installation replaces game archives.",
-            size=9, color=MUTED, wraplength=620, justify="left").grid(row=4, column=0, sticky="w")
+            size=9, color=MUTED, wraplength=620, justify="left").grid(row=4, column=0, sticky="ew")
         self.label(install_card, SIDELOAD_WARNING, size=9, color="#865d36", wraplength=620,
-            justify="left").grid(row=5, column=0, sticky="w", pady=(5, 0))
-        row = tk.Frame(body, bg=BG)
-        row.grid(row=3, column=0, sticky="ew", pady=(1, 0))
+            justify="left").grid(row=5, column=0, sticky="ew", pady=(5, 0))
+        self.progress_panel = tk.Frame(self.root, bg=BG, padx=24, pady=12)
+        self.progress_panel.grid(row=1, column=0, sticky="ew")
+        self.progress_panel.columnconfigure(0, weight=1)
+        row = self.progress_panel
         row.columnconfigure(0, weight=1)
         self.progress = ttk.Progressbar(row, mode="determinate", maximum=100, style="Quest.Horizontal.TProgressbar")
         self.progress.grid(row=0, column=0, sticky="ew")
-        self.overall_label = self.label(row, "", size=9, color=MUTED)
-        self.overall_label.grid(row=1, column=0, sticky="w", pady=(4, 0))
+        self.overall_label = self.label(row, "", size=9, color=MUTED, wraplength=740, justify="left")
+        self.overall_label.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
         self.pause_button = tk.Button(row, text="Pause", command=self.request_pause, font=("Segoe UI", 9), bg="#e8ede6", fg=INK, relief="flat", padx=10, pady=3)
         self.pause_button.grid(row=0, column=1, padx=(10, 0))
         self.pause_button.grid_remove()
-        self.message = self.label(body, "Your game files change only when you click Install.", color=MUTED, wraplength=740, justify="left")
-        self.message.grid(row=4, column=0, sticky="ew", pady=(9, 0))
-        body.rowconfigure(5, weight=1)
-        footer = tk.Frame(self.root, bg=BG, padx=24, pady=12)
+        status = tk.Frame(row, bg=BG)
+        status.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(9, 0))
+        status.columnconfigure(0, weight=1)
+        # A long filename or error must not grow the fixed progress panel.
+        # Keep the full message selectable and scrollable instead of truncating it.
+        self.message = tk.Text(status, width=1, height=3, wrap="word", state="disabled",
+                               bg=BG, fg=MUTED, font=("Segoe UI", 10), relief="flat",
+                               borderwidth=0, highlightthickness=0, padx=0, pady=0)
+        self.message.grid(row=0, column=0, sticky="ew")
+        status_scrollbar = ttk.Scrollbar(status, orient="vertical", command=self.message.yview)
+        status_scrollbar.grid(row=0, column=1, sticky="ns")
+        self.message.configure(yscrollcommand=status_scrollbar.set)
+        self.message.bind("<MouseWheel>", self.scroll_status)
+        self.set_message("Your game files change only when you click Install.")
+        footer = tk.Frame(content, bg=BG, padx=24, pady=12)
         footer.grid(row=2, column=0, sticky="ew")
         footer.columnconfigure(0, weight=1)
-        self.label(footer, "After a game patch, rerun this installer. Saved textures are reused.", size=9, color=MUTED).grid(row=0, column=0, sticky="w")
+        self.label(footer, "After a game patch, rerun this installer. Saved textures are reused.", size=9, color=MUTED, wraplength=740, justify="left").grid(row=0, column=0, sticky="ew")
         self.menu_button = tk.Menubutton(footer, text="Maintenance & updates ▾", bg=BG, fg=GREEN, activebackground="#e8ede6", relief="flat", cursor="hand2", padx=8, pady=6)
         self.menu_button.grid(row=1, column=0, sticky="w", pady=(5, 0))
         self.menu = tk.Menu(self.menu_button, tearoff=False, bg=WHITE, fg=INK)
@@ -299,7 +330,18 @@ class TextureQuestApp:
         self.refresh_controls()
 
     def set_message(self, text, error=False):
-        self.message.configure(text=str(text), fg="#9a492c" if error else MUTED)
+        text = str(text)
+        self.message.configure(state="normal", fg="#9a492c" if error else MUTED)
+        try:
+            self.message.delete("1.0", "end")
+            self.message.insert("1.0", text)
+            self.message.yview_moveto(0)
+        finally:
+            self.message.configure(state="disabled")
+
+    def scroll_status(self, event):
+        self.message.yview_scroll(-int(event.delta / 120), "units")
+        return "break"  # The status wheel must not also scroll the cards.
 
     def game_changed(self):
         self.preflight, self.installed = None, {}
@@ -671,11 +713,12 @@ class TextureQuestApp:
                 elif kind in ("verify", "recover"):
                     self.installed, self.preflight = value
                     self.set_message(self.recover_message if kind == "recover" else installation_summary(self.installed, self.release), error=kind == "recover")
-                elif kind == "install":
+                elif event_type == "done" and kind == "install":
                     self.installed = value
                     self.remember_pack_version()
                     self.set_message("TextureQuest is ready. After a game patch, rerun this installer to reapply the textures.")
                     self.finish_progress("install")
+                    messagebox.showinfo("TextureQuest", INSTALL_SUCCESS_MESSAGE, parent=self.root)
                 elif kind == "stock":
                     self.installed = value
                     guidance = "Run the official EQ2 patcher to restore the original textures. Modified bytes remain until the patcher replaces them."

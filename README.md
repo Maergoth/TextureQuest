@@ -6,18 +6,20 @@
 
 TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim is to retain the game's original style, recognizable designs and art direction while bringing out the detail in armor, creatures, signs, buildings and terrain.
 
-AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes more than **23,000 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
+AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,381 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
 
 ## Download and install
 
-**[Download TextureQuest 1.3.2 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.3.2/TextureQuest-Installer-1.3.2-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
+**[Download TextureQuest 1.3.3 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/TextureQuest-Installer-1.3.3-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
+
+The latest texture update adds **1,099 missed textures**, including glow, effects and alpha maps, in **125 complete updated archives**. All **310 archives** remain in the pack, preserving the existing Ratonga skin repair and 4K updates. Existing TextureQuest apps detect the texture update without requiring a fresh full download.
 
 1. **Patch the game first**, then close every EQ2 client and the launcher.
 2. Extract the installer ZIP into a writable folder outside the game. Keep its contents together and open **TextureQuest.exe**.
 3. Choose the game folder containing `EverQuest2.exe` and `paks`. The installer checks the latest texture release and downloads the files it needs. Interrupted downloads can be resumed. No separate texture ZIP, Python, AI software or GPU generation is needed.
-4. Once the pack is ready, click **Install TextureQuest**. Wait for copying to finish.
+4. Once the pack is ready, click **Install TextureQuest**. Wait for the message **“Textures Installed. Launch via the EQ2 EXE, not the launcher!”** Then launch the game using its EQ2 executable.
 
-The current textures take about **28.4 GB** in one cache of ready-to-use archives under `data/downloads`. There is no second extracted pack or texture ZIP. Allow additional room for the installed game and one temporary archive during installation; the largest current archive is about 512 MB. The app checks space as it works, resumes interrupted downloads, and reuses unchanged files. Keep the app's `data` folder so you can reinstall after patches. Installation starts only when you click Install.
+The app keeps one cache of ready-to-use archives under `data/downloads`. There is no second extracted pack or texture ZIP. Allow room for the complete cache, the installed game and one temporary archive during installation. The app shows the total download size, checks space as it works, resumes interrupted downloads and reuses unchanged files. Keep the app's `data` folder so you can reinstall after patches. Installation starts only when you click Install.
 
 **After a game patch:** close the game and launcher, then rerun the TextureQuest installer. It checks for the latest textures and reuses verified downloads. Do not skip required game updates.
 
@@ -25,13 +27,12 @@ The app checks **texture updates and app updates separately** on startup. Use **
 
 When upgrading the app, close the old copy, extract the new installer into a new folder, and move your existing `data` folder alongside the new `TextureQuest.exe` to keep downloads and installation records. An app update can use the same textures you already have.
 
-App 1.3.2 shows overall percentage, bytes and PAK count for downloads and installation.
-The current file remains visible while the overall bar continues across the whole pack.
+App **1.3.3** keeps overall progress and Pause visible on shorter screens and at higher display scaling. Status text scrolls independently, while the overall bar continues across the whole pack and the current file remains visible.
 It includes the fast download and install path: it hashes bytes as it copies, uses a
 native game/launcher check, and avoids decompressing every texture or repeatedly
 reading the installed pack. Unchanged recorded files are skipped using file
 identity and modification metadata. **Verify** remains available for a full
-checksum check when you want one. Texture contents remain version 1.2.0.
+checksum check when you want one. The current texture version is **1.2.2**.
 
 App 1.3 moves verified archives from the old `prepared` cache into `downloads` and removes recognized redundant texture ZIPs and superseded saved VPKs after the complete cache verifies. This reuses your saved textures without downloading the whole pack again. Unrecognized or changed files are kept.
 
