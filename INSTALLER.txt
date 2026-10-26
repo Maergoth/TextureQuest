@@ -9,7 +9,9 @@ TextureQuest — Windows x64 installer
    You can pause and resume; saved downloads are kept and reused automatically.
 5. Click Install TextureQuest after verification. Downloading never installs
    anything automatically. Wait for: "Textures Installed. Launch via the EQ2 EXE,
-   not the launcher!" Then launch the game using EverQuest2.exe.
+   not the launcher!" Choose Launch Game in that dialog, or use Launch Game
+   in the main window. Both start the selected EverQuest2.exe directly.
+   Close dismisses the installation dialog without starting the game.
 
 AFTER A GAME PATCH
 Rerun this installer, click Download / Resume, then Install TextureQuest.
@@ -19,7 +21,7 @@ identity and modification metadata are skipped; patched files are recopied.
 
 UPDATES
 The app checks texture updates and app updates separately on startup.
-Maintenance & updates > Check for updates checks both again. New textures are
+Settings > Check for updates checks both again. New textures are
 prepared with Download / Resume. Get app update opens the official GitHub
 release page; this app does not replace its own running executable.
 An app update may use exactly the same textures. The app shows its own version,
@@ -64,13 +66,8 @@ Clear downloaded files & cache explicitly removes this app's saved downloads
 and any remaining legacy prepared copies. Game files and installation records stay. Reinstalling
 after clearing them may require downloading the pack again.
 
-SIDELOAD
-The Sideload checkbox is disabled in this build. No tested EQ2 texture-injection
-backend is included. Installation replaces game archives.
-We don't know what's more legal, replacing the game files or hooking the process. If Daybreak hates you, they might ban you. Be warned.
-
 RESTORE STOCK
-Choose Maintenance & updates > Return to original textures, then run the
+Choose Settings > Return to original textures, then run the
 official EQ2 patcher. Modified bytes remain until the patcher replaces them.
 The installer does not restore stock bytes or make game backups.
 

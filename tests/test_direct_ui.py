@@ -94,11 +94,11 @@ class DirectDesktop(unittest.TestCase):
     def test_completed_install_has_no_cleanup_question(self):
         rows = [dict(row, integrity="intact", actual_bytes=row["bytes"], actual_sha256=row["sha256"]) for row in self.manifest["archives"]]
         with patch.object(app_module.messagebox, "askyesno") as question, \
-             patch.object(app_module.messagebox, "showinfo") as notice:
+             patch.object(self.app, "show_install_success") as notice:
             self.app.events.put(("done", "install", {"status": "installed", "archives": rows}))
             self.app.poll()
             question.assert_not_called()
-            notice.assert_called_once_with("TextureQuest", app_module.INSTALL_SUCCESS_MESSAGE, parent=self.root)
+            notice.assert_called_once_with()
         self.assertIn("ready", self.app.message.get("1.0", "end-1c"))
 
     def test_pause_and_cache_guard_keep_install_disabled_during_preparation(self):
@@ -114,7 +114,7 @@ class DirectDesktop(unittest.TestCase):
             question.assert_not_called()
 
     def test_sideload_remains_disabled_and_background_guard_never_queries_tk(self):
-        self.assertEqual(self.app.sideload_checkbox.cget("state"), "disabled")
+        self.assertFalse(hasattr(self.app, "sideload_checkbox"))
         self.app.sideload.set(True)
         with patch.object(self.app.sideload, "get", side_effect=RuntimeError("worker queried Tk")):
             self.assertTrue(self.app.cache_in_use())

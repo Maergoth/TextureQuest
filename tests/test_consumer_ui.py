@@ -11,6 +11,14 @@ from texturequest_app import TextureQuestApp, can_install, installation_current,
 from texture_swapper import core
 
 
+def ui_manifest(texture="1.1.0"):
+    """Small direct manifest, independent of the current shipping manifest shape."""
+    from test_direct import fixture
+    manifest = fixture()[1]
+    manifest["texture_version"] = texture
+    return manifest
+
+
 class StateTests(unittest.TestCase):
     def test_complete_current_bytes_required(self):
         manifest = {"archives": [{"name": "a.vpk", "bytes": 20, "sha256": "abc"}]}
@@ -116,16 +124,24 @@ class DesktopTests(unittest.TestCase):
         self.app.refresh_controls()
         expected = "Download / Resume" if self.app.release.get("schema") in ("texturequest-release-v2", "texturequest-release-v3") else "Prepare saved pack"
         self.assertEqual(self.app.download_button.cget("text"), expected)
-    def test_layout_requests_fit_initial_window(self):
-        self.root.geometry("840x870")
+    def test_compact_ui_has_settings_and_launch_without_body_scroll_or_sideload(self):
         self.root.update_idletasks()
-        self.assertLessEqual(self.root.winfo_reqheight(), 870)
-        self.assertTrue(self.app.body_canvas.cget("scrollregion"))
+        self.assertFalse(hasattr(self.app, "body_canvas"))
+        self.assertFalse(hasattr(self.app, "sideload_checkbox"))
+        self.assertTrue(self.app.menu_button.cget("text").startswith("Settings"))
+        self.assertEqual(self.app.launch_button.cget("text"), "Launch Game")
+        widgets, texts = [self.root], []
+        while widgets:
+            widget = widgets.pop()
+            widgets.extend(widget.winfo_children())
+            if "text" in widget.keys():
+                texts.append(widget.cget("text"))
+        self.assertNotIn("After a game patch, rerun this installer. Saved textures are reused.", texts)
+        self.assertFalse(any("Maintenance & updates" in str(text) for text in texts))
 
     def test_app_only_update_retains_prepared_textures_and_shows_official_action(self):
-        from test_version_notices import fixture
         from texturequest_version_check import pack_identity
-        self.app.release = fixture()[0]
+        self.app.release = ui_manifest()
         current = self.app.release
         same = copy.deepcopy(current); same["version"] = "1.2.1"
         self.app.prepared = {"id": "ready", "archives": copy.deepcopy(current["archives"])}
@@ -166,8 +182,7 @@ class DesktopTests(unittest.TestCase):
             browser.assert_not_called()
 
     def test_app_check_failure_keeps_pack_update_downloadable(self):
-        from test_version_notices import fixture
-        manifest, _, _ = fixture(texture="1.2.0", manifest_version="1.2.0")
+        manifest = ui_manifest("1.2.0")
         result = {"installer": {"status": "unavailable", "message": "No unique installer"},
                   "pack": {"status": "verified", "version": "1.2.0", "manifest": manifest, "update_available": True}}
         self.app.prepared = {"id": "old"}; self.app.preflight = {"missing": []}
@@ -181,11 +196,10 @@ class DesktopTests(unittest.TestCase):
     def test_header_reports_application_build_version_separately(self):
         from texturequest_version_check import texture_version
         self.assertEqual(self.app.version_label.cget("text"), "App " + self.app.app_version)
-        self.assertIn("Selected textures " + texture_version(self.app.release), self.app.pack_versions_label.cget("text"))
+        self.assertIn("Textures " + texture_version(self.app.release), self.app.pack_versions_label.cget("text"))
 
     def test_startup_and_manual_check_use_both_version_channels(self):
-        from test_version_notices import fixture
-        manifest, _, _ = fixture()
+        manifest = ui_manifest()
         self.app.release = manifest
         with patch.object(self.app, "begin") as begin, patch("texturequest_app.check_versions", return_value="both") as check:
             self.root.after(300, self.root.quit)
@@ -199,7 +213,7 @@ class DesktopTests(unittest.TestCase):
             check.assert_called_with(manifest, self.app.app_version, self.app.state_dir)
 
     def test_sideload_is_disabled_and_never_routes_to_install(self):
-        self.assertEqual(self.app.sideload_checkbox.cget("state"), "disabled")
+        self.assertFalse(hasattr(self.app, "sideload_checkbox"))
         self.assertFalse(self.app.sideload.get())
         self.app.prepared = {"id": "ready"}
         self.app.preflight = {"missing": []}
@@ -250,7 +264,8 @@ class DesktopTests(unittest.TestCase):
     def test_maintenance_has_no_protection_or_user_zip_step(self):
         labels = [self.app.menu.entrycget(i, "label") for i in range(self.app.menu.index("end") + 1)
                   if self.app.menu.type(i) != "separator"]
-        self.assertIn("Check for updates", labels)
+        self.assertTrue({"Verify installed textures", "Return to original textures",
+                         "Clear downloaded files & cache…", "Check for updates", "Instructions"}.issubset(labels))
         self.assertFalse(any("protection" in label.lower() or "prepare for" in label.lower() or "zip" in label.lower() for label in labels))
 
     def test_update_pause_and_warning_text(self):

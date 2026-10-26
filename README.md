@@ -10,24 +10,26 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 ## Download and install
 
-**[Download TextureQuest 1.3.3 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.3.4/TextureQuest-Installer-1.3.3-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
+**[Download TextureQuest 1.3.4 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.3.5/TextureQuest-Installer-1.3.4-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
+
+App **1.3.4** has a compact launcher layout with **Launch Game** in the main window and after installation. Both buttons start the selected game's **EverQuest2.exe** directly. This app update uses the same texture files as the previous release.
 
 The latest texture update adds **1,099 missed textures**, including glow, effects and alpha maps, in **125 complete updated archives**. All **310 archives** remain in the pack, preserving the existing Ratonga skin repair and 4K updates. Existing TextureQuest apps detect the texture update without requiring a fresh full download.
 
 1. **Patch the game first**, then close every EQ2 client and the launcher.
 2. Extract the installer ZIP into a writable folder outside the game. Keep its contents together and open **TextureQuest.exe**.
 3. Choose the game folder containing `EverQuest2.exe` and `paks`. The installer checks the latest texture release and downloads the files it needs. Interrupted downloads can be resumed. No separate texture ZIP, Python, AI software or GPU generation is needed.
-4. Once the pack is ready, click **Install TextureQuest**. Wait for the message **“Textures Installed. Launch via the EQ2 EXE, not the launcher!”** Then launch the game using its EQ2 executable.
+4. Once the pack is ready, click **Install TextureQuest**. Wait for the message **“Textures Installed. Launch via the EQ2 EXE, not the launcher!”** Choose **Launch Game** in that dialog, or use the main window's **Launch Game** button. It starts EverQuest2.exe directly; **Close** dismisses the dialog without launching.
 
 The app keeps one cache of ready-to-use archives under `data/downloads`. There is no second extracted pack or texture ZIP. Allow room for the complete cache, the installed game and one temporary archive during installation. The app shows the total download size, checks space as it works, resumes interrupted downloads and reuses unchanged files. Keep the app's `data` folder so you can reinstall after patches. Installation starts only when you click Install.
 
 **After a game patch:** close the game and launcher, then rerun the TextureQuest installer. It checks for the latest textures and reuses verified downloads. Do not skip required game updates.
 
-The app checks **texture updates and app updates separately** on startup. Use **Maintenance & updates → Check for updates** to check again. New textures are downloaded and prepared in this app; **Get app update** opens the official GitHub release page for a newer installer. Downloading never installs anything automatically. If a check fails, the app says it could not verify that update and keeps saved files.
+The app checks **texture updates and app updates separately** on startup. Use **Settings → Check for updates** to check again. New textures are downloaded and prepared in this app; **Get app update** opens the official GitHub release page for a newer installer. Downloading never installs anything automatically. If a check fails, the app says it could not verify that update and keeps saved files.
 
 When upgrading the app, close the old copy, extract the new installer into a new folder, and move your existing `data` folder alongside the new `TextureQuest.exe` to keep downloads and installation records. An app update can use the same textures you already have.
 
-App **1.3.3** keeps overall progress and Pause visible on shorter screens and at higher display scaling. Status text scrolls independently, while the overall bar continues across the whole pack and the current file remains visible.
+App **1.3.4** keeps the launcher, progress and Pause together without scrolling the main window. Longer status messages scroll independently, and their scrollbar appears only when needed. The overall bar continues across the whole pack while the current file remains visible.
 It includes the fast download and install path: it hashes bytes as it copies, uses a
 native game/launcher check, and avoids decompressing every texture or repeatedly
 reading the installed pack. Unchanged recorded files are skipped using file

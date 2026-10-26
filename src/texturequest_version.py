@@ -1,2 +1,2 @@
 """Application version independent from the texture-pack version."""
-APP_VERSION = "1.3.3"
+APP_VERSION = "1.3.4"

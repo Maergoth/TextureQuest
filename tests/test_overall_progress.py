@@ -63,7 +63,7 @@ class ProgressUI(unittest.TestCase):
         self.assertEqual(str(self.app.progress.cget('mode')), 'determinate')
         self.assertIn('Overall install: 35.0%', self.app.overall_label.cget('text'))
         self.app.events.put(('done', 'install', {'status': 'installed', 'archives': []}))
-        with patch('texturequest_app.messagebox.showinfo') as notice:
+        with patch.object(self.app, 'show_install_success') as notice:
             self.app.poll()
         notice.assert_called_once()
         self.assertEqual(float(self.app.progress.cget('value')), 100)
