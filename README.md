@@ -10,41 +10,38 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 ## Download and install
 
-**[Download TextureQuest 1.3.5 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.3.7/TextureQuest-Installer-1.3.5-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
+**[Download TextureQuest 1.4.1 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.4.1/TextureQuest-Installer-1.4.1-windows-x64.zip)** · [Latest release and downloads](https://github.com/Maergoth/TextureQuest/releases/latest)
 
-App **1.3.5** adds automatic app updates. **Get app update** downloads and verifies the new app, replaces its managed app files, and restarts TextureQuest while keeping your `data` folder, saved texture downloads and installation history. **Launch Game** still starts the selected game's **EverQuest2.exe** directly.
+App **1.4.1** offers two installation modes, with a hover info icon explaining each option. **Replace PAK files is recommended because it avoids injecting a runtime component into the game process.** Choose one mode at a time; an existing background-mode selection is retained.
 
-The latest texture update, **1.2.3**, adds **312 recovered 2K textures**: 137 from the Maj'Dul recovery and 175 other Desert of Flames textures. They are delivered in one complete updated archive. All **310 archives** remain in the pack, including the earlier 1,099 missed textures, effects and alpha maps, Ratonga skin repair and 4K updates. Existing TextureQuest apps detect the texture update and reuse unchanged downloads.
+| Mode | How it works and advantages | Tradeoffs |
+| --- | --- | --- |
+| **Replace PAK files — recommended** | Copies verified replacement archives into the game's `paks` folder. The game loads them directly, so no background watcher or injected loader is needed. | Changes the game archives. A game patch can overwrite them, and returning to stock requires the official patcher's file validation. |
+| **Background texture loader** | Builds a private cache from stock game files and verified replacements. A per-user startup watcher detects the selected **EverQuest2.exe** and loads a DLL that redirects selected file reads inside the game. The game's PAKs, settings and shortcuts stay unchanged. | Needs the portable app, its watcher and private cache to remain available. It injects a runtime component, has limited client coverage, and changed game archives or indexes require a manual cache refresh. Attached clients retain the loader until they close. |
 
-Additional missed-texture generation is continuing. This release adds the recovered textures above; it does not mean all remaining low-resolution textures have been finished.
+The background loader's first Windows Origins in-world test succeeded; compatibility with other client versions and every possible launch path has not been established. Hover the info icon beside either mode to review its behavior and tradeoffs before installing.
 
-1. **Patch the game first**, then close every EQ2 client and the launcher.
+The texture pack remains **1.2.3**, with the same **24,693 textures across 310 archives** and unchanged archive bytes and download URLs. This includes **312 recovered 2K textures**: 137 from the Maj'Dul recovery and 175 other Desert of Flames textures, plus the earlier missed textures, effects, alpha maps, Ratonga skin repair and selected 4K updates. Additional missed-texture generation is unfinished and is not included in this release.
+
+1. **Patch the game first**, then close every EQ2 client and the launcher. If TextureQuest PAK replacements are installed and you want background mode, run the official patcher's file validation to restore the stock game archives first.
 2. Extract the installer ZIP into a writable folder outside the game. Keep its contents together and open **TextureQuest.exe**.
-3. Choose the game folder containing `EverQuest2.exe` and `paks`. The installer checks the latest texture release and downloads the files it needs. Interrupted downloads can be resumed. No separate texture ZIP, Python, AI software or GPU generation is needed.
-4. Once the pack is ready, click **Install TextureQuest**. Wait for the message **“Textures Installed. Launch via the EQ2 EXE, not the launcher!”** Choose **Launch Game** in that dialog, or use the main window's **Launch Game** button. It starts EverQuest2.exe directly; **Close** dismisses the dialog without launching.
+3. Choose the game folder containing `EverQuest2.exe` and `paks`. Use **Download / Resume** to fetch and verify the required texture archives. Interrupted downloads resume, and unchanged saved downloads are reused. No separate texture ZIP, Python, AI software or GPU generation is needed.
+4. Select **Replace PAK files** (recommended) or **Background texture loader**; hover its info icon for details. With the game and launcher closed, click **Install TextureQuest** in Replace mode or **Install background loader** in Background mode. PAK mode copies the verified pack into the game. Background mode checks for stock archives, prepares its private cache and installs the startup watcher.
+5. Wait until background installation reports ready before launching the game normally through your usual EXE, launcher or shortcut. Keep the extracted app and its `data` folder in place. **Launch Game** also starts the selected EverQuest2.exe directly.
 
-The app keeps one cache of ready-to-use archives under `data/downloads`. There is no second extracted pack or texture ZIP. Allow room for the complete cache, the installed game and one temporary archive during installation. The app shows the total download size, checks space as it works, resumes interrupted downloads and reuses unchanged files. Keep the app's `data` folder so you can reinstall after patches. Installation starts only when you click Install.
+**Background loader removal:** use the app's background-loader uninstall action. Uninstall stops the startup watcher and future attachments. A client already attached to the loader retains it until that client closes; there is no instant original/upscaled switch. To change installation modes, uninstall the current background loader and close all active clients first. Restore stock files with the official patcher before installing background mode over an earlier PAK installation.
 
-**After a game patch:** close the game and launcher, then rerun the TextureQuest installer. It checks for the latest textures and reuses verified downloads. Do not skip required game updates.
+**After a game patch:** close the game and launcher. PAK replacement may need reinstalling. If a patch changes game archives or indexes, uninstall and reinstall the background loader to refresh its private cache. Automatic post-patch cache refresh is unfinished. An EXE-only update does not itself change texture content, but compatibility with a new client build still needs validation. Do not skip required game updates.
 
-The app checks **texture updates and app updates separately** on startup. Use **Settings → Check for updates** to check again. New textures are downloaded and prepared with **Download / Resume**; installing them still requires clicking **Install TextureQuest**. **Get app update** updates the app itself and restarts it after verification. If an update cannot be verified or applied, the app reports the problem and keeps your `data` folder.
+The app keeps verified ready-to-use texture archives under `data/downloads` and reuses them for either mode. Background mode also needs space for its private cache. The app shows download size, checks space as it works and resumes interrupted downloads. Keep the app's `data` folder to retain downloads and installation history. Installation starts only when you click Install.
 
-App 1.3.5 includes the current texture version 1.2.3 manifest and checks GitHub for newer releases online. This app release changes no texture archives: all **24,693 textures across 310 archives**, including the recovered Maj'Dul textures and previous repairs, are unchanged.
+The app checks **texture updates and app updates separately** on startup. Use **Settings → Check for updates** to check again. New textures use **Download / Resume**, followed by a separate explicit installation. **Get app update** downloads and verifies the new app, replaces its managed files and restarts TextureQuest while preserving `data`. **Before updating the app or clearing its cache, uninstall the background loader and close all active clients.** The current guards refuse those actions while loader ownership is active.
 
-**One manual upgrade is needed from app 1.3.4 or earlier:** close the old copy, extract app 1.3.5 into a new writable folder, and move your existing `data` folder alongside the new `TextureQuest.exe`. Those older apps open the release page rather than updating themselves. Future updates from app 1.3.5 use **Get app update**. Keep the app outside the game folder; an app update does not reinstall textures or launch the game.
+**One manual upgrade is needed from app 1.3.4 or earlier:** close the old copy, extract app 1.4.1 into a new writable folder and move your existing `data` folder alongside the new `TextureQuest.exe`. Those older apps open the release page rather than updating themselves. Apps 1.3.5 and later support **Get app update**. Keep the app outside the game folder.
 
-App **1.3.5** keeps the launcher, progress and Pause together without scrolling the main window. Longer status messages scroll independently, and their scrollbar appears only when needed. The overall bar continues across the whole pack while the current file remains visible.
-It includes the fast download and install path: it hashes bytes as it copies, uses a
-native game/launcher check, and avoids decompressing every texture or repeatedly
-reading the installed pack. Unchanged recorded files are skipped using file
-identity and modification metadata. **Verify** remains available for a full
-checksum check when you want one. The current texture version is **1.2.3**.
+**To return to stock:** uninstall the background loader and close any attached clients. If PAK replacement was used, run the official patcher's file validation to restore the original game files.
 
-App 1.3 moves verified archives from the old `prepared` cache into `downloads` and removes recognized redundant texture ZIPs and superseded saved VPKs after the complete cache verifies. This reuses your saved textures without downloading the whole pack again. Unrecognized or changed files are kept.
-
-**To return to stock:** run the official patcher's file validation to restore the original game files.
-
-**Compatibility:** this pack was developed for EverQuest II Origins. Other EQ2 versions and later content updates have not been fully tested. Some textures are intentionally left unchanged for compatibility.
+**Compatibility:** this pack was developed for EverQuest II Origins. The background loader has an initial successful test on one exact Windows Origins client; other EQ2 versions, future content patches and all launch paths have not been fully tested. Some textures are intentionally left unchanged for compatibility. This app release does not change the game's GPU settings or the separate generation model.
 
 ## Examples
 
@@ -133,7 +130,7 @@ Original 1K artwork beside the released 4K texture on the complete model.
 - **The original geometry still matters.** Low-polygon silhouettes, UV stretching, separate body parts and LOD changes remain. Texture work cannot fix every model or shader issue.
 - **Some appearances may still have issues.** Character variants, facial customization and layered materials can produce results that differ from the previews.
 - **Higher-resolution textures use more resources.** Storage, loading behavior and texture memory requirements can increase. Performance depends on your settings and system; no minimum hardware or FPS improvement is claimed.
-- **Game patches can overwrite the pack.** Rerun the installer after patching.
+- **Game patches need a refresh.** PAK replacement may be overwritten by patching. In background mode, changed game archives or indexes require uninstalling and reinstalling the background loader to refresh its private cache; automatic refresh is unfinished.
 
 Please [report a problem](https://github.com/Maergoth/TextureQuest/issues/new/choose) with the game version/server, zone or item/NPC, character race/gender/appearance where relevant, a close-up screenshot, and the TextureQuest version installed. Include whether **Verify installed textures** passes. Do not include account credentials or private logs.
 
@@ -141,11 +138,11 @@ Please [report a problem](https://github.com/Maergoth/TextureQuest/issues/new/ch
 
 The installer checks the [latest release](https://github.com/Maergoth/TextureQuest/releases/latest) and fetches its required texture files. Installation still requires clicking **Install TextureQuest**.
 
-After a game patch, rerun the installer. Saved files that still match the current release are reused.
+After a game patch, close every EQ2 client and the launcher. Reinstall PAK replacement if needed. For background mode, uninstall and reinstall the background loader when the patch changes game archives or indexes. Verified texture downloads are reused.
 
 ### Can this leave the game's PAKs untouched?
 
-The supported installer replaces PAK files. **Sideload** is an experimental option under development and is currently unavailable. A texture-injection tool would need to intercept rendering and reliably identify the game's textures; ordinary ReShade color presets cannot load this pack. No injection method has been validated for this release.
+Yes. App 1.4.1 offers **Background texture loader** as an optional alternative to **Replace PAK files**. It prepares private archives and redirects selected file reads inside the game process, leaving the game's PAKs, settings and shortcuts unchanged. A per-user startup watcher detects ordinary future starts of the selected EverQuest2.exe. The first in-world test succeeded on one Windows EverQuest II Origins client; other client versions and every launch path have not been validated. This is not an instant original/upscaled switch: uninstalling stops future attachments, and already attached clients retain the loader until they close.
 
 We have no confirmation from Daybreak approving either approach. The 1.1 installer displays this warning:
 
@@ -160,6 +157,19 @@ The installer installs the complete pack. Separate content selections are not av
 The [technical guide](docs/TECHNICAL.md) covers the model and generation recipe, resolution selection, material and DDS compatibility findings, corrections, validation, and building the installer. It also explains what is available to reproduce from this repository.
 
 For manual downloads and checksums, use the [release files](https://github.com/Maergoth/TextureQuest/releases/latest). The installer fetches and verifies the required base and update files automatically. GitHub's **Source code (zip)** does not contain the textures.
+
+
+### Build app 1.4.1 with the bundled loader
+
+Use Windows, 64-bit Python 3.12 with Tk support, and the pinned build dependencies. From this repository's root, use the explicit versioned manifest and runtime payload:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r src\texture_swapper\requirements-build.txt
+.\.venv\Scripts\python.exe build_installer.py --manifest release-manifest-1.3.7.json --version 1.4.1 --loader-runtime-dir sideload-runtime
+```
+
+The runtime descriptor, helper, catalog, native binaries and Detours license are included under `sideload-runtime/`. The builder verifies that payload and stages it without modifying it. Omitting `--loader-runtime-dir` produces an app without an available background loader. Build outputs go under `build/` and `dist/`; use a fresh `--output-root` to keep an earlier build intact. Rebuilt executables are not promised to be byte-identical. Native source and separate rebuild instructions are in [sideload-native](sideload-native/README.md). These commands build the app; they do not generate textures or install anything into the game.
 
 ## Credits and ownership
 

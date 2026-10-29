@@ -1,1 +1,5 @@
 README.md text eol=lf
+# Runtime FILE hashes are part of the content-verified payload descriptor.
+# Preserve exact bytes on Windows clones, including JSON, Python and licenses.
+/sideload-runtime/** -text
+/sideload-native/** -text

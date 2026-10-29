@@ -143,11 +143,24 @@ class DirectSwapper(core.Swapper):
                 raise ValueError("Direct prepared path changed")
         return saved
 
+    def _assert_background_inactive(self):
+        # Recheck beneath the operation's helper lock, after any stale UI view.
+        # Import here: the loader uses DirectSwapper only for managed-PAK status.
+        try:
+            from texturequest_sideload import LoaderManager
+        except ModuleNotFoundError as error:
+            if error.name == "texturequest_sideload":
+                return  # Historical builds may omit the optional loader entirely.
+            raise
+        if LoaderManager(self.state_dir).cache_in_use():
+            raise RuntimeError("Uninstall the background loader and close its active game sessions before replacing PAK files.")
+
     def install(self, prepared, game_dir, progress=None, overall_progress=None):
+        if (prepared.get("schema") == SCHEMA or self.trusted_manifest is not None
+                and self.trusted_prepared(prepared, self.trusted_manifest)):
+            return fast_install.install(self, prepared, game_dir, progress, overall_progress=overall_progress)
         with core._lock(self.state_dir / "sideload/helper-owner.lock"):
-            if (prepared.get("schema") == SCHEMA or self.trusted_manifest is not None
-                    and self.trusted_prepared(prepared, self.trusted_manifest)):
-                return fast_install.install(self, prepared, game_dir, progress, overall_progress=overall_progress)
+            self._assert_background_inactive()
             return super().install(prepared, game_dir, progress)
 
     def status(self, game_dir, verify=False):

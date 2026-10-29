@@ -146,7 +146,8 @@ def _commit(staged, target, directories, expected):
 
 def install(swapper, prepared, game_dir, progress=None, overall_progress=None):
     notify = progress or (lambda _: None)
-    with core._lock(swapper.state_dir / 'operation.lock'), core._game_lock(core.validate_game(game_dir)):
+    with core._lock(swapper.state_dir / 'operation.lock'), core._lock(swapper.state_dir / 'sideload/helper-owner.lock'), core._game_lock(core.validate_game(game_dir)):
+        swapper._assert_background_inactive()
         ready = swapper.preflight(prepared, game_dir)
         if ready['missing']:
             raise ValueError('These archives are not installed in the selected game: ' + ', '.join(ready['missing']))

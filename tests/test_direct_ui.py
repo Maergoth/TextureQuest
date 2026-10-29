@@ -2,6 +2,7 @@
 from pathlib import Path
 import sys
 import tempfile
+import threading
 import tkinter as tk
 import unittest
 from unittest.mock import patch
@@ -113,13 +114,18 @@ class DirectDesktop(unittest.TestCase):
             self.app.clear_cache()
             question.assert_not_called()
 
-    def test_sideload_remains_disabled_and_background_guard_never_queries_tk(self):
+    def test_background_selection_is_passive_and_worker_cache_guard_never_queries_tk(self):
         self.assertFalse(hasattr(self.app, "sideload_checkbox"))
-        self.app.sideload.set(True)
-        with patch.object(self.app.sideload, "get", side_effect=RuntimeError("worker queried Tk")):
-            self.assertTrue(self.app.cache_in_use())
-        self.app.sideload.set(False)
+        self.app.install_mode.set("background")
         self.assertFalse(self.app.cache_in_use())
+        results = []
+        with patch.object(self.app.install_mode, "get", side_effect=RuntimeError("worker queried Tk")), \
+             patch.object(self.app.loader_manager, "cache_in_use", return_value=True) as owned:
+            worker = threading.Thread(target=lambda: results.append(self.app.cache_in_use()))
+            worker.start()
+            worker.join()
+        self.assertEqual(results, [True])
+        owned.assert_called_once()
 
 
 if __name__ == "__main__":

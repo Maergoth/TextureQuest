@@ -213,14 +213,20 @@ class DesktopTests(unittest.TestCase):
             self.assertEqual(check.call_count, 2)
             check.assert_called_with(manifest, self.app.app_version, self.app.state_dir)
 
-    def test_sideload_is_disabled_and_never_routes_to_install(self):
+    def test_background_mode_is_passive_and_unavailable_runtime_never_falls_back_to_pak_install(self):
         self.assertFalse(hasattr(self.app, "sideload_checkbox"))
-        self.assertFalse(self.app.sideload.get())
         self.app.prepared = {"id": "ready"}
         self.app.preflight = {"missing": []}
-        self.app.sideload.set(True)
-        with patch.object(self.app.core, "install") as install, patch.object(self.app, "begin") as begin:
-            self.app.install()
+        self.app.game.set(str(Path(self.tmp.name) / "selected-game"))
+        unavailable = dict(installed=False, running=False, active_sessions=0, available=False,
+                           unknown=False, message="Background runtime is not included in this fixture.")
+        with patch.object(self.app, "loader_status", return_value=unavailable), \
+             patch.object(self.app.core, "install") as install, patch.object(self.app, "begin") as begin:
+            self.app.mode_controls[1].invoke()
+            self.assertEqual(self.app.install_mode.get(), "background")
+            self.assertEqual(self.app.install_button.cget("state"), "disabled")
+            self.assertIn("not included", self.app.install_label.cget("text"))
+            self.assertFalse(self.app.install_selected())
             install.assert_not_called()
             begin.assert_not_called()
 
@@ -265,8 +271,9 @@ class DesktopTests(unittest.TestCase):
     def test_maintenance_has_no_protection_or_user_zip_step(self):
         labels = [self.app.menu.entrycget(i, "label") for i in range(self.app.menu.index("end") + 1)
                   if self.app.menu.type(i) != "separator"]
-        self.assertTrue({"Verify installed textures", "Return to original textures",
+        self.assertTrue({"Verify installed textures",
                          "Clear downloaded files & cache…", "Check for updates", "Instructions"}.issubset(labels))
+        self.assertNotIn("Return to original textures", labels)
         self.assertFalse(any("protection" in label.lower() or "prepare for" in label.lower() or "zip" in label.lower() for label in labels))
 
     def test_update_pause_and_warning_text(self):

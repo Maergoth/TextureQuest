@@ -1,0 +1,58 @@
+{
+  "schema": "tq-portable-released-member-catalog-v1",
+  "status": "COMPLETE_FROZEN",
+  "files": [
+    {
+      "path": "current-archives.json",
+      "bytes": 73248,
+      "sha256": "02b0c3e9938322cccbd75fe6bb7ed1a954e57aafe1619fd296a47a8ab6e06a71"
+    },
+    {
+      "path": "members-00.json",
+      "bytes": 3756271,
+      "sha256": "03390fe287f76d443c572e939a37be5a69dd435f494d15f64ced2ccca4be53f2"
+    },
+    {
+      "path": "members-01.json",
+      "bytes": 3748672,
+      "sha256": "8dd52e070ed24ad4705cc874343145262e06bdafeb09a41709e1aa66b76fc1b0"
+    },
+    {
+      "path": "members-02.json",
+      "bytes": 3671889,
+      "sha256": "ca92f7f07475e1468835417d9480c01f63a6ca81aa60e13f1f588f70bbfdafb6"
+    },
+    {
+      "path": "members-03.json",
+      "bytes": 3525711,
+      "sha256": "22409a2ee09387fc559fe51e52ff2aa7183a1b060a4ed20c5df67d315bf43156"
+    },
+    {
+      "path": "members-04.json",
+      "bytes": 3495126,
+      "sha256": "5c996e11f358b77769ad88ad4c9e33c74a88b0057c6ff134e7397706b5bf273c"
+    },
+    {
+      "path": "members-05.json",
+      "bytes": 3500457,
+      "sha256": "5baec20b50949ac0a37e64219293e2647b658fb2afbaa98958cde4733e24a588"
+    },
+    {
+      "path": "members-06.json",
+      "bytes": 623992,
+      "sha256": "4b2b7031944f8e91fd6b943e1da060235a148d9c9101244b1993af7e89fbf323"
+    }
+  ],
+  "statistics": {
+    "union_identities": 24693,
+    "archive_count": 310
+  },
+  "provenance": {
+    "original_handoff": {
+      "path": "D:\\eq2 paks\\work\\texturequest_sideload_named_assets_20261027\\current-member-index-v1\\HANDOFF.json",
+      "bytes": 10166,
+      "sha256": "e7885d825121ae6f756b49fc7b05c12c2fcc3ab21ea3c88d443f1a83e252603f"
+    },
+    "qualification": "Historical author authority; the eight FILE bytes are copied exactly. Relative file records below are the new portable catalog authority."
+  }
+}

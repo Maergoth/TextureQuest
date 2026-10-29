@@ -58,6 +58,8 @@ def main():
     parser.add_argument("--manifest", type=Path, default=ROOT / "release-manifest-1.3.2.json")
     parser.add_argument("--output-root", type=Path)
     parser.add_argument("--version", default=VERSION)
+    parser.add_argument("--loader-runtime-dir", type=Path,
+                        help="Explicit reviewed descriptor + sideload payload directory (otherwise loader unavailable)")
     args = parser.parse_args()
     output_root = ROOT
     if args.output_root:
@@ -73,6 +75,10 @@ def main():
     from texturequest_release import load_manifest
     release = load_manifest(manifest)
     metadata = version_metadata(args.version, release, sha(manifest))
+    loader = None
+    if args.loader_runtime_dir:
+        from texturequest_sideload import admit_portable_payload
+        loader = admit_portable_payload(args.loader_runtime_dir)
     stage = BUILD / "source"
     (stage / "texture_swapper").mkdir(parents=True, exist_ok=True)
     sources = sorted([*SRC.glob("*.py"), SRC / "texture_swapper/core.py", SRC / "texture_swapper/__init__.py",
@@ -93,6 +99,21 @@ def main():
     command = [sys.executable, "-B", "-m", "PyInstaller", "--noconfirm", "--onedir", "--windowed", "--noupx",
                "--name", NAME, "--paths", str(stage), "--distpath", str(DEST), "--workpath", str(BUILD / "pyinstaller"),
                "--specpath", str(BUILD), "--add-data", str(bundled_manifest) + ":."]
+    if loader is not None:
+        resources = BUILD / "loader-resources"
+        # A build never mutates the admitted native input tree.
+        resources.mkdir(parents=True, exist_ok=True)
+        descriptor = resources / "texturequest-sideload-runtime.json"
+        shutil.copy2(loader["descriptor"]["path"], descriptor)
+        payload = resources / "sideload"
+        if payload.exists():
+            raise RuntimeError("Preserve the previous staged loader payload; use a fresh output root")
+        shutil.copytree(loader["payload_root"], payload)
+        staged_loader = admit_portable_payload(resources)
+        if staged_loader["spec"] != loader["spec"] or sha(descriptor) != loader["descriptor"]["sha256"]:
+            raise RuntimeError("Loader resources changed while staging")
+        command += ["--add-data", str(descriptor) + ":.", "--add-data", str(payload) + ":sideload",
+                    "--hidden-import", "dataclasses", "--hidden-import", "zlib"]
     for name in ("torch", "transformers", "diffusers", "scipy", "matplotlib", "pandas", "nightly", "nightly_fast", "PIL", "numpy", "texture_swapper.app", "texture_swapper.explorer", "texture_swapper.self_check"):
         command += ["--exclude-module", name]
     command += [str(stage / "texturequest_app.py")]
@@ -100,7 +121,15 @@ def main():
     if (sha(manifest) != manifest_hash or sha(bundled_manifest) != manifest_hash
             or any(sha(ROOT / name) != expected for name, expected in source_hashes.items())):
         raise RuntimeError("Source changed during build")
+    if loader is not None:
+        fresh = admit_portable_payload(args.loader_runtime_dir)
+        if fresh != loader or admit_portable_payload(resources) != staged_loader:
+            raise RuntimeError("Loader resources changed during build")
     folder = DEST / NAME
+    if loader is not None:
+        packaged = admit_portable_payload(folder / "_internal")
+        if packaged["spec"] != loader["spec"] or packaged["descriptor"]["sha256"] != loader["descriptor"]["sha256"]:
+            raise RuntimeError("Packaged loader resources differ from their admitted inputs")
     shutil.copy2(ROOT / "INSTALLER.txt", folder / "START-HERE.txt")
     licenses = folder / "licenses"
     licenses.mkdir(exist_ok=True)
@@ -125,6 +154,8 @@ def main():
                "manifest_version": release["version"], "runtime": sys.version, "dependencies": versions,
                "release_manifest_sha256": manifest_hash,
                "source_sha256": source_hashes,
+               "loader_runtime": None if loader is None else dict(payload_id=loader["spec"]["payload_id"],
+                    descriptor_sha256=loader["descriptor"]["sha256"], files=loader["spec"]["files"]),
                "files": [{"path": p.relative_to(folder).as_posix(), "bytes": p.stat().st_size, "sha256": sha(p)} for p in files]}
     receipt_path = folder / "BUILD-MANIFEST.json"
     receipt_path.write_text(json.dumps(receipt, indent=2), encoding="utf-8")

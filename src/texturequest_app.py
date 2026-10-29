@@ -20,6 +20,14 @@ from texturequest_launch import game_executable, launch_game as start_game
 from texturequest_version import APP_VERSION
 from texturequest_version_check import check_updates as check_versions, texture_version, pack_identity, saved_manifest
 
+LOADER_IMPORT_ERROR = ""
+try:
+    from texturequest_sideload import LoaderManager
+except ImportError as error:
+    LoaderManager = None
+    if not isinstance(error, ModuleNotFoundError) or error.name != "texturequest_sideload":
+        LOADER_IMPORT_ERROR = "Background loader unavailable: " + str(error)
+
 try:
     from texturequest_build_pin import APP_VERSION
 except ImportError:
@@ -32,6 +40,83 @@ BG, WHITE, INK, MUTED = "#10171e", "#19242e", "#edf3f6", "#99aab7"
 GREEN, DARK, GOLD, LINE = "#5bd6b0", "#10251e", "#a9ead4", "#2d3e4c"
 BUTTON, HOVER, ERROR = "#293b4a", "#354e60", "#ffa58d"
 INSTALL_SUCCESS_MESSAGE = "Textures Installed. Launch via the EQ2 EXE, not the launcher!"
+INSTALL_MODE_INFO = (
+    ("Replace PAK files", "pak", "Recommended: no runtime injection.",
+     "Copies the selected texture archives into the EQ2 game folder for the game to use directly. "
+     "No runtime injection or background helper. EQ2 must be closed to install.\n\n"
+     "Changes game archives. The official EQ2 patcher restores stock files, so reinstall textures after patching. "
+     "This recommendation is not a promise of ban safety or official approval."),
+    ("Background texture loader", "background", "Private cache; game PAKs untouched.",
+     "Keeps game files unchanged. A per-user background helper detects future EQ2 launches and redirects "
+     "texture reads to a private cache. Original PAKs stay untouched.\n\n"
+     "Loads a DLL into EQ2; game-policy and compatibility risk is unquantified. If a patch changes an "
+     "archive or index, refresh the cache manually: Uninstall, then Install. No instant A/B switching; "
+     "an attached game keeps its textures until it closes."),
+)
+
+
+class HoverInfo:
+    """An owned, nonmodal hint that never takes keyboard focus."""
+
+    def __init__(self, widget, text, delay_ms=250):
+        self.widget, self.text, self.delay_ms = widget, text, delay_ms
+        self.window = self.pending = None
+        self.owner = widget.winfo_toplevel()
+        for event in ("<Enter>", "<FocusIn>"):
+            widget.bind(event, self.schedule, add="+")
+        for event in ("<Leave>", "<ButtonPress>", "<FocusOut>", "<KeyPress>"):
+            widget.bind(event, self.hide, add="+")
+        widget.bind("<Destroy>", self.destroy, add="+")
+        self.owner_click = self.owner.bind("<ButtonPress>", self.hide, add="+")
+        self.owner_unmap = self.owner.bind("<Unmap>", self.hide, add="+")
+
+    def schedule(self, _event=None):
+        self.hide()
+        self.pending = self.widget.after(self.delay_ms, self.show)
+
+    def show(self):
+        self.pending = None
+        if self.window is not None or not self.widget.winfo_viewable():
+            return
+        desktop_x, desktop_y = self.widget.winfo_vrootx(), self.widget.winfo_vrooty()
+        left = max(desktop_x, self.owner.winfo_rootx())
+        top = max(desktop_y, self.owner.winfo_rooty())
+        width = min(desktop_x + self.widget.winfo_vrootwidth(),
+                    self.owner.winfo_rootx() + self.owner.winfo_width()) - left
+        height = min(desktop_y + self.widget.winfo_vrootheight(),
+                     self.owner.winfo_rooty() + self.owner.winfo_height()) - top
+        window = self.window = tk.Toplevel(self.owner, takefocus=False, bg=LINE)
+        window.withdraw()
+        window.overrideredirect(True)
+        window.transient(self.owner)
+        window.bind("<ButtonPress>", self.hide, add="+")
+        tk.Label(window, text=self.text, justify="left", anchor="w", bg=WHITE, fg=INK,
+                 font=("Segoe UI", 9), wraplength=max(1, min(370, width - 40)),
+                 padx=10, pady=8).pack(padx=1, pady=1)
+        window.update_idletasks()
+        tip_width = min(window.winfo_reqwidth(), max(1, width - 16))
+        tip_height = min(window.winfo_reqheight(), max(1, height - 16))
+        x = max(left + 8, min(self.widget.winfo_rootx(), left + width - tip_width - 8))
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        if y + tip_height > top + height - 8:
+            y = self.widget.winfo_rooty() - tip_height - 5
+        y = max(top + 8, min(y, top + height - tip_height - 8))
+        window.geometry(f"{tip_width}x{tip_height}+{x}+{y}")
+        window.deiconify()
+
+    def hide(self, _event=None):
+        if self.pending is not None:
+            self.widget.after_cancel(self.pending)
+            self.pending = None
+        if self.window is not None:
+            self.window.destroy()
+            self.window = None
+
+    def destroy(self, event):
+        if event.widget is self.widget:
+            self.hide()
+            self.owner.unbind("<ButtonPress>", self.owner_click)
+            self.owner.unbind("<Unmap>", self.owner_unmap)
 
 
 def window_size(screen_width, screen_height, dpi):
@@ -76,6 +161,14 @@ def can_install(busy, prepared, preflight):
     return bool(not busy and prepared and preflight and not preflight.get("missing"))
 
 
+def default_install_mode(loader_status):
+    return "background" if loader_status.get("installed") is True else "pak"
+
+
+def initial_loader_game(manager, initial_game):
+    return initial_game if initial_game is not None or manager is None else manager.installed_game()
+
+
 def update_messages(result, app_version):
     app, pack = result.get("installer", {}), result.get("pack", {})
     if app.get("status") == "verified":
@@ -115,7 +208,16 @@ class TextureQuestApp:
         self.state_dir = core._plain(state_dir or state_directory())
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.core = DirectSwapper(self.state_dir)
-        self.cache_guard = None  # Future sideload panel supplies its ownership guard.
+        self.cache_guard = None
+        self.loader_manager = None
+        self.loader_error = LOADER_IMPORT_ERROR
+        self.loader_status_unknown = False
+        self.last_loader_refresh = 0
+        if LoaderManager is not None:
+            try:
+                self.loader_manager = LoaderManager(self.state_dir)
+            except Exception as error:
+                self.loader_error = "Background loader unavailable: " + str(error)
         try:
             from texturequest_build_pin import MANIFEST_SHA256
         except ImportError:
@@ -165,8 +267,15 @@ class TextureQuestApp:
         self.overall_active = False
         self.controls = []
         self.install_success_dialog = None
+        try:
+            initial_game = initial_loader_game(self.loader_manager, initial_game)
+        except Exception as error:
+            self.loader_status_unknown = True
+            self.loader_error = "Cannot discover the owned background loader: " + str(error)
         self.game = tk.StringVar(value=str(initial_game or ""))
         self.game.trace_add("write", lambda *_: self.game_changed())
+        self.install_mode = tk.StringVar(value=default_install_mode(self.loader_status(self.game.get())))
+        self.install_mode.trace_add("write", lambda *_: self.refresh_controls() if hasattr(self, "install_button") else None)
         root.title("TextureQuest")
         width, height = window_size(root.winfo_screenwidth(), root.winfo_screenheight(), root.winfo_fpixels("1i"))
         root.geometry(f"{width}x{height}")
@@ -248,7 +357,6 @@ class TextureQuestApp:
                             activebackground=GREEN, activeforeground=DARK, font=("Segoe UI", 10))
         self.menu_button.configure(menu=self.menu)
         self.menu.add_command(label="Verify installed textures", command=self.verify_installation)
-        self.menu.add_command(label="Return to original textures", command=self.return_to_stock)
         self.menu.add_separator()
         self.menu.add_command(label="Clear downloaded files & cache…", command=self.clear_cache)
         self.menu.add_separator()
@@ -302,20 +410,37 @@ class TextureQuestApp:
         self.pack_versions_label.grid(row=5, column=0, sticky="ew", pady=(4, 0))
 
         install_card = self.card(play_area, 0, "3", "Install & play")
+        choices = tk.Frame(install_card, bg=WHITE)
+        choices.grid(row=1, column=0, sticky="ew", pady=(5, 0))
+        self.mode_controls = []
+        self.mode_info_icons, self.mode_hints, self.mode_descriptions = [], [], []
+        for caption, value, summary, detail in INSTALL_MODE_INFO:
+            option = tk.Frame(choices, bg=WHITE)
+            option.pack(fill="x")
+            option.columnconfigure(0, weight=1)
+            choice = tk.Radiobutton(option, text=caption, value=value, variable=self.install_mode,
+                bg=WHITE, fg=INK, activebackground=WHITE, activeforeground=INK,
+                selectcolor=BG, font=("Segoe UI", 9), anchor="w", highlightthickness=0, pady=1)
+            choice.grid(row=0, column=0, sticky="ew")
+            self.mode_controls.append(choice)
+            info = self.label(option, "ⓘ", size=11, color=GREEN, cursor="question_arrow", takefocus=True,
+                              highlightthickness=1, highlightbackground=WHITE, highlightcolor=GREEN)
+            info.grid(row=0, column=1, padx=(4, 0))
+            self.mode_info_icons.append(info)
+            self.mode_hints.append(HoverInfo(info, detail))
+            description = self.label(option, summary, size=8, color=MUTED, wraplength=310, justify="left")
+            description.grid(row=1, column=0, columnspan=2, sticky="ew", padx=(20, 0))
+            self.mode_descriptions.append(description)
         self.install_label = self.label(install_card, "Choose a game folder and prepare the download first.",
                                        size=9, color=MUTED, wraplength=320, justify="left")
-        self.install_label.grid(row=1, column=0, sticky="ew", pady=(6, 10))
-        self.install_button = self.button(install_card, "Install TextureQuest", self.install, primary=True)
-        self.install_button.grid(row=2, column=0, sticky="ew")
-        tk.Frame(install_card, bg=LINE, height=1).grid(row=3, column=0, sticky="ew", pady=13)
+        self.install_label.grid(row=3, column=0, sticky="ew", pady=(5, 8))
+        self.install_button = self.button(install_card, "Install TextureQuest", self.install_selected, primary=True)
+        self.install_button.grid(row=4, column=0, sticky="ew")
+        tk.Frame(install_card, bg=LINE, height=1).grid(row=5, column=0, sticky="ew", pady=9)
         self.launch_button = self.button(install_card, "Launch Game", self.launch_game)
-        self.launch_button.grid(row=4, column=0, sticky="ew")
+        self.launch_button.grid(row=6, column=0, sticky="ew")
         self.label(install_card, "Starts EverQuest2.exe directly.", size=9, color=MUTED,
-                   wraplength=320, justify="left").grid(row=5, column=0, sticky="ew", pady=(6, 0))
-        # The unavailable injection path stays guarded without occupying the UI.
-        self.sideload = tk.BooleanVar(value=False)
-        self.sideload_requested = False
-        self.sideload.trace_add("write", lambda *_: setattr(self, "sideload_requested", self.sideload.get()))
+                   wraplength=320, justify="left").grid(row=7, column=0, sticky="ew", pady=(5, 0))
 
         self.progress_panel = tk.Frame(self.root, bg=BG, padx=22, pady=14)
         self.progress_panel.grid(row=2, column=0, sticky="ew")
@@ -466,7 +591,16 @@ class TextureQuestApp:
             self.button_state(button, not self.busy)
         self.game_entry.configure(state="disabled" if self.busy else "normal")
         self.menu_button.configure(state="disabled" if self.busy else "normal")
-        self.button_state(self.install_button, self.release_checked and can_install(self.busy, self.prepared, self.preflight))
+        for choice in getattr(self, "mode_controls", ()):
+            choice.configure(state="disabled" if self.busy else "normal")
+        loader = self.loader_status(self.game.get().strip())
+        selected_loader_owned = self.loader_in_use(loader)
+        loader_owned = selected_loader_owned or self.cache_in_use()
+        background = self.background_selected()
+        pak_ready = self.release_checked and can_install(self.busy, self.prepared, self.preflight)
+        loader_ready = bool(not self.busy and self.game.get().strip() and loader["available"] and
+                            (loader["installed"] or (not loader_owned and self.release_checked and self.prepared)))
+        self.button_state(self.install_button, loader_ready if background else pak_ready and not loader_owned)
         try:
             game_executable(self.game.get().strip())
             launch_enabled = not self.busy
@@ -478,7 +612,7 @@ class TextureQuestApp:
         self.app_update_label.configure(text=app_text)
         self.pack_update_label.configure(text=pack_text)
         app = self.update_check.get("installer", {})
-        self.button_state(self.installer_update_button, not self.busy and app.get("status") == "verified" and app.get("update_available") is True)
+        self.button_state(self.installer_update_button, not self.busy and not loader_owned and app.get("status") == "verified" and app.get("update_available") is True)
         self.installer_update_button.configure(text="Updating app…" if self.busy == "app-update" else "Get app update")
         if app.get("status") == "verified" and app.get("update_available"):
             self.installer_update_button.grid()
@@ -512,7 +646,13 @@ class TextureQuestApp:
         self.pack_description.configure(text=f"{self.release.get('texture_count', 0):,} textures · {len(self.release['archives'])} archives · "
                                        + human_bytes(sum(row['bytes'] for row in self.release['archives'])))
         current = installation_current(self.installed, self.release)
-        self.install_button.configure(text="Reinstall TextureQuest" if current else "Install TextureQuest")
+        self.install_button.configure(text=("Uninstall background loader" if loader["installed"] else "Install background loader")
+                                      if background else "Reinstall TextureQuest" if current else "Install TextureQuest")
+        if background and self.install_button.cget("state") != "disabled":
+            self.install_button.configure(bg=GREEN if loader["installed"] else ERROR, fg=DARK,
+                                          activebackground="#8ae4c7" if loader["installed"] else "#ffc0ae")
+        elif not background:
+            self.install_button.configure(activebackground="#8ae4c7")
         if self.prepared:
             self.download_label.configure(text="Saved texture files verified" if self.prepared.get("schema") == "texturequest-direct-prepared-v1" else "Downloaded and verified")
             self.download_button.configure(text="Verify saved pack")
@@ -530,7 +670,23 @@ class TextureQuestApp:
                 caption, state = "Download pack", "Not downloaded"
             self.download_label.configure(text=state)
             self.download_button.configure(text=caption)
-        if current:
+        if background:
+            if not loader["available"]:
+                text = loader["message"] or "The background loader is unavailable in this app build."
+            elif loader["installed"]:
+                text = loader["message"] or ("Installed; automatically detects EverQuest II. An open session may need a restart." if loader["running"] else "Installed; background helper is not running.")
+            elif loader_owned:
+                text = ("Uninstalled for future launches. The current game session keeps its textures until it exits."
+                        if selected_loader_owned else "Choose the loader's installed game folder to uninstall it first.")
+            elif not self.game.get().strip():
+                text = "Choose your game folder first."
+            elif not self.prepared or not self.release_checked:
+                text = "Prepare the downloaded pack first."
+            else:
+                text = "The official EQ2 patcher restores original files. Background activation validates actual files; game files stay unchanged."
+        elif loader_owned:
+            text = "Uninstall the background loader and close its active game sessions before replacing PAK files."
+        elif current:
             text = "Textures installed. You're ready to play."
         elif self.preflight and self.preflight.get("missing"):
             text = "Required archives are missing. Patch this game folder fully, then try again."
@@ -542,10 +698,12 @@ class TextureQuestApp:
             text = "Prepare the downloaded pack to enable installation."
         self.install_label.configure(text=text)
         self.menu.entryconfigure(0, state="normal" if self.game.get().strip() else "disabled")
-        self.menu.entryconfigure(1, state="normal" if self.game.get().strip() else "disabled")
 
     def open_app_update(self):
         if self.busy:
+            return False
+        if self.cache_in_use():
+            self.set_message("Uninstall the background loader and close its active game sessions before updating the app. Saved textures are kept.", error=True)
             return False
         app = self.update_check.get("installer", {})
         if app.get("status") != "verified" or app.get("update_available") is not True:
@@ -555,6 +713,8 @@ class TextureQuestApp:
             return False
         app_dir = Path(sys.executable).resolve().parent
         def work():
+            if self.cache_in_use():
+                raise RuntimeError("The background loader is using these app files. Uninstall it and close its active game sessions before updating.")
             from texturequest_self_update import stage_update, launch_updater
             request = stage_update(dict(app), app_dir=app_dir, data_dir=self.state_dir,
                 current_version=self.app_version, report=lambda value: self.events.put(("app-update-progress", dict(value))))
@@ -646,9 +806,82 @@ class TextureQuestApp:
         self._download_latest()
 
     def cache_in_use(self):
-        # Background cache workers never query Tk state. An integrated panel
-        # provides a thread-safe ownership snapshot through cache_guard.
-        return bool(self.sideload_requested or (self.cache_guard is not None and self.cache_guard()))
+        # Called by download/update workers: never read a Tk variable here.
+        manager = getattr(self, "loader_manager", None)
+        try:
+            return bool(getattr(self, "loader_error", "") or
+                        getattr(self, "loader_status_unknown", False) or
+                        (manager is not None and manager.cache_in_use()) or
+                        (getattr(self, "cache_guard", None) is not None and self.cache_guard()))
+        except Exception:
+            return True  # Unknown ownership must not authorize deleting/replacing cached files.
+
+    def background_selected(self):
+        mode = getattr(self, "install_mode", None)
+        return bool(mode is not None and mode.get() == "background")
+
+    def loader_status(self, game):
+        manager = getattr(self, "loader_manager", None)
+        fallback = dict(installed=False, running=False, active_sessions=0, available=False,
+                        message=getattr(self, "loader_error", "") or "The background loader is not included in this app build.",
+                        unknown=bool(getattr(self, "loader_error", "")))
+        if manager is None:
+            return fallback
+        try:
+            value = manager.status(game)
+            if (type(value) is not dict or any(type(value.get(key)) is not bool for key in
+                    ("installed", "running", "available")) or type(value.get("active_sessions")) is not int
+                    or value["active_sessions"] < 0 or type(value.get("message")) is not str):
+                raise ValueError("The background loader returned an invalid status.")
+            self.loader_status_unknown = False
+            return dict(value, unknown=False)
+        except Exception as error:
+            self.loader_status_unknown = True
+            return dict(fallback, message="Cannot check the background loader: " + str(error), unknown=True)
+
+    @staticmethod
+    def loader_in_use(status):
+        return bool(status.get("unknown") or status["installed"] or status["running"] or status["active_sessions"])
+
+    def require_pak_mode_available(self, game):
+        if self.loader_in_use(self.loader_status(game)) or self.cache_in_use():
+            raise RuntimeError("Uninstall the background loader and close its active game sessions before replacing PAK files.")
+
+    def install_selected(self):
+        if self.background_selected():
+            return self.manage_loader()
+        return self.install()
+
+    def manage_loader(self):
+        if self.busy or not self.background_selected():
+            return False
+        game, prepared = self.game.get().strip(), self.prepared
+        status = self.loader_status(game)
+        if not game or not status["available"]:
+            self.set_message(status["message"] if game else "Choose your game folder first.", error=True)
+            return False
+        removing = status["installed"]
+        if not removing and (not self.release_checked or not prepared or self.loader_in_use(status)):
+            self.set_message("Prepare the pack and close any previous loader sessions before installing the background loader.", error=True)
+            return False
+        manager = self.loader_manager
+        def work():
+            fresh = self.loader_status(game)
+            if not fresh["available"] or fresh["installed"] != removing:
+                raise RuntimeError("The background loader state changed. Check its status and try again.")
+            if removing:
+                manager.uninstall(game, progress=self.report)
+            else:
+                if self.loader_in_use(fresh):
+                    raise RuntimeError("A previous loader session is still active. Let it exit before installing.")
+                manager.install(game, prepared, progress=self.report)
+            final = self.loader_status(game)
+            if final["unknown"] or final["installed"] == removing:
+                raise RuntimeError(final["message"] or "The background loader did not confirm the requested installation state.")
+            return final
+        self.begin("loader-uninstall" if removing else "loader-install",
+                   "Uninstalling the background loader…" if removing else "Installing the background loader to detect EverQuest II…", work)
+        return True
 
     def download_update(self, base_zip=None):
         self._download_latest(base_zip)
@@ -704,13 +937,19 @@ class TextureQuestApp:
             self.set_message("Pausing safely. Downloaded data will be kept.")
 
     def install(self):
-        if self.sideload.get():
-            self.set_message("Sideload is unavailable: no tested texture-injection backend is included.", error=True)
+        if self.background_selected():
+            self.set_message("Select Replace PAK files before installing into the game folder.", error=True)
             return
         if not self.release_checked or not can_install(self.busy, self.prepared, self.preflight):
             return
         prepared, game = self.prepared, self.game.get().strip()
+        try:
+            self.require_pak_mode_available(game)
+        except RuntimeError as error:
+            self.set_message(str(error), error=True)
+            return
         def work():
+            self.require_pak_mode_available(game)
             ready = self.core.preflight(prepared, game)
             needed = game_space_needed(ready)
             if shutil.disk_usage(ready["paks_dir"]).free < needed:
@@ -720,21 +959,26 @@ class TextureQuestApp:
                    work)
 
     def return_to_stock(self):
+        if self.busy:
+            return
         game = self.game.get().strip()
         def work():
+            self.require_pak_mode_available(game)
             self.core.uninstall(game, progress=self.report)
             return self.core.status(game)
         self.begin("stock", "Preparing to return to original textures…", work)
 
     def clear_cache(self):
         if self.busy or self.cache_in_use():
+            if not self.busy:
+                self.set_message("Uninstall the background loader and close its active game sessions before clearing saved textures.", error=True)
             return
         if not messagebox.askyesno("Clear saved textures", "Remove this app's saved texture files?\n\nInstalled game textures and installation records stay intact. Reinstalling will need a new download.", parent=self.root):
             return
         def work():
             with core._lock(self.state_dir / "operation.lock"), core._lock(self.state_dir / "sideload/helper-owner.lock"):
                 if self.cache_in_use():
-                    raise RuntimeError("Stop sideload before clearing saved textures")
+                    raise RuntimeError("Uninstall the background loader and close its active game sessions before clearing saved textures")
                 for name in ("downloads", "prepared", "explorer"):
                     target = core._plain(self.state_dir / name, self.state_dir)
                     if target.exists():
@@ -850,6 +1094,10 @@ class TextureQuestApp:
                     self.set_message("TextureQuest is ready. After a game patch, rerun this installer to reapply the textures.")
                     self.finish_progress("install")
                     self.show_install_success()
+                elif kind in ("loader-install", "loader-uninstall"):
+                    self.set_message(value["message"] or
+                        ("Background loader installed. It automatically detects future EverQuest II sessions; your open game session is unchanged."
+                         if value["installed"] else "Background loader uninstalled. Any active game session keeps its textures until it exits."))
                 elif kind == "stock":
                     self.installed = value
                     guidance = "Run the official EQ2 patcher to restore the original textures. Modified bytes remain until the patcher replaces them."
@@ -865,6 +1113,10 @@ class TextureQuestApp:
                     return
         except queue.Empty:
             pass
+        if (not self.busy and getattr(self, "loader_manager", None) is not None and
+                time.monotonic() - getattr(self, "last_loader_refresh", 0) >= 2):
+            self.last_loader_refresh = time.monotonic()
+            self.refresh_controls()
         if not self.closing:
             self.root.after(100, self.poll)
 
