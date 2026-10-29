@@ -166,8 +166,9 @@ class InstallModeInfoUI(unittest.TestCase):
             self.assertIn(phrase, replace[3])
         for phrase in ("game files unchanged", "per-user background helper", "future EQ2 launches", "private cache",
                        "Loads a DLL", "risk is unquantified", "archive or index", "Uninstall, then Install",
-                       "No instant A/B", "until it closes"):
+                       "until it closes"):
             self.assertIn(phrase, background[3])
+        self.assertNotIn("A/B", background[3])
         self.assertIn("not a promise of ban safety or official approval", replace[3])
 
     def test_owner_destroy_clears_open_hint_and_leave_cancels_delayed_hint(self):

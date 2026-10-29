@@ -198,7 +198,7 @@ class BackgroundLoaderUI(unittest.TestCase):
         self.state["installed"] = True
         self.app.update_check = {"installer": dict(status="verified", update_available=True, version="9.0.0")}
         self.app.refresh_controls()
-        self.assertEqual(self.app.installer_update_button.cget("state"), "disabled")
+        self.assertEqual(self.app.installer_update_button.cget("state"), "normal")
         with patch.object(module.messagebox, "askyesno") as question:
             self.app.clear_cache()
             question.assert_not_called()

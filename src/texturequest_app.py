@@ -50,8 +50,8 @@ INSTALL_MODE_INFO = (
      "Keeps game files unchanged. A per-user background helper detects future EQ2 launches and redirects "
      "texture reads to a private cache. Original PAKs stay untouched.\n\n"
      "Loads a DLL into EQ2; game-policy and compatibility risk is unquantified. If a patch changes an "
-     "archive or index, refresh the cache manually: Uninstall, then Install. No instant A/B switching; "
-     "an attached game keeps its textures until it closes."),
+     "archive or index, refresh the cache manually: Uninstall, then Install. "
+     "An attached game keeps its textures until it closes."),
 )
 
 
@@ -612,7 +612,7 @@ class TextureQuestApp:
         self.app_update_label.configure(text=app_text)
         self.pack_update_label.configure(text=pack_text)
         app = self.update_check.get("installer", {})
-        self.button_state(self.installer_update_button, not self.busy and not loader_owned and app.get("status") == "verified" and app.get("update_available") is True)
+        self.button_state(self.installer_update_button, not self.busy and app.get("status") == "verified" and app.get("update_available") is True)
         self.installer_update_button.configure(text="Updating app…" if self.busy == "app-update" else "Get app update")
         if app.get("status") == "verified" and app.get("update_available"):
             self.installer_update_button.grid()
@@ -702,17 +702,28 @@ class TextureQuestApp:
     def open_app_update(self):
         if self.busy:
             return False
-        if self.cache_in_use():
-            self.set_message("Uninstall the background loader and close its active game sessions before updating the app. Saved textures are kept.", error=True)
-            return False
         app = self.update_check.get("installer", {})
         if app.get("status") != "verified" or app.get("update_available") is not True:
             return False
         if not getattr(sys, "frozen", False):
             self.set_message("Automatic app updates are available in the distributed TextureQuest app. Install the latest app once to enable them.", error=True)
             return False
+        game = self.game.get().strip()
+        remove_loader = self.cache_in_use()
+        if remove_loader:
+            status = self.loader_status(game)
+            if status.get("unknown") or not status.get("installed") or status.get("active_sessions", 0):
+                self.set_message("Close loaded EQ2 sessions and choose the installed loader's game folder before updating. Saved textures are kept.", error=True)
+                return False
+            if not messagebox.askyesno("Update TextureQuest",
+                    "The background loader must be uninstalled before replacing this app. "
+                    "Uninstall it and continue with the update? Your downloads and game files stay unchanged. "
+                    "Install background loader again after the update.", parent=self.root):
+                return False
         app_dir = Path(sys.executable).resolve().parent
         def work():
+            if remove_loader:
+                self.loader_manager.uninstall(game)
             if self.cache_in_use():
                 raise RuntimeError("The background loader is using these app files. Uninstall it and close its active game sessions before updating.")
             from texturequest_self_update import stage_update, launch_updater

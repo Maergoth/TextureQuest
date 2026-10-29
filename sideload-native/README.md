@@ -1,11 +1,11 @@
 # Background loader native source
 
-These C++ and header files are the byte-exact source for the reviewed portable background loader included in TextureQuest 1.4.1. The watcher executable detects future launches of the selected game executable; the DLL redirects selected file reads to prepared private archives. Building does not install the loader, register startup, launch a game or generate textures.
+These C++ and header files are the byte-exact source for the reviewed portable background loader included in TextureQuest 1.4.2. The watcher executable detects future launches of the selected game executable; the DLL redirects selected file reads to prepared private archives. Building does not install the loader, register startup, launch a game or generate textures.
 
 The ready-to-package runtime is already in `../sideload-runtime/`: its descriptor pins the two native binaries, preparation helper, released-member catalog and Microsoft Detours license. Use that directory for the app build:
 
 ```powershell
-python build_installer.py --manifest release-manifest-1.3.7.json --version 1.4.1 --loader-runtime-dir sideload-runtime
+python build_installer.py --manifest release-manifest-1.3.7.json --version 1.4.2 --loader-runtime-dir sideload-runtime
 ```
 
 Run the command from the repository root with the pinned Python build dependencies installed. This is the supported way to package the included reviewed payload. Native compilation is separate and is not needed to build the app with that payload.

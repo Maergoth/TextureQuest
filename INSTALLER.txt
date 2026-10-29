@@ -1,4 +1,4 @@
-TextureQuest — Windows x64 installer
+TextureQuest 1.4.2 — Windows x64 portable app
 
 1. Extract this whole folder to a writable location outside your game folder.
    Keep TextureQuest.exe and _internal together. Python is not required.
@@ -7,14 +7,27 @@ TextureQuest — Windows x64 installer
 4. Click Download / Resume. The installer checks GitHub's latest published
    release and downloads what it needs. You do not need a texture ZIP already.
    You can pause and resume; saved downloads are kept and reused automatically.
-5. Click Install TextureQuest after verification. Downloading never installs
-   anything automatically. Wait for: "Textures Installed. Launch via the EQ2 EXE,
-   not the launcher!" Choose Launch Game in that dialog, or use Launch Game
-   in the main window. Both start the selected EverQuest2.exe directly.
-   Close dismisses the installation dialog without starting the game.
+5. Choose one installation mode; hover its information icon for details.
+   Replace PAK files is recommended because the game loads the copied archives
+   directly, without runtime injection or a background helper. It changes game
+   archives; EQ2 must be closed to install. Click Install TextureQuest.
+   Background texture loader prepares a private cache and installs a per-user
+   watcher. It loads a DLL in future EQ2 clients to redirect selected file reads,
+   leaving game PAKs, settings and shortcuts unchanged. If PAK replacement was
+   used, restore stock archives with the official patcher before choosing this
+   mode. Click Install background loader and wait until it reports ready.
+   Keep the portable app and data folder in place. Launch Game starts the
+   selected EverQuest2.exe directly. Downloading never installs automatically.
+
+The loading-method recommendation is not a promise of account-policy compliance
+or official approval. Runtime injection has unquantified policy/compatibility
+risk. Background mode has an initial successful test on one Windows Origins
+client; other clients and every launch path have not been fully validated.
 
 AFTER A GAME PATCH
-Rerun this installer, click Download / Resume, then Install TextureQuest.
+PAK replacement may need reinstalling: click Download / Resume, then Install.
+If a patch changes game archives or indexes, uninstall and reinstall the
+background loader to refresh its private cache. Automatic refresh is unfinished.
 Saved downloads are rechecked and reused, so patching does not require the
 whole pack to download again. Recorded installed files with unchanged file
 identity and modification metadata are skipped; patched files are recopied.
@@ -27,6 +40,11 @@ Get app update downloads and verifies the new app, stages its managed files,
 closes this app, applies the update, and restarts TextureQuest. The data folder,
 downloaded textures and installation history are kept. Updating the app does
 not install textures or start the game.
+In app 1.4.2, an available Get app update button remains clickable when the
+background loader is installed. It asks whether to uninstall the owned loader
+and continue. Close all attached EQ2 clients first; active sessions or unknown
+ownership prevent updating. Install background loader again after the update.
+App 1.4.1 and earlier may require uninstalling it manually before Get app update.
 An app update may use exactly the same textures. The app shows its own version,
 the selected texture version, saved/prepared textures and installed textures.
 Compatible textures are downloaded here; a changed format needs a newer app.
@@ -35,12 +53,12 @@ retry when connected. A saved ready pack that matches this app's bundled
 manifest can still be installed without downloading again or moving its cache.
 Saved downloads and the saved release remain intact.
 
-App 1.3.5 bundles the current texture version 1.2.3 manifest. Release 1.3.7
-changes the app only: all 310 texture archive files and their download URLs
+App 1.4.2 bundles the current texture version 1.2.3 / release 1.3.7 manifest.
+This release changes the app only: all 310 texture archives and download URLs
 are unchanged. Online checks can select newer published textures.
 
 Keep the data folder alongside TextureQuest.exe. App 1.3.4 or earlier needs
-one final manual upgrade: close the old copy, extract app 1.3.5 into a new
+one final manual upgrade: close the old copy, extract app 1.4.2 into a new
 writable folder outside the game, and move data alongside TextureQuest.exe.
 Future updates from app 1.3.5 use Get app update to update and restart the app.
 Do not discard data/games. Matching installed textures can also be reused.
@@ -77,10 +95,13 @@ avoids downloading a full pack you already have.
 Clear downloaded files & cache explicitly removes this app's saved downloads
 and any remaining legacy prepared copies. Game files and installation records stay. Reinstalling
 after clearing them may require downloading the pack again.
+Uninstall the background loader and close attached clients before clearing cache.
 
 RESTORE STOCK
-Choose Settings > Return to original textures, then run the
-official EQ2 patcher. Modified bytes remain until the patcher replaces them.
+Uninstall the background loader and close attached clients. Uninstall stops
+future attachments; already attached clients retain the loader until they close.
+If PAK replacement was used, run the official patcher's file validation to
+restore original archives. Modified bytes remain until the patcher replaces them.
 The installer does not restore stock bytes or make game backups.
 
 TextureQuest is an unofficial community project. Original game assets and
