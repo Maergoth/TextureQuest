@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0
+
+- Full-pack Graphics hook, now the default, with Original/Upscaled switching.
+- Customizable foreground shortcut, default Numpad *.
+- Optional bounded Dual-load comparison cache and on-demand mode.
+- Three exclusive install modes with updated hover help.
+- Texture pack 1.2.3 and all released archive bytes/URLs unchanged.
+
 ## 1.3.2
 
 - Overall download/install percentage, bytes and PAK count; current-file status remains visible.

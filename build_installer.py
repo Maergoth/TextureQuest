@@ -60,6 +60,8 @@ def main():
     parser.add_argument("--version", default=VERSION)
     parser.add_argument("--loader-runtime-dir", type=Path,
                         help="Explicit reviewed descriptor + sideload payload directory (otherwise loader unavailable)")
+    parser.add_argument("--graphics-runtime-dir", type=Path,
+                        help="Explicit full-pack experimental graphics runtime directory")
     args = parser.parse_args()
     output_root = ROOT
     if args.output_root:
@@ -79,6 +81,22 @@ def main():
     if args.loader_runtime_dir:
         from texturequest_sideload import admit_portable_payload
         loader = admit_portable_payload(args.loader_runtime_dir)
+    graphics = None
+    if args.graphics_runtime_dir:
+        if loader is None:
+            raise ValueError("Graphics installation requires the named full-pack loader resources")
+        from texturequest_graphics import GraphicsManager
+        graphics = GraphicsManager(BUILD / "unused-state", runtime_dir=args.graphics_runtime_dir)._runtime()
+        if graphics is None:
+            raise ValueError("Missing graphics runtime descriptor")
+        graphics_pins = {"RUNTIME.json": sha(args.graphics_runtime_dir / "RUNTIME.json"),
+                         **{r["name"]: r["sha256"] for r in graphics["files"]}}
+        resources_graphics = BUILD / "graphics-runtime"
+        if resources_graphics.exists():
+            raise RuntimeError("Preserve previous graphics build resources")
+        resources_graphics.mkdir()
+        for name in graphics_pins:
+            shutil.copy2(args.graphics_runtime_dir / name, resources_graphics / name)
     stage = BUILD / "source"
     (stage / "texture_swapper").mkdir(parents=True, exist_ok=True)
     sources = sorted([*SRC.glob("*.py"), SRC / "texture_swapper/core.py", SRC / "texture_swapper/__init__.py",
@@ -116,6 +134,8 @@ def main():
                     "--hidden-import", "dataclasses", "--hidden-import", "zlib"]
     for name in ("torch", "transformers", "diffusers", "scipy", "matplotlib", "pandas", "nightly", "nightly_fast", "PIL", "numpy", "texture_swapper.app", "texture_swapper.explorer", "texture_swapper.self_check"):
         command += ["--exclude-module", name]
+    if graphics:
+        command += ["--add-data", str(resources_graphics) + ":graphics-runtime"]
     command += [str(stage / "texturequest_app.py")]
     subprocess.run(command, cwd=ROOT, env=env, check=True)
     if (sha(manifest) != manifest_hash or sha(bundled_manifest) != manifest_hash
@@ -126,6 +146,11 @@ def main():
         if fresh != loader or admit_portable_payload(resources) != staged_loader:
             raise RuntimeError("Loader resources changed during build")
     folder = DEST / NAME
+    if graphics:
+        for name, expected in graphics_pins.items():
+            if (sha(args.graphics_runtime_dir / name) != expected or sha(resources_graphics / name) != expected or
+                    sha(folder / "_internal/graphics-runtime" / name) != expected):
+                raise RuntimeError("Graphics runtime changed during build or packaging")
     if loader is not None:
         packaged = admit_portable_payload(folder / "_internal")
         if packaged["spec"] != loader["spec"] or packaged["descriptor"]["sha256"] != loader["descriptor"]["sha256"]:
@@ -154,6 +179,7 @@ def main():
                "manifest_version": release["version"], "runtime": sys.version, "dependencies": versions,
                "release_manifest_sha256": manifest_hash,
                "source_sha256": source_hashes,
+               "graphics_runtime": None if graphics is None else graphics_pins,
                "loader_runtime": None if loader is None else dict(payload_id=loader["spec"]["payload_id"],
                     descriptor_sha256=loader["descriptor"]["sha256"], files=loader["spec"]["files"]),
                "files": [{"path": p.relative_to(folder).as_posix(), "bytes": p.stat().st_size, "sha256": sha(p)} for p in files]}

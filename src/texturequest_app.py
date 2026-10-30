@@ -17,6 +17,8 @@ from texturequest_updates import prepare_update
 from texturequest_direct import DirectSwapper, prepare_direct
 from texturequest_latest import fetch_latest
 from texturequest_launch import game_executable, launch_game as start_game
+from texturequest_graphics import GraphicsManager
+from texturequest_shortcut import normalize as shortcut_spec,label as shortcut_label,from_tk as shortcut_from_tk
 from texturequest_version import APP_VERSION
 from texturequest_version_check import check_updates as check_versions, texture_version, pack_identity, saved_manifest
 
@@ -41,17 +43,25 @@ GREEN, DARK, GOLD, LINE = "#5bd6b0", "#10251e", "#a9ead4", "#2d3e4c"
 BUTTON, HOVER, ERROR = "#293b4a", "#354e60", "#ffa58d"
 INSTALL_SUCCESS_MESSAGE = "Textures Installed. Launch via the EQ2 EXE, not the launcher!"
 INSTALL_MODE_INFO = (
-    ("Replace PAK files", "pak", "Recommended: no runtime injection.",
+    ("Replace PAK files", "pak", "Writes game archives · no runtime injection.",
      "Copies the selected texture archives into the EQ2 game folder for the game to use directly. "
      "No runtime injection or background helper. EQ2 must be closed to install.\n\n"
      "Changes game archives. The official EQ2 patcher restores stock files, so reinstall textures after patching. "
-     "This recommendation is not a promise of ban safety or official approval."),
-    ("Background texture loader", "background", "Private cache; game PAKs untouched.",
+     "No install method carries a promise of ban safety or official approval."),
+    ("Memory hook", "background", "Redirects PAK reads; game files untouched.",
      "Keeps game files unchanged. A per-user background helper detects future EQ2 launches and redirects "
      "texture reads to a private cache. Original PAKs stay untouched.\n\n"
      "Loads a DLL into EQ2; game-policy and compatibility risk is unquantified. If a patch changes an "
      "archive or index, refresh the cache manually: Uninstall, then Install. "
      "An attached game keeps its textures until it closes."),
+    ("Graphics hook (default)", "graphics", "Hot-swap textures · customizable shortcut.",
+     "Combines the named-file loader with graphics-level quality switching, without changing game PAKs. "
+     "Numpad * switches Original / Upscaled by default. Change the shortcut beside Dual-load. "
+     "It is active only while EQ2 is focused. First-time loads can take a moment.\n\n"
+     "Dual-load keeps both qualities cached for faster switching, "
+     "within the cache budget. With it off, comparison textures load on demand and unused comparisons "
+     "can be evicted. Textures still owned by EQ2 may remain in memory. "
+     "This experimental mode injects a runtime component and needs performance testing."),
 )
 
 
@@ -161,8 +171,10 @@ def can_install(busy, prepared, preflight):
     return bool(not busy and prepared and preflight and not preflight.get("missing"))
 
 
-def default_install_mode(loader_status):
-    return "background" if loader_status.get("installed") is True else "pak"
+def default_install_mode(loader_status, graphics_status=None):
+    if graphics_status and graphics_status.get("installed") is True:
+        return "graphics"
+    return "background" if loader_status.get("installed") is True else "graphics"
 
 
 def initial_loader_game(manager, initial_game):
@@ -210,6 +222,7 @@ class TextureQuestApp:
         self.core = DirectSwapper(self.state_dir)
         self.cache_guard = None
         self.loader_manager = None
+        self.graphics_manager = GraphicsManager(self.state_dir)
         self.loader_error = LOADER_IMPORT_ERROR
         self.loader_status_unknown = False
         self.last_loader_refresh = 0
@@ -274,7 +287,9 @@ class TextureQuestApp:
             self.loader_error = "Cannot discover the owned background loader: " + str(error)
         self.game = tk.StringVar(value=str(initial_game or ""))
         self.game.trace_add("write", lambda *_: self.game_changed())
-        self.install_mode = tk.StringVar(value=default_install_mode(self.loader_status(self.game.get())))
+        self.install_mode = tk.StringVar(value=default_install_mode(self.loader_status(self.game.get()), self.graphics_status(self.game.get())))
+        self.dual_load = tk.BooleanVar(value=self.graphics_status(self.game.get()).get("dual_load", False))
+        self.shortcut=shortcut_spec(self.graphics_status(self.game.get()).get('shortcut'))
         self.install_mode.trace_add("write", lambda *_: self.refresh_controls() if hasattr(self, "install_button") else None)
         root.title("TextureQuest")
         width, height = window_size(root.winfo_screenwidth(), root.winfo_screenheight(), root.winfo_fpixels("1i"))
@@ -431,6 +446,16 @@ class TextureQuestApp:
             description = self.label(option, summary, size=8, color=MUTED, wraplength=310, justify="left")
             description.grid(row=1, column=0, columnspan=2, sticky="ew", padx=(20, 0))
             self.mode_descriptions.append(description)
+        self.dual_load_control = tk.Checkbutton(choices, text="Dual-load", variable=self.dual_load,
+            bg=WHITE, fg=INK, selectcolor=BG, activebackground=WHITE, activeforeground=INK,
+            font=("Segoe UI", 9), anchor="w", highlightthickness=0)
+        self.dual_load_control.pack(side="left", padx=(20, 0))
+        self.shortcut_button=self.button(choices,"Shortcut: "+shortcut_label(self.shortcut),self.change_graphics_shortcut)
+        self.shortcut_button.pack(side="right")
+        self.mode_hints.append(HoverInfo(self.dual_load_control,
+            "Keep both qualities cached for quicker switches. "
+            "Uses more VRAM, within the cache budget. Off loads comparison textures on demand and evicts unused comparisons; "
+            "EQ2 can retain its game-owned textures in either mode."))
         self.install_label = self.label(install_card, "Choose a game folder and prepare the download first.",
                                        size=9, color=MUTED, wraplength=320, justify="left")
         self.install_label.grid(row=3, column=0, sticky="ew", pady=(5, 8))
@@ -593,6 +618,22 @@ class TextureQuestApp:
         self.menu_button.configure(state="disabled" if self.busy else "normal")
         for choice in getattr(self, "mode_controls", ()):
             choice.configure(state="disabled" if self.busy else "normal")
+        graphics = self.graphics_status(self.game.get().strip())
+        graphics_owned = self.loader_in_use(graphics)
+        is_graphics = self.graphics_selected()
+        selected_value = self.install_mode.get()
+        for index, description in enumerate(self.mode_descriptions):
+            description.grid() if INSTALL_MODE_INFO[index][1] == selected_value else description.grid_remove()
+        if is_graphics:
+            self.dual_load_control.pack(side="left", padx=(20, 0))
+            self.shortcut_button.pack(side="right")
+        else:
+            self.dual_load_control.pack_forget()
+            self.shortcut_button.pack_forget()
+        self.dual_load_control.configure(state="disabled" if self.busy or graphics_owned else "normal")
+        if not self.busy and graphics.get('installed'):
+            self.shortcut=shortcut_spec(graphics.get('shortcut'))
+        self.shortcut_button.configure(text="Shortcut: "+shortcut_label(self.shortcut),state='disabled' if self.busy else 'normal')
         loader = self.loader_status(self.game.get().strip())
         selected_loader_owned = self.loader_in_use(loader)
         loader_owned = selected_loader_owned or self.cache_in_use()
@@ -600,7 +641,11 @@ class TextureQuestApp:
         pak_ready = self.release_checked and can_install(self.busy, self.prepared, self.preflight)
         loader_ready = bool(not self.busy and self.game.get().strip() and loader["available"] and
                             (loader["installed"] or (not loader_owned and self.release_checked and self.prepared)))
-        self.button_state(self.install_button, loader_ready if background else pak_ready and not loader_owned)
+        graphics_ready = bool(not self.busy and self.game.get().strip() and graphics["available"] and
+            not selected_loader_owned and (graphics["installed"] or
+                (not loader_owned and self.release_checked and self.prepared)))
+        self.button_state(self.install_button, graphics_ready if is_graphics else
+                          loader_ready and not graphics_owned if background else pak_ready and not loader_owned)
         try:
             game_executable(self.game.get().strip())
             launch_enabled = not self.busy
@@ -648,9 +693,12 @@ class TextureQuestApp:
         current = installation_current(self.installed, self.release)
         self.install_button.configure(text=("Uninstall background loader" if loader["installed"] else "Install background loader")
                                       if background else "Reinstall TextureQuest" if current else "Install TextureQuest")
-        if background and self.install_button.cget("state") != "disabled":
-            self.install_button.configure(bg=GREEN if loader["installed"] else ERROR, fg=DARK,
-                                          activebackground="#8ae4c7" if loader["installed"] else "#ffc0ae")
+        if is_graphics:
+            self.install_button.configure(text="Uninstall graphics hook" if graphics["installed"] else "Install graphics hook")
+        if (background or is_graphics) and self.install_button.cget("state") != "disabled":
+            enabled = graphics["installed"] if is_graphics else loader["installed"]
+            self.install_button.configure(bg=GREEN if enabled else ERROR, fg=DARK,
+                                          activebackground="#8ae4c7" if enabled else "#ffc0ae")
         elif not background:
             self.install_button.configure(activebackground="#8ae4c7")
         if self.prepared:
@@ -670,7 +718,15 @@ class TextureQuestApp:
                 caption, state = "Download pack", "Not downloaded"
             self.download_label.configure(text=state)
             self.download_button.configure(text=caption)
-        if background:
+        if is_graphics:
+            text = ("Uninstall Memory hook and close its active game sessions first." if selected_loader_owned else
+                    graphics["message"] if not graphics["available"] or graphics_owned else
+                    "Choose your game folder first." if not self.game.get().strip() else
+                    "Prepare the downloaded pack first." if not self.prepared or not self.release_checked else
+                    "Ready for full-pack graphics installation. Close EQ2 first. "+shortcut_label(self.shortcut)+" switches quality.")
+        elif graphics_owned:
+            text = "Uninstall Graphics hook and close its active game sessions before choosing another install type."
+        elif background:
             if not loader["available"]:
                 text = loader["message"] or "The background loader is unavailable in this app build."
             elif loader["installed"]:
@@ -710,8 +766,9 @@ class TextureQuestApp:
             return False
         game = self.game.get().strip()
         remove_loader = self.cache_in_use()
+        update_manager = self.graphics_manager if self.graphics_status(game).get('installed') else self.loader_manager
         if remove_loader:
-            status = self.loader_status(game)
+            status = self.graphics_status(game) if update_manager is self.graphics_manager else self.loader_status(game)
             if status.get("unknown") or not status.get("installed") or status.get("active_sessions", 0):
                 self.set_message("Close loaded EQ2 sessions and choose the installed loader's game folder before updating. Saved textures are kept.", error=True)
                 return False
@@ -723,7 +780,7 @@ class TextureQuestApp:
         app_dir = Path(sys.executable).resolve().parent
         def work():
             if remove_loader:
-                self.loader_manager.uninstall(game)
+                update_manager.uninstall(game)
             if self.cache_in_use():
                 raise RuntimeError("The background loader is using these app files. Uninstall it and close its active game sessions before updating.")
             from texturequest_self_update import stage_update, launch_updater
@@ -823,9 +880,74 @@ class TextureQuestApp:
             return bool(getattr(self, "loader_error", "") or
                         getattr(self, "loader_status_unknown", False) or
                         (manager is not None and manager.cache_in_use()) or
+                        self.graphics_manager.cache_in_use() or
                         (getattr(self, "cache_guard", None) is not None and self.cache_guard()))
         except Exception:
             return True  # Unknown ownership must not authorize deleting/replacing cached files.
+
+    def graphics_selected(self):
+        return self.install_mode.get() == "graphics"
+
+    def graphics_status(self, game):
+        try:
+            return dict(self.graphics_manager.status(game), unknown=False)
+        except Exception as error:
+            return dict(installed=False, running=False, active_sessions=0, available=False, unknown=True,
+                        message="Cannot check Graphics hook: " + str(error), dual_load=False)
+
+    def manage_graphics(self):
+        if self.busy or not self.graphics_selected():
+            return False
+        game = self.game.get().strip()
+        status = self.graphics_status(game)
+        if not game or not status["available"] or status["unknown"]:
+            self.set_message(status["message"] if game else "Choose your game folder first.", error=True)
+            return False
+        removing, dual = status["installed"], self.dual_load.get()
+        if not removing and (not self.prepared or not self.release_checked):
+            self.set_message("Prepare and verify the full texture pack first.", error=True)
+            return False
+        def work():
+            if self.loader_in_use(self.loader_status(game)):
+                raise RuntimeError("Uninstall Memory hook and close its active sessions first.")
+            fresh = self.graphics_status(game)
+            if fresh["unknown"] or fresh["installed"] != removing:
+                raise RuntimeError("Graphics installation state changed. Check status before another action.")
+            if removing:
+                return self.graphics_manager.uninstall(game, progress=self.report)
+            if fresh["running"] or fresh["active_sessions"]:
+                raise RuntimeError("Close the previous graphics-hook sessions first.")
+            return self.graphics_manager.install(game, self.prepared, dual_load=dual, progress=self.report,shortcut=self.shortcut)
+        self.begin("graphics-uninstall" if removing else "graphics-install",
+                   "Uninstalling Graphics hook…" if removing else "Preparing full-pack Graphics hook…", work)
+        return True
+
+    def change_graphics_shortcut(self):
+        if self.busy or not self.graphics_selected():return
+        dialog=tk.Toplevel(self.root);dialog.title('Texture shortcut');dialog.transient(self.root)
+        dialog.configure(bg=WHITE);dialog.resizable(False,False)
+        self.label(dialog,'Press a key or key combination.',size=12,bg=WHITE).pack(padx=24,pady=(22,5))
+        self.label(dialog,'Ctrl, Alt and Shift are optional. Escape cancels.\nThe shortcut is active only while EQ2 is focused.',size=9,bg=WHITE).pack(padx=24,pady=(0,10))
+        error=self.label(dialog,'Current: '+shortcut_label(self.shortcut),size=9,bg=WHITE,wraplength=390)
+        error.pack(padx=24,pady=(0,22))
+        def capture(event):
+            if event.keysym=='Escape':dialog.destroy();return 'break'
+            if event.keycode in {16,17,18,91,92,160,161,162,163,164,165}:return 'break'
+            try:binding=shortcut_from_tk(event)
+            except ValueError as problem:error.configure(text=str(problem));return 'break'
+            dialog.destroy();self.apply_graphics_shortcut(binding);return 'break'
+        dialog.bind('<KeyPress>',capture);dialog.protocol('WM_DELETE_WINDOW',dialog.destroy)
+        dialog.grab_set();dialog.focus_force()
+
+    def apply_graphics_shortcut(self,binding):
+        binding=shortcut_spec(binding)
+        status=self.graphics_status(self.game.get())
+        self.shortcut=binding
+        if status.get('installed'):
+            game=self.game.get()
+            self.begin('graphics-shortcut','Saving shortcut: '+shortcut_label(binding),
+                lambda:self.graphics_manager.set_shortcut(game,binding,progress=self.report))
+        else:self.shortcut_button.configure(text='Shortcut: '+shortcut_label(binding))
 
     def background_selected(self):
         mode = getattr(self, "install_mode", None)
@@ -859,6 +981,8 @@ class TextureQuestApp:
             raise RuntimeError("Uninstall the background loader and close its active game sessions before replacing PAK files.")
 
     def install_selected(self):
+        if self.graphics_selected():
+            return self.manage_graphics()
         if self.background_selected():
             return self.manage_loader()
         return self.install()
@@ -883,8 +1007,8 @@ class TextureQuestApp:
             if removing:
                 manager.uninstall(game, progress=self.report)
             else:
-                if self.loader_in_use(fresh):
-                    raise RuntimeError("A previous loader session is still active. Let it exit before installing.")
+                if self.loader_in_use(fresh) or self.graphics_manager.cache_in_use():
+                    raise RuntimeError("Uninstall other hook modes and close their active sessions before installing.")
                 manager.install(game, prepared, progress=self.report)
             final = self.loader_status(game)
             if final["unknown"] or final["installed"] == removing:
@@ -948,7 +1072,7 @@ class TextureQuestApp:
             self.set_message("Pausing safely. Downloaded data will be kept.")
 
     def install(self):
-        if self.background_selected():
+        if self.background_selected() or self.graphics_selected():
             self.set_message("Select Replace PAK files before installing into the game folder.", error=True)
             return
         if not self.release_checked or not can_install(self.busy, self.prepared, self.preflight):
@@ -1105,6 +1229,8 @@ class TextureQuestApp:
                     self.set_message("TextureQuest is ready. After a game patch, rerun this installer to reapply the textures.")
                     self.finish_progress("install")
                     self.show_install_success()
+                elif kind in ("graphics-install", "graphics-uninstall", "graphics-shortcut"):
+                    self.set_message(value["message"])
                 elif kind in ("loader-install", "loader-uninstall"):
                     self.set_message(value["message"] or
                         ("Background loader installed. It automatically detects future EverQuest II sessions; your open game session is unchanged."

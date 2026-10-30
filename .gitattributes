@@ -3,3 +3,12 @@ README.md text eol=lf
 # Preserve exact bytes on Windows clones, including JSON, Python and licenses.
 /sideload-runtime/** -text
 /sideload-native/** -text
+
+/graphics-runtime/** -text
+/graphics-native/** -text
+/src/** -text
+/tests/** -text
+/build_installer.py -text
+/release-manifest-1.3.7.json -text
+/texturequest-version.json -text
+/INSTALLER.txt -text
