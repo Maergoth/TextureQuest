@@ -10,7 +10,7 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 ## Download and install
 
-**[Download TextureQuest 1.5.1 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.5.1/TextureQuest-Installer-1.5.1-windows-x64.zip)** · [Latest release](https://github.com/Maergoth/TextureQuest/releases/latest)
+**[Download TextureQuest 1.6.0 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.6.0/TextureQuest-Installer-1.6.0-windows-x64.zip)** · [Latest release](https://github.com/Maergoth/TextureQuest/releases/latest)
 
 1. Patch EQ2 Origins, then close the game and launcher. If you previously replaced PAKs, use the official patcher to restore stock files before choosing a hook.
 2. Extract the app outside your game folder. Keep your existing **data** folder alongside **TextureQuest.exe**.
@@ -19,15 +19,15 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 | Install mode | What it does |
 | --- | --- |
-| **Graphics hook — default** | Leaves game files unchanged. Switch Original/Upscaled with **Numpad \***. Change the key with **Shortcut**. |
-| **Memory hook** | Leaves game files unchanged. Applies textures without live switching. |
+| **Graphics hook — default** | Leaves game files unchanged. Switch Original/Upscaled with **Numpad \***. Change the key with **Shortcut**. Comparisons load on demand. |
 | **Replace PAK files** | Changes game archives. No background process or runtime injection. Reinstall after patching. |
 
-**Install once, then play normally.** Both hooks start automatically at Windows sign-in, including after a reboot. Launch through your usual shortcut, launcher or EXE; TextureQuest can stay closed. Keep the app and **data** folder in place.
+**Install once, then play normally.** Graphics hook starts automatically at Windows sign-in, including after a reboot. Launch through your usual shortcut, launcher or EXE; TextureQuest can stay closed. Keep the app and **data** folder in place.
 
-**To disable a hook:** open TextureQuest and click **Uninstall**. An open game keeps the hook until it closes. If you used Replace PAK files, restore stock files with the official patcher.
+**To disable Graphics hook:** open TextureQuest and click **Uninstall**. An open game keeps the hook until it closes. If you used Replace PAK files, restore stock files with the official patcher.
 
-**Dual-load:** on keeps comparison textures cached for faster switching; off loads them on demand. The hotkey works either way, while EQ2 is focused.
+
+**Previously installed Memory hook?** Use **Settings → Uninstall old Memory hook**, close EQ2, then install Graphics hook. Existing Dual-load installs need a reinstall to use on-demand comparisons.
 
 **After a patch:** if game archives changed, close EQ2, then **Uninstall → Install** to refresh the hook cache. Automatic refresh is unfinished.
 

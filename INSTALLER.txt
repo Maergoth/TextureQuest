@@ -1,4 +1,4 @@
-TextureQuest 1.5.1 — Windows x64
+TextureQuest 1.6.0 — Windows x64
 
 1. Patch EQ2 Origins, then close the game and launcher.
    If you replaced PAKs, restore stock files before choosing a hook.
@@ -7,20 +7,21 @@ TextureQuest 1.5.1 — Windows x64
 4. Choose an install mode, click Install, and wait for Ready.
 
 Graphics hook (default): game files unchanged; Numpad * switches quality.
-Memory hook: game files unchanged; no live quality switching.
 Replace PAK files: changes archives; no background process. Reinstall after patches.
 Hover each info icon for details.
 
 INSTALL ONCE, THEN PLAY NORMALLY
-Both hooks start at Windows sign-in, including after a reboot. Launch EQ2
+Graphics hook starts at Windows sign-in, including after a reboot. Launch EQ2
 through your usual EXE, shortcut or launcher. TextureQuest can stay closed.
 Keep the app and data folder in place. Open the installer and click Uninstall
 to disable the hook. An open game keeps it until that game closes.
 
 SWITCH QUALITY
 Press Numpad * while EQ2 is focused. Use Shortcut to change the key.
-Dual-load on caches comparisons for faster switching; off loads them on demand.
-The hotkey works either way.
+
+OLD INSTALLATIONS
+Use Settings → Uninstall old Memory hook, then close EQ2 before installing
+Graphics hook. Existing Dual-load installs need a reinstall for on-demand mode.
 
 PATCHES & UPDATES
 If game archives changed, close EQ2, then Uninstall → Install to refresh the

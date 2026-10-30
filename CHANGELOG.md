@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.0
+
+- Two install choices: Graphics hook or Replace PAK files.
+- Remove Dual-load option; new installs use on-demand comparisons.
+- Keep an uninstall-only path for old Memory hook installations.
+
 ## 1.5.1
 
 - Shorter installer/README help: automatic startup after reboot, normal launches, folder retention and uninstall behavior.

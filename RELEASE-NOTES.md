@@ -1,7 +1,9 @@
-TextureQuest 1.5.1 clarifies installation in fewer words.
+TextureQuest 1.6.0 simplifies installation to two choices: Graphics hook (default) or Replace PAK files.
 
-- Both hooks start at Windows sign-in, including after reboot. Launch EQ2 normally; TextureQuest can stay closed.
-- Keep the app and data folder in place. Uninstall through TextureQuest to disable the hook; an open game retains it until it closes.
-- Shorter install-mode help, Dual-load explanation and README. Graphics hook remains the default, with a customizable Numpad * shortcut.
+- Removes the Dual-load checkbox. New Graphics hook installs use on-demand comparisons; the customizable Numpad * shortcut still switches quality.
+- Removes Memory hook as an install choice. Existing users can remove it through Settings → Uninstall old Memory hook, then install Graphics hook after closing EQ2.
+- Existing Dual-load installations retain their current setting until reinstalled; no running game is changed automatically.
 
-App wording only. Graphics/native runtime, texture pack 1.2.3, all 24,693 replacements and archive URLs are unchanged. Generation is unaffected.
+Graphics hook still starts at Windows sign-in after reboot, leaves game files unchanged, and works with normal EQ2 launches. Keep the app/data folder in place.
+
+Texture pack 1.2.3, all released texture bytes/URLs and native hook binaries are unchanged. The internal named-file loader remains part of Graphics hook. Generation is unaffected.

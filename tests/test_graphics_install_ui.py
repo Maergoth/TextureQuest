@@ -1,4 +1,4 @@
-"""New three-mode UI flow with fake manager/process leaves and own Tk window."""
+"""Two-mode install and legacy-removal flow with fake manager/process leaves and own Tk window."""
 from contextlib import ExitStack
 from pathlib import Path
 import sys
@@ -12,7 +12,7 @@ sys.path.insert(0, str(SRC))
 import texturequest_app as ui
 
 
-class ThreeModeUI(unittest.TestCase):
+class TwoModeUI(unittest.TestCase):
     def setUp(self):
         home = Path(__file__).resolve().parents[1]/'build'
         home.mkdir(exist_ok=True)
@@ -44,80 +44,92 @@ class ThreeModeUI(unittest.TestCase):
         for c in self.root.tk.call('after','info'):self.root.after_cancel(c)
         self.root.destroy(); self.tmp.cleanup()
 
-    def test_three_exclusive_choices_and_dual_load_no_install_side_effect(self):
-        self.assertEqual([c.cget('text') for c in self.app.mode_controls],['Replace PAK files','Memory hook','Graphics hook (default)'])
+    def test_only_two_choices_default_graphics_and_no_dual_widget(self):
+        self.assertEqual([c.cget('text') for c in self.app.mode_controls],['Replace PAK files','Graphics hook (default)'])
         self.assertEqual(self.app.install_mode.get(),'graphics')
+        self.assertEqual(ui.default_install_mode(dict(installed=True)),'graphics')
+        self.assertFalse(hasattr(self.app,'dual_load_control'))
+        self.assertFalse(hasattr(self.app,'dual_load'))
         self.assertEqual(self.app.shortcut_button.cget('text'),'Shortcut: Numpad *')
-        self.app.mode_controls[2].invoke()
-        self.assertEqual(self.app.install_mode.get(),'graphics')
-        self.assertFalse(self.app.dual_load.get())
-        self.app.dual_load_control.invoke(); self.assertTrue(self.app.dual_load.get())
-        self.assertEqual(self.app.install_button.cget('text'),'Install graphics hook')
-        self.graphics.install.assert_not_called(); self.memory.install.assert_not_called(); self.begin.assert_not_called()
-        self.app.mode_controls[0].invoke(); self.assertFalse(self.app.graphics_selected())
-        self.assertEqual(self.app.dual_load_control.winfo_manager(),'')
+        self.graphics.install.assert_not_called();self.memory.install.assert_not_called()
 
-    def test_explicit_graphics_install_passes_checkbox_and_uninstall_preserves_other_modes(self):
-        self.app.mode_controls[2].invoke(); self.app.dual_load.set(True)
-        def install(game,prepared,dual_load,progress,shortcut):
-            self.assertEqual(game,str(self.game)); self.assertTrue(dual_load)
-            self.assertEqual(shortcut,{'vk':106,'modifiers':0})
-            self.gfx_state.update(installed=True,running=True,dual_load=True)
-            return dict(self.gfx_state)
-        self.graphics.install.side_effect=install
-        self.app.install_selected(); self.assertEqual(self.begin.call_args.args[0],'graphics-install')
+    def test_new_graphics_install_always_uses_on_demand_and_keeps_hotkey(self):
+        self.app.install_selected()
+        self.assertEqual(self.begin.call_args.args[0],'graphics-install')
         self.begin.call_args.args[2]()
+        self.assertIs(self.graphics.install.call_args.kwargs['dual_load'],False)
+        self.assertEqual(self.graphics.install.call_args.kwargs['shortcut'],{'vk':106,'modifiers':0})
+        self.memory.install.assert_not_called()
+
+    def test_old_dual_setting_is_visible_and_never_silently_rewritten(self):
+        self.gfx_state.update(installed=True,running=True,dual_load=True)
         self.app.refresh_controls()
+        self.assertIn('Reinstall Graphics hook to use on-demand',self.app.install_label.cget('text'))
         self.assertEqual(self.app.install_button.cget('text'),'Uninstall graphics hook')
-        self.assertEqual(self.app.dual_load_control.cget('state'),'disabled')
-        self.app.mode_controls[0].invoke(); self.assertEqual(self.app.install_button.cget('state'),'disabled')
-        self.app.mode_controls[1].invoke(); self.assertEqual(self.app.install_button.cget('state'),'disabled')
-        self.memory.install.assert_not_called()
+        self.graphics.install.assert_not_called();self.graphics.uninstall.assert_not_called()
 
-    def test_memory_install_is_refused_while_graphics_is_owned(self):
+    def test_graphics_ownership_blocks_pak_install(self):
         self.gfx_state.update(installed=True,running=True)
+        self.app.mode_controls[0].invoke()
+        self.assertEqual(self.app.install_button.cget('state'),'disabled')
+        self.app.install_selected();self.begin.assert_not_called()
         self.app.mode_controls[1].invoke()
-        self.assertEqual(self.app.install_button.cget('state'),'disabled')
-        self.app.manage_loader()
-        if self.begin.called:
-            with self.assertRaises(RuntimeError):self.begin.call_args.args[2]()
-        self.memory.install.assert_not_called()
-
-    def test_missing_runtime_cannot_install_or_fall_through_to_pak(self):
-        self.gfx_state.update(available=False,message='Full-pack graphics runtime unavailable')
-        self.app.mode_controls[2].invoke()
-        self.assertEqual(self.app.install_button.cget('state'),'disabled')
-        self.assertFalse(self.app.manage_graphics())
-        self.begin.assert_not_called(); self.graphics.install.assert_not_called()
-
-    def test_compact_selected_description_and_installed_mode_default(self):
-        self.assertEqual(ui.default_install_mode(self.mem_state,dict(self.gfx_state,installed=True)),'graphics')
-        for i in range(3):
-            self.app.mode_controls[i].invoke(); self.root.update_idletasks()
-            self.assertEqual(sum(bool(d.winfo_manager()) for d in self.app.mode_descriptions),1)
-        # No scrolling body introduced; three choices occupy the existing card.
-        self.assertLessEqual(self.app.root.winfo_reqheight(),750)
-
-    def test_installed_graphics_controls_fit_without_scrolling(self):
-        self.gfx_state.update(installed=True,running=True,message='Graphics hook installed. Ctrl + Alt + F10 switches Original / Upscaled.')
-        self.app.mode_controls[2].invoke()
-        self.root.attributes('-alpha',0.0)
-        self.root.deiconify();self.root.update()
-        bottom=self.root.winfo_rooty()+self.root.winfo_height()
-        for widget in [*self.app.mode_controls,self.app.dual_load_control,self.app.shortcut_button,self.app.install_button,self.app.launch_button,self.app.progress]:
-            self.assertLessEqual(widget.winfo_rooty()+widget.winfo_height(),bottom)
         self.assertEqual(self.app.install_button.cget('text'),'Uninstall graphics hook')
 
-    def test_shortcut_customization_is_saved_without_reinstall_or_texture_actions(self):
+    def test_legacy_memory_removal_only_then_wait_for_active_game(self):
+        self.mem_state.update(installed=True,running=True,active_sessions=1)
+        self.app.refresh_controls()
+        self.assertEqual(self.app.install_button.cget('state'),'disabled')
+        self.assertIn('Settings',self.app.install_label.cget('text'))
+        self.assertEqual(self.app.menu.entrycget(self.app.legacy_uninstall_index,'state'),'normal')
+        def remove(game,progress):self.mem_state.update(installed=False,running=False)
+        self.memory.uninstall.side_effect=remove
+        self.app.menu.invoke(self.app.legacy_uninstall_index)
+        self.assertEqual(self.begin.call_args.args[0],'loader-uninstall')
+        result=self.begin.call_args.args[2]();self.assertFalse(result['installed'])
+        self.app.refresh_controls()
+        self.assertIn('Close EQ2',self.app.install_label.cget('text'))
+        self.assertEqual(self.app.install_button.cget('state'),'disabled')
+        self.mem_state.update(active_sessions=0);self.app.refresh_controls()
+        self.assertEqual(self.app.install_button.cget('state'),'normal')
+        self.memory.install.assert_not_called()
+
+    def test_unknown_or_missing_legacy_install_never_uninstalls(self):
+        self.assertFalse(self.app.uninstall_legacy_loader())
+        self.memory.status.side_effect=ValueError('invented changed record')
+        self.app.refresh_controls()
+        self.assertEqual(self.app.menu.entrycget(self.app.legacy_uninstall_index,'state'),'disabled')
+        self.assertFalse(self.app.uninstall_legacy_loader())
+        self.memory.uninstall.assert_not_called();self.memory.install.assert_not_called()
+
+    def test_removed_mode_cannot_fall_through_to_pak_or_memory_install(self):
+        self.app.install_mode.set('background')
+        self.assertEqual(self.app.install_button.cget('state'),'disabled')
+        self.app.install_selected();self.begin.assert_not_called()
+        self.memory.install.assert_not_called();self.graphics.install.assert_not_called()
+
+    def test_missing_runtime_never_falls_through_to_pak(self):
+        self.gfx_state.update(available=False,message='Missing runtime')
+        self.app.refresh_controls()
+        self.assertEqual(self.app.install_button.cget('state'),'disabled')
+        self.assertFalse(self.app.manage_graphics());self.begin.assert_not_called()
+
+    def test_controls_fit_without_scroll_and_shortcut_only_in_graphics(self):
+        self.root.attributes('-alpha',0.0);self.root.deiconify();self.root.update()
+        bottom=self.root.winfo_rooty()+self.root.winfo_height()
+        for widget in [*self.app.mode_controls,self.app.shortcut_button,self.app.install_button,self.app.launch_button,self.app.progress]:
+            self.assertLessEqual(widget.winfo_rooty()+widget.winfo_height(),bottom)
+        self.app.mode_controls[0].invoke();self.assertFalse(self.app.shortcut_button.winfo_manager())
+        self.app.mode_controls[1].invoke();self.assertTrue(self.app.shortcut_button.winfo_manager())
+
+    def test_shortcut_changes_without_installing_or_restarting(self):
         self.app.apply_graphics_shortcut({'vk':119,'modifiers':2})
         self.assertEqual(self.app.shortcut_button.cget('text'),'Shortcut: Ctrl+F8')
         self.begin.assert_not_called()
         self.gfx_state.update(installed=True,running=True)
         self.app.apply_graphics_shortcut({'vk':106,'modifiers':0})
         self.assertEqual(self.begin.call_args.args[0],'graphics-shortcut')
-        self.begin.call_args.args[2]()
-        self.graphics.set_shortcut.assert_called_once()
+        self.begin.call_args.args[2]();self.graphics.set_shortcut.assert_called_once()
         self.graphics.install.assert_not_called();self.graphics.uninstall.assert_not_called()
 
-
-if __name__=='__main__': unittest.main()
+if __name__=='__main__':unittest.main()
