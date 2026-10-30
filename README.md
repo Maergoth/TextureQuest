@@ -10,30 +10,41 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 ## Download and install
 
-**[Download TextureQuest 1.5.0 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.5.0/TextureQuest-Installer-1.5.0-windows-x64.zip)** · [Latest release](https://github.com/Maergoth/TextureQuest/releases/latest)
+**[Download TextureQuest 1.5.1 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.5.1/TextureQuest-Installer-1.5.1-windows-x64.zip)** · [Latest release](https://github.com/Maergoth/TextureQuest/releases/latest)
 
-**Graphics hook is the default installation mode.** Press **Numpad \*** in EQ2 to switch Original/Upscaled textures. Choose another key or combination with the installer's **Shortcut** button beside **Dual-load**. The shortcut works only while EQ2 is focused and can change after installation without restarting the game. Existing Memory hook installations retain their selection.
+1. Patch EQ2 Origins, then close the game and launcher. If you previously replaced PAKs, use the official patcher to restore stock files before choosing a hook.
+2. Extract the app outside your game folder. Keep your existing **data** folder alongside **TextureQuest.exe**.
+3. Open TextureQuest, select your game folder, then **Download / Resume**.
+4. Choose an install mode and click **Install**. Wait for Ready, then launch EQ2 normally.
 
-| Mode | How it works | Tradeoffs |
-| --- | --- | --- |
-| **Graphics hook — default** | A background watcher combines named-file redirection with graphics-level quality switching. Game PAKs, settings and shortcuts stay unchanged. Launch EQ2 normally after installation. | Injects runtime components; requires a private cache, compatible client and the portable app to remain available. **Dual-load** keeps a bounded comparison cache warm; unchecked loads Original comparisons on demand. |
-| **Memory hook** | A background watcher redirects named texture reads to a private cache without changing game PAKs. | Runtime injection and cache requirements, without live graphics switching. Attached clients retain their textures until they close. |
-| **Replace PAK files** | Copies verified replacement archives into the game's paks folder. No background watcher or runtime injection. | Changes game archives. The official patcher can overwrite them; reinstall afterward. Returning to stock uses the official patcher's validation. |
+| Install mode | What it does |
+| --- | --- |
+| **Graphics hook — default** | Leaves game files unchanged. Switch Original/Upscaled with **Numpad \***. Change the key with **Shortcut**. |
+| **Memory hook** | Leaves game files unchanged. Applies textures without live switching. |
+| **Replace PAK files** | Changes game archives. No background process or runtime injection. Reinstall after patching. |
 
-1. Patch **EverQuest II Origins**, then close all clients and the launcher. Restore stock game archives with the official patcher before installing a hook over earlier PAK replacements.
-2. Extract the whole app ZIP into a writable folder outside the game. Keep the app and existing **data** folder together, then open **TextureQuest.exe**.
-3. Choose the game folder containing EverQuest2.exe and paks. Click **Download / Resume**. Verified saved archives are reused; interrupted downloads resume. No Python, AI software or separate texture ZIP is required.
-4. Choose one install mode, hover its info icon for details, then click its **Install** button. Wait for Ready before launching normally through your usual shortcut, launcher or EXE. **Launch Game** starts EverQuest2.exe directly.
+**Install once, then play normally.** Both hooks start automatically at Windows sign-in, including after a reboot. Launch through your usual shortcut, launcher or EXE; TextureQuest can stay closed. Keep the app and **data** folder in place.
 
-Full-pack graphics switching passed an in-world Windows Origins test. Comparison originals are disk-backed, with **128 MiB CPU / 256 MiB GPU** comparison budgets rather than both full packs resident in VRAM. **42 entries with ambiguous Original fingerprints retain the correct upscale**; cache limits can also leave some textures upscaled. Other clients, future patches and every launch path are not fully validated. Runtime injection has unquantified compatibility/account-policy risk and is not officially approved.
+**To disable a hook:** open TextureQuest and click **Uninstall**. An open game keeps the hook until it closes. If you used Replace PAK files, restore stock files with the official patcher.
 
-**After a game patch:** close EQ2. PAK mode may need reinstalling. If archives or indexes changed, uninstall and reinstall the hook to refresh its private cache; automatic refresh is unfinished. **Uninstall** stops future attachments; already attached clients retain their components until they close. Close them before changing modes, clearing cache or updating the app.
+**Dual-load:** on keeps comparison textures cached for faster switching; off loads them on demand. The hotkey works either way, while EQ2 is focused.
 
-**Get app update** downloads, verifies, replaces and restarts the portable app while preserving **data**, downloads and history. It prompts to uninstall an owned hook first; reinstall afterward. Older app versions may need manual hook uninstall before their update button enables. Apps 1.3.4 and earlier need one manual upgrade; move the existing data folder alongside the new app.
+**After a patch:** if game archives changed, close EQ2, then **Uninstall → Install** to refresh the hook cache. Automatic refresh is unfinished.
 
-Textures remain **1.2.3: 24,693 replacements in 310 archives**, with unchanged bytes and download URLs. This includes **312 recovered 2K textures** (137 Maj'Dul recovery and 175 other Desert of Flames), earlier missed effects/alpha maps, Ratonga repairs and selected 4K textures. The larger generation batch remains unfinished and is not included. This app release changes no generation recipe or GPU settings.
+**Get app update** downloads, verifies, installs and restarts TextureQuest, preserving **data** and downloads. Close EQ2 first; the app prompts you to uninstall the hook, then reinstall it after updating.
 
-**To return to stock:** uninstall your hook and close attached clients. If you used Replace PAK files, run the official patcher's validation. TextureQuest does not create game backups.
+<details>
+<summary>Pack contents and compatibility</summary>
+
+Texture pack **1.2.3** includes **24,693 replacements in 310 archives**, including 312 recovered 2K Maj'Dul/Desert of Flames textures and earlier repairs. Archive bytes and URLs are unchanged. Further generation is unfinished and is not included.
+
+Full-pack graphics switching passed an in-world Windows Origins test. Runtime injection is not officially approved; compatibility and account-policy risk are unquantified. Other clients and future patches are not fully validated.
+
+Original comparisons use disk storage with 128 MiB CPU / 256 MiB GPU cache budgets. 42 ambiguous entries retain the correct upscale; cache limits can also leave some textures upscaled. Both complete packs are not held in VRAM.
+
+Older apps may need manual hook removal before updating. Apps 1.3.4 and earlier need one manual upgrade; keep the existing data folder.
+
+</details>
 
 ## Examples
 

@@ -43,25 +43,25 @@ GREEN, DARK, GOLD, LINE = "#5bd6b0", "#10251e", "#a9ead4", "#2d3e4c"
 BUTTON, HOVER, ERROR = "#293b4a", "#354e60", "#ffa58d"
 INSTALL_SUCCESS_MESSAGE = "Textures Installed. Launch via the EQ2 EXE, not the launcher!"
 INSTALL_MODE_INFO = (
-    ("Replace PAK files", "pak", "Writes game archives · no runtime injection.",
-     "Copies the selected texture archives into the EQ2 game folder for the game to use directly. "
-     "No runtime injection or background helper. EQ2 must be closed to install.\n\n"
-     "Changes game archives. The official EQ2 patcher restores stock files, so reinstall textures after patching. "
-     "No install method carries a promise of ban safety or official approval."),
-    ("Memory hook", "background", "Redirects PAK reads; game files untouched.",
-     "Keeps game files unchanged. A per-user background helper detects future EQ2 launches and redirects "
-     "texture reads to a private cache. Original PAKs stay untouched.\n\n"
-     "Loads a DLL into EQ2; game-policy and compatibility risk is unquantified. If a patch changes an "
-     "archive or index, refresh the cache manually: Uninstall, then Install. "
-     "An attached game keeps its textures until it closes."),
-    ("Graphics hook (default)", "graphics", "Hot-swap textures · customizable shortcut.",
-     "Combines the named-file loader with graphics-level quality switching, without changing game PAKs. "
-     "Numpad * switches Original / Upscaled by default. Change the shortcut beside Dual-load. "
-     "It is active only while EQ2 is focused. First-time loads can take a moment.\n\n"
-     "Dual-load keeps both qualities cached for faster switching, "
-     "within the cache budget. With it off, comparison textures load on demand and unused comparisons "
-     "can be evicted. Textures still owned by EQ2 may remain in memory. "
-     "This experimental mode injects a runtime component and needs performance testing."),
+    ("Replace PAK files", "pak", "Changes game archives; no background process.",
+     "Copies textures into the game's PAK files. No runtime injection. "
+     "After patching, reinstall textures. Close EQ2 before installing. "
+     "Use the official patcher to restore stock files."),
+    ("Memory hook", "background", "Auto-starts after reboot. Uninstall here to disable.",
+     "Starts at Windows sign-in, including after reboot. Hooks EQ2 automatically, "
+     "however you launch it. TextureQuest can stay closed. "
+     "Keep this app and its data folder in place. Uninstall here to disable.\n\n"
+     "Leaves game files unchanged; no live quality switching. If a patch changes "
+     "archives, Uninstall then Install to refresh the cache. Runtime injection "
+     "has unquantified compatibility and game-policy risk."),
+    ("Graphics hook (default)", "graphics", "Auto-starts after reboot. Uninstall here to disable.",
+     "Starts at Windows sign-in, including after reboot. Hooks EQ2 automatically, "
+     "however you launch it. TextureQuest can stay closed. "
+     "Keep this app and its data folder in place. Uninstall here to disable.\n\n"
+     "Numpad * switches Original/Upscaled while EQ2 is focused. Customize it "
+     "beside Dual-load. Leaves game files unchanged. If a patch changes archives, "
+     "Uninstall then Install to refresh the cache. Runtime injection has "
+     "unquantified compatibility and game-policy risk."),
 )
 
 
@@ -453,9 +453,8 @@ class TextureQuestApp:
         self.shortcut_button=self.button(choices,"Shortcut: "+shortcut_label(self.shortcut),self.change_graphics_shortcut)
         self.shortcut_button.pack(side="right")
         self.mode_hints.append(HoverInfo(self.dual_load_control,
-            "Keep both qualities cached for quicker switches. "
-            "Uses more VRAM, within the cache budget. Off loads comparison textures on demand and evicts unused comparisons; "
-            "EQ2 can retain its game-owned textures in either mode."))
+            "On: keeps comparison textures cached for faster switching, within the memory budget. "
+            "Off: loads them on demand. The hotkey works either way."))
         self.install_label = self.label(install_card, "Choose a game folder and prepare the download first.",
                                        size=9, color=MUTED, wraplength=320, justify="left")
         self.install_label.grid(row=3, column=0, sticky="ew", pady=(5, 8))

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.1
+
+- Shorter installer/README help: automatic startup after reboot, normal launches, folder retention and uninstall behavior.
+- Wording only; runtime and texture pack unchanged.
+
 ## 1.5.0
 
 - Full-pack Graphics hook, now the default, with Original/Upscaled switching.
