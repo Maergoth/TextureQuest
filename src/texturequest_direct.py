@@ -154,6 +154,9 @@ class DirectSwapper(core.Swapper):
             raise
         if LoaderManager(self.state_dir).cache_in_use():
             raise RuntimeError("Uninstall the background loader and close its active game sessions before replacing PAK files.")
+        from texturequest_graphics import GraphicsManager
+        if GraphicsManager(self.state_dir).cache_in_use():
+            raise RuntimeError("Uninstall Graphics hook and close EQ2 before replacing PAK files.")
 
     def install(self, prepared, game_dir, progress=None, overall_progress=None):
         if (prepared.get("schema") == SCHEMA or self.trusted_manifest is not None

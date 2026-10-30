@@ -1,38 +1,40 @@
-TextureQuest 1.6.0 — Windows x64
+TextureQuest 1.7.0 — Windows x64
 
-1. Patch EQ2 Origins, then close the game and launcher.
-   If you replaced PAKs, restore stock files before choosing a hook.
-2. Extract the whole app outside your game folder. Keep data beside the EXE.
+1. Patch EQ2 Origins, then close EQ2.
+   Restore stock PAKs first if you previously used Replace mode.
+2. Extract the whole app outside the game folder. Keep data beside the EXE.
 3. Open TextureQuest, choose your game folder, then Download / Resume.
-4. Choose an install mode, click Install, and wait for Ready.
+4. Choose an install mode and click Install. Wait until installation finishes.
 
-Graphics hook (default): game files unchanged; Numpad * switches quality.
-Replace PAK files: changes archives; no background process. Reinstall after patches.
-Hover each info icon for details.
+GRAPHICS HOOK — DEFAULT
+Adds d3d11.dll and TextureQuest.ini beside EverQuest2.exe. Existing EXE, PAKs
+and ReShade settings stay unchanged. No background watcher or startup task.
+Launch EQ2 normally, even after reboot; TextureQuest can stay closed.
+Keep the app and data folder in place.
 
-INSTALL ONCE, THEN PLAY NORMALLY
-Graphics hook starts at Windows sign-in, including after a reboot. Launch EQ2
-through your usual EXE, shortcut or launcher. TextureQuest can stay closed.
-Keep the app and data folder in place. Open the installer and click Uninstall
-to disable the hook. An open game keeps it until that game closes.
+Numpad * switches Original/Upscaled while EQ2 is focused. Use Shortcut to change
+it. Upscales load on demand. Ambiguous/unmatched textures remain original.
+Close EQ2, then Uninstall graphics hook to remove our two files. Downloads stay.
 
-SWITCH QUALITY
-Press Numpad * while EQ2 is focused. Use Shortcut to change the key.
+REPLACE PAK FILES
+Copies textures into game archives. No graphics hook; reinstall after patching.
+Use the official patcher to restore stock PAKs. Close EQ2 before installing.
+The two modes cannot be combined. Hover the info icons for details.
 
-OLD INSTALLATIONS
-Use Settings → Uninstall old Memory hook, then close EQ2 before installing
-Graphics hook. Existing Dual-load installs need a reinstall for on-demand mode.
+OLD HOOKS
+Close EQ2 and Uninstall the old Graphics hook before installing this version.
+For Memory hook, use Settings → Uninstall old Memory hook first.
 
-PATCHES & UPDATES
-If game archives changed, close EQ2, then Uninstall → Install to refresh the
-hook cache. Automatic refresh is unfinished. Replace mode may need reinstalling.
-Get app update downloads, verifies, installs and restarts the app, keeping data
-and downloads. Close EQ2; uninstall the hook when prompted, then reinstall it.
-To restore stock after Replace mode, use the official EQ2 patcher.
+PATCHES & APP UPDATES
+Unchanged texture content still matches after patching. Changed assets stay
+original until mappings are updated. If the patcher removes our DLL, reinstall.
+Existing third-party graphics proxies are never overwritten.
+Get app update downloads, verifies, replaces and restarts the app, preserving
+data and downloads. Close EQ2; uninstall the hook when prompted, then reinstall.
 
-The unchanged pack includes 24,693 textures in 310 archives, including recovered
-Maj'Dul textures. New generation is unfinished and is not included.
-Graphics comparisons use a bounded cache; some textures may remain upscaled
-in Original mode. Runtime injection is not officially approved; compatibility
-and account-policy risk are unquantified. Tested on Windows EQ2 Origins.
-This unofficial app is unsigned. Third-party notices are included.
+Texture pack 1.2.3 is unchanged: 24,693 replacements in 310 archives, including
+recovered Maj'Dul textures. Unfinished new generation is not included.
+Graphics cache limits can leave textures original. Tested on Windows Origins;
+all assets, other add-ons and future clients are not fully validated.
+Neither mode is officially approved. Account-policy risk is unknown.
+This unsigned community app includes third-party notices.

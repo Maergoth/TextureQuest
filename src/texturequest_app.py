@@ -47,14 +47,15 @@ INSTALL_MODE_INFO = (
      "Copies textures into the game's PAK files. No runtime injection. "
      "After patching, reinstall textures. Close EQ2 before installing. "
      "Use the official patcher to restore stock files."),
-    ("Graphics hook (default)", "graphics", "Auto-starts after reboot. Uninstall here to disable.",
-     "Starts at Windows sign-in, including after reboot. Hooks EQ2 automatically, "
-     "however you launch it. TextureQuest can stay closed. "
-     "Keep this app and its data folder in place. Uninstall here to disable.\n\n"
-     "Numpad * switches Original/Upscaled while EQ2 is focused. Customize it "
-     "with Shortcut. Comparisons load on demand. Leaves game files unchanged. If a patch changes archives, "
-     "Uninstall then Install to refresh the cache. Runtime injection has "
-     "unquantified compatibility and game-policy risk."),
+    ("Graphics hook (default)", "graphics", "Loads with EQ2. Numpad * switches quality.",
+     "Adds d3d11.dll and TextureQuest.ini beside the game EXE. "
+     "Existing EXE, PAKs and ReShade settings stay unchanged. No background watcher. "
+     "Launch EQ2 normally, even after reboot; TextureQuest can stay closed.\n\n"
+     "Numpad * switches Original/Upscaled. Change it with Shortcut. "
+     "Replacements load on demand; ambiguous matches stay original. "
+     "Unchanged textures survive patches; changed assets may need updated mappings. "
+     "Close EQ2 before Install or Uninstall. Keep the app and data folder in place. "
+     "Graphics hooks are not officially approved; account-policy risk is unknown."),
 )
 
 
@@ -275,6 +276,7 @@ class TextureQuestApp:
         self.install_success_dialog = None
         try:
             initial_game = initial_loader_game(self.loader_manager, initial_game)
+            initial_game = initial_loader_game(self.graphics_manager, initial_game)
         except Exception as error:
             self.loader_status_unknown = True
             self.loader_error = "Cannot discover the owned background loader: " + str(error)
@@ -302,7 +304,14 @@ class TextureQuestApp:
         label = tk.Label(parent, text=text, bg=parent.cget("bg"), fg=color, anchor="w",
                          font=("Segoe UI Semibold" if bold else "Segoe UI", size), **kwargs)
         if "wraplength" in kwargs:
-            label.bind("<Configure>", lambda event: label.configure(wraplength=max(1, event.width - 2)))
+            def resize_wrap(event):
+                if label.winfo_manager() != "grid":
+                    return  # Packed dialog text keeps its explicit wrap width.
+                target = max(1, event.width - 2)
+                if int(label.cget("wraplength")) != target or int(label.cget("width")) != 1:
+                    # Content must not repeatedly resize the grid that wraps it.
+                    label.configure(width=1, wraplength=target)
+            label.bind("<Configure>", resize_wrap)
         return label
 
     def button(self, parent, text, command, primary=False, track=True):
@@ -706,7 +715,7 @@ class TextureQuestApp:
                     graphics["message"] if not graphics["available"] or graphics_owned else
                     "Choose your game folder first." if not self.game.get().strip() else
                     "Prepare the downloaded pack first." if not self.prepared or not self.release_checked else
-                    "Ready for full-pack graphics installation. Close EQ2 first. "+shortcut_label(self.shortcut)+" switches quality.")
+                    "Ready for graphics-only installation. Close EQ2 first. "+shortcut_label(self.shortcut)+" switches quality.")
         elif graphics_owned:
             text = "Uninstall Graphics hook and close its active game sessions before choosing another install type."
         elif loader_owned:
@@ -744,8 +753,8 @@ class TextureQuestApp:
                 self.set_message("Close loaded EQ2 sessions and choose the installed loader's game folder before updating. Saved textures are kept.", error=True)
                 return False
             if not messagebox.askyesno("Update TextureQuest",
-                    "The background loader must be uninstalled before replacing this app. "
-                    "Uninstall it and continue with the update? Your downloads and game files stay unchanged. "
+                    "Uninstall the active hook before replacing this app. "
+                    "Continue? Your downloads are kept; existing game archives stay unchanged. "
                     "Install Graphics hook after the update.", parent=self.root):
                 return False
         app_dir = Path(sys.executable).resolve().parent
@@ -753,7 +762,7 @@ class TextureQuestApp:
             if remove_loader:
                 update_manager.uninstall(game)
             if self.cache_in_use():
-                raise RuntimeError("The background loader is using these app files. Uninstall it and close its active game sessions before updating.")
+                raise RuntimeError("The hook is using these app files. Uninstall it and close EQ2 before updating.")
             from texturequest_self_update import stage_update, launch_updater
             request = stage_update(dict(app), app_dir=app_dir, data_dir=self.state_dir,
                 current_version=self.app_version, report=lambda value: self.events.put(("app-update-progress", dict(value))))
@@ -1180,7 +1189,7 @@ class TextureQuestApp:
                 elif event_type == "done" and kind == "install":
                     self.installed = value
                     self.remember_pack_version()
-                    self.set_message("TextureQuest is ready. After a game patch, rerun this installer to reapply the textures.")
+                    self.set_message("TextureQuest is ready. After a game patch, reinstall replaced PAK textures if needed.")
                     self.finish_progress("install")
                     self.show_install_success()
                 elif kind in ("graphics-install", "graphics-uninstall", "graphics-shortcut"):

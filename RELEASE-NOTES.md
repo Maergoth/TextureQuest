@@ -1,9 +1,13 @@
-TextureQuest 1.6.0 simplifies installation to two choices: Graphics hook (default) or Replace PAK files.
+TextureQuest 1.7.0 switches Graphics hook to normal graphics-only proxy loading.
 
-- Removes the Dual-load checkbox. New Graphics hook installs use on-demand comparisons; the customizable Numpad * shortcut still switches quality.
-- Removes Memory hook as an install choice. Existing users can remove it through Settings → Uninstall old Memory hook, then install Graphics hook after closing EQ2.
-- Existing Dual-load installations retain their current setting until reinstalled; no running game is changed automatically.
+- Adds its own d3d11.dll and TextureQuest.ini beside EQ2. Existing EXE, PAKs and ReShade settings stay unchanged.
+- No external injector, background watcher or sign-in task for Graphics hook. Launch EQ2 normally after installation or reboot.
+- Numpad * still switches Original/Upscaled; change the key with Shortcut. Replacement textures load on demand.
+- Installer status, hover help, upgrade/uninstall paths and documentation now describe this version.
+- Ambiguous/unmatched resources stay original. Unchanged texture content can survive game patches; changed assets require updated mappings.
 
-Graphics hook still starts at Windows sign-in after reboot, leaves game files unchanged, and works with normal EQ2 launches. Keep the app/data folder in place.
+Close EQ2, uninstall the old hook, then install Graphics hook with this app. Old Memory hook removal remains under Settings. Replace PAK files remains an exclusive alternative.
 
-Texture pack 1.2.3, all released texture bytes/URLs and native hook binaries are unchanged. The internal named-file loader remains part of Graphics hook. Generation is unaffected.
+Texture pack 1.2.3 and all released texture archive bytes/URLs are unchanged. Generator work is unaffected. Neither install mode is officially approved; account-policy risk is unknown.
+
+[Technical summary and source](https://github.com/Maergoth/TextureQuest/blob/v1.7.0/docs/GRAPHICS_HOOK.md).

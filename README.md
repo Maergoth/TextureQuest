@@ -10,7 +10,7 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 ## Download and install
 
-**[Download TextureQuest 1.6.0 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.6.0/TextureQuest-Installer-1.6.0-windows-x64.zip)** · [Latest release](https://github.com/Maergoth/TextureQuest/releases/latest)
+**[Download TextureQuest 1.7.0 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.7.0/TextureQuest-Installer-1.7.0-windows-x64.zip)** · [Latest release](https://github.com/Maergoth/TextureQuest/releases/latest)
 
 1. Patch EQ2 Origins, then close the game and launcher. If you previously replaced PAKs, use the official patcher to restore stock files before choosing a hook.
 2. Extract the app outside your game folder. Keep your existing **data** folder alongside **TextureQuest.exe**.
@@ -19,30 +19,29 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 | Install mode | What it does |
 | --- | --- |
-| **Graphics hook — default** | Leaves game files unchanged. Switch Original/Upscaled with **Numpad \***. Change the key with **Shortcut**. Comparisons load on demand. |
-| **Replace PAK files** | Changes game archives. No background process or runtime injection. Reinstall after patching. |
+| **Graphics hook — default** | Adds two files beside the game EXE; existing EXE and PAKs stay unchanged. **Numpad \*** switches Original/Upscaled. Use **Shortcut** to change the key. |
+| **Replace PAK files** | Changes game archives. No graphics hook. Reinstall after patching. |
 
-**Install once, then play normally.** Graphics hook starts automatically at Windows sign-in, including after a reboot. Launch through your usual shortcut, launcher or EXE; TextureQuest can stay closed. Keep the app and **data** folder in place.
+**Install once, then launch normally.** The graphics DLL loads when EQ2 starts, including after a reboot. No background watcher, service or startup task. TextureQuest can stay closed; keep the app and **data** folder in place.
 
-**To disable Graphics hook:** open TextureQuest and click **Uninstall**. An open game keeps the hook until it closes. If you used Replace PAK files, restore stock files with the official patcher.
+**To remove Graphics hook:** close EQ2, open TextureQuest and click **Uninstall graphics hook**. Only its own two game-folder files are removed; downloads and private cache are kept. Use the official patcher to restore stock PAKs after Replace mode.
 
+**Upgrading an old hook:** close EQ2 and uninstall the old Graphics hook in the app before installing this version. For an old Memory hook, use **Settings → Uninstall old Memory hook** first. The modes cannot be combined.
 
-**Previously installed Memory hook?** Use **Settings → Uninstall old Memory hook**, close EQ2, then install Graphics hook. Existing Dual-load installs need a reinstall to use on-demand comparisons.
+**After a patch:** unchanged texture content still matches. Changed assets stay original until mappings are updated. If the patcher removes our DLL, reinstall the hook. Existing ReShade settings are preserved; a conflicting graphics proxy must be resolved before installation.
 
-**After a patch:** if game archives changed, close EQ2, then **Uninstall → Install** to refresh the hook cache. Automatic refresh is unfinished.
-
-**Get app update** downloads, verifies, installs and restarts TextureQuest, preserving **data** and downloads. Close EQ2 first; the app prompts you to uninstall the hook, then reinstall it after updating.
+**Get app update** downloads, verifies, installs and restarts TextureQuest, keeping **data** and downloads. Close EQ2, uninstall the hook when prompted, then reinstall it after updating.
 
 <details>
 <summary>Pack contents and compatibility</summary>
 
 Texture pack **1.2.3** includes **24,693 replacements in 310 archives**, including 312 recovered 2K Maj'Dul/Desert of Flames textures and earlier repairs. Archive bytes and URLs are unchanged. Further generation is unfinished and is not included.
 
-Full-pack graphics switching passed an in-world Windows Origins test. Runtime injection is not officially approved; compatibility and account-policy risk are unquantified. Other clients and future patches are not fully validated.
+Graphics-only switching passed an in-world Windows Origins test. Compatibility with every asset, other graphics add-ons and future clients is not established. Neither installation method has official approval; account-policy risk is unknown.
 
-Original comparisons use disk storage with 128 MiB CPU / 256 MiB GPU cache budgets. 42 ambiguous entries retain the correct upscale; cache limits can also leave some textures upscaled. Both complete packs are not held in VRAM.
+The game keeps its original textures. Upscales load on demand with 128 MiB CPU / 256 MiB GPU replacement-cache budgets, rather than loading both complete packs into VRAM. The current catalog has 24,207 unambiguous named entries; 486 ambiguous entries stay original. Counts describe mappings, not measured in-game coverage. Cache limits may leave other textures original.
 
-Older apps may need manual hook removal before updating. Apps 1.3.4 and earlier need one manual upgrade; keep the existing data folder.
+Apps 1.3.4 and earlier need one manual upgrade; preserve the existing data folder. [How the graphics hook works](docs/GRAPHICS_HOOK.md).
 
 </details>
 
@@ -133,7 +132,7 @@ Original 1K artwork beside the released 4K texture on the complete model.
 - **The original geometry still matters.** Low-polygon silhouettes, UV stretching, separate body parts and LOD changes remain. Texture work cannot fix every model or shader issue.
 - **Some appearances may still have issues.** Character variants, facial customization and layered materials can produce results that differ from the previews.
 - **Higher-resolution textures use more resources.** Storage, loading behavior and texture memory requirements can increase. Performance depends on your settings and system; no minimum hardware or FPS improvement is claimed.
-- **Game patches need a refresh.** PAK replacement may be overwritten by patching. In background mode, changed game archives or indexes require uninstalling and reinstalling the background loader to refresh its private cache; automatic refresh is unfinished.
+- **Patches can change assets.** PAK replacement may be overwritten. Graphics matching survives unchanged texture content; changed assets need updated mappings and remain original in the meantime.
 
 Please [report a problem](https://github.com/Maergoth/TextureQuest/issues/new/choose) with the game version/server, zone or item/NPC, character race/gender/appearance where relevant, a close-up screenshot, and the TextureQuest version installed. Include whether **Verify installed textures** passes. Do not include account credentials or private logs.
 
@@ -141,15 +140,13 @@ Please [report a problem](https://github.com/Maergoth/TextureQuest/issues/new/ch
 
 The installer checks the [latest release](https://github.com/Maergoth/TextureQuest/releases/latest) and fetches its required texture files. Installation still requires clicking **Install TextureQuest**.
 
-After a game patch, close every EQ2 client and the launcher. Reinstall PAK replacement if needed. For background mode, uninstall and reinstall the background loader when the patch changes game archives or indexes. Verified texture downloads are reused.
+After a game patch, reinstall PAK replacement if needed. Graphics hook matches texture content rather than archive names or positions. Changed textures stay original. Downloads are reused when reinstalling.
 
 ### Can this leave the game's PAKs untouched?
 
-Yes. App 1.4.2 offers **Background texture loader** as an optional alternative to **Replace PAK files**. It prepares private archives and redirects selected file reads inside the game process, leaving the game's PAKs, settings and shortcuts unchanged. A per-user startup watcher detects ordinary future starts of the selected EverQuest2.exe. The first in-world test succeeded on one Windows EverQuest II Origins client; other client versions and every launch path have not been validated. Uninstalling stops future attachments, and already attached clients retain the loader until they close.
+Yes. **Graphics hook** adds `d3d11.dll` and `TextureQuest.ini` beside EverQuest2.exe. Windows loads the proxy normally; our add-on substitutes matching graphics resources during drawing. It does not inject from another process or redirect game archive reads. Existing EXE, PAKs and ReShade settings are preserved. [Technical summary](docs/GRAPHICS_HOOK.md).
 
-We have no confirmation from Daybreak approving either approach. The 1.1 installer displays this warning:
-
-> We don't know what's more legal, replacing the game files or hooking the process. If Daybreak hates you, they might ban you. Be warned.
+Neither method is officially approved by Daybreak. We cannot promise account safety.
 
 ### Can I choose only races, armor, weapons or an expansion?
 
@@ -162,17 +159,17 @@ The [technical guide](docs/TECHNICAL.md) covers the model and generation recipe,
 For manual downloads and checksums, use the [release files](https://github.com/Maergoth/TextureQuest/releases/latest). The installer fetches and verifies the required base and update files automatically. GitHub's **Source code (zip)** does not contain the textures.
 
 
-### Build app 1.4.2 with the bundled loader
+### Build the app
 
-Use Windows, 64-bit Python 3.12 with Tk support, and the pinned build dependencies. From this repository's root, use the explicit versioned manifest and runtime payload:
+Use Windows, 64-bit Python 3.12 with Tk support and the pinned build dependencies:
 
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r src\texture_swapper\requirements-build.txt
-.\.venv\Scripts\python.exe build_installer.py --manifest release-manifest-1.3.7.json --version 1.4.2 --loader-runtime-dir sideload-runtime
+.\.venv\Scripts\python.exe build_installer.py --manifest release-manifest-1.3.7.json --version 1.7.0 --loader-runtime-dir sideload-runtime --graphics-runtime-dir graphics-runtime
 ```
 
-The runtime descriptor, helper, catalog, native binaries and Detours license are included under `sideload-runtime/`. The builder verifies that payload and stages it without modifying it. Omitting `--loader-runtime-dir` produces an app without an available background loader. Build outputs go under `build/` and `dist/`; use a fresh `--output-root` to keep an earlier build intact. Rebuilt executables are not promised to be byte-identical. Native source and separate rebuild instructions are in [sideload-native](sideload-native/README.md). These commands build the app; they do not generate textures or install anything into the game.
+The builder verifies both runtime rosters without modifying them. `sideload-runtime` supplies offline archive preparation and old Memory hook removal; the Graphics hook does not start its injector. [Graphics source and build instructions](graphics-native/BUILDING.md) include the modified ReShade provider. Use a fresh `--output-root` to preserve earlier builds. Rebuilt binaries are not promised to be byte-identical. Building does not install into the game or generate textures.
 
 ## Credits and ownership
 

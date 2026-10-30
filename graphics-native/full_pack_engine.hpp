@@ -6,9 +6,9 @@
 
 namespace tqgx {
 using namespace tqab;
-// Released textures are canonical, supplied by the existing named file layer.
-// Upscaled mode forwards untouched draws. Only Original comparison needs a
-// native draw lease or a temporary alternate SRV.
+// Graphics-only mode: EQ2 creates its unmodified stock resources.
+// Upscaled draws temporarily bind matched replacements; Original forwards.
+// No archive-open interception or named file layer participates.
 class FullPackEngine {
  struct Source {const Row* row=nullptr;std::shared_ptr<tqph::Resources::Lease> life;uint64_t epoch=0;};
  struct Bound {uint32_t stage=0,slot=0;uint64_t view=0;std::shared_ptr<tqab::ViewAdmission> life;};
@@ -39,8 +39,8 @@ class FullPackEngine {
   }require(!failed_,"graphics retirement outcome UNKNOWN");
  }
 public:
- FullPackEngine(std::shared_ptr<const Catalog> catalog,std::shared_ptr<FullPackPort> port,tqph::Resources&registry,bool dual):catalog_(std::move(catalog)),port_(std::move(port)),registry_(registry),dual_(dual){catalog_->PayloadEnabled(dual);}
- bool WantsTracking()const noexcept{return !failed_&&(original_||dual_);}
+ FullPackEngine(std::shared_ptr<const Catalog> catalog,std::shared_ptr<FullPackPort> port,tqph::Resources&registry,bool dual):catalog_(std::move(catalog)),port_(std::move(port)),registry_(registry),dual_(dual){catalog_->PayloadEnabled(true);}
+ bool WantsTracking()const noexcept{return !failed_&&(!original_||dual_);}
  void Admit(const Row* row,const std::shared_ptr<tqph::Resources::Lease>& life){std::lock_guard lock(mutex_);require(row&&life&&!life->epoch.Retired(),"graphics settled creation lifetime");sources_[life->handle]={row,life,life->epoch.Value()};}
  void Bind(uint32_t stages,uint32_t first,const uint64_t* handles,size_t count){
   if(!WantsTracking()||!handles||first>=128||count>128-first||!stages||(stages&~31u))return;
@@ -50,8 +50,8 @@ public:
   if(failed_)return;try{
    Reap();if(catalog_->PayloadFailed())throw std::runtime_error("graphics disk payload failed verification");
    std::map<std::string,const Row*> wanted;std::vector<Deferred> evicted;
-   {std::lock_guard lock(mutex_);++frame_;if((request>>1)>ack_){original_=(request&1)!=0;ack_=request>>1;scan_=true;catalog_->PayloadEnabled(original_||dual_);}
-    if(!original_&&!dual_){while(!shadows_.empty())evicted.push_back(Take(shadows_.begin()));bound_.clear();wanted_.clear();}
+   {std::lock_guard lock(mutex_);++frame_;if((request>>1)>ack_){original_=(request&1)!=0;ack_=request>>1;scan_=true;catalog_->PayloadEnabled(!original_||dual_);}
+    if(original_&&!dual_){while(!shadows_.empty())evicted.push_back(Take(shadows_.begin()));bound_.clear();wanted_.clear();}
     else {for(auto i=bound_.begin();i!=bound_.end();){if(!i->second.life||!i->second.life->Valid(i->second.view)){i=bound_.erase(i);continue;}Want(i->second.life);++i;}
      for(auto i=wanted_.begin();i!=wanted_.end();){auto life=i->second.life.lock();if(!life||!life->epoch.Valid(i->second.epoch)||frame_-i->second.last>120){i=wanted_.erase(i);continue;}wanted.emplace(i->first,i->second.row);++i;}}
     if(frame_%120==0)for(auto i=sources_.begin();i!=sources_.end();)if(!i->second.life->epoch.Valid(i->second.epoch))i=sources_.erase(i);else ++i;
@@ -71,13 +71,13 @@ public:
   }catch(...){Fault();}
  }
  bool Draw(reshade::api::command_list* command,bool indexed,uint32_t count,uint32_t instances,uint32_t first,int32_t offset,uint32_t first_instance)noexcept{
-  // Crucial full-pack fast path: no context lock, health call, COM query,
-  // allocation, descriptor getter, or extra draw in canonical Upscaled mode.
-  if(!original_||failed_||!count||instances!=1||first_instance)return false;
+  // Original is the untouched game path. Upscaled mode takes an exact
+  // graphics binding lease only for matched replacement resources.
+  if(original_||failed_||!count||instances!=1||first_instance)return false;
   bool invoked=false;try{
    {std::lock_guard lock(mutex_);if(!scan_){bool possible=false;for(const auto&item:bound_){const auto&b=item.second;if(!b.life||!b.life->Valid(b.view))continue;auto source=sources_.find(b.life->Resource());if(source!=sources_.end()&&source->second.life->epoch.Valid(source->second.epoch)&&shadows_.count(source->second.row->stock_sha256)){possible=true;break;}}if(!possible)return false;}}
    auto context=port_->CaptureContext(command);auto lease=port_->LockContext(context);if(!lease)return false;
-   std::lock_guard lock(mutex_);if(!original_||failed_)return false;
+   std::lock_guard lock(mutex_);if(original_||failed_)return false;
    if(scan_){auto all=port_->AllBound();bound_.clear();for(auto&b:all){auto life=registry_.Binding(b.view);if(life){Want(life);bound_.emplace(b.stage*128+b.slot,Bound{b.stage,b.slot,b.view,std::move(life)});}}scan_=false;}
    std::vector<BindingWitness> work;
    for(auto& item:bound_){auto&b=item.second;if(!b.life||!b.life->Valid(b.view))continue;auto s=sources_.find(b.life->Resource());if(s==sources_.end()||!s->second.life->epoch.Valid(s->second.epoch))continue;

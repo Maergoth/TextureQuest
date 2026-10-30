@@ -61,7 +61,7 @@ def main():
     parser.add_argument("--loader-runtime-dir", type=Path,
                         help="Explicit reviewed descriptor + sideload payload directory (otherwise loader unavailable)")
     parser.add_argument("--graphics-runtime-dir", type=Path,
-                        help="Explicit full-pack experimental graphics runtime directory")
+                        help="Explicit verified graphics-only proxy runtime directory")
     args = parser.parse_args()
     output_root = ROOT
     if args.output_root:
@@ -84,7 +84,7 @@ def main():
     graphics = None
     if args.graphics_runtime_dir:
         if loader is None:
-            raise ValueError("Graphics installation requires the named full-pack loader resources")
+            raise ValueError("Graphics cache preparation requires the bundled offline archive tools")
         from texturequest_graphics import GraphicsManager
         graphics = GraphicsManager(BUILD / "unused-state", runtime_dir=args.graphics_runtime_dir)._runtime()
         if graphics is None:

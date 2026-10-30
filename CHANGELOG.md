@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.0
+
+- Normal game-folder graphics proxy; no external graphics injector or watcher.
+- On-demand hotkey switching, configurable Numpad * default.
+- Updated installer help, legacy migration and owned-file uninstall.
+- Publish modified provider source/build overlay; texture pack unchanged.
+
 ## 1.6.0
 
 - Two install choices: Graphics hook or Replace PAK files.

@@ -1,0 +1,126 @@
+{
+  "upstream": "crosire/reshade",
+  "tag": "v6.8.0",
+  "files": [
+    {
+      "path": "source/dll_main.cpp",
+      "bytes": 17696,
+      "sha256": "61e60f6076a46782291b62d1ebea09e4154273e0d062ca465e8175315aae4fb2",
+      "upstream_sha256": "5f269fe1e2f4365c5c9a50c4f153c5351108b5dc32e0edf445431ec21e8aecb9"
+    },
+    {
+      "path": "source/reshade_api_object_impl.hpp",
+      "bytes": 3053,
+      "sha256": "8d30f7e84c0da58e508242de21405209787570ba1ff300c5fa5ef7e7375b8b2b",
+      "upstream_sha256": "7368f361954dd0f6aaf9f4a8b3138e44345a16971f835b5ffcc94cfbe1629112"
+    },
+    {
+      "path": "source/texturequest_provider_creation.hpp",
+      "bytes": 1914,
+      "sha256": "53283c70122b25e7b29068111242e8238fde492e7afea40fd8e4651b8fb16ab9",
+      "upstream_sha256": null
+    },
+    {
+      "path": "source/texturequest_provider_creation_impl.hpp",
+      "bytes": 8422,
+      "sha256": "8b97675cf2c53334992f21b20c71614608f40a332ba39810bdbd01e4c696667e",
+      "upstream_sha256": null
+    },
+    {
+      "path": "source/texturequest_provider_mutation.cpp",
+      "bytes": 9189,
+      "sha256": "646d820579833e79fff017eef8c9e4aa88612b345f7494cc2fcababc7ffdb374",
+      "upstream_sha256": null
+    },
+    {
+      "path": "source/texturequest_provider_mutation.hpp",
+      "bytes": 1117,
+      "sha256": "cee78488edb16e90b585224a09c47cee580cd3ccb1fb0680c3448e4d2ef3e1a9",
+      "upstream_sha256": null
+    },
+    {
+      "path": "source/texturequest_provider_mutation_core.hpp",
+      "bytes": 20781,
+      "sha256": "f8c66b2bb5d6f44697ed468631863ac6c5d2fd6977d1bfa0a07c7e648f13cb4e",
+      "upstream_sha256": null
+    },
+    {
+      "path": "source/texturequest_provider_protection.hpp",
+      "bytes": 1831,
+      "sha256": "73433811fbbabc3f9c4358c3a6d29789f95c71f34dab80beb809b4a492ca2479",
+      "upstream_sha256": null
+    },
+    {
+      "path": "source/d3d11/d3d11_device.cpp",
+      "bytes": 93728,
+      "sha256": "fc7c5a06a71753929378c0dbe9c540501dbb5f8addec6132582767b1efaca045",
+      "upstream_sha256": "32e636ff03a25b9cf35ba2725a355787385d922a7d86d127ec30dae51fc6b0aa"
+    },
+    {
+      "path": "source/d3d11/d3d11_device_context.cpp",
+      "bytes": 77789,
+      "sha256": "9f74bb82628bd5caf19c59035e8598304f0a81f810782263446e03e8b9472de5",
+      "upstream_sha256": "2e16c6f60d86954cc4269b5fc379dfa8685b3129818347b7ab46d66de7c88c96"
+    },
+    {
+      "path": "source/d3d11/d3d11_impl_command_list.cpp",
+      "bytes": 40809,
+      "sha256": "39c3ec0ee85d61b6e15d17979e7ad2b2558e474a6167e6e718d14aec2107cb67",
+      "upstream_sha256": "aa6f97c4ed73fa5a82e8f6af2e79d71348d8874bcc71fe0b0523bbe579dbed28"
+    },
+    {
+      "path": "source/d3d11/d3d11_impl_device.cpp",
+      "bytes": 58677,
+      "sha256": "a8d77b0e46a03eacfb7f60bbf258f620b03af83e60e3481bfa660af0bb3738ea",
+      "upstream_sha256": "636b46920701010699623f7aa9cf69d5cd7dd2d426757ca491e345223faf68f7"
+    },
+    {
+      "path": "source/d3d11/d3d11_impl_state_block.cpp",
+      "bytes": 10774,
+      "sha256": "37d8afc05e4427e9dec66cddb4b50a46474b7bab3ac1e2e25545645c6c775fb8",
+      "upstream_sha256": "7935fc2d69aec54d9fbd332b105003331b5e895ff3e06618f8b0a1cede582718"
+    },
+    {
+      "path": "source/dxgi/dxgi_device.cpp",
+      "bytes": 5413,
+      "sha256": "009d71672e7ff72249071c8ff413fbdb3eb73955253f36450a1d811f42c5c6ee",
+      "upstream_sha256": "b5b9954a9126d603287eee420676bcb8ceb0e8e5e1a653515ad644ca3b7948c1"
+    },
+    {
+      "path": "source/dxgi/dxgi_swapchain.cpp",
+      "bytes": 36542,
+      "sha256": "10201131e52cd4d11cd334caba8e5c479e81881fdf1470de6427312f17adc3b1",
+      "upstream_sha256": "22cd15739d0b9fb82d91ee36bfbf427030a04cc72ada515a9fbf25265cda7672"
+    },
+    {
+      "path": "include/texturequest_creation_policy.hpp",
+      "bytes": 2082,
+      "sha256": "7839bf2b09d032279ed279c65f774cada220d8d956be713fd6f1547273be7b65",
+      "upstream_sha256": null
+    },
+    {
+      "path": "include/texturequest_provider_creation_v1.hpp",
+      "bytes": 2776,
+      "sha256": "3c96b881b8ec0335cc96dc3f980a651c698ede022d15b9b6a936785f5100147e",
+      "upstream_sha256": null
+    },
+    {
+      "path": "include/texturequest_provider_mutation_v1.hpp",
+      "bytes": 3372,
+      "sha256": "252b2428ef276637b6f8df957a917e24ca21180135ff4a5f22ff1b2974f3b30b",
+      "upstream_sha256": null
+    },
+    {
+      "path": "include/texturequest_provider_mutation_v2.hpp",
+      "bytes": 5006,
+      "sha256": "166a9c5a47087234a5021663dbf68e9f87554f9603b98b79f31d9784da624a19",
+      "upstream_sha256": null
+    },
+    {
+      "path": "ReShade.vcxproj",
+      "bytes": 49837,
+      "sha256": "f6e7922ba1121a75c46ab9dff4f6ddc11dde94e1089337eded7bafe8cd35ca2f",
+      "upstream_sha256": "b31163b3ffaac81a0dd2e4ca77a54424adff8d8c85878ba2621ed0ce49c6cacb"
+    }
+  ]
+}

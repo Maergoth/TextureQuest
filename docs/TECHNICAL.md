@@ -1,3 +1,5 @@
+> App 1.7.0: the active graphics-only proxy, hotkey and install lifecycle are documented in [GRAPHICS_HOOK.md](GRAPHICS_HOOK.md). Older app/release sections below describe historical implementations. Current Get app update downloads, verifies, replaces and restarts the app while preserving data.
+
 # Technical guide
 
 This guide records how TextureQuest 1.0 was made, the compatibility constraints discovered during development, and how to work on the public installer. For playing the game, start with the [installation instructions](../README.md#download-and-install).
@@ -184,7 +186,7 @@ The GitHub release API supplies the version asset's size and SHA256. Its verifie
 
 Startup and manual checks fetch one stable published release record and report the two channels independently. A missing/invalid installer does not prevent a compatible pack check; a manifest download/schema error does not hide an available app update. Invalid shared release/version metadata fails both channels. Drafts, prereleases, foreign URLs, older texture data and changed bytes under an unchanged texture version are refused. Network and GitHub limit errors remain unavailable states, never an "up to date" claim. A failed texture check retains the saved release and downloads. A locally saved receipt establishes the selected version floor on restart; it is not a successful live check and cannot enable installation by itself.
 
-The app upgrade action opens the verified official release page. It does not fetch executable code, overwrite the running app, clear downloads or install game files. Preparation rechecks the latest compatible pack; installation remains an explicit click with all existing integrity and closed-game gates. Sideload is still disabled in this change.
+In that historical version, the app upgrade action only opened the verified release page. Current Get app update downloads and verifies the official installer, replaces the application and restarts it, preserving data/downloads. It requires active hooks to be uninstalled and EQ2 closed before replacement. Texture installation remains a separate explicit action.
 
 ### The 1.1 4K update
 

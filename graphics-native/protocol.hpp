@@ -13,10 +13,10 @@ class Once {std::atomic<bool> tried_{false};public:bool Enter(){return !tried_.e
 struct Parsed {std::shared_ptr<const Catalog> catalog;uint32_t canonical_stock=0,canonical_upscaled=0;bool dual=false;};
 inline Parsed Parse(const Bytes& bytes,const std::string& expected){
  require(bytes.size()>=24&&bytes.size()<=64*MiB+65536&&tq::Sha256(bytes.data(),bytes.size())==expected,"full graphics configuration digest");
- require(!memcmp(bytes.data(),"TQGXCFG1",8),"full graphics configuration magic");uint32_t version,dual,path_bytes,index_bytes;
+ require(!memcmp(bytes.data(),"TQGXCFG2",8),"full graphics configuration magic");uint32_t version,dual,path_bytes,index_bytes;
  memcpy(&version,bytes.data()+8,4);memcpy(&dual,bytes.data()+12,4);memcpy(&path_bytes,bytes.data()+16,4);memcpy(&index_bytes,bytes.data()+20,4);
- require(version==1&&dual<=1&&path_bytes&&path_bytes<=32768&&index_bytes<=64*MiB&&uint64_t(24)+path_bytes+index_bytes==bytes.size(),"full graphics configuration framing");
+ require(version==2&&dual==0&&path_bytes&&path_bytes<=32768&&index_bytes<=64*MiB&&uint64_t(24)+path_bytes+index_bytes==bytes.size(),"full graphics configuration framing");
  auto input=reinterpret_cast<const char*>(bytes.data()+24);int needed=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,input,int(path_bytes),nullptr,0);require(needed>0,"graphics payload UTF8 path");std::wstring payload(needed,L'\0');require(MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,input,int(path_bytes),payload.data(),needed)==needed&&payload.find(L'\0')==std::wstring::npos,"graphics payload path text");
- Bytes index(bytes.begin()+24+path_bytes,bytes.end());auto full=tqgx::ReadCatalog(index,payload);return {full.catalog,0,full.rows,dual==1};
+ Bytes index(bytes.begin()+24+path_bytes,bytes.end());auto full=tqgx::ReadCatalog(index,payload);return {full.catalog,full.rows,0,false};
 }
 }

@@ -1,57 +1,44 @@
 {
-  "schema": "texturequest-graphics-runtime-v1",
-  "controller": "TextureQuestGraphics.exe",
+  "schema": "texturequest-graphics-runtime-v2",
   "capabilities": [
+    "full_pack",
+    "on_demand",
+    "foreground_toggle",
     "bounded_cache",
     "custom_shortcut",
-    "dual_load",
-    "foreground_toggle",
-    "full_pack",
-    "on_demand"
+    "normal_proxy",
+    "graphics_only"
   ],
-  "full_pack_prepared": true,
-  "private_experimental": true,
-  "actual_full_pack_game_test": "HUMAN_CONFIRMED_WORKING; configurable shortcut covered by separate controller tests",
-  "comparison_gpu_budget_bytes": 268435456,
-  "comparison_cpu_budget_bytes": 134217728,
-  "prepared_rows": 24693,
-  "ambiguous_original_rows": 42,
-  "game_files_changed": false,
   "files": [
+    {
+      "name": "d3d11.dll",
+      "bytes": 5422592,
+      "sha256": "239005eae82cbf4a14e7c06d44448dd426dedc2e826896b3369e289b8398f168"
+    },
     {
       "name": "LICENSE-ReShade.md",
       "bytes": 1481,
       "sha256": "237ded5b8344f820113efab1e65e91e1f159d9202c5b4856606a0590d3ffdab0"
     },
     {
-      "name": "ReShade64.dll",
-      "bytes": 5425664,
-      "sha256": "16e1ca356ad0d61215ec29d1eb8e55385d79bccf3763233d205ca8a79ab66a62"
-    },
-    {
-      "name": "TQGraphicsAttach.exe",
-      "bytes": 340480,
-      "sha256": "f19ec3e6bd91245ee634c16dd7578e9877d5332caf0ab4bb2506922df5f16e3e"
-    },
-    {
-      "name": "TextureQuestGraphics.exe",
-      "bytes": 9417624,
-      "sha256": "91344128672a102d7e7eff13ddd2b6296046372bc26bb082ede48c4d5c82a870"
-    },
-    {
       "name": "TextureQuestGraphicsBootstrap.dll",
-      "bytes": 169984,
-      "sha256": "4e001be03489da819dc0ae5c8443e2c4d1a2bd74fa85ae2bbc1dd8f983d1c87e"
+      "bytes": 153088,
+      "sha256": "287a81400fc2b9cdcef0ffcbaf473821d41546d850cd93d1cb3cb23ddd6def99"
     },
     {
       "name": "TextureQuestGraphicsHost.addon64",
-      "bytes": 335872,
-      "sha256": "913485a8fa5ea7a541fa70d5db26909951373b7b52485b4af30cbc6b289b5349"
+      "bytes": 413184,
+      "sha256": "16464cc56d2f959cc99d3de2ca881cd9d88f376bc7f1327d9f83fb98bfddbbfd"
     }
   ],
-  "default_shortcut": {
-    "vk": 106,
-    "modifiers": 0
-  },
-  "shortcut_scope": "EXACT_OWNED_EQ2_FOREGROUND"
+  "full_pack_prepared": true,
+  "canonical_role": "stock",
+  "index_schema": "TQGX0002",
+  "config_schema": "TQGXCFG2",
+  "game_additions": [
+    "d3d11.dll",
+    "TextureQuest.ini"
+  ],
+  "background_process": false,
+  "archive_redirection": false
 }
