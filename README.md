@@ -28,7 +28,7 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 **Upgrading an old hook:** close EQ2 and uninstall the old Graphics hook in the app before installing this version. For an old Memory hook, use **Settings → Uninstall old Memory hook** first. The modes cannot be combined.
 
-**After a patch:** unchanged texture content still matches. Changed assets stay original until a new map is published. If the patcher removes our files, reinstall the hook. An existing ReShade add-on build is used as is. A standard ReShade build is left unchanged and installation stops, explaining that the ReShade add-on build is needed. Any other `dxgi.dll`/`d3d11.dll` is left unchanged and installation stops.
+**After a patch:** unchanged texture content still matches. Changed assets stay original until a new map is published; Download / Resume in the app picks it up. If the patcher removes our files, reinstall the hook. An existing ReShade add-on build is used as is. A standard ReShade build is left unchanged and installation stops, explaining that the ReShade add-on build is needed. Any other `dxgi.dll`/`d3d11.dll` is left unchanged and installation stops.
 
 **Get app update** downloads, verifies, installs and restarts TextureQuest, keeping **data** and downloads. Close EQ2, uninstall the hook when prompted, then reinstall it after updating.
 

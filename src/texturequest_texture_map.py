@@ -150,6 +150,7 @@ def validate_descriptor(value):
 
 
 DESCRIPTOR_NAME = 'texturequest-map.json'
+LOCAL_MAP_NAME = 'texturequest-map.bin'
 
 
 def _descriptor(opener, pause):
@@ -164,14 +165,16 @@ def _download(item, opener, pause):
 
 
 def fetch_map(state_dir, prepared, opener=urlopen, pause=None):
-    """Return the verified local map for the downloaded pack, downloading it once."""
+    """Return the verified local map for the downloaded pack, downloading it when the published one changed.
+
+    The map is always saved as graphics/texturequest-map.bin, so TextureQuest.ini never has to change."""
     from texture_swapper import core
     descriptor = _descriptor(opener, pause)
     need(descriptor['release_digest'] == prepared['release_sha256'],
          'The published texture map is for a different texture release. Download / Resume the latest textures first.')
     item = descriptor['map']
     folder = core._plain(state_dir) / 'graphics'
-    path = core._plain(folder / item['name'], state_dir)
+    path = core._plain(folder / LOCAL_MAP_NAME, state_dir)
     if path.is_file() and path.stat().st_size == item['bytes'] and hashlib.sha256(path.read_bytes()).hexdigest() == item['sha256']:
         return path
     raw = _download(item, opener, pause)
@@ -179,7 +182,7 @@ def fetch_map(state_dir, prepared, opener=urlopen, pause=None):
     parsed = read_map(raw)
     need(parsed.release_digest == descriptor['release_digest'], 'Texture map does not match its descriptor')
     folder.mkdir(parents=True, exist_ok=True)
-    temporary = core._plain(folder / (item['name'] + '.' + uuid.uuid4().hex + '.tmp'), state_dir)
+    temporary = core._plain(folder / (LOCAL_MAP_NAME + '.' + uuid.uuid4().hex + '.tmp'), state_dir)
     try:
         with temporary.open('xb') as stream:
             stream.write(raw)

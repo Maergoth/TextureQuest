@@ -144,7 +144,7 @@ class FetchTests(unittest.TestCase):
 
     def test_matching_map_saved(self):
         path, _ = self.fetch()
-        self.assertEqual(path, self.state / 'graphics' / 'texturequest-map-1.2.3.bin')
+        self.assertEqual(path, self.state / 'graphics' / 'texturequest-map.bin')
         self.assertEqual(path.read_bytes(), self.raw)
 
     def test_other_release_refused(self):
@@ -156,7 +156,7 @@ class FetchTests(unittest.TestCase):
     def test_wrong_bytes_refused(self):
         with self.assertRaises(ValueError):
             self.fetch(raw=self.raw[:-1] + b'\x01')
-        self.assertFalse((self.state / 'graphics' / 'texturequest-map-1.2.3.bin').exists())
+        self.assertFalse((self.state / 'graphics' / 'texturequest-map.bin').exists())
 
     def test_saved_map_reused(self):
         self.fetch()

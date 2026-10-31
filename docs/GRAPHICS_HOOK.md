@@ -9,7 +9,7 @@ The Graphics hook is a **TextureQuest add-on for stock ReShade** (the official a
 
 ## Lifecycle
 
-Install once and launch normally. TextureQuest need not run. Keep the app's data and downloads folders in place. Close EQ2 before installing or uninstalling. Uninstall removes only the files TextureQuest added and still recognises; ReShade is removed only if TextureQuest installed it and it is unchanged.
+Install once and launch normally. TextureQuest need not run. Keep the app's data and downloads folders in place. Close EQ2 before installing or uninstalling. Download / Resume in the app updates the textures and the map together while EQ2 is closed; the hook does not need reinstalling. Uninstall removes only the files TextureQuest added and still recognises; ReShade is removed only if TextureQuest installed it and it is unchanged.
 
 ## Patching and coverage
 

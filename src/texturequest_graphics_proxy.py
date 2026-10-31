@@ -192,6 +192,26 @@ class GraphicsManager:
     def cache_in_use(self):
         return any(any(self.status(g)[k] for k in ['installed', 'running', 'active_sessions']) for g in self._all_games())
 
+    def _addon_installed(self, game):
+        record = self._record(game)
+        return bool(record and record['phase'] != 'uninstalled')
+
+    def legacy_in_use(self):
+        """Whether a 1.7.0 or injected hook is installed or running; those depend on app and cache files."""
+        return any(any(self.status(g)[k] for k in ['installed', 'running', 'active_sessions'])
+                   for g in self._all_games() if not self._addon_installed(g))
+
+    def downloads_in_use(self):
+        """Whether the downloaded archives are in use: EQ2 is running with the add-on, or an older hook is installed."""
+        return self.legacy_in_use() or any(self.status(g)['active_sessions'] for g in self._all_games() if self._addon_installed(g))
+
+    def refresh_map(self, prepared):
+        """Download the published map for these textures when the add-on is installed, so texture updates need no reinstall."""
+        if not any(self._addon_installed(g) for g in self._all_games()):
+            return None
+        with core._lock(self.state_dir / 'operation.lock'):
+            return fetch_map(self.state_dir, prepared)
+
     def installed_game(self):
         games = [g for g in self._all_games() if self.status(g)['installed']]
         need(len(games) <= 1, 'Multiple graphics installations; choose a game folder explicitly.')
