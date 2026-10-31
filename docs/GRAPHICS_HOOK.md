@@ -14,7 +14,7 @@ App 1.7.0 uses a normal **Direct3D 11 proxy plus a ReShade-based add-on**. It ke
 
 Install once and launch normally, including after reboot. TextureQuest need not run. Keep its app/data/cache paths in place. Close EQ2 before installing or uninstalling. Uninstall verifies its owned files and removes only those two additions; private cache/downloads remain. If patching removed one of our files, Uninstall then Install repairs it. Changed or foreign files are preserved for review rather than overwritten.
 
-Old injected Graphics hook users must close EQ2 and uninstall that hook first. Old Memory hook users use Settings â†’ Uninstall old Memory hook. App updates preserve data/downloads; uninstall the active hook when prompted and reinstall afterward. Initial installation can take time and needs substantial additional private-cache disk space.
+Old injected Graphics hook users must close EQ2 and uninstall that hook first. Old Memory hook users use Settings → Uninstall old Memory hook. App updates preserve data/downloads; uninstall the active hook when prompted and reinstall afterward. Initial installation can take time and needs substantial additional private-cache disk space.
 
 The current native runtime requires ASCII game/cache paths and a short enough cache path; installation reports incompatible paths before adding game files. Existing graphics proxies are not automatically chained. Existing ReShade.ini/RenoDX settings are left alone, but simultaneous compatibility with other graphics modifications is not promised. ReShade's general input hooks and effect runtime are disabled for this profile; TextureQuest handles its own foreground shortcut.
 
@@ -24,7 +24,7 @@ An archive changing does not invalidate a texture whose uploaded content/layout 
 
 Pack 1.2.3 contains 24,694 named replacements. This stock-content catalog has **24,208 unambiguous named entries** and **486 ambiguous entries** that stay original. These are catalog counts, not measured unique in-game coverage. Cache pressure and unsupported/unmatched resources can leave additional textures original.
 
-A small hardware-rendered fixture verified stock â†’ upscale â†’ stock switching, and a Windows EQ2 Origins in-world test confirmed the hotkey visually. That is not proof for every texture, client, patch or third-party add-on. Neither installation method has official approval; account-policy risk is unknown. Graphics-only scope is not a promise of invisibility or account safety.
+A small hardware-rendered fixture verified stock → upscale → stock switching, and a Windows EQ2 Origins in-world test confirmed the hotkey visually. That is not proof for every texture, client, patch or third-party add-on. Neither installation method has official approval; account-policy risk is unknown. Graphics-only scope is not a promise of invisibility or account safety.
 
 ## Source for review
 
