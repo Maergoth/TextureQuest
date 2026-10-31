@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.1
+
+- Fix Graphics hook installation failing with "output must be inside the loader component".
+- Keep offline pack preparation inside its owned component; retain separate graphics cache and ownership receipts.
+- Add fresh-install integration coverage through the bundled preparer and READY verification.
+- Graphics binaries and texture pack unchanged.
+
 ## 1.7.0
 
 - Normal game-folder graphics proxy; no external graphics injector or watcher.

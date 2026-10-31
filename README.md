@@ -10,7 +10,7 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 ## Download and install
 
-**[Download TextureQuest 1.7.0 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.7.0/TextureQuest-Installer-1.7.0-windows-x64.zip)** · [Latest release](https://github.com/Maergoth/TextureQuest/releases/latest)
+**[Download TextureQuest 1.7.1 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.7.1/TextureQuest-Installer-1.7.1-windows-x64.zip)** · [Latest release](https://github.com/Maergoth/TextureQuest/releases/latest)
 
 1. Patch EQ2 Origins, then close the game and launcher. If you previously replaced PAKs, use the official patcher to restore stock files before choosing a hook.
 2. Extract the app outside your game folder. Keep your existing **data** folder alongside **TextureQuest.exe**.
@@ -166,7 +166,7 @@ Use Windows, 64-bit Python 3.12 with Tk support and the pinned build dependencie
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r src\texture_swapper\requirements-build.txt
-.\.venv\Scripts\python.exe build_installer.py --manifest release-manifest-1.3.7.json --version 1.7.0 --loader-runtime-dir sideload-runtime --graphics-runtime-dir graphics-runtime
+.\.venv\Scripts\python.exe build_installer.py --manifest release-manifest-1.3.7.json --version 1.7.1 --loader-runtime-dir sideload-runtime --graphics-runtime-dir graphics-runtime
 ```
 
 The builder verifies both runtime rosters without modifying them. `sideload-runtime` supplies offline archive preparation and old Memory hook removal; the Graphics hook does not start its injector. [Graphics source and build instructions](graphics-native/BUILDING.md) include the modified ReShade provider. Use a fresh `--output-root` to preserve earlier builds. Rebuilt binaries are not promised to be byte-identical. Building does not install into the game or generate textures.

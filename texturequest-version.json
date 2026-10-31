@@ -1,8 +1,8 @@
 {
   "schema": "texturequest-version-v1",
-  "app_version": "1.7.0",
+  "app_version": "1.7.1",
   "texture_version": "1.2.3",
   "manifest_version": "1.3.7",
   "manifest_sha256": "77d6d134a956896067e12b28e187b185a76dbd1facd7c34788a38cb663eafcad",
-  "installer_name": "TextureQuest-Installer-1.7.0-windows-x64.zip"
+  "installer_name": "TextureQuest-Installer-1.7.1-windows-x64.zip"
 }

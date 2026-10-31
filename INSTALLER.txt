@@ -1,4 +1,4 @@
-TextureQuest 1.7.0 — Windows x64
+TextureQuest 1.7.1 — Windows x64
 
 1. Patch EQ2 Origins, then close EQ2.
    Restore stock PAKs first if you previously used Replace mode.

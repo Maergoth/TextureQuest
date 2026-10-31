@@ -41,7 +41,7 @@ class FixtureManager(g.GraphicsManager):
         api=SimpleNamespace(index=lambda f,n:SimpleNamespace(entries=[SimpleNamespace(member='fixture.dds')]),
             member_data=lambda f,e:old if f.read()==b'invented source' else new)
         offline=SimpleNamespace(_runtime=lambda:dict(portable_pending=True,bundle='inert'),
-            _materialize=lambda bundle,game:'inert component')
+            _materialize=lambda bundle,game:dict(preparation_root=str(self.state_dir/'sideload/runtimes'/('f'*64)/'background-epochs')))
         ready_result=dict(ready_json=dict(path=str(prep/'READY.json')),applied=1)
         with patch.object(g,'LoaderManager',return_value=offline),patch.object(g,'_prepare',return_value=ready_result),patch.object(g,'vpk',api):
             return super()._prepare_cache(game,home,runtime,report)

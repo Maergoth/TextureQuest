@@ -181,7 +181,14 @@ class GraphicsManager:
         memory.descriptor=self.runtime_dir.parent/'texturequest-sideload-runtime.json'
         admitted=memory._runtime(); need(admitted is not None and admitted.get('portable_pending'),'Offline archive preparation tools missing.')
         component=memory._materialize(admitted['bundle'],game)
-        prep_root=home/'offline';prep_root.mkdir()
+        # The bundled helper admits outputs only beneath its materialized
+        # component. Keep the render cache separate and record their ownership.
+        prep_root=core._plain(Path(component['preparation_root'])/('graphics-'+home.name))
+        prep_root.mkdir(parents=True)
+        ownership=dict(schema='texturequest-graphics-offline-preparation-v1',
+            graphics_home=str(home),game=str(game),preparation_root=str(prep_root))
+        exclusive(home/'PREPARATION.json',ownership)
+        exclusive(prep_root/'OWNER.json',ownership)
         prepared=_prepare(component,game,self.state_dir/'direct-prepared.json',prep_root/'pack',report)
         summary=catalog.prepare(Path(prepared['ready_json']['path']),home/'textures',vpk,
             lambda text,*_:report(text),direction='stock_canonical')
