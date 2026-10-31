@@ -42,7 +42,7 @@ overwritten.
 Get app update downloads, verifies, replaces and restarts the app, preserving
 data and downloads. Close EQ2; uninstall the hook when prompted, then reinstall.
 
-Texture pack 1.2.3 is unchanged: 24,693 replacements in 310 archives, including
+Texture pack 1.2.3 is unchanged: 24,694 replacements in 310 archives, including
 recovered Maj'Dul textures. Unfinished new generation is not included.
 All assets, other add-ons and future clients are not fully validated.
 ReShade's add-on build is not meant for games with module-scanning anti-cheat.

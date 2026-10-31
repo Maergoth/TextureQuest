@@ -7,6 +7,18 @@
 - Numpad * comparison keeps working; Original loads stock copies on demand.
 - Existing ReShade installs are never changed; the add-on build is used as is, and a standard build stops installation with an explanation.
 
+
+## 1.7.2 — texture catalog 1.2.4
+
+Fae/Arasai body and Qeynos stone-trim corrections, including the paired map. Graphics runtime unchanged. Other released textures preserved.
+
+## 1.7.1
+
+- Fix Graphics hook installation failing with "output must be inside the loader component".
+- Keep offline pack preparation inside its owned component; retain separate graphics cache and ownership receipts.
+- Add fresh-install integration coverage through the bundled preparer and READY verification.
+- Graphics binaries and texture pack unchanged.
+
 ## 1.7.0
 
 - Normal game-folder graphics proxy; no external graphics injector or watcher.

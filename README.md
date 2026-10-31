@@ -6,7 +6,7 @@
 
 TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim is to retain the game's original style, recognizable designs and art direction while bringing out the detail in armor, creatures, signs, buildings and terrain.
 
-AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,693 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
+AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,694 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
 
 ## Download and install
 
@@ -35,7 +35,7 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 <details>
 <summary>Pack contents and compatibility</summary>
 
-Texture pack **1.2.3** includes **24,693 replacements in 310 archives**, including 312 recovered 2K Maj'Dul/Desert of Flames textures and earlier repairs. Archive bytes and URLs are unchanged. Further generation is unfinished and is not included.
+Texture pack **1.2.4** includes **24,694 replacements in 310 archives**, including 312 recovered 2K Maj'Dul/Desert of Flames textures and earlier repairs. Includes corrected shared Fae/Arasai male and female bodies, Qeynos stone trim and its companion map. Other released textures and recovered Maj'Dul content are preserved. The larger generation batch is still unfinished.
 
 Compatibility with every asset, other graphics add-ons and future clients is not established. ReShade's add-on build is not intended for games with anti-cheat that inspects loaded modules. Neither installation method has official approval; account-policy risk is unknown.
 

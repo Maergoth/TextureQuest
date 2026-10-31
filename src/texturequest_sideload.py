@@ -28,7 +28,7 @@ from texturequest_direct import DirectSwapper
 
 SCHEMA = "texturequest-sideload-runtime-v1"
 PREPARER_SHA256 = "1eb75e7ef468a555d14f2b3e5355cecfa9bc25559c44c2b6e05ff393c4e73a17"
-PORTABLE_PREPARER_SHA256 = "5d19bba3d8a3ad687a4c96e31a244f21cf88db2c8b39df2b42a399e57efafec1"
+PORTABLE_PREPARER_SHA256 = "2959a254c551ec1cea3bcd7ab59e8210cdaecab1224d825ed18b65840c1087d9"
 PORTABLE_ROLES = {"watcher": "TextureQuestWatch.exe", "dll": "TextureQuestBackground.dll",
                   "helper": "preparer/prepare_full_pack.py", "catalog": "catalog/HANDOFF.json"}
 MAX_JSON = 4 * 1024 * 1024
