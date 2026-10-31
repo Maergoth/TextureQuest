@@ -76,6 +76,8 @@ def decode_dds(data):
             family = 5
         elif flags == 0x20000 and bits == 8 and (r, g, b, a) == (0xff, 0, 0, 0):
             family = 6
+        elif flags == 0x40 and bits == 8 and (r, g, b, a) == (0, 0, 0, 0) and words[4] == 0:
+            family = 6  # Exact retained PF64/bits8/zero-mask/pitch0 RAW8 profile.
     need(family != 0, 'DDS pixel format requires an explicit graphics profile')
     layout = (width, height, mips, family, 1)
     size = sum(x[4] for x in mip_levels(layout))

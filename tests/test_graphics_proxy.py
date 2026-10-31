@@ -30,15 +30,15 @@ class Fixture(unittest.TestCase):
         (self.runtime / 'ReShade64.dll').write_bytes(ADDON_BUILD)
         files = [dict(name=n, bytes=(self.runtime / n).stat().st_size, sha256=hashlib.sha256((self.runtime / n).read_bytes()).hexdigest())
                  for n in ['TextureQuest.addon64', 'ReShade64.dll']]
-        (self.runtime / 'RUNTIME.json').write_text(json.dumps(dict(schema='texturequest-graphics-runtime-v3', addon='TextureQuest.addon64',
-            reshade='ReShade64.dll', reshade_version='6.8.0', reshade_build='addon', map_schema='TQMAP001', files=files)))
+        (self.runtime / 'RUNTIME.json').write_text(json.dumps(dict(schema='texturequest-graphics-runtime-v4', addon='TextureQuest.addon64',
+            reshade='ReShade64.dll', reshade_version='6.8.0', reshade_build='addon', map_schema='TQMAP002', files=files)))
         self.map = self.state / 'graphics' / 'texturequest-map-1.2.3.bin'
         self.map.parent.mkdir(parents=True)
         self.map.write_bytes(b'map')
         self.manager = g.GraphicsManager(self.state, runtime_dir=self.runtime)
         self.patches = [patch.object(g, 'ensure_closed'), patch.object(g.GraphicsManager, '_games_open', return_value=0),
                         patch.object(g.GraphicsManager, '_exclusive_mode'),
-                        patch.object(g, 'fetch_map', return_value=self.map),
+                        patch.object(g.GraphicsManager, '_activate_prepared', return_value=self.map),
                         patch.object(g.core, 'validate_game', side_effect=lambda game: Path(game) / 'EverQuest2.exe')]
         for p in self.patches:
             p.start()
@@ -95,7 +95,7 @@ class InstallTests(Fixture):
         self.assertEqual(self.proxy_170_phase(), 'installed')
         self.assertFalse((self.state / 'graphics-addon').exists())
         self.assertFalse((self.state / 'graphics' / 'shortcut.txt').exists())
-        g.fetch_map.assert_not_called()
+        self.manager._activate_prepared.assert_not_called()
 
     def test_foreign_proxy_refused(self):
         (self.game / 'd3d11.dll').write_bytes(FOREIGN)

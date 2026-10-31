@@ -79,8 +79,7 @@ def main():
     metadata = version_metadata(args.version, release, sha(manifest))
     loader = None
     if args.loader_runtime_dir:
-        from texturequest_sideload import admit_portable_payload
-        loader = admit_portable_payload(args.loader_runtime_dir)
+        raise ValueError('Graphics-only builds no longer bundle the old PAK/Memory hook runtime. Omit --loader-runtime-dir.')
     graphics = None
     if args.graphics_runtime_dir:
         from texturequest_graphics import GraphicsManager
@@ -134,6 +133,10 @@ def main():
         command += ["--exclude-module", name]
     if graphics:
         command += ["--add-data", str(resources_graphics) + ":graphics-runtime"]
+    shared_choices = ROOT / 'src' / 'shared-texture-choices.json'
+    shutil.copy2(shared_choices, stage / shared_choices.name)
+    source_hashes['src/shared-texture-choices.json'] = sha(shared_choices)
+    command += ['--add-data', str(stage / shared_choices.name) + ':.', '--hidden-import', 'xxhash']
     command += [str(stage / "texturequest_app.py")]
     subprocess.run(command, cwd=ROOT, env=env, check=True)
     if (sha(manifest) != manifest_hash or sha(bundled_manifest) != manifest_hash
@@ -157,7 +160,7 @@ def main():
     licenses = folder / "licenses"
     licenses.mkdir(exist_ok=True)
     versions = {}
-    for name in ("psutil", "pyinstaller", "pyinstaller-hooks-contrib", "altgraph", "pywin32-ctypes"):
+    for name in ("psutil", "xxhash", "pyinstaller", "pyinstaller-hooks-contrib", "altgraph", "pywin32-ctypes"):
         dist = importlib.metadata.distribution(name)
         versions[name] = dist.version
         for item in dist.files or []:

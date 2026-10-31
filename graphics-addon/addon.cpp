@@ -8,7 +8,7 @@
 #include "shortcut.hpp"
 #include "stock_copies.hpp"
 #include "stock_paks.hpp"
-#include "vpk_reader.hpp"
+#include "dds_reader.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -19,7 +19,7 @@
 #include <unordered_map>
 
 extern "C" __declspec(dllexport) const char* NAME = "TextureQuest";
-extern "C" __declspec(dllexport) const char* DESCRIPTION = "Loads TextureQuest upscaled textures from the downloaded pack.";
+extern "C" __declspec(dllexport) const char* DESCRIPTION = "Loads verified TextureQuest DDS files when the game creates textures.";
 
 using namespace reshade::api;
 
@@ -63,7 +63,7 @@ struct Handoff {
 struct State {
     tq::Config Config;
     tq::TextureMap Map;
-    std::unique_ptr<tq::VpkReader> Reader;
+    std::unique_ptr<tq::DDSReader> Reader;
     std::unique_ptr<tq::StockPaks> Paks;
     std::unique_ptr<tq::Shortcut> Shortcut;
     std::atomic<bool> Original{false}, Stopping{false};
@@ -158,7 +158,7 @@ bool OnCreateResource(device*, resource_desc& desc, subresource_data* initial_da
     const tq::MapRow* row = Global->Map.Find(tq::Fingerprint(layout, levels), layout);
     if (!row)
         return false;
-    const unsigned char* pixels = Global->Reader->Inflate(*row);
+    const unsigned char* pixels = Global->Reader->Read(*row);
     if (!pixels || ChainBytes(family, row->TargetWidth, row->TargetHeight, row->TargetMips) != row->PixelBytes) {
         if (Global->Failed++ == 0)
             Log(reshade::log::level::warning, "could not read a texture from the downloaded pack; it stays stock");
@@ -367,12 +367,12 @@ void Start(HMODULE module) {
     }
     std::ifstream file(state->Config.Map, std::ios::binary);
     const std::vector<unsigned char> raw(std::istreambuf_iterator<char>(file), {});
-    if (!state->Map.Load(raw)) {
+    if (!state->Map.Load(raw) || !state->Map.Loose) {
         Log(reshade::log::level::error, "texture map is missing or invalid; textures stay stock");
         delete state;
         return;
     }
-    state->Reader = std::make_unique<tq::VpkReader>(state->Config.Downloads, state->Map);
+    state->Reader = std::make_unique<tq::DDSReader>(state->Config.Downloads, state->Map);
     state->Paks = std::make_unique<tq::StockPaks>(state->Config.GamePaks, state->Map);
     state->Shortcut = std::make_unique<tq::Shortcut>(state->Config.Shortcut, state->Original);
     Global = state;

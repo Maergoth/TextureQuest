@@ -1,4 +1,4 @@
-> App 1.8.0: the active Graphics hook add-on, hotkey and install lifecycle are documented in [GRAPHICS_HOOK.md](GRAPHICS_HOOK.md). Older app/release sections below describe historical implementations. Current Get app update downloads, verifies, replaces and restarts the app while preserving data.
+> App 1.9.0: graphics-hook-only installation uses individual DDS files; see [GRAPHICS_HOOK.md](GRAPHICS_HOOK.md) and [LOOSE_DDS.md](LOOSE_DDS.md). Older app/release sections below are historical. Get app update preserves data.
 
 # Technical guide
 

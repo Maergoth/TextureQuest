@@ -14,7 +14,8 @@ import webbrowser
 from texture_swapper import core
 from texturequest_release import load_manifest, prepare_release, download, Paused
 from texturequest_updates import prepare_update
-from texturequest_direct import DirectSwapper, prepare_direct
+from texturequest_direct import DirectSwapper
+from texturequest_dds_source import DDSStore, fetch_source as fetch_dds_source
 from texturequest_latest import fetch_latest
 from texturequest_launch import game_executable, launch_game as start_game
 from texturequest_graphics import GraphicsManager
@@ -43,25 +44,16 @@ GREEN, DARK, GOLD, LINE = "#5bd6b0", "#10251e", "#a9ead4", "#2d3e4c"
 BUTTON, HOVER, ERROR = "#293b4a", "#354e60", "#ffa58d"
 INSTALL_SUCCESS_MESSAGE = "Textures Installed. Launch via the EQ2 EXE, not the launcher!"
 INSTALL_MODE_INFO = (
-    ("Replace PAK files", "pak", "Changes game archives; no background process.",
-     "Copies textures into the game's PAK files. No runtime injection. "
-     "After patching, reinstall textures. Close EQ2 before installing. "
-     "Use the official patcher to restore stock files."),
-    ("Graphics hook (default)", "graphics", "Loads with EQ2. Numpad * switches quality.",
-     "Adds the TextureQuest.addon64 add-on and TextureQuest.ini beside the game EXE "
-     "(or ReShade's AddonPath), plus the "
-     "official ReShade add-on build as dxgi.dll if no ReShade is present. "
-     "Existing EXE, PAKs and ReShade stay unchanged; an existing ReShade add-on build is used as is, "
-     "while a standard ReShade build stops installation because the add-on build is needed. "
-     "No background watcher. "
-     "Launch EQ2 normally, even after reboot; TextureQuest can stay closed.\n\n"
+    ("Graphics hook", "graphics", "Loads with EQ2. Numpad * switches quality.",
+     "Loads individual DDS textures through a stock ReShade add-on. "
+     "Existing game EXE and PAK files stay unchanged. No background watcher. "
+     "Install once, then launch EQ2 normally, even after reboot. Keep the data folder in place.\n\n"
      "Numpad * switches Original/Upscaled. Change it with Shortcut. "
-     "Upscales load from your downloads as the game creates textures; Original loads stock copies "
-     "on demand; ambiguous matches stay original. "
-     "Unchanged textures survive patches; changed assets need a new texture map. "
-     "Close EQ2 before Install or Uninstall. Keep the app, data and downloads in place. "
+     "An existing ReShade full add-on build is reused; the standard build needs upgrading. "
+     "Close EQ2 before installing, uninstalling or activating texture updates. "
      "Graphics hooks are not officially approved; account-policy risk is unknown."),
 )
+
 
 
 class HoverInfo:
@@ -218,7 +210,9 @@ class TextureQuestApp:
         self.root = root
         self.state_dir = core._plain(state_dir or state_directory())
         self.state_dir.mkdir(parents=True, exist_ok=True)
-        self.core = DirectSwapper(self.state_dir)
+        self.core = DirectSwapper(self.state_dir)  # Legacy receipts only; no PAK installation path.
+        self.dds_store = DDSStore(self.state_dir)
+        self.dds_source = None
         self.cache_guard = None
         self.loader_manager = None
         self.graphics_manager = GraphicsManager(self.state_dir)
@@ -378,8 +372,6 @@ class TextureQuestApp:
                             activebackground=GREEN, activeforeground=DARK, font=("Segoe UI", 10))
         self.menu_button.configure(menu=self.menu)
         self.menu.add_command(label="Verify installed textures", command=self.verify_installation)
-        self.menu.add_separator()
-        self.menu.add_command(label="Clear downloaded files & cache…", command=self.clear_cache)
         self.menu.add_separator()
         self.menu.add_command(label="Uninstall old Memory hook…", command=self.uninstall_legacy_loader)
         self.legacy_uninstall_index = self.menu.index("end")
@@ -584,10 +576,7 @@ class TextureQuestApp:
             self.refresh_controls()
 
     def restore_saved_ready(self):
-        """Bundled manifest plus an owned matching ready receipt permits offline use."""
-        if pack_identity(self.release) != pack_identity(self.bundled_release):
-            return False
-        saved = self.core.saved_ready(self.bundled_release)
+        saved = self.dds_store.saved()
         if saved is None:
             return False
         self.prepared = saved
@@ -615,128 +604,48 @@ class TextureQuestApp:
         for button in self.controls:
             self.button_state(button, not self.busy)
         self.game_entry.configure(state="disabled" if self.busy else "normal")
-        self.menu_button.configure(state="disabled" if self.busy else "normal")
-        for choice in getattr(self, "mode_controls", ()):
+        for choice in self.mode_controls:
             choice.configure(state="disabled" if self.busy else "normal")
-        graphics = self.graphics_status(self.game.get().strip())
-        graphics_owned = self.loader_in_use(graphics)
-        is_graphics = self.graphics_selected()
-        selected_value = self.install_mode.get()
-        for index, description in enumerate(self.mode_descriptions):
-            description.grid() if INSTALL_MODE_INFO[index][1] == selected_value else description.grid_remove()
-        if is_graphics:
-            self.shortcut_button.pack(side="right")
-        else:
-            self.shortcut_button.pack_forget()
+        game = self.game.get().strip()
+        graphics = self.graphics_status(game)
+        loader = self.loader_status(game)
+        legacy = self.loader_in_use(loader)
         if not self.busy and graphics.get('installed'):
-            self.shortcut=shortcut_spec(graphics.get('shortcut'))
-        self.shortcut_button.configure(text="Shortcut: "+shortcut_label(self.shortcut),state='disabled' if self.busy else 'normal')
-        loader = self.loader_status(self.game.get().strip())
-        selected_loader_owned = self.loader_in_use(loader)
-        loader_owned = selected_loader_owned or self.cache_in_use()
-        pak_ready = self.release_checked and can_install(self.busy, self.prepared, self.preflight)
-        graphics_ready = bool(not self.busy and self.game.get().strip() and graphics["available"] and
-            not selected_loader_owned and (graphics["installed"] or
-                (not loader_owned and self.release_checked and self.prepared)))
-        self.button_state(self.install_button, graphics_ready if is_graphics else
-                          pak_ready and not loader_owned and not graphics_owned and selected_value == "pak")
-        self.menu.entryconfigure(self.legacy_uninstall_index, state="normal" if
-            not self.busy and loader["installed"] and not loader.get("unknown") else "disabled")
+            self.shortcut = shortcut_spec(graphics.get('shortcut'))
+        self.shortcut_button.configure(text="Shortcut: " + shortcut_label(self.shortcut), state='disabled' if self.busy else 'normal')
+        ready = not self.busy and game and graphics.get('available') and not legacy and (graphics.get('installed') or self.prepared)
+        self.button_state(self.install_button, bool(ready))
+        self.install_button.configure(text="Uninstall graphics hook" if graphics.get('installed') else "Install graphics hook")
+        self.menu.entryconfigure(self.legacy_uninstall_index, state="normal" if not self.busy and loader.get('installed') else "disabled")
         try:
-            game_executable(self.game.get().strip())
-            launch_enabled = not self.busy
+            game_executable(game)
+            can_launch = not self.busy
         except (OSError, ValueError):
-            launch_enabled = False
-        self.button_state(self.launch_button, launch_enabled)
+            can_launch = False
+        self.button_state(self.launch_button, can_launch)
         self.version_label.configure(text="App " + self.app_version)
-        app_text, pack_text = update_messages(self.update_check, self.app_version)
+        app_text, _ = update_messages(self.update_check, self.app_version)
         self.app_update_label.configure(text=app_text)
-        self.pack_update_label.configure(text=pack_text)
-        app = self.update_check.get("installer", {})
-        self.button_state(self.installer_update_button, not self.busy and app.get("status") == "verified" and app.get("update_available") is True)
-        self.installer_update_button.configure(text="Updating app…" if self.busy == "app-update" else "Get app update")
-        if app.get("status") == "verified" and app.get("update_available"):
+        app = self.update_check.get('installer', {})
+        self.button_state(self.installer_update_button, not self.busy and app.get('status') == 'verified' and app.get('update_available') is True)
+        if app.get('status') == 'verified' and app.get('update_available'):
             self.installer_update_button.grid()
         else:
             self.installer_update_button.grid_remove()
-        prepared = self.prepared
-        if not prepared:
-            try:
-                prepared = core._load(self.state_dir / "texturequest-prepared.json")
-            except (ValueError, OSError, KeyError):
-                prepared = {}
-        try:
-            version = self.known_pack_versions.get(pack_identity(prepared))
-        except (ValueError, KeyError, TypeError):
-            version = None
-        cache_text = ("Prepared " if self.prepared else "Saved ") + "textures " + version if version else "No identified saved pack"
-        if version and not self.prepared:
-            cache_text += " (verify before installing)"
-        rows = [row for row in self.installed.get("archives", []) if row.get("managed")]
-        try:
-            installed_version = self.known_pack_versions.get(pack_identity({"archives": rows}))
-        except (ValueError, KeyError, TypeError):
-            installed_version = None
-        installed_text = "Installed version not checked"
-        if installed_version:
-            installed_text = "Installed textures " + installed_version
-            installed_text += " (installed)" if all(row.get("integrity") == "intact" for row in rows) else " (files need attention)"
-        elif self.installed and not self.installed.get("managed_count"):
-            installed_text = "No pack installed by this app"
-        self.pack_versions_label.configure(text="Textures " + texture_version(self.release) + " · " + cache_text + "\n" + installed_text)
-        self.pack_description.configure(text=f"{self.release.get('texture_count', 0):,} textures · {len(self.release['archives'])} archives · "
-                                       + human_bytes(sum(row['bytes'] for row in self.release['archives'])))
-        current = installation_current(self.installed, self.release)
-        self.install_button.configure(text="Reinstall TextureQuest" if current else "Install TextureQuest")
-        if is_graphics:
-            self.install_button.configure(text="Uninstall graphics hook" if graphics["installed"] else "Install graphics hook")
-        if is_graphics and self.install_button.cget("state") != "disabled":
-            enabled = graphics["installed"]
-            self.install_button.configure(bg=GREEN if enabled else ERROR, fg=DARK,
-                                          activebackground="#8ae4c7" if enabled else "#ffc0ae")
-        else:
-            self.install_button.configure(activebackground="#8ae4c7")
-        if self.prepared:
-            self.download_label.configure(text="Saved texture files verified" if self.prepared.get("schema") == "texturequest-direct-prepared-v1" else "Downloaded and verified")
-            self.download_button.configure(text="Verify saved pack")
-        else:
-            folder = self.state_dir / "downloads"
-            if self.release.get("schema") == "texturequest-release-v3":
-                caption, state = "Download / Resume", "Matching saved VPKs are reused; each file is downloaded once"
-            elif self.release.get("schema") == "texturequest-release-v2":
-                caption, state = "Download / Resume", "Saved downloads and matching files will be reused"
-            elif self.saved_zip_path() or (folder / "Texture-Pack.zip").is_file():
-                caption, state = "Prepare saved pack", "Saved download available"
-            elif (folder / "Texture-Pack.zip.download").is_file():
-                caption, state = "Resume download", "Download paused or interrupted"
-            else:
-                caption, state = "Download pack", "Not downloaded"
-            self.download_label.configure(text=state)
-            self.download_button.configure(text=caption)
-        legacy_message = ("Use Settings → Uninstall old Memory hook first." if loader["installed"] else
-                          loader["message"] if loader.get("unknown") else "Close EQ2 to finish removing the old Memory hook.")
-        if is_graphics:
-            text = (legacy_message if selected_loader_owned else
-                    graphics["message"] if not graphics["available"] or graphics_owned else
-                    "Choose your game folder first." if not self.game.get().strip() else
-                    "Prepare the downloaded pack first." if not self.prepared or not self.release_checked else
-                    "Ready for graphics-only installation. Close EQ2 first. "+shortcut_label(self.shortcut)+" switches quality.")
-        elif graphics_owned:
-            text = "Uninstall Graphics hook and close its active game sessions before choosing another install type."
-        elif loader_owned:
-            text = legacy_message
-        elif current:
-            text = "Textures installed. You're ready to play."
-        elif self.preflight and self.preflight.get("missing"):
-            text = "Required archives are missing. Patch this game folder fully, then try again."
-        elif self.prepared and self.game.get().strip() and self.preflight:
-            text = "Ready. Close EverQuest II and its launcher, then click Install."
-        elif not self.game.get().strip():
-            text = "Choose the game folder containing EverQuest2.exe and paks."
-        else:
-            text = "Prepare the downloaded pack to enable installation."
-        self.install_label.configure(text=text)
-        self.menu.entryconfigure(0, state="normal" if self.game.get().strip() else "disabled")
+        source = self.update_check.get('dds_source') or self.dds_source or {}
+        version = source.get('texture_version', self.prepared.get('texture_version') if self.prepared else texture_version(self.release))
+        count = source.get('named_texture_count', self.prepared.get('named_textures') if self.prepared else self.release.get('texture_count', 0))
+        self.pack_description.configure(text=f"{count:,} textures · Individual DDS files")
+        self.pack_update_label.configure(text=self.update_check.get('dds_error') or "Latest textures: " + version)
+        self.pack_versions_label.configure(text=("Saved textures: " + self.prepared['texture_version']) if self.prepared else "No verified DDS download yet")
+        self.download_button.configure(text="Verify / Update textures" if self.prepared else "Download / Resume")
+        self.download_label.configure(text="Saved DDS files verified" if self.prepared else "Downloads DDS chunks, then extracts individual files")
+        self.install_label.configure(text=("Use Settings → Uninstall old Memory hook first." if legacy else
+            graphics.get('message', '') if graphics.get('installed') or not graphics.get('available') else
+            "Choose your game folder first." if not game else
+            "Download the textures first." if not self.prepared else
+            "Ready. Close EQ2, then install. " + shortcut_label(self.shortcut) + " switches Original/Upscaled."))
+        self.menu.entryconfigure(0, state="normal" if game and not self.busy else "disabled")
 
     def open_app_update(self):
         if self.busy:
@@ -778,9 +687,7 @@ class TextureQuestApp:
         return True
 
     def remember_pack_version(self):
-        self.known_pack_versions[pack_identity(self.release)] = texture_version(self.release)
-        core._save(self.state_dir / "texturequest-versions.json",
-                   {"schema": "texturequest-local-versions-v1", "packs": self.known_pack_versions})
+        return  # DDS preparation has its own versioned receipt; legacy PAK receipts are preserved.
 
     def begin(self, kind, message, action):
         if self.busy:
@@ -821,16 +728,16 @@ class TextureQuestApp:
 
     def finish_progress(self, kind):
         self.progress.configure(value=100)
-        caption = "Overall install" if kind == "install" else "Overall download"
-        rows = self.release["archives"]
-        self.overall_label.configure(text=f"{caption}: 100% · {len(rows)}/{len(rows)} PAKs · {human_bytes(sum(row['bytes'] for row in rows))}")
+        objects = self.dds_store.object_rows(self.prepared) if self.prepared else []
+        self.overall_label.configure(text=f"Textures ready: {len(objects):,} DDS files · {human_bytes(sum(r['bytes'] for r in objects))}")
 
     def inspect(self, game, prepared=None, verify=False):
         if not game:
             return {}, None
         core.validate_game(game)
-        status = self.core.status(game, verify=True) if verify else self.core.status(game)
-        return status, self.core.preflight(prepared, game) if prepared else None
+        if prepared:
+            self.dds_store.verify(prepared, full=verify)
+        return {}, None
 
     def choose_game(self):
         folder = filedialog.askdirectory(title="Choose the folder containing EverQuest2.exe and paks", initialdir=self.game.get() or None)
@@ -848,12 +755,9 @@ class TextureQuestApp:
         self.begin("verify", "Checking your game folder and installed textures…", lambda: self.inspect(game, prepared, verify=full))
 
     def prepare_zip(self, path):
-        self._download_latest(base_zip=path)
+        self.set_message("This version uses individual DDS downloads. Click Download / Resume.")
 
     def download_pack(self):
-        if self.release.get("schema") == "texturequest-release-v2":
-            self.download_update()
-            return
         self._download_latest()
 
     def cache_in_use(self, graphics_check="cache_in_use"):
@@ -870,7 +774,7 @@ class TextureQuestApp:
             return True  # Unknown ownership must not authorize deleting/replacing cached files.
 
     def downloads_in_use(self):
-        # The add-on reads the downloaded archives only while EQ2 runs, so texture updates proceed with it installed.
+        # Legacy hooks may own old downloads; DDS activation also needs EQ2 closed.
         return self.cache_in_use("downloads_in_use")
 
     def graphics_selected(self):
@@ -965,9 +869,7 @@ class TextureQuestApp:
             raise RuntimeError("Uninstall the background loader and close its active game sessions before replacing PAK files.")
 
     def install_selected(self):
-        if self.graphics_selected():
-            return self.manage_graphics()
-        return self.install()
+        return self.manage_graphics()
 
     def uninstall_legacy_loader(self):
         if self.busy:
@@ -995,57 +897,32 @@ class TextureQuestApp:
     def check_updates(self):
         if self.busy:
             return
-        self.release_checked = False
-        self.update_check = {}
-        self.begin("check", "Checking texture and app versions on GitHub…",
-                   lambda: check_versions(self.release, self.app_version, self.state_dir))
+        def work():
+            result = check_versions(self.release, self.app_version, self.state_dir)
+            try:
+                result['dds_source'] = fetch_dds_source(minimum=(self.prepared or {}).get('texture_version', '1.2.4'))
+            except (OSError, ValueError) as error:
+                result['dds_error'] = 'Texture check unavailable: ' + str(error)
+            return result
+        self.begin("check", "Checking app and DDS texture updates…", work)
 
     def _download_latest(self, base_zip=None):
         if self.busy:
             return
         game = self.game.get().strip()
-        minimum = self.release["version"]
-        self.release_checked = False
-        def notify(message, done, total):
-            now = time.monotonic()
-            if now - self.last_progress > .12 or done == total or total == 1:
-                self.events.put(("download-progress", message, done, total))
-                self.last_progress = now
+        if not game:
+            self.set_message("Choose your game folder first so the texture map can match its stock files.")
+            return
+        minimum = (self.prepared or {}).get('texture_version', '1.2.4')
         def work():
-            try:
-                latest = fetch_latest(self.state_dir, minimum_version=minimum, pause=self.pause.is_set, current_manifest=self.release)
-            except (OSError, ValueError):
-                prepared = self.core.saved_ready(self.bundled_release) if pack_identity(self.release) == pack_identity(self.bundled_release) else None
-                if prepared is None:
-                    raise
-                status, preflight = self.inspect(game, prepared)
-                notify("Update check unavailable; reusing saved files matching this app's bundled manifest.", 1, 1)
-                return self.bundled_release, prepared, status, preflight
-            if latest.get("schema") == "texturequest-release-v3":
-                try:
-                    staged = self.graphics_manager.stage_map(latest)
-                except (OSError, ValueError) as error:
-                    raise RuntimeError("Texture update stopped: the Graphics hook's texture map for this release is unavailable ("
-                                       + str(error) + "). Your current textures are unchanged.") from error
-                try:
-                    prepared = prepare_direct(self.core, latest, notify, self.pause.is_set,
-                                              cache_in_use=self.downloads_in_use,
-                                              overall_progress=self.report_overall)
-                except BaseException:
-                    self.graphics_manager.discard_map(staged)
-                    raise
-                self.graphics_manager.activate_map(staged)
-            elif latest.get("schema") == "texturequest-release-v2":
-                prepared = prepare_update(self.core, latest, game or None, base_zip,
-                                          notify, self.pause.is_set)
-            else:
-                path = base_zip or self.saved_zip_path()
-                if not path:
-                    path = download(latest, self.state_dir / "downloads", notify, self.pause.is_set)
-                prepared = prepare_release(self.core, path, latest, self.report)
-            status, preflight = self.inspect(game, prepared)
-            return latest, prepared, status, preflight
-        self.begin("update", "Checking the latest release, then reusing saved files and downloading what is needed…", work)
+            source = fetch_dds_source(pause=self.pause.is_set, minimum=minimum)
+            choices = core._json(resource('shared-texture-choices.json').read_bytes())
+            prepared = self.dds_store.prepare(source, game, choices, pause=self.pause.is_set,
+                progress=self.report, overall=self.report_overall, in_use=self.downloads_in_use)
+            self.graphics_manager.activate_prepared(game, prepared)
+            self.dds_source = source
+            return self.release, prepared, {}, None
+        self.begin("update", "Downloading and verifying individual DDS textures…", work)
 
     def request_pause(self):
         if self.busy in ("download", "update"):
@@ -1054,57 +931,13 @@ class TextureQuestApp:
             self.set_message("Pausing safely. Downloaded data will be kept.")
 
     def install(self):
-        if self.install_mode.get() != "pak":
-            self.set_message("Select Replace PAK files before installing into the game folder.", error=True)
-            return
-        if not self.release_checked or not can_install(self.busy, self.prepared, self.preflight):
-            return
-        prepared, game = self.prepared, self.game.get().strip()
-        try:
-            self.require_pak_mode_available(game)
-        except RuntimeError as error:
-            self.set_message(str(error), error=True)
-            return
-        def work():
-            self.require_pak_mode_available(game)
-            ready = self.core.preflight(prepared, game)
-            needed = game_space_needed(ready)
-            if shutil.disk_usage(ready["paks_dir"]).free < needed:
-                raise OSError(f"Free at least {human_bytes(needed)} on the game drive for the larger textures and a staged archive.")
-            return self.core.install(prepared, game, progress=self.report, overall_progress=self.report_overall)
-        self.begin("install", "Installing TextureQuest. Keep the game and launcher closed until copying finishes…",
-                   work)
+        return self.manage_graphics()
 
     def return_to_stock(self):
-        if self.busy:
-            return
-        game = self.game.get().strip()
-        def work():
-            self.require_pak_mode_available(game)
-            self.core.uninstall(game, progress=self.report)
-            return self.core.status(game)
-        self.begin("stock", "Preparing to return to original textures…", work)
+        self.set_message("Uninstall the graphics hook to stop texture replacement. If you used an old PAK install, restore stock files with the official patcher.")
 
     def clear_cache(self):
-        if self.busy or self.cache_in_use():
-            if not self.busy:
-                self.set_message("Uninstall the background loader and close its active game sessions before clearing saved textures.", error=True)
-            return
-        if not messagebox.askyesno("Clear saved textures", "Remove this app's saved texture files?\n\nInstalled game textures and installation records stay intact. Reinstalling will need a new download.", parent=self.root):
-            return
-        def work():
-            with core._lock(self.state_dir / "operation.lock"), core._lock(self.state_dir / "sideload/helper-owner.lock"):
-                if self.cache_in_use():
-                    raise RuntimeError("Uninstall the background loader and close its active game sessions before clearing saved textures")
-                for name in ("downloads", "prepared", "explorer"):
-                    target = core._plain(self.state_dir / name, self.state_dir)
-                    if target.exists():
-                        for entry in target.rglob("*"):
-                            core._plain(entry, target)
-                        shutil.rmtree(target)
-                core._plain(self.state_dir / "texturequest-prepared.json", self.state_dir).unlink(missing_ok=True)
-                core._plain(self.state_dir / "direct-prepared.json", self.state_dir).unlink(missing_ok=True)
-        self.begin("clear", "Clearing downloaded files. Game textures and installation records are kept…", work)
+        self.set_message("Saved DDS files are kept for updates and reinstalling. Uninstalling the hook leaves them intact.")
 
     def poll(self):
         try:
@@ -1141,7 +974,7 @@ class TextureQuestApp:
                     percent = min(100 * done / max(total, 1), 99.9)
                     self.progress.configure(mode="determinate", value=percent)
                     caption = "Overall install" if self.busy == "install" else "Overall download"
-                    self.overall_label.configure(text=f"{caption}: {percent:.1f}% · {completed}/{files} PAKs · {human_bytes(done)} of {human_bytes(total)}")
+                    self.overall_label.configure(text=f"{caption}: {percent:.1f}% · {completed}/{files} DDS files · {human_bytes(done)} of {human_bytes(total)}")
                     self.set_message(message)
                     continue
                 event_type, kind, value = event
@@ -1177,7 +1010,9 @@ class TextureQuestApp:
                     self.remember_pack_version()
                     if self.update_check.get("pack", {}).get("status") == "verified":
                         self.update_check["pack"]["update_available"] = False
-                    self.set_message("Pack verified. Click Install when the game and launcher are closed.")
+                    pending = self.prepared.get('coverage', {}).get('pending_groups', 0)
+                    self.set_message("DDS files ready. Close EQ2, then install the graphics hook." +
+                        (f" {pending} stock matches need attention; see the preparation receipt." if pending else ""))
                     self.finish_progress("download")
                 elif kind == "check":
                     self.update_check = value
@@ -1204,11 +1039,11 @@ class TextureQuestApp:
                         self.prepare_zip(initial)
                 elif kind in ("verify", "recover"):
                     self.installed, self.preflight = value
-                    self.set_message(self.recover_message if kind == "recover" else installation_summary(self.installed, self.release), error=kind == "recover")
+                    self.set_message(self.recover_message if kind == "recover" else "Game folder and saved DDS files verified.", error=kind == "recover")
                 elif event_type == "done" and kind == "install":
                     self.installed = value
                     self.remember_pack_version()
-                    self.set_message("TextureQuest is ready. After a game patch, reinstall replaced PAK textures if needed.")
+                    self.set_message("TextureQuest is ready. The graphics hook uses individual DDS files.")
                     self.finish_progress("install")
                     self.show_install_success()
                 elif kind in ("graphics-install", "graphics-uninstall", "graphics-shortcut"):
@@ -1316,13 +1151,13 @@ def main(argv=None):
             total = sum(row['bytes'] for row in app.release['archives'])
             files = len(app.release['archives'])
             app.busy = "update"
-            app.events.put(("overall-progress", "Downloading fixture.vpk", total // 2, total, files // 2, files))
+            app.events.put(("overall-progress", "Downloading fixture.dds", total // 2, total, files // 2, files))
             app.events.put(("download-progress", "Current file commit", 0, 1))
             app.poll()
             overall_download = float(app.progress.cget("value"))
             assert 49.9 < overall_download < 50.1 and "Overall download" in app.overall_label.cget("text")
             app.busy = "install"
-            app.events.put(("overall-progress", "Installing fixture.vpk", total // 4, total, files // 4, files))
+            app.events.put(("overall-progress", "Installing graphics hook", total // 4, total, files // 4, files))
             app.poll()
             overall_install = float(app.progress.cget("value"))
             assert 24.9 < overall_install < 25.1 and "Overall install" in app.overall_label.cget("text")

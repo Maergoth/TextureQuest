@@ -15,10 +15,10 @@ from texture_swapper import core
 from texturequest_sideload import LoaderManager, _pin, _json, _alive, _live_status_bytes, _remove_run, _signal_stop
 from texturequest_processes import ensure_closed
 from texturequest_shortcut import normalize, label
-from texturequest_texture_map import activate_map, discard_map, fetch_map, stage_map
+from texturequest_dds_source import DDSStore
 import texturequest_graphics_catalog as catalog
 
-RUNTIME_SCHEMA = 'texturequest-graphics-runtime-v3'
+RUNTIME_SCHEMA = 'texturequest-graphics-runtime-v4'
 RECORD_SCHEMA = 'texturequest-graphics-addon-installation-v1'
 PROXY_NAMES = ('dxgi.dll', 'd3d11.dll')
 STANDARD_MARKER = b'only limited add-on functionality'
@@ -64,7 +64,8 @@ class GraphicsManager:
         if not path.exists():
             return None
         doc = _json(path)
-        need(doc.get('schema') == RUNTIME_SCHEMA and doc.get('reshade_build') == 'addon', 'Unknown graphics runtime.')
+        need(doc.get('schema') == RUNTIME_SCHEMA and doc.get('reshade_build') == 'addon' and
+             doc.get('map_schema') == 'TQMAP002', 'Unknown graphics runtime.')
         names = {row['name'] for row in doc['files']}
         need(doc.get('addon') in names and doc.get('reshade') in names, 'Graphics runtime does not pin its add-on and ReShade.')
         for row in doc['files']:
@@ -145,7 +146,7 @@ class GraphicsManager:
         os.replace(tmp, self.base / 'shortcut.txt')
 
     def _addon_ini(self, game, map_path):
-        lines = ['[TextureQuest]', 'Map=' + str(map_path), 'Downloads=' + str(self.state_dir / 'downloads'),
+        lines = ['[TextureQuest]', 'Map=' + str(map_path), 'Downloads=' + str(self.state_dir / 'dds' / 'objects'),
                  'Shortcut=' + str(self.base / 'shortcut.txt'), 'GamePaks=' + str(game / 'paks'), '']
         return '\r\n'.join(lines).encode('utf-8')
 
@@ -161,7 +162,8 @@ class GraphicsManager:
             missing = [Path(x['path']).name for x in record['files'] if not Path(x['path']).is_file()]
             message = ('Interrupted graphics installation. Close EQ2 and Uninstall before retrying.' if record['phase'] != 'installed' else
                        'Hook file missing (' + ', '.join(missing) + '). Close EQ2, then Uninstall and Install to repair.' if missing else
-                       'Graphics hook installed as a ReShade add-on. ' + label(binding) + ' switches quality.')
+                       'Old PAK-reading hook. Close EQ2, then Uninstall and Install to use DDS files.' if record.get('payload') != 'loose-dds' else
+                       'Graphics hook installed. ' + label(binding) + ' switches Original/Upscaled.')
             return dict(result, installed=True, active_sessions=self._games_open(game), available=True, shortcut=binding, message=message)
         if self._proxy_170(game):
             return dict(result, installed=True, active_sessions=self._games_open(game), available=True,
@@ -205,23 +207,32 @@ class GraphicsManager:
         """Whether the downloaded archives are in use: EQ2 is running with the add-on, or an older hook is installed."""
         return self.legacy_in_use() or any(self.status(g)['active_sessions'] for g in self._all_games() if self._addon_installed(g))
 
-    def stage_map(self, manifest):
-        """When the add-on is installed, download and verify the map for this release before its archives change.
+    def _activate_prepared(self, game, prepared):
+        """Caller holds operation/helper locks. Old maps and DDS objects remain usable."""
+        DDSStore(self.state_dir).verify(prepared)
+        ensure_closed()
+        need(str(core._plain(prepared['game'])).casefold() == str(core._plain(game)).casefold(),
+             'These textures were matched to a different game folder. Verify the download again.')
+        raw = core._plain(prepared['map']['path'], self.state_dir).read_bytes()
+        self.base.mkdir(parents=True, exist_ok=True)
+        temporary = self.base / ('map-' + uuid.uuid4().hex + '.tmp')
+        try:
+            with temporary.open('xb') as stream:
+                stream.write(raw); stream.flush(); os.fsync(stream.fileno())
+            os.replace(temporary, self.base / 'texturequest-map.bin')
+        finally:
+            temporary.unlink(missing_ok=True)
+        return self.base / 'texturequest-map.bin'
 
-        Raises when the map is unavailable, so the update stops while the current archives and map still match.
-        Returns the staged map for activate_map; None when there is nothing to activate."""
-        if not any(self._addon_installed(g) for g in self._all_games()):
-            return None
-        with core._lock(self.state_dir / 'operation.lock'):
-            return stage_map(self.state_dir, core._digest(manifest))
-
-    def activate_map(self, staged):
-        """Make the staged map active once the matching archives are in place."""
-        with core._lock(self.state_dir / 'operation.lock'):
-            activate_map(self.state_dir, staged)
-
-    def discard_map(self, staged):
-        discard_map(staged)
+    def activate_prepared(self, game, prepared):
+        """An installed DDS add-on picks up a verified update on its next launch."""
+        record = self._record(game)
+        if not record or record['phase'] != 'installed' or record.get('payload') != 'loose-dds':
+            return
+        ensure_closed()
+        with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
+            ensure_closed()
+            self._activate_prepared(game, prepared)
 
     def installed_game(self):
         games = [g for g in self._all_games() if self.status(g)['installed']]
@@ -293,8 +304,8 @@ class GraphicsManager:
             kinds = {name: classify(game / name) for name in PROXY_NAMES}
             foreign = [name for name, kind in kinds.items() if kind == 'foreign']
             need(not foreign, 'An unknown graphics proxy is installed: ' + ', '.join(foreign) + '. Remove it first; it was left unchanged.')
-            report('Downloading the texture map.')
-            map_path = fetch_map(self.state_dir, prepared)
+            report('Verifying loose DDS files and texture map.')
+            map_path = self._activate_prepared(game, prepared)
             self._write_key(binding)
             writes, owned = [], False
             if all(kind == 'none' for kind in kinds.values()):
@@ -309,7 +320,7 @@ class GraphicsManager:
                 need(not path.exists(), path.name + ' already exists. It was left unchanged.')
             files = [dict(path=str(p), bytes=len(d), sha256=_sha(d)) for p, d in writes]
             doc = dict(schema=RECORD_SCHEMA, phase='installing', id=uuid.uuid4().hex, game=str(game), files=files,
-                       reshade_owned=owned, shortcut=binding, map=str(map_path))
+                       reshade_owned=owned, shortcut=binding, map=str(map_path), payload='loose-dds')
             self._save(game, doc)
             for path, data in writes:
                 ensure_closed()
