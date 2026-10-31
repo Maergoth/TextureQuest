@@ -1,197 +1,219 @@
-"""New graphics-only installer tests: invented archives, no game/native calls."""
+"""Add-on installer tests: invented game folders and DLLs, no native calls."""
 from pathlib import Path
 import hashlib
 import json
-import struct
 import sys
 import tempfile
-from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 import texturequest_graphics_proxy as g
-from texture_swapper import core
+
+ADDON_BUILD = b'MZ fake ReShadeRegisterAddon add-on build'
+STANDARD_BUILD = b'MZ fake ReShadeRegisterAddon only limited add-on functionality'
+FOREIGN = b'MZ some other proxy'
+PROVIDER_170 = b'MZ fake 1.7.0 provider ReShadeRegisterAddon'
 
 
-def dds(n, value):
-    words=[0]*31
-    words[0],words[1],words[2],words[3],words[6],words[18]=124,0x21007,n,n,1,32
-    words[19:26]=[0x41,0,32,0xff0000,0xff00,0xff,0xff000000]
-    words[26]=0x1000
-    return b'DDS '+struct.pack('<31I',*words)+bytes([value,4,7,255])*(n*n)
-
-
-class FixtureManager(g.GraphicsManager):
-    def _games_open(self,game): return 0
-    def _exclusive_mode(self,game): pass
-    def _prepare_cache(self,game,home,runtime,report):
-        old,new=dds(4,10),dds(8,99)
-        source=home/'source.vpk';target=home/'target.vpk'
-        source.write_bytes(b'invented source');target.write_bytes(b'invented target')
-        oldpin=lambda p:dict(path=str(p),bytes=p.stat().st_size,sha256=hashlib.sha256(p.read_bytes()).hexdigest())
-        prep=home/'ready';(prep/'receipts').mkdir(parents=True)
-        decision=dict(action='RELEASED_SOURCE_COMPATIBLE',member='fixture.dds',observed=dict(bytes=len(old),
-            sha256=hashlib.sha256(old).hexdigest(),target=dict(bytes=len(new),sha256=hashlib.sha256(new).hexdigest())))
-        receipt=dict(name='fixture.vpk',source=oldpin(source),output=oldpin(target),decisions=[decision])
-        (prep/'receipts/fixture.json').write_bytes(g.catalog.canonical(receipt))
-        ready=dict(schema='tq-fullpack-ready-v1',game=str(game),unavailable=[],applied=1,provider_count=1,
-            providers=[dict(name='fixture.vpk',source=oldpin(source),output=oldpin(target),applied=1,receipt='receipts/fixture.json')])
-        (prep/'READY.json').write_bytes(g.catalog.canonical(ready))
-        api=SimpleNamespace(index=lambda f,n:SimpleNamespace(entries=[SimpleNamespace(member='fixture.dds')]),
-            member_data=lambda f,e:old if f.read()==b'invented source' else new)
-        offline=SimpleNamespace(_runtime=lambda:dict(portable_pending=True,bundle='inert'),
-            _materialize=lambda bundle,game:'inert component')
-        ready_result=dict(ready_json=dict(path=str(prep/'READY.json')),applied=1)
-        with patch.object(g,'LoaderManager',return_value=offline),patch.object(g,'_prepare',return_value=ready_result),patch.object(g,'vpk',api):
-            return super()._prepare_cache(game,home,runtime,report)
-
-
-
-class ProxyTests(unittest.TestCase):
+class Fixture(unittest.TestCase):
     def setUp(self):
-        root=Path(r'D:\eq2 paks\work\tmp');root.mkdir(exist_ok=True)
-        self.tmp=tempfile.TemporaryDirectory(prefix='gpx-',dir=root);self.root=Path(self.tmp.name)
-        self.game=self.root/'game';(self.game/'paks').mkdir(parents=True)
-        (self.game/'EverQuest2.exe').write_bytes(b'inert EXE, never executed')
-        (self.game/'ReShade.ini').write_bytes(b'[RENODX]\nPreserve=1\n')
-        (self.game/'paks/unchanged.vpk').write_bytes(b'unchanged')
-        self.state=self.root/'data';self.state.mkdir();self.rt=self.root/'runtime';self.rt.mkdir()
-        files=[]
-        for name in g.NATIVE:
-            p=self.rt/name;p.write_bytes(('inert '+name).encode());files.append(dict(name=name,bytes=p.stat().st_size,sha256=hashlib.sha256(p.read_bytes()).hexdigest()))
-        doc=dict(schema='texturequest-graphics-runtime-v2',capabilities=list(g.CAPABILITIES),files=files,
-            canonical_role='stock',archive_redirection=False,background_process=False,full_pack_prepared=True,
-            config_schema='TQGXCFG2',index_schema='TQGX0002')
-        (self.rt/'RUNTIME.json').write_bytes(g.catalog.canonical(doc))
-        self.prepared=dict(schema='texturequest-direct-prepared-v1',inert=True)
-        core._save(self.state/'direct-prepared.json',self.prepared)
-        self.m=FixtureManager(self.state,runtime_dir=self.rt)
-        self.closed=patch.object(g,'ensure_closed');self.closed.start()
+        self.root = Path(tempfile.mkdtemp())
+        self.game = self.root / 'Game ü'
+        (self.game / 'paks').mkdir(parents=True)
+        (self.game / 'EverQuest2.exe').write_bytes(b'exe')
+        self.state = self.root / 'state'
+        (self.state / 'downloads').mkdir(parents=True)
+        self.runtime = self.root / 'runtime'
+        self.runtime.mkdir()
+        (self.runtime / 'TextureQuest.addon64').write_bytes(b'addon')
+        (self.runtime / 'ReShade64.dll').write_bytes(ADDON_BUILD)
+        files = [dict(name=n, bytes=(self.runtime / n).stat().st_size, sha256=hashlib.sha256((self.runtime / n).read_bytes()).hexdigest())
+                 for n in ['TextureQuest.addon64', 'ReShade64.dll']]
+        (self.runtime / 'RUNTIME.json').write_text(json.dumps(dict(schema='texturequest-graphics-runtime-v3', addon='TextureQuest.addon64',
+            reshade='ReShade64.dll', reshade_version='6.8.0', reshade_build='addon', map_schema='TQMAP001', files=files)))
+        self.map = self.state / 'graphics' / 'texturequest-map-1.2.3.bin'
+        self.map.parent.mkdir(parents=True)
+        self.map.write_bytes(b'map')
+        self.manager = g.GraphicsManager(self.state, runtime_dir=self.runtime)
+        self.patches = [patch.object(g, 'ensure_closed'), patch.object(g.GraphicsManager, '_games_open', return_value=0),
+                        patch.object(g.GraphicsManager, '_exclusive_mode'),
+                        patch.object(g, 'fetch_map', return_value=self.map),
+                        patch.object(g.core, 'validate_game', side_effect=lambda game: Path(game) / 'EverQuest2.exe')]
+        for p in self.patches:
+            p.start()
+        self.addCleanup(lambda: [p.stop() for p in self.patches])
 
-    def tearDown(self):
-        self.closed.stop()
-        assert self.root.resolve().is_relative_to(Path(r'D:\eq2 paks\work\tmp').resolve())
-        self.tmp.cleanup()
+    def install(self, **kwargs):
+        return self.manager.install(self.game, {'release_sha256': 'a' * 64}, **kwargs)
 
-    def install(self): return self.m.install(self.game,self.prepared)
-    def unchanged(self):
-        self.assertEqual((self.game/'ReShade.ini').read_bytes(),b'[RENODX]\nPreserve=1\n')
-        self.assertEqual((self.game/'paks/unchanged.vpk').read_bytes(),b'unchanged')
-        self.assertEqual((self.game/'EverQuest2.exe').read_bytes(),b'inert EXE, never executed')
+    def record(self):
+        return json.loads(next((self.state / 'graphics-addon').glob('*.json')).read_text())
 
-    def test_normal_install_uses_stock_catalog_and_only_two_additions(self):
-        result=self.install();self.assertTrue(result['installed']);self.assertFalse(result['running'])
-        d=self.m._record(self.game);home=Path(d['candidate']);raw=(home/'addons/catalog.cfg').read_bytes()
-        self.assertEqual(raw[:8],b'TQGXCFG2');self.assertEqual(struct.unpack_from('<II',raw,8),(2,0))
-        self.assertEqual({p.name for p in self.game.iterdir()},{'paks','EverQuest2.exe','ReShade.ini','d3d11.dll','TextureQuest.ini'})
-        self.assertEqual((home/'shortcut.txt').read_bytes(),b'TQKEY1\n106\n0\n')
-        self.assertIn(str(home/'addons').lower().encode(),(home/'ReShade.ini').read_bytes())
-        self.assertEqual(self.m.installed_game(),str(self.game));self.assertTrue(self.m.cache_in_use());self.unchanged()
+    def proxy_170(self, phase, present=('d3d11.dll', 'TextureQuest.ini')):
+        """A 1.7.0 graphics-proxy record and game files, shaped as that release wrote them."""
+        sources = {'TextureQuest.ini': b'[INSTALL]\nBasePath=c:\\cache\n', 'd3d11.dll': PROVIDER_170}
+        for name in present:
+            (self.game / name).write_bytes(sources[name])
+        files = [dict(path=str(self.game / n), bytes=len(d), sha256=hashlib.sha256(d).hexdigest()) for n, d in sources.items()]
+        doc = dict(schema='texturequest-graphics-proxy-installation-v1', phase=phase, id='b' * 32, game=str(self.game),
+                   candidate=str(self.root / 'cache' / ('b' * 32)), files=files, shortcut=dict(vk=106, modifiers=0),
+                   archive_redirection=False, background_process=False, rows=1, ambiguous=0)
+        doc['record_sha256'] = g.core._digest(doc)
+        g.core._atomic(self.state / 'graphics-proxy' / (self.manager._key(self.game) + '.json'), doc)
 
-    def test_uninstall_reinstall_preserves_cache_and_history(self):
-        self.install();old=self.m._record(self.game);home=Path(old['candidate'])
-        self.assertFalse(self.m.uninstall(self.game)['installed']);self.assertTrue((home/'textures/payloads.bin').exists())
-        self.assertTrue(list((home/'uninstall-history').glob('*.json')));self.assertFalse(self.m.cache_in_use())
-        self.install();self.assertNotEqual(self.m._record(self.game)['id'],old['id']);self.unchanged()
-
-    def test_shortcut_updates_live_private_key_without_dll_or_game_changes(self):
-        self.install();dll=(self.game/'d3d11.dll').read_bytes();d=self.m._record(self.game)
-        result=self.m.set_shortcut(self.game,dict(vk=0x77,modifiers=2))
-        self.assertEqual(result['shortcut'],dict(vk=0x77,modifiers=2))
-        self.assertEqual((Path(d['candidate'])/'shortcut.txt').read_bytes(),b'TQKEY1\n119\n2\n')
-        self.assertEqual((self.game/'d3d11.dll').read_bytes(),dll);self.unchanged()
-
-    def test_foreign_proxy_is_never_overwritten(self):
-        (self.game/'d3d11.dll').write_bytes(b'foreign')
-        with self.assertRaises(ValueError): self.install()
-        self.assertEqual((self.game/'d3d11.dll').read_bytes(),b'foreign')
-
-    def test_existing_dxgi_or_owned_name_config_refuses(self):
-        for name in ['dxgi.dll','TextureQuest.ini']:
-            p=self.game/name;p.write_bytes(b'foreign')
-            with self.assertRaises(ValueError):self.install()
-            self.assertEqual(p.read_bytes(),b'foreign');p.unlink()
-
-    def test_runtime_tamper_refuses(self):
-        (self.rt/'d3d11.dll').write_bytes(b'changed')
-        with self.assertRaises(RuntimeError):self.install()
-
-    def test_catalog_direction_descriptor_mismatch_refuses(self):
-        p=self.rt/'RUNTIME.json';d=json.loads(p.read_bytes());d['canonical_role']='upscaled';p.write_bytes(g.catalog.canonical(d))
-        with self.assertRaises(ValueError):self.install()
-
-    def test_dual_load_refuses(self):
-        with self.assertRaises(ValueError):self.m.install(self.game,self.prepared,dual_load=True)
-
-    def test_game_open_refuses(self):
-        with patch.object(g,'ensure_closed',side_effect=ValueError('inert open game')):
-            with self.assertRaises(ValueError):self.install()
-        self.assertFalse((self.game/'d3d11.dll').exists())
-
-    def test_changed_download_metadata_refuses(self):
-        with self.assertRaises(ValueError):self.m.install(self.game,dict(other=True))
-
-    def test_changed_proxy_is_preserved_during_uninstall(self):
-        self.install();(self.game/'d3d11.dll').write_bytes(b'foreign replacement')
-        with self.assertRaises(RuntimeError):self.m.uninstall(self.game)
-        self.assertTrue((self.game/'TextureQuest.ini').exists());self.unchanged()
-
-    def test_partial_copy_has_recoverable_owned_record(self):
-        real=Path.open
-        def fail_dll(p,*args,**kw):
-            if p==self.game/'d3d11.dll' and args and args[0]=='xb':raise OSError('inert disk failure')
-            return real(p,*args,**kw)
-        with patch.object(Path,'open',fail_dll):
-            with self.assertRaises(OSError):self.install()
-        self.assertEqual(self.m._record(self.game)['phase'],'failed')
-        self.assertTrue(self.m.status(self.game)['installed'])
-        self.assertFalse(self.m.uninstall(self.game)['installed']);self.unchanged()
-
-    def test_patcher_removed_proxy_can_be_uninstalled_and_reinstalled(self):
-        self.install();(self.game/'d3d11.dll').unlink()
-        self.assertIn('missing',self.m.status(self.game)['message'])
-        self.m.uninstall(self.game);self.install();self.unchanged()
-
-    def test_ascii_path_refusal_before_any_game_writes(self):
-        self.m.cache_base=self.root/'café'
-        with self.assertRaisesRegex(ValueError,'ASCII'):self.install()
-        self.assertFalse((self.game/'d3d11.dll').exists())
-
-    def test_prototype_record_without_shortcut_is_recognized(self):
-        self.install();p=self.m._record_path(self.game);d=json.loads(p.read_bytes());d.pop('shortcut')
-        d['hotkey']='Numpad *';d['record_sha256']=core._digest({k:v for k,v in d.items() if k!='record_sha256'})
-        p.write_bytes(g.catalog.canonical(d))
-        self.assertEqual(self.m.status(self.game)['shortcut'],dict(vk=106,modifiers=0))
-        self.assertEqual(self.m.installed_game(),str(self.game))
-        self.m.uninstall(self.game);self.unchanged()
-
-    def test_record_cannot_redirect_uninstall_to_unrelated_file(self):
-        self.install();p=self.m._record_path(self.game);d=json.loads(p.read_bytes())
-        d['files'][0]['path']=str(self.game/'ReShade.ini')
-        d['record_sha256']=core._digest({k:v for k,v in d.items() if k!='record_sha256'});p.write_bytes(g.catalog.canonical(d))
-        with self.assertRaises(ValueError):self.m.uninstall(self.game)
-        self.unchanged()
-
-    def test_pak_engine_rechecks_proxy_ownership_beneath_its_locks(self):
-        from texturequest_direct import DirectSwapper
-        import texturequest_sideload as legacy
-        import texturequest_graphics as graphics
-        inactive=SimpleNamespace(cache_in_use=lambda:False)
-        active=SimpleNamespace(cache_in_use=lambda:True)
-        with patch.object(legacy,'LoaderManager',return_value=inactive),patch.object(graphics,'GraphicsManager',return_value=active):
-            with self.assertRaisesRegex(RuntimeError,'Graphics hook'):
-                DirectSwapper(self.state)._assert_background_inactive()
-        self.assertFalse((self.game/'d3d11.dll').exists());self.unchanged()
-
-    def test_legacy_uninstall_only_signals_exact_owned_event(self):
-        home=self.root/'old-home';home.mkdir();legacy=dict(schema='texturequest-graphics-installation-v1',game=str(self.game),phase='installed',
-            installation_id='a'*32,home=str(home),runtime_dir=str(self.rt),sessions=[],watcher=dict(pid=123,birth100ns=456,exe='inert'),
-            stop_event='Local\\TQWatch-'+'a'*32,startup_name='TextureQuestGraphics-'+self.m._key(self.game),startup_command='inert old command')
-        legacy['record_sha256']=core._digest(legacy);p=self.m._legacy_path(self.game);p.parent.mkdir(parents=True);p.write_bytes(g.catalog.canonical(legacy))
-        with patch.object(g,'_alive',side_effect=[True,False,False]),patch.object(g,'_signal_stop') as signal,patch.object(g,'_remove_run') as remove:
-            self.m.uninstall(self.game);signal.assert_called_once_with(legacy['stop_event']);remove.assert_called_once_with(legacy['startup_name'],legacy['startup_command'])
-        self.assertEqual(self.m._legacy(self.game)['phase'],'uninstalled');self.unchanged()
+    def proxy_170_phase(self):
+        return json.loads((self.state / 'graphics-proxy' / (self.manager._key(self.game) + '.json')).read_text(encoding='utf-8'))['phase']
 
 
-if __name__=='__main__':unittest.main(verbosity=2)
+class InstallTests(Fixture):
+    def test_fresh_install_adds_reshade_and_addon(self):
+        self.install()
+        names = sorted(Path(f['path']).name for f in self.record()['files'])
+        self.assertEqual(names, ['ReShade.ini', 'TextureQuest.addon64', 'TextureQuest.ini', 'dxgi.dll'])
+        self.assertTrue(self.record()['reshade_owned'])
+        self.assertEqual((self.game / 'dxgi.dll').read_bytes(), ADDON_BUILD)
+
+    def test_existing_addon_build_gets_addon_only(self):
+        (self.game / 'dxgi.dll').write_bytes(ADDON_BUILD)
+        self.install()
+        names = sorted(Path(f['path']).name for f in self.record()['files'])
+        self.assertEqual(names, ['TextureQuest.addon64', 'TextureQuest.ini'])
+        self.assertFalse(self.record()['reshade_owned'])
+
+    def test_standard_reshade_refused(self):
+        (self.game / 'dxgi.dll').write_bytes(STANDARD_BUILD)
+        (self.game / 'ReShade.ini').write_text('[GENERAL]\nPresetPath=mine.ini\n')
+        self.proxy_170('installed')
+        with self.assertRaisesRegex(ValueError, 'dxgi.dll') as caught:
+            self.install()
+        self.assertIs(type(caught.exception), ValueError)
+        self.assertEqual((self.game / 'dxgi.dll').read_bytes(), STANDARD_BUILD)
+        self.assertEqual((self.game / 'ReShade.ini').read_text(), '[GENERAL]\nPresetPath=mine.ini\n')
+        self.assertEqual(sorted(p.name for p in self.game.glob('TextureQuest.*')), ['TextureQuest.ini'])
+        self.assertEqual((self.game / 'TextureQuest.ini').read_bytes(), b'[INSTALL]\nBasePath=c:\\cache\n')
+        self.assertEqual(self.proxy_170_phase(), 'installed')
+        self.assertFalse((self.state / 'graphics-addon').exists())
+        self.assertFalse((self.state / 'graphics' / 'shortcut.txt').exists())
+        g.fetch_map.assert_not_called()
+
+    def test_foreign_proxy_refused(self):
+        (self.game / 'd3d11.dll').write_bytes(FOREIGN)
+        with self.assertRaisesRegex(ValueError, 'd3d11.dll'):
+            self.install()
+        self.assertFalse((self.game / 'TextureQuest.addon64').exists())
+
+    def test_addon_path_respected(self):
+        (self.game / 'dxgi.dll').write_bytes(ADDON_BUILD)
+        (self.game / 'addons').mkdir()
+        (self.game / 'ReShade.ini').write_text('[ADDON]\nAddonPath=.\\addons\n')
+        self.install()
+        self.assertTrue((self.game / 'addons' / 'TextureQuest.addon64').is_file())
+        self.assertTrue((self.game / 'addons' / 'TextureQuest.ini').is_file())
+
+    def test_unicode_game_path_round_trips_config(self):
+        self.install()
+        text = (self.game / 'TextureQuest.ini').read_text(encoding='utf-8')
+        self.assertIn(str(self.game / 'paks'), text)
+        self.assertIn(str(self.map), text)
+
+    def test_legacy_proxy_uninstalled_first(self):
+        with patch.object(g.GraphicsManager, '_uninstall_proxy_170') as legacy:
+            legacy.side_effect = lambda game: None
+            self.install()
+            legacy.assert_called_once()
+
+
+class Proxy170Tests(Fixture):
+    def test_installed_record_migrates(self):
+        self.proxy_170('installed')
+        self.install()
+        self.assertEqual(self.proxy_170_phase(), 'uninstalled')
+        self.assertFalse((self.game / 'd3d11.dll').exists())
+        self.assertEqual((self.game / 'dxgi.dll').read_bytes(), ADDON_BUILD)
+        self.assertTrue(self.record()['reshade_owned'])
+
+    def test_failed_record_with_only_ini_migrates(self):
+        self.proxy_170('failed', present=('TextureQuest.ini',))
+        self.install()
+        self.assertEqual(self.proxy_170_phase(), 'uninstalled')
+        self.assertTrue(self.record()['reshade_owned'])
+
+    def test_changed_file_kept_and_install_refuses(self):
+        self.proxy_170('installed')
+        (self.game / 'TextureQuest.ini').write_bytes(b'edited')
+        with self.assertRaisesRegex(ValueError, 'TextureQuest.ini'):
+            self.install()
+        self.assertEqual((self.game / 'TextureQuest.ini').read_bytes(), b'edited')
+        self.assertFalse((self.game / 'd3d11.dll').exists())
+        self.assertEqual(self.proxy_170_phase(), 'uninstalled')
+
+    def test_unrecorded_provider_refused_as_foreign(self):
+        (self.game / 'd3d11.dll').write_bytes(PROVIDER_170)
+        with patch.object(g, 'PROVIDER_170_SHA256', hashlib.sha256(PROVIDER_170).hexdigest()):
+            with self.assertRaisesRegex(ValueError, 'd3d11.dll'):
+                self.install()
+        self.assertFalse((self.game / 'TextureQuest.addon64').exists())
+
+    def test_live_install_status_and_uninstall(self):
+        self.proxy_170('installed')
+        status = self.manager.status(self.game)
+        self.assertTrue(status['installed'])
+        self.assertIn('1.7.0', status['message'])
+        self.assertEqual(self.manager.installed_game(), str(self.game))
+        result = self.manager.uninstall(self.game)
+        self.assertEqual(result['message'], 'Graphics hook removed.')
+        self.assertFalse(result['installed'])
+        self.assertFalse((self.game / 'd3d11.dll').exists())
+        self.assertFalse((self.game / 'TextureQuest.ini').exists())
+        self.assertEqual(self.proxy_170_phase(), 'uninstalled')
+
+
+class UninstallTests(Fixture):
+    def test_uninstall_removes_owned_files(self):
+        self.install()
+        self.manager.uninstall(self.game)
+        for name in ['dxgi.dll', 'ReShade.ini', 'TextureQuest.addon64', 'TextureQuest.ini']:
+            self.assertFalse((self.game / name).exists(), name)
+
+    def test_patcher_removed_files_uninstall_cleanly(self):
+        self.install()
+        (self.game / 'dxgi.dll').unlink()
+        self.manager.uninstall(self.game)
+        self.assertFalse((self.game / 'TextureQuest.addon64').exists())
+
+    def test_changed_file_kept(self):
+        self.install()
+        (self.game / 'TextureQuest.ini').write_text('edited', encoding='utf-8')
+        result = self.manager.uninstall(self.game)
+        self.assertTrue((self.game / 'TextureQuest.ini').exists())
+        self.assertIn('TextureQuest.ini', result['message'])
+
+    def test_changed_owned_reshade_kept(self):
+        self.install()
+        (self.game / 'dxgi.dll').write_bytes(b'MZ updated ReShade')
+        result = self.manager.uninstall(self.game)
+        self.assertEqual((self.game / 'dxgi.dll').read_bytes(), b'MZ updated ReShade')
+        self.assertIn('dxgi.dll', result['message'])
+        self.assertIn('dxgi.dll', self.record()['kept'])
+        self.assertFalse((self.game / 'TextureQuest.addon64').exists())
+
+    def test_existing_reshade_left_alone(self):
+        (self.game / 'dxgi.dll').write_bytes(ADDON_BUILD)
+        self.install()
+        self.manager.uninstall(self.game)
+        self.assertTrue((self.game / 'dxgi.dll').exists())
+
+
+class ShortcutTests(Fixture):
+    def test_shortcut_rewritten_without_game_changes(self):
+        self.install()
+        before = {p.name: p.read_bytes() for p in self.game.iterdir() if p.is_file()}
+        self.manager.set_shortcut(self.game, {'vk': 0x6b, 'modifiers': 2})
+        after = {p.name: p.read_bytes() for p in self.game.iterdir() if p.is_file()}
+        self.assertEqual(before, after)
+        self.assertEqual((self.state / 'graphics' / 'shortcut.txt').read_text(), 'TQKEY1\n107\n2\n')
+
+
+if __name__ == '__main__':
+    unittest.main()

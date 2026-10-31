@@ -48,13 +48,18 @@ INSTALL_MODE_INFO = (
      "After patching, reinstall textures. Close EQ2 before installing. "
      "Use the official patcher to restore stock files."),
     ("Graphics hook (default)", "graphics", "Loads with EQ2. Numpad * switches quality.",
-     "Adds d3d11.dll and TextureQuest.ini beside the game EXE. "
-     "Existing EXE, PAKs and ReShade settings stay unchanged. No background watcher. "
+     "Adds the TextureQuest.addon64 add-on and TextureQuest.ini beside the game EXE "
+     "(or ReShade's AddonPath), plus the "
+     "official ReShade add-on build as dxgi.dll if no ReShade is present. "
+     "Existing EXE, PAKs and ReShade stay unchanged; an existing ReShade add-on build is used as is, "
+     "while a standard ReShade build stops installation because the add-on build is needed. "
+     "No background watcher. "
      "Launch EQ2 normally, even after reboot; TextureQuest can stay closed.\n\n"
      "Numpad * switches Original/Upscaled. Change it with Shortcut. "
-     "Replacements load on demand; ambiguous matches stay original. "
-     "Unchanged textures survive patches; changed assets may need updated mappings. "
-     "Close EQ2 before Install or Uninstall. Keep the app and data folder in place. "
+     "Upscales load from your downloads as the game creates textures; Original loads stock copies "
+     "on demand; ambiguous matches stay original. "
+     "Unchanged textures survive patches; changed assets need a new texture map. "
+     "Close EQ2 before Install or Uninstall. Keep the app, data and downloads in place. "
      "Graphics hooks are not officially approved; account-policy risk is unknown."),
 )
 
@@ -730,8 +735,6 @@ class TextureQuestApp:
             text = "Choose the game folder containing EverQuest2.exe and paks."
         else:
             text = "Prepare the downloaded pack to enable installation."
-        if is_graphics and graphics.get("installed") and graphics.get("dual_load"):
-            text += " Reinstall Graphics hook to use on-demand comparisons."
         self.install_label.configure(text=text)
         self.menu.entryconfigure(0, state="normal" if self.game.get().strip() else "disabled")
 
@@ -745,8 +748,8 @@ class TextureQuestApp:
             self.set_message("Automatic app updates are available in the distributed TextureQuest app. Install the latest app once to enable them.", error=True)
             return False
         game = self.game.get().strip()
-        remove_loader = self.cache_in_use()
-        update_manager = self.graphics_manager if self.graphics_status(game).get('installed') else self.loader_manager
+        remove_loader = self.cache_in_use("legacy_in_use")
+        update_manager = self.graphics_manager if self.graphics_manager.legacy_in_use() else self.loader_manager
         if remove_loader:
             status = self.graphics_status(game) if update_manager is self.graphics_manager else self.loader_status(game)
             if status.get("unknown") or not status.get("installed") or status.get("active_sessions", 0):
@@ -761,7 +764,7 @@ class TextureQuestApp:
         def work():
             if remove_loader:
                 update_manager.uninstall(game)
-            if self.cache_in_use():
+            if self.cache_in_use("legacy_in_use"):
                 raise RuntimeError("The hook is using these app files. Uninstall it and close EQ2 before updating.")
             from texturequest_self_update import stage_update, launch_updater
             request = stage_update(dict(app), app_dir=app_dir, data_dir=self.state_dir,
@@ -853,17 +856,22 @@ class TextureQuestApp:
             return
         self._download_latest()
 
-    def cache_in_use(self):
+    def cache_in_use(self, graphics_check="cache_in_use"):
         # Called by download/update workers: never read a Tk variable here.
+        # graphics_check names the GraphicsManager test: cache_in_use, downloads_in_use or legacy_in_use.
         manager = getattr(self, "loader_manager", None)
         try:
             return bool(getattr(self, "loader_error", "") or
                         getattr(self, "loader_status_unknown", False) or
                         (manager is not None and manager.cache_in_use()) or
-                        self.graphics_manager.cache_in_use() or
+                        getattr(self.graphics_manager, graphics_check)() or
                         (getattr(self, "cache_guard", None) is not None and self.cache_guard()))
         except Exception:
             return True  # Unknown ownership must not authorize deleting/replacing cached files.
+
+    def downloads_in_use(self):
+        # The add-on reads the downloaded archives only while EQ2 runs, so texture updates proceed with it installed.
+        return self.cache_in_use("downloads_in_use")
 
     def graphics_selected(self):
         return self.install_mode.get() == "graphics"
@@ -899,7 +907,7 @@ class TextureQuestApp:
                 raise RuntimeError("Close the previous graphics-hook sessions first.")
             return self.graphics_manager.install(game, self.prepared, dual_load=False, progress=self.report,shortcut=self.shortcut)
         self.begin("graphics-uninstall" if removing else "graphics-install",
-                   "Uninstalling Graphics hook…" if removing else "Preparing full-pack Graphics hook…", work)
+                   "Uninstalling Graphics hook…" if removing else "Installing Graphics hook…", work)
         return True
 
     def change_graphics_shortcut(self):
@@ -1015,7 +1023,12 @@ class TextureQuestApp:
                 return self.bundled_release, prepared, status, preflight
             if latest.get("schema") == "texturequest-release-v3":
                 prepared = prepare_direct(self.core, latest, notify, self.pause.is_set,
-                                          cache_in_use=self.cache_in_use, overall_progress=self.report_overall)
+                                          cache_in_use=self.downloads_in_use,
+                                          overall_progress=self.report_overall)
+                try:
+                    self.graphics_manager.refresh_map(prepared)
+                except (OSError, ValueError) as error:
+                    notify("Texture map not updated (" + str(error) + "). The Graphics hook keeps its previous map.", 1, 1)
             elif latest.get("schema") == "texturequest-release-v2":
                 prepared = prepare_update(self.core, latest, game or None, base_zip,
                                           notify, self.pause.is_set)
