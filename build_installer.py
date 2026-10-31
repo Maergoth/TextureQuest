@@ -61,7 +61,7 @@ def main():
     parser.add_argument("--loader-runtime-dir", type=Path,
                         help="Explicit reviewed descriptor + sideload payload directory (otherwise loader unavailable)")
     parser.add_argument("--graphics-runtime-dir", type=Path,
-                        help="Explicit verified graphics-only proxy runtime directory")
+                        help="Explicit verified TextureQuest add-on and ReShade runtime directory")
     args = parser.parse_args()
     output_root = ROOT
     if args.output_root:
@@ -83,8 +83,6 @@ def main():
         loader = admit_portable_payload(args.loader_runtime_dir)
     graphics = None
     if args.graphics_runtime_dir:
-        if loader is None:
-            raise ValueError("Graphics cache preparation requires the bundled offline archive tools")
         from texturequest_graphics import GraphicsManager
         graphics = GraphicsManager(BUILD / "unused-state", runtime_dir=args.graphics_runtime_dir)._runtime()
         if graphics is None:
@@ -94,8 +92,8 @@ def main():
         resources_graphics = BUILD / "graphics-runtime"
         if resources_graphics.exists():
             raise RuntimeError("Preserve previous graphics build resources")
-        resources_graphics.mkdir()
         for name in graphics_pins:
+            (resources_graphics / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(args.graphics_runtime_dir / name, resources_graphics / name)
     stage = BUILD / "source"
     (stage / "texture_swapper").mkdir(parents=True, exist_ok=True)

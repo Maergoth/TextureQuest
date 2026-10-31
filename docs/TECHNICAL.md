@@ -1,4 +1,4 @@
-> App 1.7.0: the active graphics-only proxy, hotkey and install lifecycle are documented in [GRAPHICS_HOOK.md](GRAPHICS_HOOK.md). Older app/release sections below describe historical implementations. Current Get app update downloads, verifies, replaces and restarts the app while preserving data.
+> App 1.8.0: the active Graphics hook add-on, hotkey and install lifecycle are documented in [GRAPHICS_HOOK.md](GRAPHICS_HOOK.md). Older app/release sections below describe historical implementations. Current Get app update downloads, verifies, replaces and restarts the app while preserving data.
 
 # Technical guide
 

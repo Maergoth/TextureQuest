@@ -61,10 +61,9 @@ class TwoModeUI(unittest.TestCase):
         self.assertEqual(self.graphics.install.call_args.kwargs['shortcut'],{'vk':106,'modifiers':0})
         self.memory.install.assert_not_called()
 
-    def test_old_dual_setting_is_visible_and_never_silently_rewritten(self):
+    def test_old_dual_setting_never_silently_rewritten(self):
         self.gfx_state.update(installed=True,running=True,dual_load=True)
         self.app.refresh_controls()
-        self.assertIn('Reinstall Graphics hook to use on-demand',self.app.install_label.cget('text'))
         self.assertEqual(self.app.install_button.cget('text'),'Uninstall graphics hook')
         self.graphics.install.assert_not_called();self.graphics.uninstall.assert_not_called()
 

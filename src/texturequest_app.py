@@ -48,13 +48,18 @@ INSTALL_MODE_INFO = (
      "After patching, reinstall textures. Close EQ2 before installing. "
      "Use the official patcher to restore stock files."),
     ("Graphics hook (default)", "graphics", "Loads with EQ2. Numpad * switches quality.",
-     "Adds d3d11.dll and TextureQuest.ini beside the game EXE. "
-     "Existing EXE, PAKs and ReShade settings stay unchanged. No background watcher. "
+     "Adds the TextureQuest.addon64 add-on and TextureQuest.ini beside the game EXE "
+     "(or ReShade's AddonPath), plus the "
+     "official ReShade add-on build as dxgi.dll if no ReShade is present. "
+     "Existing EXE, PAKs and ReShade stay unchanged; an existing ReShade add-on build is used as is, "
+     "while a standard ReShade build stops installation because the add-on build is needed. "
+     "No background watcher. "
      "Launch EQ2 normally, even after reboot; TextureQuest can stay closed.\n\n"
      "Numpad * switches Original/Upscaled. Change it with Shortcut. "
-     "Replacements load on demand; ambiguous matches stay original. "
-     "Unchanged textures survive patches; changed assets may need updated mappings. "
-     "Close EQ2 before Install or Uninstall. Keep the app and data folder in place. "
+     "Upscales load from your downloads as the game creates textures; Original loads stock copies "
+     "on demand; ambiguous matches stay original. "
+     "Unchanged textures survive patches; changed assets need a new texture map. "
+     "Close EQ2 before Install or Uninstall. Keep the app, data and downloads in place. "
      "Graphics hooks are not officially approved; account-policy risk is unknown."),
 )
 
@@ -730,8 +735,6 @@ class TextureQuestApp:
             text = "Choose the game folder containing EverQuest2.exe and paks."
         else:
             text = "Prepare the downloaded pack to enable installation."
-        if is_graphics and graphics.get("installed") and graphics.get("dual_load"):
-            text += " Reinstall Graphics hook to use on-demand comparisons."
         self.install_label.configure(text=text)
         self.menu.entryconfigure(0, state="normal" if self.game.get().strip() else "disabled")
 
@@ -899,7 +902,7 @@ class TextureQuestApp:
                 raise RuntimeError("Close the previous graphics-hook sessions first.")
             return self.graphics_manager.install(game, self.prepared, dual_load=False, progress=self.report,shortcut=self.shortcut)
         self.begin("graphics-uninstall" if removing else "graphics-install",
-                   "Uninstalling Graphics hook…" if removing else "Preparing full-pack Graphics hook…", work)
+                   "Uninstalling Graphics hook…" if removing else "Installing Graphics hook…", work)
         return True
 
     def change_graphics_shortcut(self):

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.0
+
+- Graphics hook is now an add-on for stock ReShade; no modified ReShade or private texture cache.
+- Upscaled textures load at creation from the downloaded archives using a published texture map.
+- Numpad * comparison keeps working; Original loads stock copies on demand.
+- Existing ReShade installs are never changed; the add-on build is used as is, and a standard build stops installation with an explanation.
+
 ## 1.7.0
 
 - Normal game-folder graphics proxy; no external graphics injector or watcher.
