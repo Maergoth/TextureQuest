@@ -48,11 +48,16 @@ def stock_key(data):
 
 
 class MapToolTests(unittest.TestCase):
-    def build(self, stock, upscaled):
+    def build(self, stock, upscaled, selected=None, sources=None):
+        """Selected defaults to every .dds member; sources default to the stock DDS bytes."""
         root = Path(tempfile.mkdtemp())
-        (root / 'paks').mkdir(); (root / 'release').mkdir(); (root / 'out').mkdir()
-        rows = []
+        (root / 'paks').mkdir(); (root / 'release').mkdir(); (root / 'out').mkdir(); (root / 'catalog').mkdir()
+        rows, members = [], []
         for name in stock:
+            for member, data in stock[name].items():
+                if (name, member) in (selected or [(name, m) for m in upscaled[name] if m.endswith('.dds')]):
+                    source = (sources or {}).get((name, member), data)
+                    members.append(dict(owner=name, member=member, source_dds=dict(sha256=hashlib.sha256(source).hexdigest())))
             (root / 'paks' / name).write_bytes(vpk(stock[name]))
             data = vpk(upscaled[name]); (root / 'release' / name).write_bytes(data)
             rows.append(dict(name=name, bytes=len(data), sha256='0' * 64, entries=len(upscaled[name]),
@@ -60,7 +65,8 @@ class MapToolTests(unittest.TestCase):
         manifest = dict(schema='texturequest-release-v3', version='1.7.1', texture_version='1.2.3',
                         texture_count=1, archives=rows)
         (root / 'release-manifest.json').write_text(json.dumps(manifest))
-        summary = tool.build(root / 'paks', root / 'release', root / 'release-manifest.json', root / 'out')
+        (root / 'catalog' / 'members-00.json').write_text(json.dumps(dict(members=members)))
+        summary = tool.build(root / 'paks', root / 'release', root / 'release-manifest.json', root / 'out', members=root / 'catalog')
         return root, manifest, summary
 
     def test_changed_member_becomes_row(self):
@@ -80,6 +86,21 @@ class MapToolTests(unittest.TestCase):
         same = dds(4, 1, 3)
         root, _, summary = self.build({'A.vpk': {'a.dds': same, 'b.txt': b'x'}}, {'A.vpk': {'a.dds': same, 'b.txt': b'y'}})
         self.assertEqual(summary['rows'], 0)
+
+    def test_patched_unselected_member_gets_no_row(self):
+        stock = {'A.vpk': {'a.dds': dds(4, 1, 1), 'b.dds': dds(4, 1, 2)}}
+        upscaled = {'A.vpk': {'a.dds': dds(8, 1, 3), 'b.dds': dds(4, 1, 4)}}
+        _, _, summary = self.build(stock, upscaled, selected=[('A.vpk', 'a.dds')])
+        self.assertEqual(summary['rows'], 1)
+        self.assertEqual(summary['skipped'], [])
+
+    def test_stock_changed_since_upscale_reported(self):
+        stock = {'A.vpk': {'a.dds': dds(4, 1, 1)}}
+        upscaled = {'A.vpk': {'a.dds': dds(8, 1, 3)}}
+        _, _, summary = self.build(stock, upscaled, sources={('A.vpk', 'a.dds'): dds(4, 1, 9)})
+        self.assertEqual(summary['rows'], 0)
+        self.assertEqual(summary['stock_changed'], 1)
+        self.assertEqual([r['reason'] for r in summary['skipped']], ['stock changed since upscale'])
 
     def test_family_change_and_fewer_mips_reported(self):
         stock = {'A.vpk': {'a.dds': dds(4, 3, 1), 'b.dds': dds(4, 1, 1)}}
@@ -162,6 +183,35 @@ class FetchTests(unittest.TestCase):
         self.fetch()
         _, download = self.fetch()
         download.assert_not_called()
+
+    def stage(self, raw):
+        with patch.object(tmap, '_descriptor', return_value=self.descriptor), patch.object(tmap, '_download', return_value=raw):
+            return tmap.stage_map(self.state, self.prepared['release_sha256'])
+
+    def test_staged_map_inactive_until_activated(self):
+        active = self.state / 'graphics' / 'texturequest-map.bin'
+        active.parent.mkdir(parents=True)
+        active.write_bytes(b'previous map')
+        staged = self.stage(self.raw)
+        self.assertEqual(active.read_bytes(), b'previous map')
+        tmap.activate_map(self.state, staged)
+        self.assertEqual(active.read_bytes(), self.raw)
+        self.assertFalse(staged.exists())
+
+    def test_failed_map_download_keeps_previous_map(self):
+        active = self.state / 'graphics' / 'texturequest-map.bin'
+        active.parent.mkdir(parents=True)
+        active.write_bytes(b'previous map')
+        with self.assertRaises(ValueError):
+            self.stage(self.raw[:-1])
+        self.assertEqual(active.read_bytes(), b'previous map')
+        self.assertEqual(sorted(p.name for p in active.parent.iterdir()), ['texturequest-map.bin'])
+
+    def test_discarded_map_removed(self):
+        staged = self.stage(self.raw)
+        tmap.discard_map(staged)
+        self.assertFalse(staged.exists())
+        self.assertFalse((self.state / 'graphics' / 'texturequest-map.bin').exists())
 
 
 if __name__ == '__main__':

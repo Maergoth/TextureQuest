@@ -43,6 +43,7 @@ struct StockJob {
     uint64_t Handle = 0, Generation = 0;
     const tq::MapRow* Row = nullptr;
     resource_desc Desc;
+    format ViewFormat = format::unknown;
 };
 
 // The game's stock data for the texture being created, kept between
@@ -102,12 +103,13 @@ uint64_t ChainBytes(uint32_t family, uint32_t width, uint32_t height, uint32_t m
     return bytes;
 }
 
-bool CreateCopy(device* dev, const resource_desc& desc, const subresource_data* levels, Replaced& entry) {
+// view_format must be typed; a typeless resource takes the format of the view the game binds.
+bool CreateCopy(device* dev, const resource_desc& desc, const subresource_data* levels, format view_format, Replaced& entry) {
     resource copy{0};
     if (!dev->create_resource(desc, levels, resource_usage::shader_resource, &copy))
         return false;
     resource_view view{0};
-    if (!dev->create_resource_view(copy, resource_usage::shader_resource, resource_view_desc(desc.texture.format, 0, desc.texture.levels, 0, 1), &view)) {
+    if (!dev->create_resource_view(copy, resource_usage::shader_resource, resource_view_desc(view_format, 0, desc.texture.levels, 0, 1), &view)) {
         dev->destroy_resource(copy);
         return false;
     }
@@ -164,7 +166,8 @@ bool OnCreateResource(device*, resource_desc& desc, subresource_data* initial_da
     }
     Pending.Row = row;
     Pending.Pixels = pixels;
-    Pending.KeepStock = Global->Original;
+    // A typeless texture's view format is only known once the game binds it, so its copy is loaded then.
+    Pending.KeepStock = Global->Original && !format_is_typeless(desc.texture.format);
     if (Pending.KeepStock) {
         Pending.Desc = desc;
         for (uint32_t mip = 0; mip < desc.texture.levels; ++mip)
@@ -191,7 +194,7 @@ void OnInitResource(device* dev, const resource_desc& desc, const subresource_da
     if (!row || desc.type != resource_type::texture_2d || !initial_data || initial_data[0].data != Pending.Pixels)
         return;
     Replaced entry{row, ++Global->Generation};
-    if (Pending.KeepStock && !CreateCopy(dev, Pending.Desc, Pending.Levels, entry))
+    if (Pending.KeepStock && !CreateCopy(dev, Pending.Desc, Pending.Levels, Pending.Desc.texture.format, entry))
         entry = Replaced{row, entry.Generation};
     std::lock_guard lock(Global->Lock);
     if (entry.StockView.handle && !(Global->Original && Admit(dev, handle.handle, entry)))
@@ -246,7 +249,7 @@ void StockWorker() {
                 desc.texture.width = row.Width;
                 desc.texture.height = row.Height;
                 desc.texture.levels = uint16_t(row.Mips);
-                loaded = key.low64 == row.KeyLow && key.high64 == row.KeyHigh && CreateCopy(job.Device, desc, levels, copy);
+                loaded = key.low64 == row.KeyLow && key.high64 == row.KeyHigh && CreateCopy(job.Device, desc, levels, job.ViewFormat, copy);
             }
         }
         std::lock_guard lock(Global->Lock);
@@ -309,7 +312,8 @@ void OnPushDescriptors(command_list* cmd, shader_stage stages, pipeline_layout l
                 changed = true;
             } else if (!entry.Queued) {
                 entry.Queued = true;
-                queue.push_back({dev, it->first, entry.Generation, entry.Row, dev->get_resource_desc(texture)});
+                queue.push_back({dev, it->first, entry.Generation, entry.Row, dev->get_resource_desc(texture),
+                                 dev->get_resource_view_desc(bound[i]).format});
             }
         }
     }

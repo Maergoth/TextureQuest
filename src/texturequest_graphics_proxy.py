@@ -15,7 +15,7 @@ from texture_swapper import core
 from texturequest_sideload import LoaderManager, _pin, _json, _alive, _live_status_bytes, _remove_run, _signal_stop
 from texturequest_processes import ensure_closed
 from texturequest_shortcut import normalize, label
-from texturequest_texture_map import fetch_map
+from texturequest_texture_map import activate_map, discard_map, fetch_map, stage_map
 import texturequest_graphics_catalog as catalog
 
 RUNTIME_SCHEMA = 'texturequest-graphics-runtime-v3'
@@ -205,12 +205,23 @@ class GraphicsManager:
         """Whether the downloaded archives are in use: EQ2 is running with the add-on, or an older hook is installed."""
         return self.legacy_in_use() or any(self.status(g)['active_sessions'] for g in self._all_games() if self._addon_installed(g))
 
-    def refresh_map(self, prepared):
-        """Download the published map for these textures when the add-on is installed, so texture updates need no reinstall."""
+    def stage_map(self, manifest):
+        """When the add-on is installed, download and verify the map for this release before its archives change.
+
+        Raises when the map is unavailable, so the update stops while the current archives and map still match.
+        Returns the staged map for activate_map; None when there is nothing to activate."""
         if not any(self._addon_installed(g) for g in self._all_games()):
             return None
         with core._lock(self.state_dir / 'operation.lock'):
-            return fetch_map(self.state_dir, prepared)
+            return stage_map(self.state_dir, core._digest(manifest))
+
+    def activate_map(self, staged):
+        """Make the staged map active once the matching archives are in place."""
+        with core._lock(self.state_dir / 'operation.lock'):
+            activate_map(self.state_dir, staged)
+
+    def discard_map(self, staged):
+        discard_map(staged)
 
     def installed_game(self):
         games = [g for g in self._all_games() if self.status(g)['installed']]

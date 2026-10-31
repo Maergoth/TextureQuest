@@ -164,32 +164,52 @@ def _download(item, opener, pause):
     return latest._read(item['url'], item['bytes'], opener, pause)
 
 
-def fetch_map(state_dir, prepared, opener=urlopen, pause=None):
-    """Return the verified local map for the downloaded pack, downloading it when the published one changed.
+def stage_map(state_dir, release_digest, opener=urlopen, pause=None):
+    """Download and verify the published map for release_digest without touching the active map.
 
-    The map is always saved as graphics/texturequest-map.bin, so TextureQuest.ini never has to change."""
+    Returns the staged file for activate_map, or None when the active map already matches."""
     from texture_swapper import core
     descriptor = _descriptor(opener, pause)
-    need(descriptor['release_digest'] == prepared['release_sha256'],
+    need(descriptor['release_digest'] == release_digest,
          'The published texture map is for a different texture release. Download / Resume the latest textures first.')
     item = descriptor['map']
     folder = core._plain(state_dir) / 'graphics'
     path = core._plain(folder / LOCAL_MAP_NAME, state_dir)
     if path.is_file() and path.stat().st_size == item['bytes'] and hashlib.sha256(path.read_bytes()).hexdigest() == item['sha256']:
-        return path
+        return None
     raw = _download(item, opener, pause)
     need(len(raw) == item['bytes'] and hashlib.sha256(raw).hexdigest() == item['sha256'], 'Texture map failed checksum verification')
     parsed = read_map(raw)
     need(parsed.release_digest == descriptor['release_digest'], 'Texture map does not match its descriptor')
     folder.mkdir(parents=True, exist_ok=True)
-    temporary = core._plain(folder / (LOCAL_MAP_NAME + '.' + uuid.uuid4().hex + '.tmp'), state_dir)
+    staged = core._plain(folder / (LOCAL_MAP_NAME + '.' + uuid.uuid4().hex + '.tmp'), state_dir)
     try:
-        with temporary.open('xb') as stream:
+        with staged.open('xb') as stream:
             stream.write(raw)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    finally:
-        if temporary.exists():
-            temporary.unlink()
+    except BaseException:
+        if staged.exists():
+            staged.unlink()
+        raise
+    return staged
+
+
+def activate_map(state_dir, staged):
+    """Make a map from stage_map the active graphics/texturequest-map.bin, so TextureQuest.ini never has to change."""
+    from texture_swapper import core
+    path = core._plain(core._plain(state_dir) / 'graphics' / LOCAL_MAP_NAME, state_dir)
+    if staged is not None:
+        os.replace(staged, path)
     return path
+
+
+def discard_map(staged):
+    """Remove a staged map that will not be activated."""
+    if staged is not None and staged.exists():
+        staged.unlink()
+
+
+def fetch_map(state_dir, prepared, opener=urlopen, pause=None):
+    """Return the verified local map for the downloaded pack, downloading it when the published one changed."""
+    return activate_map(state_dir, stage_map(state_dir, prepared['release_sha256'], opener, pause))

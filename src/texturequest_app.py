@@ -1022,13 +1022,19 @@ class TextureQuestApp:
                 notify("Update check unavailable; reusing saved files matching this app's bundled manifest.", 1, 1)
                 return self.bundled_release, prepared, status, preflight
             if latest.get("schema") == "texturequest-release-v3":
-                prepared = prepare_direct(self.core, latest, notify, self.pause.is_set,
-                                          cache_in_use=self.downloads_in_use,
-                                          overall_progress=self.report_overall)
                 try:
-                    self.graphics_manager.refresh_map(prepared)
+                    staged = self.graphics_manager.stage_map(latest)
                 except (OSError, ValueError) as error:
-                    notify("Texture map not updated (" + str(error) + "). The Graphics hook keeps its previous map.", 1, 1)
+                    raise RuntimeError("Texture update stopped: the Graphics hook's texture map for this release is unavailable ("
+                                       + str(error) + "). Your current textures are unchanged.") from error
+                try:
+                    prepared = prepare_direct(self.core, latest, notify, self.pause.is_set,
+                                              cache_in_use=self.downloads_in_use,
+                                              overall_progress=self.report_overall)
+                except BaseException:
+                    self.graphics_manager.discard_map(staged)
+                    raise
+                self.graphics_manager.activate_map(staged)
             elif latest.get("schema") == "texturequest-release-v2":
                 prepared = prepare_update(self.core, latest, game or None, base_zip,
                                           notify, self.pause.is_set)

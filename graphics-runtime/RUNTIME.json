@@ -8,8 +8,8 @@
   "files": [
     {
       "name": "TextureQuest.addon64",
-      "bytes": 345600,
-      "sha256": "180f8ca58feb5030903f965fab1281b362d670f6deb1d54c3df59a26295a5af1"
+      "bytes": 346624,
+      "sha256": "49f54e56b433bada151b3c6b27f452cac5647e35714f9ac611d0133f192ebefc"
     },
     {
       "name": "ReShade64.dll",

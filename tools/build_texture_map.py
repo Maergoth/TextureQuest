@@ -1,7 +1,10 @@
 """Build the published texture map from current stock paks and one release.
 
-Usage: python tools/build_texture_map.py <game paks dir> <release VPK dir> <release-manifest.json> <out dir> [--tag vX.Y.Z]
+Usage: python tools/build_texture_map.py <game paks dir> <release VPK dir> <release-manifest.json> <out dir> [--tag vX.Y.Z] [--members <catalog dir>]
 Writes texturequest-map-<texture_version>.bin and texturequest-map.json into <out dir>.
+
+Only members listed in the release's member inventory (sideload-runtime/sideload/catalog/members-*.json) get rows.
+A member whose stock DDS no longer matches the source it was upscaled from is reported, not mapped.
 """
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -18,6 +21,18 @@ import texturequest_graphics_vpk as vpk  # noqa: E402
 import texturequest_texture_map as tmap  # noqa: E402
 from texture_swapper import core  # noqa: E402
 
+MEMBERS = Path(__file__).resolve().parents[1] / 'sideload-runtime' / 'sideload' / 'catalog'
+
+
+def inventory(folder):
+    """Map each archive name (casefolded) to {member: stock DDS sha256} for the members the release replaces."""
+    selected = {}
+    for path in sorted(Path(folder).glob('members-*.json')):
+        for member in json.loads(path.read_text(encoding='utf-8'))['members']:
+            selected.setdefault(member['owner'].casefold(), {})[member['member']] = member['source_dds']['sha256']
+    tmap.need(selected, 'No member inventory in ' + str(folder))
+    return selected
+
 
 def key(pixels):
     value = xxhash.xxh3_128_intdigest(pixels)
@@ -25,16 +40,18 @@ def key(pixels):
 
 
 def scan(job):
-    stock_path, release_path = map(Path, job)
+    stock_path, release_path, sources = Path(job[0]), Path(job[1]), job[2]
     rows, skipped = [], []
     with stock_path.open('rb') as stock, release_path.open('rb') as upscaled:
         stock_entries = {e.member: e for e in vpk.index(stock, stock_path.stat().st_size).entries}
         for entry in vpk.index(upscaled, release_path.stat().st_size).entries:
-            if not entry.member.lower().endswith('.dds') or entry.member not in stock_entries:
+            if entry.member not in sources or entry.member not in stock_entries:
                 continue
-            old_entry = stock_entries[entry.member]
-            old, new = vpk.member_data(stock, old_entry), vpk.member_data(upscaled, entry)
+            old, new = vpk.member_data(stock, stock_entries[entry.member]), vpk.member_data(upscaled, entry)
             if old == new:
+                continue
+            if hashlib.sha256(old).hexdigest() != sources[entry.member]:
+                skipped.append(dict(archive=release_path.name, member=entry.member, reason='stock changed since upscale'))
                 continue
             try:
                 old_layout, old_pixels, _ = catalog.decode_dds(old)
@@ -59,15 +76,16 @@ def scan(job):
     return release_path.name, stock_path.name, rows, skipped
 
 
-def build(paks, releases, manifest_path, out, tag=None):
+def build(paks, releases, manifest_path, out, tag=None, members=MEMBERS):
     manifest = json.loads(Path(manifest_path).read_text(encoding='utf-8'))
     tmap.need(manifest.get('schema') == 'texturequest-release-v3', 'Release manifest must be schema v3')
+    selected = inventory(members)
     stock_by_name = {p.name.casefold(): p for p in Path(paks).glob('*.vpk')}
     jobs = []
     for archive in manifest['archives']:
         stock = stock_by_name.get(archive['name'].casefold())
         tmap.need(stock is not None, 'No stock pak for ' + archive['name'])
-        jobs.append((str(stock), str(Path(releases) / archive['name'])))
+        jobs.append((str(stock), str(Path(releases) / archive['name']), selected.get(archive['name'].casefold(), {})))
     archives, stock_archives, rows, skipped = [], [], [], []
     with ProcessPoolExecutor() as pool:
         for release_name, stock_name, archive_rows, archive_skipped in pool.map(scan, jobs):
@@ -102,6 +120,7 @@ def build(paks, releases, manifest_path, out, tag=None):
     tmap.validate_descriptor(descriptor)
     (out / 'texturequest-map.json').write_text(json.dumps(descriptor, indent=1) + '\n', encoding='utf-8', newline='\n')
     return dict(replaced=len(rows) + len([s for s in skipped if s['reason'] in ('format differs', 'fewer upscaled mips')]),
+                stock_changed=sum(1 for s in skipped if s['reason'] == 'stock changed since upscale'),
                 rows=len(unique), ambiguous_keys=len(ambiguous),
                 ambiguous_members=sum(1 for r in rows if (r['key_low'], r['key_high'], r['width'], r['height'], r['mips'], r['family']) in ambiguous),
                 skipped=skipped, map_bytes=len(raw))
@@ -114,8 +133,9 @@ def main():
     parser.add_argument('manifest', type=Path)
     parser.add_argument('out', type=Path)
     parser.add_argument('--tag')
+    parser.add_argument('--members', type=Path, default=MEMBERS)
     args = parser.parse_args()
-    summary = build(args.paks, args.releases, args.manifest, args.out, args.tag)
+    summary = build(args.paks, args.releases, args.manifest, args.out, args.tag, args.members)
     print(json.dumps({k: v for k, v in summary.items() if k != 'skipped'} | {'skipped': len(summary['skipped'])}, indent=1))
     for row in summary['skipped']:
         print('skipped', row['archive'], row['member'], row['reason'])
