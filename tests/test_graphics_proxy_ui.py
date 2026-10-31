@@ -15,7 +15,7 @@ class ProxyUI(unittest.TestCase):
         self.assertEqual([c.cget('text') for c in self.app.mode_controls],['Replace PAK files','Graphics hook (default)'])
         self.assertFalse(hasattr(self.app,'dual_load_control'))
         help=ui.INSTALL_MODE_INFO[1][3]
-        for text in ['d3d11.dll','TextureQuest.ini','No background watcher','after reboot','Shortcut','on demand','ambiguous','patches','Close EQ2','Uninstall']:
+        for text in ['TextureQuest.addon64','ReShade add-on build','TextureQuest.ini','No background watcher','after reboot','Shortcut','on demand','ambiguous','patches','Close EQ2','Uninstall']:
             self.assertIn(text,help)
         self.assertEqual(self.app.shortcut_button.cget('text'),'Shortcut: Numpad *')
         self.assertNotIn('sign-in',help)
@@ -57,6 +57,7 @@ class ProxyUI(unittest.TestCase):
         self.begin.call_args.args[2]()
         self.graphics.set_shortcut.assert_called_once()
         self.graphics.install.assert_not_called();self.graphics.uninstall.assert_not_called()
+
 
 if __name__=='__main__':
     import faulthandler

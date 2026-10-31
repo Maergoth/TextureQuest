@@ -1,8 +1,16 @@
+# Changelog
+
+## 1.8.0
+
+- Graphics hook is now an add-on for stock ReShade; no modified ReShade or private texture cache.
+- Upscaled textures load at creation from the downloaded archives using a published texture map.
+- Numpad * comparison keeps working; Original loads stock copies on demand.
+- Existing ReShade installs are never changed; the add-on build is used as is, and a standard build stops installation with an explanation.
+
+
 ## 1.7.2 — texture catalog 1.2.4
 
 Fae/Arasai body and Qeynos stone-trim corrections, including the paired map. Graphics runtime unchanged. Other released textures preserved.
-
-# Changelog
 
 ## 1.7.1
 

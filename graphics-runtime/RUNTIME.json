@@ -1,44 +1,50 @@
 {
-  "schema": "texturequest-graphics-runtime-v2",
-  "capabilities": [
-    "full_pack",
-    "on_demand",
-    "foreground_toggle",
-    "bounded_cache",
-    "custom_shortcut",
-    "normal_proxy",
-    "graphics_only"
-  ],
+  "schema": "texturequest-graphics-runtime-v3",
+  "addon": "TextureQuest.addon64",
+  "reshade": "ReShade64.dll",
+  "reshade_version": "6.8.0",
+  "reshade_build": "addon",
+  "map_schema": "TQMAP001",
   "files": [
     {
-      "name": "d3d11.dll",
-      "bytes": 5422592,
-      "sha256": "239005eae82cbf4a14e7c06d44448dd426dedc2e826896b3369e289b8398f168"
+      "name": "TextureQuest.addon64",
+      "bytes": 346624,
+      "sha256": "49f54e56b433bada151b3c6b27f452cac5647e35714f9ac611d0133f192ebefc"
     },
     {
-      "name": "LICENSE-ReShade.md",
-      "bytes": 1481,
-      "sha256": "237ded5b8344f820113efab1e65e91e1f159d9202c5b4856606a0590d3ffdab0"
+      "name": "ReShade64.dll",
+      "bytes": 5592064,
+      "sha256": "0cee63f9c9f13f3ac909c5b4903f4dbb4b719a7ab3b4f13b0deaf83c814b94f7"
     },
     {
-      "name": "TextureQuestGraphicsBootstrap.dll",
-      "bytes": 153088,
-      "sha256": "287a81400fc2b9cdcef0ffcbaf473821d41546d850cd93d1cb3cb23ddd6def99"
+      "name": "licenses/ReShade-d3d12.txt",
+      "bytes": 1093,
+      "sha256": "903df5512f7d02609fed0c780a9b704f5a3eeb6e4d84ebe42a29845c81899a3c"
     },
     {
-      "name": "TextureQuestGraphicsHost.addon64",
-      "bytes": 413184,
-      "sha256": "16464cc56d2f959cc99d3de2ca881cd9d88f376bc7f1327d9f83fb98bfddbbfd"
+      "name": "licenses/ReShade-d3d12on7.txt",
+      "bytes": 9894,
+      "sha256": "1c29e1d87dac757a11cdf169107b95db11c4503436a4ea8bdb33e874a934f8cf"
+    },
+    {
+      "name": "licenses/ReShade-d3d911on12.txt",
+      "bytes": 1093,
+      "sha256": "903df5512f7d02609fed0c780a9b704f5a3eeb6e4d84ebe42a29845c81899a3c"
+    },
+    {
+      "name": "licenses/ReShade-jxl_simple_lossless-PATENTS.txt",
+      "bytes": 1355,
+      "sha256": "b85f464f29d8ca92d63aad39b91c166b38f18b7214344bb805d7ccd60ac705bb"
+    },
+    {
+      "name": "licenses/libdeflate.txt",
+      "bytes": 1078,
+      "sha256": "4ad69099cb4374836fd27583d9991e2838cd86b6e4666ab26b2d32582c91e73a"
+    },
+    {
+      "name": "licenses/xxHash.txt",
+      "bytes": 1389,
+      "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a"
     }
-  ],
-  "full_pack_prepared": true,
-  "canonical_role": "stock",
-  "index_schema": "TQGX0002",
-  "config_schema": "TQGXCFG2",
-  "game_additions": [
-    "d3d11.dll",
-    "TextureQuest.ini"
-  ],
-  "background_process": false,
-  "archive_redirection": false
+  ]
 }
