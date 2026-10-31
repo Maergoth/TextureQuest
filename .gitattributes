@@ -14,3 +14,5 @@ README.md text eol=lf
 /INSTALLER.txt -text
 
 /graphics-provider/** -text
+
+/release-manifest.json -text

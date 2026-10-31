@@ -29,7 +29,7 @@ MAX_RECORDS = 2_000_000
 MAGIC = 0x00033744
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 CATALOG_H = PACKAGE_ROOT / 'catalog/HANDOFF.json'
-CATALOG_SHA = 'f1be0a6d7d1b1e65f9e2df74c499ddda5502809f6c382442b6c9e349bdf4bae4'
+CATALOG_SHA = '8faf23b135734cc5e899932bc2fa1f09e575e7246500d7a3478e5fdfecaab065'
 
 
 class Refusal(ValueError):

@@ -1,3 +1,7 @@
+## 1.7.2 — texture catalog 1.2.4
+
+Fae/Arasai body and Qeynos stone-trim corrections, including the paired map. Graphics runtime unchanged. Other released textures preserved.
+
 # Changelog
 
 ## 1.7.1

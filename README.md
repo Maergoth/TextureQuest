@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/images/texturequest-banner.png" alt="TextureQuest — an EverQuest II texture pack" width="100%"></p>
+<p align="center"><img src="docs/images/texturequest-banner.png" alt="TextureQuest â€” an EverQuest II texture pack" width="100%"></p>
 
 # TextureQuest
 
@@ -6,11 +6,11 @@
 
 TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim is to retain the game's original style, recognizable designs and art direction while bringing out the detail in armor, creatures, signs, buildings and terrain.
 
-AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,693 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
+AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,694 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
 
 ## Download and install
 
-**[Download TextureQuest 1.7.1 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.7.1/TextureQuest-Installer-1.7.1-windows-x64.zip)** · [Latest release](https://github.com/Maergoth/TextureQuest/releases/latest)
+**[Download TextureQuest 1.7.2 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.7.2/TextureQuest-Installer-1.7.2-windows-x64.zip)** Â· [Latest release](https://github.com/Maergoth/TextureQuest/releases/latest)
 
 1. Patch EQ2 Origins, then close the game and launcher. If you previously replaced PAKs, use the official patcher to restore stock files before choosing a hook.
 2. Extract the app outside your game folder. Keep your existing **data** folder alongside **TextureQuest.exe**.
@@ -19,14 +19,14 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 | Install mode | What it does |
 | --- | --- |
-| **Graphics hook — default** | Adds two files beside the game EXE; existing EXE and PAKs stay unchanged. **Numpad \*** switches Original/Upscaled. Use **Shortcut** to change the key. |
+| **Graphics hook â€” default** | Adds two files beside the game EXE; existing EXE and PAKs stay unchanged. **Numpad \*** switches Original/Upscaled. Use **Shortcut** to change the key. |
 | **Replace PAK files** | Changes game archives. No graphics hook. Reinstall after patching. |
 
 **Install once, then launch normally.** The graphics DLL loads when EQ2 starts, including after a reboot. No background watcher, service or startup task. TextureQuest can stay closed; keep the app and **data** folder in place.
 
 **To remove Graphics hook:** close EQ2, open TextureQuest and click **Uninstall graphics hook**. Only its own two game-folder files are removed; downloads and private cache are kept. Use the official patcher to restore stock PAKs after Replace mode.
 
-**Upgrading an old hook:** close EQ2 and uninstall the old Graphics hook in the app before installing this version. For an old Memory hook, use **Settings → Uninstall old Memory hook** first. The modes cannot be combined.
+**Upgrading an old hook:** close EQ2 and uninstall the old Graphics hook in the app before installing this version. For an old Memory hook, use **Settings â†’ Uninstall old Memory hook** first. The modes cannot be combined.
 
 **After a patch:** unchanged texture content still matches. Changed assets stay original until mappings are updated. If the patcher removes our DLL, reinstall the hook. Existing ReShade settings are preserved; a conflicting graphics proxy must be resolved before installation.
 
@@ -35,11 +35,11 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 <details>
 <summary>Pack contents and compatibility</summary>
 
-Texture pack **1.2.3** includes **24,693 replacements in 310 archives**, including 312 recovered 2K Maj'Dul/Desert of Flames textures and earlier repairs. Archive bytes and URLs are unchanged. Further generation is unfinished and is not included.
+Texture pack **1.2.4** includes **24,694 replacements in 310 archives**, including 312 recovered 2K Maj'Dul/Desert of Flames textures and earlier repairs. Includes corrected shared Fae/Arasai male and female bodies, Qeynos stone trim and its companion map. Other released textures and recovered Maj'Dul content are preserved. The larger generation batch is still unfinished.
 
 Graphics-only switching passed an in-world Windows Origins test. Compatibility with every asset, other graphics add-ons and future clients is not established. Neither installation method has official approval; account-policy risk is unknown.
 
-The game keeps its original textures. Upscales load on demand with 128 MiB CPU / 256 MiB GPU replacement-cache budgets, rather than loading both complete packs into VRAM. The current catalog has 24,207 unambiguous named entries; 486 ambiguous entries stay original. Counts describe mappings, not measured in-game coverage. Cache limits may leave other textures original.
+The game keeps its original textures. Upscales load on demand with 128 MiB CPU / 256 MiB GPU replacement-cache budgets, rather than loading both complete packs into VRAM. The current catalog has 24,208 unambiguous named entries; 486 ambiguous entries stay original. Counts describe mappings, not measured in-game coverage. Cache limits may leave other textures original.
 
 Apps 1.3.4 and earlier need one manual upgrade; preserve the existing data folder. [How the graphics hook works](docs/GRAPHICS_HOOK.md).
 
@@ -54,7 +54,7 @@ Expand a category to see close-up comparisons.
 <details open>
 <summary><strong>Armor</strong></summary>
 
-**Faydark plate — engraved metal and scrollwork**
+**Faydark plate â€” engraved metal and scrollwork**
 
 ![Stock and TextureQuest Faydark ornate plate armor](docs/images/armor-faydark-plate.png)
 
@@ -63,11 +63,11 @@ Expand a category to see close-up comparisons.
 <details>
 <summary><strong>Weapons and shields</strong></summary>
 
-**Qeynos Guard — metalwork, gem and glowing runes**
+**Qeynos Guard â€” metalwork, gem and glowing runes**
 
 ![Stock and TextureQuest Qeynos Guard shield](docs/images/shield-qeynos-guard.png)
 
-**Dragon Sharp — blade and decorated grip**
+**Dragon Sharp â€” blade and decorated grip**
 
 ![Stock and TextureQuest Dragon Sharp weapon](docs/images/weapon-dragon-sharp.png)
 
@@ -76,17 +76,17 @@ Expand a category to see close-up comparisons.
 <details>
 <summary><strong>Monsters</strong></summary>
 
-**The Leviathan — mouth, teeth and scales**
+**The Leviathan â€” mouth, teeth and scales**
 
 Original 1K artwork beside the released 4K texture on the complete model.
 
 ![Original 1K and TextureQuest 1.1 4K Leviathan, side by side](docs/images/monster-leviathan-main-4k.png)
 
-**Hell Boar — fur, skin and tusks**
+**Hell Boar â€” fur, skin and tusks**
 
 ![Stock and TextureQuest Hell Boar](docs/images/monster-hell-boar.png)
 
-**Flesh Golem — face, skin and stitching**
+**Flesh Golem â€” face, skin and stitching**
 
 ![Stock and TextureQuest Flesh Golem](docs/images/monster-flesh-golem.png)
 
@@ -95,7 +95,7 @@ Original 1K artwork beside the released 4K texture on the complete model.
 <details>
 <summary><strong>Player faces</strong></summary>
 
-**Dark Elf — skin and facial detail**
+**Dark Elf â€” skin and facial detail**
 
 ![Original stock and released TextureQuest Dark Elf face, side by side](docs/images/face-dark-elf.png)
 
@@ -104,11 +104,11 @@ Original 1K artwork beside the released 4K texture on the complete model.
 <details>
 <summary><strong>Architecture and signage</strong></summary>
 
-**Signage — the bakery sign**
+**Signage â€” the bakery sign**
 
 ![Stock and TextureQuest bakery sign](docs/images/signage-bakery.png)
 
-**Wood and metal — a Freeport door**
+**Wood and metal â€” a Freeport door**
 
 ![Stock and TextureQuest Freeport wooden door](docs/images/wooden-door.png)
 
@@ -117,7 +117,7 @@ Original 1K artwork beside the released 4K texture on the complete model.
 <details>
 <summary><strong>Terrain</strong></summary>
 
-**Terrain — Darklight Woods grass**
+**Terrain â€” Darklight Woods grass**
 
 ![Stock and TextureQuest Darklight Woods terrain](docs/images/terrain-darklight.png)
 

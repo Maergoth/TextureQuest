@@ -1,9 +1,9 @@
-TextureQuest 1.7.1 fixes Graphics hook installation failing with:
+TextureQuest 1.7.2 · Texture pack 1.2.4
 
-> output must be inside the loader component
+- Corrected shared Fae/Arasai male and female body textures.
+- Corrected Qeynos guild-hall stone trim and its companion surface map together.
+- Kept existing formats, mip chains, tails and protected alpha. Other released members and recovered Maj'Dul textures are unchanged.
 
-The installer now puts offline preparation in the bundled tool's permitted component folder. The graphics cache remains separate, with receipts linking the two. Existing downloads and failed preparation history are preserved.
+24,694 replacements in 310 archives. The larger generation batch is not included. The separate guild-hall map coverage investigation is still open.
 
-Update the app, then click **Install graphics hook** again. No texture redownload is needed. Keep EQ2 closed during installation.
-
-The failure was reproduced against 1.7.0. A fresh-install test now runs the actual bundled preparation, READY verification, bindings and graphics catalog path using tiny synthetic archives. Graphics binaries, texture pack 1.2.3 and released texture URLs are unchanged.
+Use Get app update, then download the texture update. Close EQ2 and reinstall the graphics hook to load the new catalog. Existing downloads and data are retained. Graphics hook code and binaries are unchanged.
