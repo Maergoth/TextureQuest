@@ -1,27 +1,46 @@
-# Graphics hook: technical summary
+# Graphics hook
 
-The Graphics hook is a **TextureQuest add-on for stock ReShade** (the official add-on build). It needs no modified ReShade, no background process and no private texture cache.
+TextureQuest is an add-on for unmodified ReShade 6.8.0 with full add-on support.
+There is no external injector, watcher, service or startup task. ReShade loads
+it whenever EQ2 starts normally, including after reboot.
 
-1. **Installation:** the app downloads a small texture map published with each release and adds `TextureQuest.addon64` and `TextureQuest.ini` to the game folder (or ReShade's `AddonPath`). If no ReShade is present it also adds the official ReShade add-on build as `dxgi.dll` (with a minimal `ReShade.ini` if none exists). An existing ReShade add-on build is used as is. A standard ReShade build cannot load add-ons; it is left unchanged and installation stops, explaining that the ReShade add-on build is needed. Any other `dxgi.dll`/`d3d11.dll` is left unchanged and installation stops.
-2. **Matching:** when the game creates a texture, the add-on fingerprints its stock content (XXH3-128 over every mip, matched together with its size, mip count and format) and looks it up in the map. Ambiguous, changed or unsupported textures stay original.
-3. **Loading:** a match is replaced at creation: the add-on reads that one texture from the TextureQuest archives already downloaded by the app, decompresses it, and the game receives the upscaled texture instead. Nothing runs per frame or per draw.
-4. **Switching:** Numpad * (changeable in the app) switches to Original while EQ2 is focused. Original binds stock copies of the visible upscaled textures, read from the game's own archives, within a 512 MiB budget. Switching back releases them.
+Downloads contain only our generated/corrected channels and lookup metadata.
+The installer builds individual verified DDS files outside the game folder,
+using original alpha, headers and tails from the player's own installed game.
+The map builds automatically; no model-by-model mapping is needed. Reconstruction
+runs during setup, not every frame. Verified cached work is reused.
+It adds TextureQuest.addon64 and TextureQuest.ini beside EverQuest2.exe or in
+ReShade's AddonPath. If ReShade is absent, it also adds official ReShade as
+dxgi.dll and a minimal configuration. Existing full-add-on ReShade is reused;
+standard ReShade and unknown proxies are preserved and installation stops.
 
-## Lifecycle
+## Texture flow
 
-Install once and launch normally. TextureQuest need not run. Keep the app's data and downloads folders in place. Close EQ2 before installing or uninstalling. Download / Resume in the app updates the textures and the map together while EQ2 is closed; the hook does not need reinstalling. Uninstall removes only the files TextureQuest added and still recognises; ReShade is removed only if TextureQuest installed it and it is unchanged.
+1. EQ2 reads its unchanged stock archives.
+2. At GPU texture creation, the add-on hashes original mips with XXH3-128.
+3. A match selects a verified loose DDS and supplies its mip chain instead.
+4. Numpad * switches Original/Upscaled; Shortcut changes the key.
 
-## Patching and coverage
+Upscaled is the default and needs no per-draw substitution. Original mode loads
+stock copies on a worker and substitutes views within the existing 512 MiB
+budget. Switching may take time while those copies load.
 
-A game patch that leaves a texture's content unchanged keeps it upscaled. A texture whose content changed stays original until a new map is published. Pack 1.2.3 maps 23,675 stock textures; 486 replacements whose stock content is shared by different upscales stay original.
+Identical originals share one upscale. Known later corrections take priority;
+otherwise the most-used outcome wins with a stable tie-break. See the
+[DDS integration contract](LOOSE_DDS.md) for persistence and patch handling.
 
-## Account policy
+## Updates and removal
 
-ReShade's add-on build is not intended for games with anti-cheat that inspects loaded modules. Neither installation method has official approval; account-policy risk is unknown.
+Close EQ2 before installing, uninstalling or activating texture updates. Keep
+the app and its data folder in place; the app need not remain open while playing.
+Saved DDS are reused. Get app update preserves portable data.
 
-## Source
+Verify / Update textures rebuilds matching against current stock. Unchanged
+content survives patches; changed sources remain original until supported.
+Reinstall the hook if the patcher removes its files.
 
-- [Add-on](../graphics-addon/BUILDING.md)
-- [Installer](../src/texturequest_graphics_proxy.py)
-- [Map tool](../tools/build_texture_map.py)
-- [Runtime file hashes](../graphics-runtime/RUNTIME.json)
+Uninstall removes only owned, unchanged files. ReShade is removed only if the
+app installed it and it is unchanged. Saved DDS stay. No game PAK is modified.
+Restore stock with the official patcher once if an old version replaced PAKs.
+
+Graphics hooks are not officially approved; account-policy risk is unknown.

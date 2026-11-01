@@ -9,6 +9,7 @@
 #include "stock_paks.hpp"
 #include "texture_map.hpp"
 #include "vpk_reader.hpp"
+#include "dds_reader.hpp"
 #include <fstream>
 #include <string>
 #include <vector>
@@ -149,6 +150,41 @@ int wmain(int argc, wchar_t** argv) {
         missing.StockArchives[0] = L"Absent.vpk";
         tq::StockPaks absent(dir + L"paks\\", missing);
         Check(absent.Read(missing.Rows[0], out) == 0, "missing stock pak returns 0");
+    }
+    if (argc >= 6) {
+        const auto loose_raw = ReadAll(argv[4]);
+        tq::TextureMap loose;
+        Check(loose.Load(loose_raw) && loose.Loose, "loose map loads");
+        if (!loose.Rows.empty()) {
+            tq::DDSReader loose_reader(std::wstring(argv[5]) + L"\\", loose);
+            const auto* dds = loose_reader.Read(loose.Rows[0]);
+            Check(dds && std::memcmp(dds - 128, "DDS ", 4) == 0, "verified loose DDS reads");
+            loose.Archives[loose.Rows[0].Archive].Digest[0] ^= 1;
+            Check(loose_reader.Read(loose.Rows[0]) == nullptr, "loose DDS checksum mismatch refused");
+            if (loose.Rows.size() == 1) {
+            auto duplicate_key = loose_raw;
+            tq::MapRow second = loose.Rows[0];
+            second.Width *= 2;
+            const size_t row_end = 68 + loose.Archives.size()*44 + loose.StockArchives.size()*4 + loose.Rows.size()*88;
+            const auto* row_bytes = reinterpret_cast<const unsigned char*>(&second);
+            duplicate_key.insert(duplicate_key.begin()+row_end,row_bytes,row_bytes+sizeof(second));
+            const uint32_t two = 2;
+            std::memcpy(duplicate_key.data()+60,&two,4);
+            tq::TextureMap layouts;
+            Check(layouts.Load(duplicate_key), "equal byte hashes in different layouts load");
+            const XXH128_hash_t same{second.KeyLow,second.KeyHigh};
+            const tq::Layout original{loose.Rows[0].Width,loose.Rows[0].Height,loose.Rows[0].Mips,loose.Rows[0].Family};
+            Check(layouts.Find(same,original) && layouts.Find(same,{second.Width,second.Height,second.Mips,second.Family}),
+                  "equal byte hashes match exact source layout");
+            }
+        }
+        auto escaped = loose_raw;
+        const size_t strings = 68 + loose.Archives.size()*44 + loose.StockArchives.size()*4 + loose.Rows.size()*88;
+        if (strings + 4 < escaped.size()) {
+            escaped[strings] = '.';
+            tq::TextureMap unsafe;
+            Check(!unsafe.Load(escaped), "loose file path outside content store refused");
+        }
     }
     std::printf("selfcheck: %d failures\n", Failures);
     return Failures ? 1 : 0;

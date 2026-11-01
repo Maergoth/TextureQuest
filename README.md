@@ -10,36 +10,35 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 ## Download and install
 
-**[Download TextureQuest 1.8.0 for Windows](https://github.com/Maergoth/TextureQuest/releases/download/v1.8.0/TextureQuest-Installer-1.8.0-windows-x64.zip)** · [Latest release](https://github.com/Maergoth/TextureQuest/releases/latest)
+**[Download TextureQuest for Windows](https://github.com/Maergoth/TextureQuest/releases/latest)**
 
-1. Patch EQ2 Origins, then close the game and launcher. If you previously replaced PAKs, use the official patcher to restore stock files before choosing a hook.
+1. Patch EQ2 Origins, then close the game and launcher. If you previously replaced PAKs, use the official patcher to restore stock files before installing the hook.
 2. Extract the app outside your game folder. Keep your existing **data** folder alongside **TextureQuest.exe**.
-3. Open TextureQuest, select your game folder, then **Download / Resume**.
-4. Choose an install mode and click **Install**. Wait for Ready, then launch EQ2 normally.
+3. Open TextureQuest, select your game folder, then click **Install graphics hook**. It downloads and prepares everything automatically.
+4. Launch EQ2 normally. **Numpad \*** switches Original/Upscaled; use **Shortcut** to change it.
 
-| Install mode | What it does |
-| --- | --- |
-| **Graphics hook — default** | Adds a TextureQuest add-on for stock ReShade beside the game EXE; existing EXE and PAKs stay unchanged. **Numpad \*** switches Original/Upscaled. Use **Shortcut** to change the key. |
-| **Replace PAK files** | Changes game archives. No graphics hook. Reinstall after patching. |
+The installer downloads only our generated/corrected channels from [TextureQuest-Textures](https://github.com/Maergoth/TextureQuest-Textures/releases/latest), about **17.7 GB**. It reads protected channels, headers and tails from your own game files and builds a **27.8 GB local texture cache** plus the lookup map automatically. No manual mapping, extra tools or game PAK changes. Setup reuses verified cached files; reconstruction does not run every frame.
 
 **Install once, then launch normally.** ReShade loads the add-on when EQ2 starts, including after a reboot. No background watcher, service or startup task. TextureQuest can stay closed; keep the app, **data** and downloads in place.
 
-**To remove Graphics hook:** close EQ2, open TextureQuest and click **Uninstall graphics hook**. Only the files it added and still recognises are removed; ReShade is removed only if TextureQuest installed it and it is unchanged. Downloads are kept. Use the official patcher to restore stock PAKs after Replace mode.
+**To remove Graphics hook:** close EQ2, open TextureQuest and click **Uninstall graphics hook**. Only the files it added and still recognises are removed; ReShade is removed only if TextureQuest installed it and it is unchanged. Saved DDS files are kept. If you previously used Replace mode, use the official patcher once to restore stock PAKs.
 
 **Upgrading an old hook:** close EQ2 and uninstall the old Graphics hook in the app before installing this version. For an old Memory hook, use **Settings → Uninstall old Memory hook** first. The modes cannot be combined.
 
-**After a patch:** unchanged texture content still matches. Changed assets stay original until a new map is published; Download / Resume in the app picks it up. If the patcher removes our files, reinstall the hook. An existing ReShade add-on build is used as is. A standard ReShade build is left unchanged and installation stops, explaining that the ReShade add-on build is needed. Any other `dxgi.dll`/`d3d11.dll` is left unchanged and installation stops.
+**After a patch:** unchanged texture content still matches. Changed assets stay original; **Verify / Update textures** rebuilds the map against your current stock files. New artwork for a changed source requires a compatible texture release. If the patcher removes our files, reinstall the hook. An existing ReShade add-on build is used as is. A standard ReShade build is left unchanged and installation stops, explaining that the ReShade add-on build is needed. Any other `dxgi.dll`/`d3d11.dll` is left unchanged and installation stops.
 
 **Get app update** downloads, verifies, installs and restarts TextureQuest, keeping **data** and downloads. Close EQ2, uninstall the hook when prompted, then reinstall it after updating.
 
 <details>
 <summary>Pack contents and compatibility</summary>
 
-Texture pack **1.2.4** includes **24,694 replacements in 310 archives**, including 312 recovered 2K Maj'Dul/Desert of Flames textures and earlier repairs. Includes corrected shared Fae/Arasai male and female bodies, Qeynos stone trim and its companion map. Other released textures and recovered Maj'Dul content are preserved. The larger generation batch is still unfinished.
+Texture pack **1.3.0** includes **24,694 named replacements**, including 312 recovered 2K Maj'Dul/Desert of Flames textures and earlier repairs. Includes corrected shared Fae/Arasai male and female bodies, Qeynos stone trim and its companion map. Other released textures and recovered Maj'Dul content are preserved. The larger generation batch is still unfinished.
 
-Compatibility with every asset, other graphics add-ons and future clients is not established. ReShade's add-on build is not intended for games with anti-cheat that inspects loaded modules. Neither installation method has official approval; account-policy risk is unknown.
+Compatibility with every asset, other graphics add-ons and future clients is not established. ReShade's add-on build is not intended for games with anti-cheat that inspects loaded modules. This graphics hook has no official approval; account-policy risk is unknown.
 
-Matching textures are replaced as the game creates them, read straight from the downloaded archives using a small texture map published with each release; nothing runs per frame and there is no private texture cache. The 1.2.3 map covers 23,675 stock textures; 486 replacements whose stock content is shared by different upscales stay original. Original mode loads stock copies of the visible textures on demand within a 512 MiB budget. Counts describe mappings, not measured in-game coverage.
+Matching DDS files replace stock data when EQ2 creates GPU textures. The stock-ReShade add-on and its Original/Upscaled hotkey remain. Upscaled mode needs no per-draw replacement work. Original mode loads stock copies on demand within a 512 MiB budget.
+
+Identical originals share one upscale: the most-used existing version, with a stable tie-break. Known later corrections take priority. The existing 208 conflicting groups (486 named files) now have consistent selections; all named identities and categories remain in the dataset. These are dataset counts, not measured in-game coverage.
 
 Apps 1.3.4 and earlier need one manual upgrade; preserve the existing data folder. [How the graphics hook works](docs/GRAPHICS_HOOK.md).
 
@@ -132,25 +131,25 @@ Original 1K artwork beside the released 4K texture on the complete model.
 - **The original geometry still matters.** Low-polygon silhouettes, UV stretching, separate body parts and LOD changes remain. Texture work cannot fix every model or shader issue.
 - **Some appearances may still have issues.** Character variants, facial customization and layered materials can produce results that differ from the previews.
 - **Higher-resolution textures use more resources.** Storage, loading behavior and texture memory requirements can increase. Performance depends on your settings and system; no minimum hardware or FPS improvement is claimed.
-- **Patches can change assets.** PAK replacement may be overwritten. Graphics matching survives unchanged texture content; changed assets need updated mappings and remain original in the meantime.
+- **Patches can change assets.** Graphics matching survives unchanged texture content; changed assets need updated mappings and remain original in the meantime.
 
 Please [report a problem](https://github.com/Maergoth/TextureQuest/issues/new/choose) with the game version/server, zone or item/NPC, character race/gender/appearance where relevant, a close-up screenshot, and the TextureQuest version installed. Include whether **Verify installed textures** passes. Do not include account credentials or private logs.
 
 ## Updates
 
-The installer checks the [latest release](https://github.com/Maergoth/TextureQuest/releases/latest) and fetches its required texture files. Installation still requires clicking **Install TextureQuest**.
+The installer checks the [latest release](https://github.com/Maergoth/TextureQuest/releases/latest) and fetches its required texture files. Installing the graphics hook still requires clicking **Install graphics hook**.
 
-After a game patch, reinstall PAK replacement if needed. Graphics hook matches texture content rather than archive names or positions. Changed textures stay original. Downloads are reused when reinstalling.
+After a game patch, unchanged textures keep matching. Verify / Update textures refreshes current stock matching; changed sources stay original. Saved DDS files are reused.
 
 ### Can this leave the game's PAKs untouched?
 
 Yes. **Graphics hook** adds `TextureQuest.addon64` and `TextureQuest.ini` beside EverQuest2.exe (or ReShade's AddonPath), plus the official ReShade add-on build as `dxgi.dll` (with a minimal `ReShade.ini` if none exists) if no ReShade is present. ReShade loads the add-on normally; it swaps matching textures when the game creates them. It does not inject from another process or redirect game archive reads. Existing EXE, PAKs and ReShade settings are preserved. [Technical summary](docs/GRAPHICS_HOOK.md).
 
-Neither method is officially approved by Daybreak. We cannot promise account safety.
+The graphics hook is not officially approved by Daybreak. We cannot promise account safety.
 
 ### Can I choose only races, armor, weapons or an expansion?
 
-The installer installs the complete pack. Separate content selections are not available because the game's archives mix equipment, characters and shared world textures.
+The installer currently uses the complete pack. Categories and map types are retained in the DDS index for future selection controls; shared textures can affect several categories.
 
 ## Technical details and contributing
 
@@ -166,10 +165,10 @@ Use Windows, 64-bit Python 3.12 with Tk support and the pinned build dependencie
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r src\texture_swapper\requirements-build.txt
-.\.venv\Scripts\python.exe build_installer.py --manifest release-manifest-1.3.7.json --version 1.8.0 --loader-runtime-dir sideload-runtime --graphics-runtime-dir graphics-runtime
+.\.venv\Scripts\python.exe build_installer.py --manifest src/release-manifest.json --version 1.9.0 --graphics-runtime-dir graphics-runtime
 ```
 
-The builder verifies both runtime rosters without modifying them. `sideload-runtime` supplies offline archive preparation and old Memory hook removal. `graphics-runtime` holds the TextureQuest add-on and the unmodified official ReShade add-on build; see [add-on build instructions](graphics-addon/BUILDING.md). Use a fresh `--output-root` to preserve earlier builds. The add-on build is reproducible: the same sources built with the same MSVC toolset give a byte-identical `TextureQuest.addon64`. Building does not install into the game or generate textures.
+The builder pins the graphics runtime and shared-texture choices. No offline PAK preparation tools are bundled. The legacy release manifest remains small app-update metadata; texture downloads come from the independent DDS source. See [the integration contract](docs/LOOSE_DDS.md) and [add-on build instructions](graphics-addon/BUILDING.md). Build into a fresh `--output-root`. Building does not install into EQ2 or generate textures.
 
 ## Credits and ownership
 

@@ -105,7 +105,7 @@ def _direct_runtime(folder, vpk):
                 runtime_install_guard='own-fresh-D-fixture-only')
 
 
-def run(output):
+def _historical_pak_runtime(output):
     from texture_swapper import core
     from texturequest_release import load_manifest
     from texturequest_app import resource, APP_VERSION
@@ -155,3 +155,8 @@ def run(output):
     finally:
         output.write_text(json.dumps(result, indent=2), encoding="utf-8")
     return result
+
+
+def run(output):
+    from texturequest_channel_check import run as check_channels
+    return check_channels(output)

@@ -1,15 +1,15 @@
 {
-  "schema": "texturequest-graphics-runtime-v3",
+  "schema": "texturequest-graphics-runtime-v4",
   "addon": "TextureQuest.addon64",
   "reshade": "ReShade64.dll",
   "reshade_version": "6.8.0",
   "reshade_build": "addon",
-  "map_schema": "TQMAP001",
+  "map_schema": "TQMAP002",
   "files": [
     {
       "name": "TextureQuest.addon64",
-      "bytes": 346624,
-      "sha256": "49f54e56b433bada151b3c6b27f452cac5647e35714f9ac611d0133f192ebefc"
+      "bytes": 344576,
+      "sha256": "ef254d8e3df4dad0ff5f3f50810785ced68087684f55ab63299058df0bca3194"
     },
     {
       "name": "ReShade64.dll",

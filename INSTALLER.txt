@@ -1,50 +1,26 @@
-TextureQuest 1.8.0 — Windows x64
+TextureQuest 1.9.1 — Windows x64
 
-1. Patch EQ2 Origins, then close EQ2.
-   Restore stock PAKs first if you previously used Replace mode.
-2. Extract the whole app outside the game folder. Keep data beside the EXE.
-3. Open TextureQuest, choose your game folder, then Download / Resume.
-4. Choose an install mode and click Install. Wait until installation finishes.
+1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
+2. Close EQ2. Extract this app outside the game folder; keep data beside the EXE.
+3. Choose your game folder, then Install graphics hook. Setup is automatic.
+4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
-GRAPHICS HOOK — DEFAULT
-A TextureQuest add-on for stock ReShade. Adds TextureQuest.addon64 and
-TextureQuest.ini beside EverQuest2.exe, plus the official ReShade add-on build
-as dxgi.dll if no ReShade is present. An existing ReShade add-on build is used
-as is. A standard ReShade build is left unchanged and installation stops: it
-cannot load add-ons, so install the ReShade add-on build first. Any other
-dxgi.dll/d3d11.dll is left unchanged and installation stops. Existing EXE and
-PAKs stay unchanged. No background watcher, startup task or private cache.
-Launch EQ2 normally, even after reboot; TextureQuest can stay closed.
-Keep the app, data and downloads in place.
+Numpad * switches Original/Upscaled. Use Shortcut to change it.
 
-Matching textures are swapped as the game creates them, read from the
-downloaded archives using a texture map published with each release.
-Numpad * switches Original/Upscaled while EQ2 is focused. Use Shortcut to change
-it. Ambiguous/unmatched textures remain original.
-Close EQ2, then Uninstall graphics hook to remove the files it added.
-ReShade is removed only if TextureQuest installed it and it is unchanged.
-Downloads stay.
+About 17.7 GB downloads: our generated/corrected channels and lookup metadata.
+The app builds about 27.8 GB of local textures using your own game files for
+protected original channels, DDS headers and tails. Those parts are not downloaded.
+No game PAK writes, manual mapping, extra tools or background watcher. Keep data.
+Verified cached work is reused; interrupted downloads resume safely.
 
-REPLACE PAK FILES
-Copies textures into game archives. No graphics hook; reinstall after patching.
-Use the official patcher to restore stock PAKs. Close EQ2 before installing.
-The two modes cannot be combined. Hover the info icons for details.
+The hook uses stock full-add-on ReShade. Existing compatible ReShade is reused;
+otherwise official ReShade is added as dxgi.dll. Unknown proxies stay untouched.
+Close EQ2 before installing, uninstalling or activating updates. Uninstall removes
+only owned, unchanged hook files and keeps the local texture cache.
 
-OLD HOOKS
-Close EQ2 and Uninstall the old Graphics hook before installing this version.
-For Memory hook, use Settings → Uninstall old Memory hook first.
+After patches, unchanged assets still match. Verify / Update textures refreshes
+the map; changed or unavailable sources stay original with a coverage report.
+Get app update downloads, verifies, replaces and restarts the app, preserving data.
 
-PATCHES & APP UPDATES
-Unchanged texture content still matches after patching. Changed assets stay
-original until a new map is published. If the patcher removes our files,
-reinstall. Existing ReShade installs and other graphics proxies are never
-overwritten.
-Get app update downloads, verifies, replaces and restarts the app, preserving
-data and downloads. Close EQ2; uninstall the hook when prompted, then reinstall.
-
-Texture pack 1.2.3 is unchanged: 24,694 replacements in 310 archives, including
-recovered Maj'Dul textures. Unfinished new generation is not included.
-All assets, other add-ons and future clients are not fully validated.
-ReShade's add-on build is not meant for games with module-scanning anti-cheat.
-Neither mode is officially approved. Account-policy risk is unknown.
-This unsigned community app includes third-party notices.
+Includes third-party notices. Graphics hooks are not officially approved;
+account-policy risk is unknown. The unfinished generation batch is not included.

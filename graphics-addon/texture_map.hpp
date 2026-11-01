@@ -6,6 +6,8 @@
 #include "layout.hpp"
 #include <bit>
 #include <cstring>
+#include <array>
+#include <tuple>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -29,6 +31,7 @@ static_assert(sizeof(MapRow) == 88);
 struct MapArchive {
     std::wstring Name;
     uint64_t Bytes = 0;
+    std::array<unsigned char, 32> Digest{};
 };
 
 struct LayoutHash {
@@ -42,30 +45,46 @@ public:
     std::vector<MapRow> Rows;
     std::vector<char> Strings;
     std::unordered_set<Layout, LayoutHash> Layouts;
+    bool Loose = false;
 
     bool Load(const std::vector<unsigned char>& raw) {
         constexpr size_t HEADER = 68;
-        if (raw.size() < HEADER || std::memcmp(raw.data(), "TQMAP001", 8))
+        if (raw.size() < HEADER || (std::memcmp(raw.data(), "TQMAP001", 8) && std::memcmp(raw.data(), "TQMAP002", 8)))
             return false;
+        Loose = !std::memcmp(raw.data(), "TQMAP002", 8);
+        Archives.clear(); StockArchives.clear(); Rows.clear(); Strings.clear(); Layouts.clear();
         uint32_t archive_count, stock_count, row_count, string_bytes;
         std::memcpy(&archive_count, raw.data() + 52, 4);
         std::memcpy(&stock_count, raw.data() + 56, 4);
         std::memcpy(&row_count, raw.data() + 60, 4);
         std::memcpy(&string_bytes, raw.data() + 64, 4);
-        const uint64_t expected = HEADER + uint64_t(archive_count) * 12 + uint64_t(stock_count) * 4 + uint64_t(row_count) * sizeof(MapRow) + string_bytes;
-        if (!archive_count || archive_count > 4096 || !stock_count || stock_count > 4096 || row_count > 200000 || expected != raw.size())
+        const uint32_t file_stride = Loose ? 44 : 12;
+        const uint64_t expected = HEADER + uint64_t(archive_count) * file_stride + uint64_t(stock_count) * 4 + uint64_t(row_count) * sizeof(MapRow) + string_bytes;
+        if (!archive_count || archive_count > (Loose ? 100000u : 4096u) || !stock_count || stock_count > 4096 || row_count > 200000 || expected != raw.size())
             return false;
         Strings.assign(raw.end() - string_bytes, raw.end());
         if (!Strings.empty() && Strings.back() != '\0')
             return false;
         size_t at = HEADER;
-        for (uint32_t i = 0; i < archive_count; ++i, at += 12) {
+        for (uint32_t i = 0; i < archive_count; ++i, at += file_stride) {
             MapArchive archive;
             uint32_t name;
             std::memcpy(&archive.Bytes, raw.data() + at, 8);
             std::memcpy(&name, raw.data() + at + 8, 4);
             if (!Text(name, archive.Name))
                 return false;
+            if (Loose) {
+                std::memcpy(archive.Digest.data(), raw.data() + at + 12, 32);
+                if (archive.Bytes < 128 || archive.Bytes > (64u << 20) + 4096 || archive.Name.size() != 72 ||
+                    archive.Name.substr(0, 4) != L"dds/" || archive.Name.substr(68) != L".dds")
+                    return false;
+                constexpr wchar_t hex[] = L"0123456789abcdef";
+                for (size_t b = 0; b < 32; ++b) {
+                    if (archive.Name[4+b*2] != hex[archive.Digest[b] >> 4] ||
+                        archive.Name[5+b*2] != hex[archive.Digest[b] & 15])
+                        return false;
+                }
+            }
             Archives.push_back(std::move(archive));
         }
         for (uint32_t i = 0; i < stock_count; ++i, at += 4) {
@@ -93,9 +112,10 @@ public:
             if (row.PixelOffset < 128 || row.PixelBytes > row.InflatedBytes || row.PixelOffset > row.InflatedBytes - row.PixelBytes)
                 return false;
             const uint64_t bytes = Archives[row.Archive].Bytes;
-            if (row.BlockOffset > bytes || bytes - row.BlockOffset < 4 + uint64_t(row.CompressedBytes))
+            if (Loose ? (row.BlockOffset || row.CompressedBytes || row.PixelOffset != 128 || row.InflatedBytes != bytes) :
+                (row.BlockOffset > bytes || bytes - row.BlockOffset < 4 + uint64_t(row.CompressedBytes)))
                 return false;
-            if (i && !(Before(Rows[i - 1], row)))
+            if (i && !(Before(Rows[i - 1], row) || (Loose && SameKey(Rows[i-1], row) && LayoutBefore(Rows[i-1], row))))
                 return false;
             Layouts.insert({row.Width, row.Height, row.Mips, row.Family});
         }
@@ -107,7 +127,9 @@ public:
         while (low < high) {
             const size_t middle = (low + high) / 2;
             const MapRow& row = Rows[middle];
-            if (row.KeyLow < key.low64 || (row.KeyLow == key.low64 && row.KeyHigh < key.high64))
+            if (row.KeyLow < key.low64 || (row.KeyLow == key.low64 && row.KeyHigh < key.high64) ||
+                (Loose && row.KeyLow == key.low64 && row.KeyHigh == key.high64 &&
+                 std::tie(row.Width,row.Height,row.Mips,row.Family) < std::tie(layout.Width,layout.Height,layout.Mips,layout.Family)))
                 low = middle + 1;
             else
                 high = middle;
@@ -123,6 +145,14 @@ public:
     std::string MemberName(uint32_t offset) const { return std::string(Strings.data() + offset); }
 
 private:
+    static bool SameKey(const MapRow& a, const MapRow& b) {
+        return a.KeyLow == b.KeyLow && a.KeyHigh == b.KeyHigh;
+    }
+
+    static bool LayoutBefore(const MapRow& a, const MapRow& b) {
+        return std::tie(a.Width,a.Height,a.Mips,a.Family) < std::tie(b.Width,b.Height,b.Mips,b.Family);
+    }
+
     static bool Before(const MapRow& a, const MapRow& b) {
         return a.KeyLow < b.KeyLow || (a.KeyLow == b.KeyLow && a.KeyHigh < b.KeyHigh);
     }

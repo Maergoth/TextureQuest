@@ -46,6 +46,18 @@ def hash_stream(stream, length=None, pause=None):
 
 
 def validate_manifest(value, pinned=True):
+    if value.get('schema') == 'texturequest-release-v4':
+        from texturequest_latest import version_number
+        version_number(value['version']); version_number(value['texture_version'])
+        pin = value['channel_source']
+        if (value.get('distribution') != 'generated-channels-only' or value.get('archives') != [] or
+                type(value.get('texture_count')) is not int or not 0 < value['texture_count'] <= 200000 or
+                pin.get('name') != 'channel-source.json' or type(pin.get('bytes')) is not int or
+                not 0 < pin['bytes'] < 4 * 1024**2 or
+                not re.fullmatch('[a-f0-9]{64}', str(pin.get('sha256'))) or
+                pin.get('url') != 'https://github.com/Maergoth/TextureQuest-Textures/releases/download/v' + value['texture_version'] + '/channel-source.json'):
+            raise ValueError('Invalid generated-channel release manifest')
+        return value
     if value.get("schema") == "texturequest-release-v3":
         from texturequest_direct import validate_manifest as validate_direct
         return validate_direct(value, pinned=pinned)

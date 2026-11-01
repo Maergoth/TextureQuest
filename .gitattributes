@@ -5,6 +5,7 @@ README.md text eol=lf
 /sideload-native/** -text
 
 /graphics-runtime/** -text
+/cpu-codec/** -text
 /graphics-native/** -text
 /src/** -text
 /tests/** -text
@@ -14,3 +15,4 @@ README.md text eol=lf
 /INSTALLER.txt -text
 
 /release-manifest.json -text
+src/shared-texture-choices.json linguist-generated=true
