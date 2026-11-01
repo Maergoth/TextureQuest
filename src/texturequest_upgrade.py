@@ -49,6 +49,11 @@ class Upgrade:
 
     def needed(self, game):
         if not str(game).strip(): return False
+        graphics = self.graphics.status(game)
+        # Check the actual owned hook before a historical completed migration
+        # receipt can hide an unstamped/older hook with identical DLL bytes.
+        if graphics.get('installed_newer_app') is True: return False
+        if graphics.get('refresh_required') is True: return True
         path = self.receipt(game)
         if path.exists():
             value = core._load(path)
@@ -59,7 +64,7 @@ class Upgrade:
         _, old = manager._game_manifest(game)
         dds = self.state / 'dds-prepared.json'
         old_dds = dds.exists() and core._load(dds).get('distribution') != 'generated-channels-only'
-        return path.exists() or old.exists() or old_dds or self.graphics.status(game)['installed'] or bool(
+        return path.exists() or old.exists() or old_dds or graphics['installed'] or bool(
             self.loader and self.loader.status(game)['installed']) or any(
                 (self.state / name).exists() for name in ('direct-prepared.json', 'texturequest-prepared.json'))
 
@@ -85,6 +90,8 @@ class Upgrade:
 
     def before(self, game, report=lambda _: None):
         ensure_closed()
+        if self.graphics.status(game).get('installed_newer_app') is True:
+            raise ValueError('A newer TextureQuest launcher installed this hook. Update the app before reinstalling it.')
         path = self.receipt(game)
         path.parent.mkdir(parents=True, exist_ok=True)
         prior = core._load(path).get('previous_dds') if path.exists() else None

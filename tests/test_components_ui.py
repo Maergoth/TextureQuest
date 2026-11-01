@@ -81,3 +81,18 @@ class ComponentUI(GraphicsOnlyUI):
         self.assertFalse(self.ui.component_effects.get())
         self.assertIn('another action holds the lock', self.ui.message.get('1.0','end-1c'))
 
+    def test_component_change_cannot_downgrade_newer_hook_with_prepared_cache(self):
+        prepared = self.prepared()
+        self.manager.install(self.game, prepared)
+        record = self.manager._record(self.game)
+        record['app_version'] = '9999.0.0'
+        self.manager._save(self.game, record)
+        self.ui.prepared = prepared; self.ui.release_checked = True
+        self.ui.component_effects.set(True)
+        with patch.object(self.manager, 'uninstall') as remove, \
+             patch.object(self.manager, 'install') as install, \
+             patch.object(self.ui, 'begin') as begin:
+            self.assertFalse(self.ui.manage_graphics())
+        remove.assert_not_called(); install.assert_not_called(); begin.assert_not_called()
+        self.assertIn('newer TextureQuest app', self.ui.message.get('1.0','end-1c'))
+

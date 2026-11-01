@@ -36,6 +36,10 @@ the app and its data folder in place; the app need not remain open while playing
 Saved DDS are reused. Get app update preserves portable data.
 
 On upgrade, setup removes old owned hooks and reinstalls the current add-on.
+This runs for every new app version, including releases with identical hook DLL
+bytes. The installed app version is recorded separately from texture versions.
+An older completed upgrade receipt cannot skip a stale hook. The normal update
+flow reapplies the hook and ReShade defaults using saved DDS. No extra user action.
 It reclaims verified obsolete PAK/DDS caches only after the new setup succeeds.
 Unknown/changed files and custom settings stay. Finish upgrade resumes a stopped
 transition. Old Replace installs may require one official Validate Game Assets

@@ -874,6 +874,9 @@ class TextureQuestApp:
         selection = self.selected_components()
         changing = status['installed'] and components.normalize(status.get('components')) != selection
         removing = status["installed"] and not changing
+        if changing and status.get('installed_newer_app'):
+            self.set_message('This hook belongs to a newer TextureQuest app. Update the app before applying component changes.', error=True)
+            return False
         if not removing and (not self.prepared or not self.release_checked):
             self._download_latest(auto_install=True)
             return True
@@ -1019,6 +1022,8 @@ class TextureQuestApp:
         binding = dict(self.shortcut)
         selection = self.selected_components()
         def setup():
+            if (auto_install or upgrading) and self.graphics_status(game).get('installed_newer_app'):
+                raise ValueError('This hook belongs to a newer TextureQuest app. It was left unchanged.')
             migrate = upgrading or self.upgrade.needed(game)
             if migrate:
                 self.upgrade.before(game, self.report)
