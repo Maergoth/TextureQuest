@@ -18,6 +18,7 @@ from texturequest_shortcut import normalize, label
 from texturequest_dds_source import DDSStore
 import texturequest_graphics_catalog as catalog
 from texturequest_hotkeys import sanitize_reshade_config, sanitize_reshade_preset
+from texturequest_components import normalize as component_selection
 
 RUNTIME_SCHEMA = 'texturequest-graphics-runtime-v4'
 RECORD_SCHEMA = 'texturequest-graphics-addon-installation-v1'
@@ -124,10 +125,18 @@ class GraphicsManager:
         if not path.exists():
             return None
         doc = _json(path)
-        need(doc.get('schema') == RUNTIME_SCHEMA and doc.get('reshade_build') == 'addon' and
+        need(doc.get('schema') in (RUNTIME_SCHEMA, 'texturequest-graphics-runtime-v5') and doc.get('reshade_build') == 'addon' and
              doc.get('map_schema') == 'TQMAP002', 'Unknown graphics runtime.')
         names = {row['name'] for row in doc['files']}
         need(doc.get('addon') in names and doc.get('reshade') in names, 'Graphics runtime does not pin its add-on and ReShade.')
+        effects = doc.get('effects')
+        if effects is not None:
+            need(doc['schema'] == 'texturequest-graphics-runtime-v5' and effects == dict(
+                schema='texturequest-effects-runtime-v1', shader='effects/TQEffects.fx',
+                effect_name='TQEffects.fx', technique='TQBloom') and effects['shader'] in names,
+                'Unknown optional effects runtime.')
+        elif doc['schema'] == 'texturequest-graphics-runtime-v5':
+            raise ValueError('Graphics runtime is missing its effects contract.')
         for row in doc['files']:
             _pin(self.runtime_dir / row['name'], row)
         return doc
@@ -222,7 +231,7 @@ class GraphicsManager:
                 need(not any(p.is_relative_to(game) for p in targets),
                      'An interrupted ReShade settings reset needs recovery. Original settings and backups are preserved: ' + str(path))
 
-    def _repair_shortcuts(self, game):
+    def _repair_shortcuts(self, game, transform=None, *, reset_shortcuts=True):
         """Caller owns operation locks. Keep settings-only backups and a journal."""
         from contextlib import ExitStack
         from texturequest_direct import FileCustody
@@ -231,8 +240,10 @@ class GraphicsManager:
         ini = core._plain(game / 'ReShade.ini', game)
         if not ini.exists(): return dict(changed=0, paths=[])
         before = ini.read_bytes()
-        plan = [(ini, before, quiet_reshade(before))]
-        for path in _preset_paths(before, game):
+        after = quiet_reshade(before) if reset_shortcuts else before
+        if transform: after = transform(after)
+        plan = [(ini, before, after)]
+        for path in (_preset_paths(before, game) if reset_shortcuts else []):
             need(str(path).casefold() != str(ini).casefold(), 'ReShade preset cannot be its configuration file.')
             raw = path.read_bytes()
             plan.append((path, raw, sanitize_reshade_preset(raw)))
@@ -293,15 +304,54 @@ class GraphicsManager:
         if progress: progress(result['message'])
         return result
 
-    def _addon_ini(self, game, map_path):
+    def _effects_shader(self, runtime):
+        """Keep one immutable owned FX cache, shared like the local texture cache."""
+        effects = runtime.get('effects')
+        need(effects is not None, 'The optional effects runtime is not included.')
+        pin = next(row for row in runtime['files'] if row['name'] == effects['shader'])
+        source = self.runtime_dir / effects['shader']
+        _pin(source, pin)
+        raw = source.read_bytes()
+        need(len(raw) == pin['bytes'] and _sha(raw) == pin['sha256'], 'Bundled effects shader changed while reading.')
+        folder = core._plain(self.state_dir / 'effects' / pin['sha256'], self.state_dir)
+        folder.mkdir(parents=True, exist_ok=True)
+        path = core._plain(folder / 'TQEffects.fx', self.state_dir)
+        if not path.exists():
+            with path.open('xb') as stream:
+                stream.write(raw); stream.flush(); os.fsync(stream.fileno())
+        need(path.read_bytes() == raw, 'Saved effects shader changed; it was preserved.')
+        return folder
+
+    def _restore_effect_settings(self, game, record):
+        lease = record.get('effects_settings')
+        if not lease: return ()
+        from texturequest_effects import restore_effects_config
+        conflicts = []
+        need(lease.get('schema') == 'texturequest-effects-lease-v1' and
+             core._plain(lease.get('path', ''), game) == game / 'ReShade.ini', 'Effects settings ownership changed.')
+        if not (game / 'ReShade.ini').exists(): return ('ReShade.ini missing',)
+        def restore(raw):
+            after, changed = restore_effects_config(raw, lease['journal'])
+            conflicts.extend(changed)
+            return after
+        try:
+            self._repair_shortcuts(game, restore, reset_shortcuts=False)
+        except (ValueError, UnicodeError) as error:
+            conflicts.append(str(error))
+        return tuple(conflicts)
+
+    def _addon_ini(self, game, map_path, components=None):
+        selection = component_selection(components)
         lines = ['[TextureQuest]', 'Map=' + str(map_path), 'Downloads=' + str(self.state_dir / 'dds' / 'objects'),
-                 'Shortcut=' + str(self.base / 'shortcut.txt'), 'GamePaks=' + str(game / 'paks'), '']
+                 'Shortcut=' + str(self.base / 'shortcut.txt'), 'GamePaks=' + str(game / 'paks'),
+                 'Effects=' + ('1' if selection['effects'] else '0'), '']
         return '\r\n'.join(lines).encode('utf-8')
 
     def status(self, game):
         runtime = self._runtime()
         result = dict(installed=False, running=False, active_sessions=0, available=runtime is not None,
-                      dual_load=False, shortcut=normalize(), message='Graphics hook runtime is not included.')
+                      dual_load=False, shortcut=normalize(), message='Graphics hook runtime is not included.',
+                      components=component_selection(), effects_available=bool(runtime and runtime.get('effects')))
         if not str(game).strip():
             return result
         record = self._record(game)
@@ -312,7 +362,8 @@ class GraphicsManager:
                        'Hook file missing (' + ', '.join(missing) + '). Close EQ2, then Uninstall and Install to repair.' if missing else
                        'Old PAK-reading hook. Close EQ2, then Uninstall and Install to use DDS files.' if record.get('payload') != 'loose-dds' else
                        'Graphics hook installed. ' + label(binding) + ' switches Original/Upscaled.')
-            return dict(result, installed=True, active_sessions=self._games_open(game), available=True, shortcut=binding, message=message)
+            return dict(result, installed=True, active_sessions=self._games_open(game), available=True, shortcut=binding, message=message,
+                        components=component_selection(record.get('components')), installation_revision=record['record_sha256'])
         if self._proxy_170(game):
             return dict(result, installed=True, active_sessions=self._games_open(game), available=True,
                         message='TextureQuest 1.7.0 graphics hook. Close EQ2 and Uninstall here, then Install the add-on.')
@@ -431,13 +482,15 @@ class GraphicsManager:
         core._atomic(self._proxy_170_path(game), doc)
         return kept
 
-    def install(self, game, prepared, *, dual_load=False, progress=None, shortcut=None):
+    def install(self, game, prepared, *, dual_load=False, progress=None, shortcut=None, components=None):
         need(dual_load is False, 'Dual-load is not supported.')
+        selection = component_selection(components)
         report = progress or (lambda _: None)
         binding = normalize(shortcut)
         game = core._plain(core.validate_game(game).parent)
         runtime = self._runtime()
         need(runtime, 'Graphics runtime missing.')
+        need(not selection['effects'] or runtime.get('effects'), 'The optional effects runtime is not included.')
         ensure_closed()
         with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
             self._assert_shortcuts_settled(game)
@@ -456,22 +509,38 @@ class GraphicsManager:
             report('Verifying loose DDS files and texture map.')
             map_path = self._activate_prepared(game, prepared)
             self._write_key(binding)
+            effects_lease = None
+            shader_folder = self._effects_shader(runtime) if selection['effects'] else None
+            def configure_effects(raw):
+                nonlocal effects_lease
+                if shader_folder is None: return raw
+                from texturequest_effects import prepare_effects_config
+                after, journal = prepare_effects_config(raw, str(shader_folder))
+                lease = dict(schema='texturequest-effects-lease-v1', path=str(game / 'ReShade.ini'), journal=journal)
+                need(effects_lease is None or effects_lease == lease, 'ReShade settings changed before installation; settings preserved.')
+                effects_lease = lease
+                return after
+            if shader_folder is not None and (game / 'ReShade.ini').exists():
+                configure_effects(quiet_reshade((game / 'ReShade.ini').read_bytes()))
             writes, owned = [], False
             if all(kind == 'none' for kind in kinds.values()):
                 owned = True
                 writes.append((game / 'dxgi.dll', (self.runtime_dir / runtime['reshade']).read_bytes()))
-                if not (game / 'ReShade.ini').exists():
-                    writes.append((game / 'ReShade.ini', DEFAULT_RESHADE_INI))
+            if not (game / 'ReShade.ini').exists():
+                writes.append((game / 'ReShade.ini', configure_effects(DEFAULT_RESHADE_INI)))
             folder = self._addon_folder(game)
             writes.append((folder / 'TextureQuest.addon64', (self.runtime_dir / runtime['addon']).read_bytes()))
-            writes.append((folder / 'TextureQuest.ini', self._addon_ini(game, map_path)))
+            writes.append((folder / 'TextureQuest.ini', self._addon_ini(game, map_path, selection)))
             for path, _ in writes:
                 need(not path.exists(), path.name + ' already exists. It was left unchanged.')
-            self._repair_shortcuts(game)
             files = [dict(path=str(p), bytes=len(d), sha256=_sha(d)) for p, d in writes]
             doc = dict(schema=RECORD_SCHEMA, phase='installing', id=uuid.uuid4().hex, game=str(game), files=files,
-                       reshade_owned=owned, shortcut=binding, map=str(map_path), payload='loose-dds')
+                       reshade_owned=owned, shortcut=binding, map=str(map_path), payload='loose-dds',
+                       components=selection, effects_settings=effects_lease)
             self._save(game, doc)
+            # Persist the optional settings lease before changing an existing
+            # ReShade configuration, including interrupted installations.
+            self._repair_shortcuts(game, configure_effects)
             for path, data in writes:
                 ensure_closed()
                 tmp = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
@@ -525,6 +594,7 @@ class GraphicsManager:
                 if progress:
                     progress('Old graphics hook removed.')
                 return self.status(game)
+            settings_conflicts = self._restore_effect_settings(game, doc)
             for row in doc['files']:
                 p = core._plain(row['path'])
                 if not p.exists():
@@ -538,11 +608,13 @@ class GraphicsManager:
                 p.unlink()
             doc['phase'] = 'uninstalled'
             doc['kept'] = kept
+            doc['settings_conflicts'] = settings_conflicts
             self._save(game, doc)
         message = 'Graphics hook removed.' + (' Changed files kept: ' + ', '.join(kept) + '.' if kept else '')
+        if settings_conflicts: message += ' Changed ReShade settings were kept: ' + ', '.join(settings_conflicts) + '.'
         if progress:
             progress(message)
-        return dict(self.status(game), message=message, kept=kept)
+        return dict(self.status(game), message=message, kept=kept, settings_conflicts=settings_conflicts)
 
     def set_shortcut(self, game, shortcut, progress=None):
         binding = normalize(shortcut)

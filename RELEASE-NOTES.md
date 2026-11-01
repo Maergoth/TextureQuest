@@ -1,14 +1,12 @@
-TextureQuest 1.9.2
+TextureQuest 1.10.0 private preview
 
-- Fixes automatic upgrades from older apps, including 1.4.2, that reported
-  "Bundled texture/release versions disagree".
-- Home is the only configurable ReShade shortcut left enabled.
-- Screenshot, effect, preset-switch and referenced preset hotkeys are disabled.
-- Your custom TextureQuest toggle stays unchanged (Numpad * by default).
-- Settings → Reset ReShade shortcuts reapplies these defaults without deleting textures.
-- Keeps texture data 1.3.0, the existing graphics renderer, downloads and settings history.
+- Textures (required), optional Graphical Effects, and an unavailable DLSS choice.
+- First effect: subtle glow/bloom, off by default. AO/shadows/scene lighting pending.
+- Your custom key toggles every selected TextureQuest component together.
+- Saved choices per game; Apply changes reuses the texture cache.
+- Reversible ReShade FX settings; user presets and external edits preserved.
+- Includes the released 1.9.2 update compatibility and shortcut fixes.
 
-Close EQ2 before finishing the upgrade, then reopen it normally. Keep the data
-folder in place. F10/Alt+3 were not assigned in the inspected ReShade config;
-their reported freeze/tone has not yet been confirmed resolved in game.
-Unfinished DLSS/effects work is not included in this hotfix.
+This candidate is for a private EQ2 test, not public release. Close EQ2 before
+installing or applying choices. Enabling glow also loads enabled effects from
+your ReShade preset. No native EQ2 graphics settings or game archives are edited.

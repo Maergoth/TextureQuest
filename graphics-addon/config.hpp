@@ -10,6 +10,7 @@ namespace tq {
 
 struct Config {
     std::wstring Map, Downloads, Shortcut, GamePaks;
+    bool Effects = false;
 };
 
 inline std::wstring Widen(const std::string& text) {
@@ -19,13 +20,17 @@ inline std::wstring Widen(const std::string& text) {
 }
 
 inline bool ReadConfig(const std::wstring& ini, Config& config, std::string& error) {
+    // A reused Config must never retain an earlier opt-in after an absent,
+    // invalid or otherwise unsuccessful read. Commit only after all checks.
+    config.Effects = false;
+    error.clear();
     std::ifstream file(ini, std::ios::binary);
     if (!file) {
         error = "TextureQuest.ini not found next to the add-on";
         return false;
     }
     std::map<std::string, std::string> values;
-    bool section = false;
+    bool section = false, effects_seen = false, effects = false;
     for (std::string line; std::getline(file, line);) {
         while (!line.empty() && (line.back() == '\r' || line.back() == ' '))
             line.pop_back();
@@ -36,8 +41,18 @@ inline bool ReadConfig(const std::wstring& ini, Config& config, std::string& err
             continue;
         }
         const size_t equals = line.find('=');
-        if (section && equals != std::string::npos)
+        if (section && equals != std::string::npos) {
+            if (line.substr(0, equals) == "Effects") {
+                const std::string value = line.substr(equals + 1);
+                if (effects_seen || (value != "0" && value != "1")) {
+                    error = "TextureQuest.ini Effects must be one optional 0 or 1 entry";
+                    return false;
+                }
+                effects_seen = true;
+                effects = value == "1";
+            }
             values[line.substr(0, equals)] = line.substr(equals + 1);
+        }
     }
     struct Key { const char* Name; std::wstring* Value; bool Folder; bool MustExist; };
     const Key keys[] = {{"Map", &config.Map, false, true}, {"Downloads", &config.Downloads, true, true},
@@ -59,6 +74,7 @@ inline bool ReadConfig(const std::wstring& ini, Config& config, std::string& err
             value += L'\\';
         *key.Value = value;
     }
+    config.Effects = effects;
     return true;
 }
 

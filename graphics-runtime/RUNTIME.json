@@ -1,5 +1,5 @@
 {
-  "schema": "texturequest-graphics-runtime-v4",
+  "schema": "texturequest-graphics-runtime-v5",
   "addon": "TextureQuest.addon64",
   "reshade": "ReShade64.dll",
   "reshade_version": "6.8.0",
@@ -8,8 +8,8 @@
   "files": [
     {
       "name": "TextureQuest.addon64",
-      "bytes": 344576,
-      "sha256": "ef254d8e3df4dad0ff5f3f50810785ced68087684f55ab63299058df0bca3194"
+      "bytes": 351232,
+      "sha256": "9386acf0653324f70814b3160194782589d890188c0220ec29c57feff3be8f10"
     },
     {
       "name": "ReShade64.dll",
@@ -45,6 +45,17 @@
       "name": "licenses/xxHash.txt",
       "bytes": 1389,
       "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a"
+    },
+    {
+      "name": "effects/TQEffects.fx",
+      "bytes": 5877,
+      "sha256": "6a6ad2cb85693cb7ff13e50d51a73f3b930abe848b2e4db1a5657f8287a77feb"
     }
-  ]
+  ],
+  "effects": {
+    "schema": "texturequest-effects-runtime-v1",
+    "shader": "effects/TQEffects.fx",
+    "effect_name": "TQEffects.fx",
+    "technique": "TQBloom"
+  }
 }

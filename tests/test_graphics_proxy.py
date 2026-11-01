@@ -74,12 +74,14 @@ class InstallTests(Fixture):
         self.assertTrue(self.record()['reshade_owned'])
         self.assertEqual((self.game / 'dxgi.dll').read_bytes(), ADDON_BUILD)
 
-    def test_existing_addon_build_gets_addon_only(self):
+    def test_existing_addon_build_gets_addon_and_missing_local_config(self):
         (self.game / 'dxgi.dll').write_bytes(ADDON_BUILD)
         self.install()
         names = sorted(Path(f['path']).name for f in self.record()['files'])
-        self.assertEqual(names, ['TextureQuest.addon64', 'TextureQuest.ini'])
+        self.assertEqual(names, ['ReShade.ini', 'TextureQuest.addon64', 'TextureQuest.ini'])
         self.assertFalse(self.record()['reshade_owned'])
+        self.assertEqual((self.game / 'dxgi.dll').read_bytes(), ADDON_BUILD)
+        self.assertIn(b'KeyOverlay=36,0,0,0', (self.game / 'ReShade.ini').read_bytes())
 
     def test_standard_reshade_refused(self):
         (self.game / 'dxgi.dll').write_bytes(STANDARD_BUILD)

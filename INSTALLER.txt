@@ -1,4 +1,4 @@
-TextureQuest 1.9.2 — Windows x64
+TextureQuest 1.10.0 preview — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract this app outside the game folder; keep data beside the EXE.
@@ -6,6 +6,11 @@ TextureQuest 1.9.2 — Windows x64
 4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
 Numpad * switches Original/Upscaled. Use Shortcut to change it.
+Textures are required. Graphical Effects is an optional glow preview; DLSS is
+still in development. The same key toggles all selected TextureQuest features.
+Close EQ2 and Apply changes after changing components. Your textures stay cached.
+Glow also loads enabled effects from your ReShade preset. It does not replace
+EQ2's AO, shadows or scene lighting. No native game graphics settings are changed.
 Home opens ReShade. Its other configurable shortcuts are disabled. Settings →
 Reset ReShade shortcuts reapplies this while keeping your TextureQuest shortcut.
 
