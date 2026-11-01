@@ -9,6 +9,7 @@
 #include "stock_copies.hpp"
 #include "stock_paks.hpp"
 #include "dds_reader.hpp"
+#include "effects_controller.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -78,6 +79,7 @@ struct State {
     std::condition_variable JobWake;
     std::deque<StockJob> Jobs;
     std::thread Worker;
+    tq::EffectsController<effect_runtime> Effects;
 };
 
 State* Global = nullptr;
@@ -357,6 +359,32 @@ void OnPresent(command_queue* queue, swapchain*, const rect*, const rect*, uint3
     }
 }
 
+bool OwnedEffectsEnabled() {
+    return tq::EffectsEnabled(Global->Config.Effects, Global->Original.load());
+}
+
+void OnInitEffectRuntime(effect_runtime* runtime) {
+    Global->Effects.Reload(runtime, OwnedEffectsEnabled());
+}
+
+void OnReloadedEffects(effect_runtime* runtime) {
+    Global->Effects.Reload(runtime, OwnedEffectsEnabled());
+}
+
+void OnDestroyEffectRuntime(effect_runtime* runtime) {
+    Global->Effects.Forget(runtime);
+}
+
+void OnBeginEffects(effect_runtime* runtime, command_list*, resource_view, resource_view) {
+    Global->Effects.Reconcile(runtime, OwnedEffectsEnabled());
+}
+
+void OnReshadePresent(effect_runtime* runtime) {
+    // Also runs with no active FX, so switching back from Original can enable
+    // the owned technique even when it was the only loaded effect.
+    Global->Effects.Reconcile(runtime, OwnedEffectsEnabled());
+}
+
 void Start(HMODULE module) {
     auto* state = new State();
     std::string error;
@@ -381,6 +409,11 @@ void Start(HMODULE module) {
     reshade::register_event<reshade::addon_event::destroy_resource>(&OnDestroyResource);
     reshade::register_event<reshade::addon_event::present>(&OnPresent);
     reshade::register_event<reshade::addon_event::destroy_device>(&OnDestroyDevice);
+    reshade::register_event<reshade::addon_event::init_effect_runtime>(&OnInitEffectRuntime);
+    reshade::register_event<reshade::addon_event::destroy_effect_runtime>(&OnDestroyEffectRuntime);
+    reshade::register_event<reshade::addon_event::reshade_reloaded_effects>(&OnReloadedEffects);
+    reshade::register_event<reshade::addon_event::reshade_begin_effects>(&OnBeginEffects);
+    reshade::register_event<reshade::addon_event::reshade_present>(&OnReshadePresent);
     Global->Worker = std::thread(StockWorker);
     Global->Shortcut->Start();
     Log(reshade::log::level::info, "loaded " + std::to_string(state->Map.Rows.size()) + " textures from " + std::to_string(state->Map.Archives.size()) + " archives");
@@ -396,6 +429,12 @@ void Stop() {
     reshade::unregister_event<reshade::addon_event::destroy_resource>(&OnDestroyResource);
     reshade::unregister_event<reshade::addon_event::present>(&OnPresent);
     reshade::unregister_event<reshade::addon_event::destroy_device>(&OnDestroyDevice);
+    reshade::unregister_event<reshade::addon_event::init_effect_runtime>(&OnInitEffectRuntime);
+    reshade::unregister_event<reshade::addon_event::destroy_effect_runtime>(&OnDestroyEffectRuntime);
+    reshade::unregister_event<reshade::addon_event::reshade_reloaded_effects>(&OnReloadedEffects);
+    reshade::unregister_event<reshade::addon_event::reshade_begin_effects>(&OnBeginEffects);
+    reshade::unregister_event<reshade::addon_event::reshade_present>(&OnReshadePresent);
+    Global->Effects.DisableAndClear();
     if (Global->PushRegistered)
         reshade::unregister_event<reshade::addon_event::push_descriptors>(&OnPushDescriptors);
     {
