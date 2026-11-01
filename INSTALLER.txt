@@ -1,4 +1,4 @@
-TextureQuest 1.11.1 private preview — Windows x64
+TextureQuest 1.12.0 private preview — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract outside the game folder; keep data beside the EXE.
@@ -9,14 +9,14 @@ Textures are required. Graphical Effects adds AO, contact shadows, screen-space
 bounce light, bloom and edge AA. Home opens ReShade. Each effect has a requested
 checkbox and running/waiting status. Strength controls are below the list. Numpad * switches all TextureQuest features Original/Upscaled; use
 Shortcut to change it. Apply changes with EQ2 closed after selecting components.
-DLSS (Experimental) adds the private AIO backend: neural rendering, DLSS
-upscaling and 2x frame generation. These are supported code paths; the combined
-EQ2 test, image quality, HUD behavior and performance are still pending.
-The default keeps your current resolution (native-size SR/DLAA). Home → Add-ons
-opens its upscaling, preset and frame-generation controls. A lower processing
-resolution does not guarantee higher FPS. No multi-frame generation is included.
-Your TextureQuest shortcut controls the whole selected pipeline; AIO's separate
-hotkeys are disabled. Apply component changes with EQ2 closed.
+DLSS (Experimental) has three controls in Home → TextureQuest:
+- Frame Generation: checkbox on/off, then 2x / 3x / 4x on supported hardware.
+- Upscaling: checkbox on/off, then Native/DLAA or a quality preset.
+- Neural Rendering: checkbox on/off, presets and Advanced model/pass controls.
+Unchecking keeps your preset. These choices can change while playing.
+Lower upscaling presets reduce DLSS processing resolution, not EQ2's original
+rendering cost. Motion is estimated; image quality, HUD and FPS need game testing.
+Your TextureQuest shortcut controls everything. Extra AIO hotkeys are disabled.
 
 These effects supplement native rendering. Keep native lighting/world shadows.
 Managed game INI changes get full local backups before edits and safe restoration

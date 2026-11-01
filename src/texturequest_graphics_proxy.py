@@ -51,6 +51,7 @@ DLSS_ROLES = {
 }
 DLSS_MODULES = ('feeder', 'consumer', 'sr', 'nr')
 AIO_PROFILE_ID = 'aio-09301f5-managed-nvof-nr-sr-fg-private-v1'
+AIO_V2_PROFILE_ID = 'aio-09301f5-managed-controls-mfg-private-v2'
 AIO_ROLES = {
     'aio': 'dlss/standalone-dlssnr.addon64', 'bridge': 'dlss/nvngx.dll',
     'nr': 'dlss/nvngx_dlssnr.dll', 'sr': 'dlss/nvngx_dlss.dll', 'fg': 'dlss/nvngx_dlssg.dll',
@@ -60,6 +61,7 @@ AIO_MODULES = ('aio', 'bridge', 'nr', 'sr', 'fg')
 DLSS_PROFILES = {
     DLSS_PROFILE_ID: dict(backend='feeder', roles=DLSS_ROLES, modules=DLSS_MODULES),
     AIO_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES),
+    AIO_V2_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES, settings='aio2'),
 }
 
 
@@ -276,7 +278,8 @@ class GraphicsManager:
             from texturequest_dlss import prepare_dlss_config
             directory = core._plain(self.state_dir / 'dlss' / _sha(catalog.canonical(profile)), self.state_dir)
             raw, _ = prepare_effects_config(raw, str(directory))
-            prepare_dlss_config(raw, profile=_dlss_contract(profile)['backend'])
+            contract = _dlss_contract(profile)
+            prepare_dlss_config(raw, profile=contract.get('settings', contract['backend']))
 
     def preflight_components(self, game, components=None):
         """Before Apply changes removes anything, verify selected optional graph."""
@@ -756,7 +759,8 @@ class GraphicsManager:
                     else: dlss_lease = lease
                 if dlss_folder is not None:
                     from texturequest_dlss import prepare_dlss_config
-                    raw, journal = prepare_dlss_config(raw, profile=_dlss_contract(dlss_profile)['backend'])
+                    contract = _dlss_contract(dlss_profile)
+                    raw, journal = prepare_dlss_config(raw, profile=contract.get('settings', contract['backend']))
                     lease = dict(schema='texturequest-dlss-lease-v1', path=str(game / 'ReShade.ini'), journal=journal)
                     need(consumer_lease is None or consumer_lease == lease, 'DLSS settings changed before installation; settings preserved.')
                     consumer_lease = lease

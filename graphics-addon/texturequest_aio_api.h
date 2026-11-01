@@ -20,3 +20,40 @@ using TextureQuestAIOGetStatusFn = int32_t (__cdecl *)(uint32_t abi, void *outpu
 // SetMaster is atomic request only; managed build starts OFF. Calls never persist config.
 // GetStatus returns a copied, most-recent-Present snapshot plus current master/CPU facts.
 // Feature flags mean handles exist, never successful GPU/visual proof; counters are separate.
+
+// ABI2 controls supplement ABI1 master/status exports; the latter stay available.
+#define TEXTUREQUEST_AIO_CONTROLS_ABI 2u
+enum TextureQuestAioEnabledMask : uint32_t { TQAIO_NR=1u,TQAIO_SR=2u,TQAIO_FG=4u };
+enum TextureQuestAioSrMode : uint32_t {
+ TQAIO_SR_Current=1, TQAIO_SR_Quality=2,
+ TQAIO_SR_Balanced=3, TQAIO_SR_Performance=4, TQAIO_SR_UltraPerformance=5
+};
+struct TextureQuestAIOControlsV2 {
+ uint32_t Abi, Bytes, EnabledMask, SrMode, FrameMultiplier, NrModel, NrPasses, Reserved;
+};
+static_assert(sizeof(TextureQuestAIOControlsV2)==32,"AIO ABI2 controls32");
+struct TextureQuestAIOControlStatusV2 {
+ uint32_t Abi, Bytes, Flags, Reserved;
+ uint64_t RequestedGeneration, AppliedGeneration;
+ TextureQuestAIOControlsV2 Requested, Applied;
+};
+static_assert(sizeof(TextureQuestAIOControlStatusV2)==96,"AIO ABI2 control status96");
+enum TextureQuestAIOControlStatusFlags : uint32_t {
+ TQAIO_ControlsLoaded=1u, TQAIO_ControlsPending=2u,
+ TQAIO_FGCapabilitiesKnown=4u, TQAIO_Supported4x=8u, TQAIO_Unsupported4x=16u,
+ TQAIO_Effective4x=32u, TQAIO_Effective2x=64u,
+ TQAIO_Supported3x=128u, TQAIO_Unsupported3x=256u, TQAIO_Effective3x=512u
+};
+using TextureQuestAIOSetControlsFn = int32_t (__cdecl *)(uint32_t abi,const void *controls,uint32_t bytes);
+using TextureQuestAIOGetControlsFn = int32_t (__cdecl *)(uint32_t abi,void *output,uint32_t bytes);
+// Exports: TextureQuestAIOSetControls / TextureQuestAIOGetControls. ABI exactly2.
+// Set receives32bytes, validates EnabledMask0..7 (NR1/SR2/FG4), multiplier2..4,
+// SRmode1..5, model/pass1..3, reserved0. Off changes mask only, retaining presets.
+// Atomic request only; current master remains authoritative. Owner Present drains
+// admitted jobs, applies and persists via normal ReShade config, then readmits.
+// Get returns96bytes with copied atomic requested/applied controls and generations.
+// SR Current uses native capture; lower modes downsample ONLY the captured image
+// before SR. They do not lower game rendering cost. MaskSR off makes NO NGX SR call.
+// MaskFG off bypasses FG;selected2/3/4 request one/two/three intermediates. Actual
+// runtime support/evaluations/status must prove4x; request alone is not evidence.
+// NR model1..3/pass1..3 retain upstream style/pass contracts.

@@ -11,6 +11,7 @@ from texturequest_effects import (
 
 SCHEMA = 'texturequest-dlss-settings-v1'
 AIO_SCHEMA = 'texturequest-dlss-aio-settings-v1'
+AIO_V2_SCHEMA = 'texturequest-dlss-aio-settings-v2'
 MACRO = 'DLSS5_MV_PROVIDER'
 VALUES = {
     ('GENERAL', 'PreprocessorDefinitions'): None,
@@ -38,6 +39,7 @@ AIO_VALUES = {('Standalone.DLSSNR', key): value for key, value in {
 def _profile_values(profile):
     if profile == 'feeder': return SCHEMA, VALUES
     if profile == 'aio': return AIO_SCHEMA, AIO_VALUES
+    if profile == 'aio2': return AIO_V2_SCHEMA, AIO_VALUES
     raise ValueError('Unknown DLSS settings backend.')
 
 
@@ -83,6 +85,11 @@ def prepare_dlss_config(raw, *, profile='feeder'):
     for key in values:
         rows, sections = _parse(lines, values)
         before = lines[rows[key][0]] if rows[key] else None
+        # Existing component choices belong to the user. A launcher refresh
+        # supplies absent defaults but never resets their in-game controls.
+        if (profile == 'aio2' and before is not None and key[0] == 'Standalone.DLSSNR' and
+                key[1] in ('NeuralRendering', 'FrameGeneration', 'SourceResolutionOverride')):
+            continue
         value = _value(key, before, values)
         after = (_replace_value(before, value, scalar=values[key] is not None) if before is not None
                  else key[1] + '=' + value + newline)
@@ -113,7 +120,7 @@ def prepare_dlss_config(raw, *, profile='feeder'):
 
 def _validate(journal):
     keys = {'schema', 'changes', 'created_sections', 'tail_bridge', 'before_sha256', 'after_sha256', 'record_sha256'}
-    if type(journal) is not dict or set(journal) != keys or journal['schema'] not in (SCHEMA, AIO_SCHEMA):
+    if type(journal) is not dict or set(journal) != keys or journal['schema'] not in (SCHEMA, AIO_SCHEMA, AIO_V2_SCHEMA):
         raise ValueError('Invalid DLSS settings journal.')
     values = VALUES if journal['schema'] == SCHEMA else AIO_VALUES
     body = {key: value for key, value in journal.items() if key != 'record_sha256'}

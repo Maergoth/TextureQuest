@@ -3,13 +3,20 @@
 Choose optional **Graphical Effects** and **DLSS (Experimental)**, close EQ2 and
 click **Apply changes**. Textures are required. Downloads stay cached.
 
-The private AIO DLSS backend includes neural rendering, Super Resolution/DLAA
-and 2x frame generation. It does not include multi-frame generation. Use
-**Home → Add-ons → Standalone DLSSNR** for its settings. Native-size processing
-is DLAA; upscaling needs a lower-resolution input. Processing a downsampled
-finished frame does not guarantee higher FPS. Motion is estimated from images;
-HUD behavior, temporal quality and combined EQ2 performance still need testing.
-Its own hotkeys and game window/input virtualization are disabled.
+Use **Home → TextureQuest** for the private AIO DLSS controls:
+
+- **Frame Generation:** checkbox on/off; **2x / 3x / 4x** selects one, two or
+  three generated frames between real frames. Hardware/runtime support is required.
+- **Upscaling:** checkbox on/off; **Native/DLAA, Quality, Balanced, Performance,
+  Ultra Performance**. Lower presets process a reduced captured image; they do
+  not reduce EQ2's original rendering cost or guarantee higher FPS.
+- **Neural Rendering:** checkbox on/off; three model presets, with **Advanced**
+  model/pass controls. More passes cost GPU time.
+
+Unchecking preserves the selected preset. Choices apply while playing; Original
+temporarily stops them all. Motion is estimated from images. HUD behavior,
+temporal quality and combined EQ2 performance still need testing. Extra AIO
+hotkeys and game window/input virtualization are disabled.
 
 **Home** opens ReShade. Each effect has a requested checkbox and separate
 On/Off/Waiting for depth status. Strength controls are below the list:

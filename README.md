@@ -8,20 +8,23 @@ TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim i
 
 AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,694 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
 
-## 1.11 graphics preview
+## 1.12 graphics preview
 
 This private candidate includes the public 1.9.5 updater fixes.
 
 - **Textures (required):** the released texture pack.
 - **Graphical Effects:** optional AO, contact shadows, bounce light, bloom and edge AA.
-- **DLSS (Experimental):** private AIO neural rendering, Super Resolution/DLAA and 2x frame generation. Combined EQ2 quality and performance testing is pending; multi-frame generation is not included.
+- **DLSS (Experimental):** separate controls for Frame Generation (2x/3x/4x on supported hardware), Upscaling quality and Neural Rendering presets.
 
 Choose components, close EQ2, then **Apply changes**. **Home** opens ReShade,
 where each effect has a requested switch and running/waiting status.
 Strength controls are below the effect list. **Numpad \*** switches all
 TextureQuest features off/on and remembers those choices for the session.
-For DLSS settings, use **Home → Add-ons → Standalone DLSSNR**. Its extra hotkeys
-are disabled. The same TextureQuest shortcut controls the selected pipeline.
+For DLSS settings, use **Home → TextureQuest**. Each component has an on/off
+checkbox that keeps its preset. Neural Rendering also has **Advanced** model/pass
+controls. These choices can change while playing. Extra AIO hotkeys are disabled.
+Lower upscaling presets reduce DLSS processing resolution, not EQ2's original
+rendering cost. Motion is estimated; combined EQ2 quality and FPS need testing.
 
 These are screen-space effects, not a replacement for EQ2's entire renderer.
 Native base lighting and world shadows remain necessary. Supported managed INI
