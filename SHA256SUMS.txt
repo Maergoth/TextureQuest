@@ -1,3 +1,3 @@
-59d9351dc35d54bb5873749bd222473d3c6ecf9700001253ba26d88a2515e667  TextureQuest-Installer-1.9.1-windows-x64.zip
+7f049b444ba19e07b5548b491820ba169f5287ea71f4424215a5edfd9ad9804c  TextureQuest-Installer-1.9.1-windows-x64.zip
 6acfa8eb22ad58e628685af3e36f1df3adc3905676d94b415eab4b3273d01a10  release-manifest.json
 ba8a2b7d8e7c3af8bafe7fc5bfbda0cbfe97bb1d113d1f559621dd03311ea13a  texturequest-version.json
