@@ -42,9 +42,17 @@ transition. Old Replace installs may require one official Validate Game Assets
 repair; the installer detects saved replacement bytes and explains that step.
 
 Persistent ReShade tutorial/stats displays are off by default. Home opens or
-closes ReShade (custom keys are preserved); its brief startup notice may appear.
+closes ReShade; other configurable ReShade shortcuts are disabled. The separate
+custom TextureQuest shortcut is preserved. Its brief startup notice may appear.
 Existing effects, presets and other add-ons remain configured. Before changing
 overlay settings, the installer saves the exact old INI in data/reshade-settings-history.
+
+App1.9.2 also clears preset-switch shortcuts and configured technique/uniform
+hotkeys from referenced presets inside the game folder. Settings → Reset ReShade
+shortcuts reapplies this without deleting the cache. Close EQ2 first. Exact old
+settings are retained in the history folder. Add-ons with their own hardcoded
+keyboard handlers are separate; configurable-key sanitation does not prove an
+unassigned F10 freeze or Alt+3 tone is fixed.
 
 Verify / Update textures rebuilds matching against current stock. Unchanged
 content survives patches; changed sources remain original until supported.

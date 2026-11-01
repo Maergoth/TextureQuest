@@ -1,20 +1,14 @@
-TextureQuest 1.9.1
+TextureQuest 1.9.2
 
-- Graphics hook only. Install downloads, reconstructs and configures everything.
-- Automatic old-hook migration and verified obsolete PAK/DDS cache cleanup.
-- Old Replace installs get one clear stock-repair step when needed.
-- Persistent ReShade tutorial/stats hidden; Home opens/closes its panel.
-- Only generated/corrected channels download; original channels come from your game.
-- About 17.7 GB downloads, 27.8 GB local cache. Verified cached work is reused.
-- Numpad * switches Original/Upscaled; the shortcut remains customizable.
-- ReShade loads the hook on normal game launches, including after reboot.
-- No game PAK modification, watcher, service, Replace mode or Memory hook.
-- Preserves recovered Maj'Dul textures, categories and accepted body/stone fixes.
-- Shared originals prefer later corrections, otherwise a consistent existing version.
+- Fixes automatic upgrades from older apps, including 1.4.2, that reported
+  "Bundled texture/release versions disagree".
+- Home is the only configurable ReShade shortcut left enabled.
+- Screenshot, effect, preset-switch and referenced preset hotkeys are disabled.
+- Your custom TextureQuest toggle stays unchanged (Numpad * by default).
+- Settings → Reset ReShade shortcuts reapplies these defaults without deleting textures.
+- Keeps texture data 1.3.0, the existing graphics renderer, downloads and settings history.
 
-Close EQ2 to install or activate updates. Upgrade resumes automatically; Finish
-upgrade continues after any required patcher repair. Get app update preserves data.
-Keep the data folder in place while playing. Unknown or changed files are kept.
-The full local pack passed reconstruction checks and the user's game test.
-Changed/unavailable source groups stay original and are reported, never filled
-with downloaded stock data. The larger generation batch is not part of this release.
+Close EQ2 before finishing the upgrade, then reopen it normally. Keep the data
+folder in place. F10/Alt+3 were not assigned in the inspected ReShade config;
+their reported freeze/tone has not yet been confirmed resolved in game.
+Unfinished DLSS/effects work is not included in this hotfix.

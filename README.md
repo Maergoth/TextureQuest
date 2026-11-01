@@ -27,7 +27,7 @@ The installer downloads only our generated/corrected channels from [TextureQuest
 
 **Previously used Replace PAK files?** If setup asks, run the official EQ2 launcher → **Advanced Tools → Validate Game Assets** once. Close the launcher, then click **Finish upgrade**. TextureQuest cannot restore original game files itself.
 
-ReShade's tutorial bar and stats are hidden by default. **Home** opens/closes its panel; a custom ReShade key is kept. Its brief startup notice may still appear. **Numpad \*** remains the texture switch.
+ReShade's tutorial bar and stats are hidden by default. **Home** opens/closes its panel. Other configurable ReShade shortcuts are disabled, including screenshots, preset switching and effect/uniform hotkeys. **Numpad \*** (or your custom shortcut) remains the TextureQuest switch. **Settings → Reset ReShade shortcuts** reapplies these defaults with EQ2 closed. The brief ReShade startup notice may still appear.
 
 **After a patch:** unchanged texture content still matches. Changed assets stay original; **Verify / Update textures** rebuilds the map against your current stock files. New artwork for a changed source requires a compatible texture release. If the patcher removes our files, reinstall the hook. An existing ReShade add-on build is used as is. A standard ReShade build is left unchanged and installation stops, explaining that the ReShade add-on build is needed. Any other `dxgi.dll`/`d3d11.dll` is left unchanged and installation stops.
 

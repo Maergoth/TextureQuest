@@ -31,7 +31,7 @@ class QuietReShade(Fixture):
         changed = (self.game / 'ReShade.ini').read_bytes()
         self.assertIn(b'TutorialProgress=4', changed)
         self.assertIn(b'ShowFPS=0', changed)
-        for value in (b'PresetPath=my-preset.ini', b'LoadFromDllMain=my-addon.addon64', b'KeyOverlay=45,0,0,0', b'CustomColour=1,2,3'):
+        for value in (b'PresetPath=my-preset.ini', b'LoadFromDllMain=my-addon.addon64', b'KeyOverlay=36,0,0,0', b'CustomColour=1,2,3'):
             self.assertIn(value, changed)
         self.assertEqual(next((self.state / 'reshade-settings-history').glob('*.ini')).read_bytes(), raw)
         self.manager.uninstall(self.game)

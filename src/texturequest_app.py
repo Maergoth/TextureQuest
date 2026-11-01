@@ -381,6 +381,7 @@ class TextureQuestApp:
         self.menu.add_command(label="Uninstall old Memory hook…", command=self.uninstall_legacy_loader)
         self.legacy_uninstall_index = self.menu.index("end")
         self.menu.add_command(label="Check for updates", command=self.check_updates)
+        self.menu.add_command(label="Reset ReShade shortcuts", command=self.repair_reshade_shortcuts)
         self.menu.add_command(label="Instructions", command=lambda: webbrowser.open("https://github.com/Maergoth/TextureQuest#download-and-install"))
         self.app_update_label = self.label(header, "App updates have not been checked.", color=MUTED, size=9, wraplength=700)
         self.app_update_label.grid(row=1, column=0, sticky="ew", pady=(3, 0))
@@ -829,6 +830,16 @@ class TextureQuestApp:
                    "Uninstalling Graphics hook…" if removing else "Installing Graphics hook…", work)
         return True
 
+    def repair_reshade_shortcuts(self):
+        if self.busy: return False
+        game = self.game.get().strip()
+        if not game:
+            self.set_message('Choose your game folder first.', error=True)
+            return False
+        self.begin('repair-shortcuts', 'Resetting ReShade shortcuts…',
+                   lambda: self.graphics_manager.repair_shortcuts(game, progress=self.report))
+        return True
+
     def change_graphics_shortcut(self):
         if self.busy or not self.graphics_selected():return
         dialog=tk.Toplevel(self.root);dialog.title('Texture shortcut');dialog.transient(self.root)
@@ -1089,7 +1100,7 @@ class TextureQuestApp:
                     self.set_message("TextureQuest is ready. The graphics hook uses individual DDS files.")
                     self.finish_progress("install")
                     self.show_install_success()
-                elif kind in ("graphics-install", "graphics-uninstall", "graphics-shortcut"):
+                elif kind in ("graphics-install", "graphics-uninstall", "graphics-shortcut", "repair-shortcuts"):
                     self.set_message(value["message"])
                 elif kind in ("loader-install", "loader-uninstall"):
                     self.set_message(value["message"] or
