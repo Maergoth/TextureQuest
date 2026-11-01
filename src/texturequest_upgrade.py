@@ -5,6 +5,7 @@ import hashlib
 import re
 import uuid
 import zipfile
+import time
 
 from texture_swapper import core
 from texturequest_processes import ensure_closed
@@ -99,8 +100,11 @@ class Upgrade:
             if status['installed'] or status['running']:
                 report('Removing the old background loader…')
                 self.loader.uninstall(game, progress=report)
-            if self.loader.cache_in_use():
-                raise ValueError('The old loader is still closing. Wait briefly, then click Finish upgrade.')
+            deadline = time.monotonic() + 10
+            while self.loader.cache_in_use():
+                if time.monotonic() >= deadline:
+                    raise ValueError('The old loader did not close. Close its game sessions, then click Finish upgrade.')
+                time.sleep(.05)
         status = self.graphics.status(game)
         if status['installed'] or status['running']:
             report('Replacing the old graphics hook…')

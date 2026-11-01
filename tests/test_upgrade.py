@@ -176,6 +176,25 @@ class CacheMigration(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Close EQ2'): self.migration.before(self.game)
         self.graphics.uninstall.assert_not_called()
 
+    def test_old_memory_loader_gets_time_to_close_without_second_click(self):
+        loader = MagicMock()
+        loader.status.return_value = dict(installed=True, running=True)
+        loader.cache_in_use.side_effect = [True, True, False]
+        migration = upgrade.Upgrade(self.state, self.graphics, loader)
+        with patch.object(upgrade.time, 'sleep') as pause:
+            migration.before(self.game)
+        loader.uninstall.assert_called_once()
+        self.assertEqual(pause.call_count, 2)
+
+    def test_unresponsive_old_loader_refuses_without_force_kill(self):
+        loader = MagicMock()
+        loader.status.return_value = dict(installed=True, running=True)
+        loader.cache_in_use.return_value = True
+        migration = upgrade.Upgrade(self.state, self.graphics, loader)
+        with patch.object(upgrade.time, 'monotonic', side_effect=[0, 11]), self.assertRaisesRegex(ValueError, 'did not close'):
+            migration.before(self.game)
+        self.graphics.uninstall.assert_not_called()
+
     def test_fresh_channel_download_does_not_masquerade_as_old_install(self):
         self.prepared()
         self.assertFalse(self.migration.needed(self.game))
