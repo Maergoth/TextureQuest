@@ -156,7 +156,18 @@ bool Admit(device* dev, uint64_t handle, Replaced& entry) {
     return true;
 }
 
-bool OnCreateResource(device*, resource_desc& desc, subresource_data* initial_data, resource_usage) {
+// EQ2's resources belong to its DX11 device. DLSS also owns a DX12 compositor;
+// its callbacks must never use or clear the game's texture/copy state.
+bool GameDevice(device* dev) {
+    return dev && dev->get_api() == device_api::d3d11;
+}
+
+bool GameRuntime(effect_runtime* runtime) {
+    return runtime && GameDevice(runtime->get_device()) && runtime->get_hwnd() != nullptr;
+}
+
+bool OnCreateResource(device* dev, resource_desc& desc, subresource_data* initial_data, resource_usage) {
+    if (!GameDevice(dev)) return false;
     Pending.Row = nullptr;
     if (desc.type != resource_type::texture_2d || !initial_data || desc.texture.depth_or_layers != 1 || !desc.texture.levels ||
         desc.texture.levels > 16 || (desc.flags & resource_flags::cube_compatible) == resource_flags::cube_compatible)
@@ -202,6 +213,7 @@ bool OnCreateResource(device*, resource_desc& desc, subresource_data* initial_da
 }
 
 void OnInitResource(device* dev, const resource_desc& desc, const subresource_data* initial_data, resource_usage, resource handle) {
+    if (!GameDevice(dev)) return;
     const tq::MapRow* row = Pending.Row;
     Pending.Row = nullptr;
     if (!row || desc.type != resource_type::texture_2d || !initial_data || initial_data[0].data != Pending.Pixels)
@@ -216,6 +228,7 @@ void OnInitResource(device* dev, const resource_desc& desc, const subresource_da
 }
 
 void OnDestroyResource(device* dev, resource handle) {
+    if (!GameDevice(dev)) return;
     std::lock_guard lock(Global->Lock);
     auto it = Global->Textures.find(handle.handle);
     if (it == Global->Textures.end())
@@ -285,6 +298,7 @@ void StockWorker() {
 // Drops the device's queued jobs, waits out the one in flight, then releases
 // every stock copy so nothing touches the device after it is gone.
 void OnDestroyDevice(device* dev) {
+    if (!GameDevice(dev)) return;
     {
         std::lock_guard lock(Global->JobLock);
         std::erase_if(Global->Jobs, [dev](const StockJob& job) { return job.Device == dev; });
@@ -301,6 +315,7 @@ void OnDestroyDevice(device* dev) {
 }
 
 void OnPushDescriptors(command_list* cmd, shader_stage stages, pipeline_layout layout, uint32_t param, const descriptor_table_update& update) {
+    if (!cmd || !GameDevice(cmd->get_device())) return;
     if (update.type != descriptor_type::texture_shader_resource_view || !update.count || update.count > 128)
         return;
     device* dev = cmd->get_device();
@@ -347,7 +362,8 @@ void OnPushDescriptors(command_list* cmd, shader_stage stages, pipeline_layout l
 // changing that event's registration here cannot race its invocation. This
 // relies on the game binding shader resources only on the immediate context:
 // deferred-context command lists would raise push_descriptors on other threads.
-void OnPresent(command_queue* queue, swapchain*, const rect*, const rect*, uint32_t, const rect*) {
+void OnPresent(command_queue* queue, swapchain* surface, const rect*, const rect*, uint32_t, const rect*) {
+    if (!queue || !GameDevice(queue->get_device()) || !surface || !surface->get_hwnd()) return;
     const bool original = Global->Original;
     Global->AIO.Reconcile(Global->Config.DLSS && Global->Config.DLSSBackend == "aio", original);
     if (original == Global->PushRegistered)
@@ -487,11 +503,13 @@ bool OwnedDepthAvailable(effect_runtime* runtime, unsigned phase,
 }
 
 void OnInitEffectRuntime(effect_runtime* runtime) {
+    if (!GameRuntime(runtime)) return;
     Global->Effects.Reload(runtime);
     Global->DLSS.Reload(runtime);
 }
 
 void OnReloadedEffects(effect_runtime* runtime) {
+    if (!GameRuntime(runtime)) return;
     Global->Effects.Reload(runtime); // Metadata only; requests survive, handles do not.
     Global->DLSS.Reload(runtime);
 }
@@ -502,6 +520,7 @@ void OnDestroyEffectRuntime(effect_runtime* runtime) {
 }
 
 bool OnTechniqueState(effect_runtime* runtime, effect_technique technique, bool enabled) {
+    if (!GameRuntime(runtime)) return false;
     // Dispatch before acquiring either controller's mutex. A synchronous setter
     // callback must never take the other controller's lock in reverse order.
     if (Global->Config.DLSS && Global->Config.DLSSBackend == "feeder" && Global->DLSS.IsOwned(runtime, technique))
@@ -512,6 +531,7 @@ bool OnTechniqueState(effect_runtime* runtime, effect_technique technique, bool 
 }
 
 void ReconcileEffects(effect_runtime* runtime, unsigned phase) {
+    if (!GameRuntime(runtime)) return;
     Global->AIO.Reconcile(Global->Config.DLSS && Global->Config.DLSSBackend == "aio", Global->Original.load());
     Global->DLSS.Reconcile(runtime, Global->Config.DLSS && Global->Config.DLSSBackend == "feeder", Global->Original.load(),
         [phase](effect_runtime* current) { return OwnedDepthAvailable(current, phase,
@@ -551,6 +571,7 @@ void OnReshadePresent(effect_runtime* runtime) {
 
 bool OnOverlayTechnique(effect_runtime* runtime, effect_technique technique) {
     if (!Global) return false;
+    if (!GameRuntime(runtime)) return false;
     if (Global->Config.DLSS && Global->Config.DLSSBackend == "feeder" && Global->DLSS.IsFeed(runtime, technique)) {
         const auto state = Global->DLSS.Snapshot(runtime);
         ImGui::TextDisabled("[%s]", tq::DlssStatus(state, Global->Config.DLSS, Global->Original.load()));
@@ -585,6 +606,7 @@ bool OnOverlayTechnique(effect_runtime* runtime, effect_technique technique) {
 }
 
 void OnTextureQuestOverlay(effect_runtime* runtime) {
+    if (!GameRuntime(runtime)) return;
     if (!Global) return;
     const bool original = Global->Original.load();
     const bool selected = Global->Config.Effects;
