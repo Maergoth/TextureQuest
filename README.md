@@ -13,12 +13,13 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 This private candidate includes the public 1.9.5 updater fixes.
 
 - **Textures (required):** the released texture pack.
-- **Graphical Effects:** EQ2 Graphics point/glow lighting, character shadows,
+- **Graphical Effects:** EQ2 Graphics point-light shadows, emissive lights, character shadows,
   soft sun shadows, AO, anisotropic filtering and smoother interface text.
 - **DLSS (Experimental):** separate controls for Frame Generation (2x/3x/4x on supported hardware), Upscaling quality and Neural Rendering presets.
 
 Choose components, close EQ2, then **Apply changes**. **Home** opens ReShade,
-then use **Home → TextureQuest** for individual graphics controls and strengths.
+then use **Home → TextureQuest** for feature toggles and Min/Med/Max shadowed lights.
+Further tuning is under **Advanced**. AF uses 16x when enabled.
 **Numpad \*** switches textures and graphics off/on without changing your choices.
 Each DLSS component has an on/off
 checkbox that keeps its preset. Neural Rendering also has **Advanced** model/pass
@@ -31,6 +32,8 @@ into the world rendering passes before the HUD. It replaces our earlier
 screen-space AO/contact effects. Bloom, screen-color bounce and edge smoothing
 remain removed. Keep native lighting, material shaders and world shadows enabled;
 they supply inputs this renderer needs. Native game INIs are unchanged.
+Point-light shadows preserve native lamp lighting by default. Rebuilt lamp
+lighting is an Advanced experiment because it changes brightness and falloff.
 This is an unpublished local test. Frame generation includes a pacing/GUI-sharing
 correction that improved an isolated comparison; EQ2 performance and smoothness
 still need testing. [Details](docs/GRAPHICS_FEATURES.md).

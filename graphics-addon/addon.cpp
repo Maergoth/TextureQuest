@@ -608,8 +608,8 @@ void OnReshadePresent(effect_runtime* runtime) {
     ReconcileEffects(runtime, 1);
     if (!Global || !GameRuntime(runtime)) return;
     const auto aio = Global->AIO.Snapshot();
-    const bool outputActive = aio.Compatible && !Global->Original.load() &&
-        (aio.Status.Flags & TQAIO_MasterAdmitted) != 0;
+    const bool outputActive = tq::AioOutputActive(aio.Compatible, Global->Original.load(), aio.Status.Flags,
+        aio.ControlsCompatible ? &aio.Controls : nullptr);
     Global->FPS.Frame(GetTickCount64(), outputActive, aio.Status.PresentedFrames);
     Global->RendererProbe.Frame(runtime->get_device()->get_native());
 }

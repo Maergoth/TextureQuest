@@ -1,13 +1,14 @@
-TextureQuest 1.13.0 private preview — Windows x64
+TextureQuest 1.13.1 private preview — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract outside the game folder; keep data beside the EXE.
 3. Select your game folder and components, then Install graphics hook.
 4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
-Textures are required. Graphical Effects adds EQ2 Graphics: point/glow lighting,
-character shadows, soft sun shadows, AO, anisotropic filtering and smoother text.
-Home → TextureQuest contains their checkboxes and strengths. Numpad * switches
+Textures are required. Graphical Effects adds EQ2 Graphics: point-light shadows,
+emissive lights, character shadows, soft sun shadows, AO, 16x AF and smoother text.
+Home → TextureQuest contains feature checkboxes and Min/Med/Max shadowed lights.
+Advanced opens further tweaks. AF uses 16x. Numpad * switches
 textures and graphics Original/Upscaled without changing your choices. Use
 Shortcut to change the key. Apply changes with EQ2 closed.
 DLSS (Experimental) has three controls in Home → TextureQuest:
@@ -16,12 +17,13 @@ DLSS (Experimental) has three controls in Home → TextureQuest:
 - Neural Rendering: checkbox on/off, presets and Advanced model/pass controls.
 Unchecking keeps your preset. These choices can change while playing.
 Lower upscaling presets reduce DLSS processing resolution, not EQ2's original
-rendering cost. Frame generation includes a pacing/GUI-sharing correction.
+rendering cost. Frame generation includes bounded capture-ahead and pacing fixes.
 Motion is estimated; image quality, HUD and FPS still need game testing.
 Your TextureQuest shortcut controls everything. Extra AIO hotkeys are disabled.
 
 Keep native lighting, material shaders and world shadows enabled. The new
-renderer uses those inputs; native game INIs are unchanged. It replaces our old
+renderer uses those inputs; native game INIs are unchanged. Lamp lighting is
+preserved by default; rebuilt lamp lighting is an Advanced experiment. It replaces our old
 AO/contact shaders. Bloom, screen-color bounce and edge smoothing stay removed.
 Your own ReShade effects retain their state. Other ReShade hotkeys are disabled.
 

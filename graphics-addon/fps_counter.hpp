@@ -1,8 +1,16 @@
 #pragma once
 #include <cstdint>
 #include <mutex>
+#include "texturequest_aio_api.h"
 
 namespace tq {
+inline bool AioOutputActive(bool compatible, bool original, uint32_t flags,
+                            const TextureQuestAIOControlStatusV2* controls) {
+    constexpr uint32_t required = TQAIO_UserEnabled | TQAIO_MasterAdmitted;
+    return compatible && !original && (flags & required) == required &&
+        (!controls || controls->Applied.EnabledMask != 0);
+}
+
 struct FrameRates {
     bool Ready = false, OutputActive = false;
     double Game = 0, Output = 0;

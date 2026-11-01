@@ -10,16 +10,28 @@ AO/contact implementation.
 
 | Control | Function |
 | --- | --- |
-| Point-light shadows | Lamp lighting and shadows, with strength/range/count controls |
+| Point-light shadows | Adds shadows while preserving native lamp lighting by default |
 | Character shadows | Moving-character shadows from those lights |
 | Emissive lights | Light estimated from recognized glowing meshes |
 | Sun-shadow softness | Softens native sun shadows; zero retains the game filter |
 | Ambient occlusion | Darkens nearby occlusion in ambient world lighting |
-| Anisotropic filtering | Up to 16x filtering on eligible world samplers |
+| Anisotropic filtering | 16x filtering on eligible world samplers when enabled |
 | Smooth interface text | Bilinear filtering for interface text; not scene antialiasing |
 
 Character and emissive lighting depend on the point-light parent control. Emissive
 lighting is an approximation, not a full multi-bounce lighting engine.
+
+The main panel has feature checkboxes and shadowed lights **Min (10), Med (50),
+Max (all supported; currently 256)**. Detailed controls and diagnostics are under
+**Advanced**. Defaults are shadow strength **1**, softness **0.05**, AO radius
+**0.35** and strength **1.25**. The first update backs up prior numeric values;
+later Advanced edits are kept. Feature checkbox choices are preserved.
+
+**Rebuild lamp lighting (experimental)** changes the game's lamp falloff and can
+darken rooms. It is off by default; shadows still work with native lamp lighting.
+Emissive lighting only affects recognized glowing meshes. Its status distinguishes
+no detected emitters, no active draws and observed light draws; checking it does
+not prove that the current scene has eligible emitters.
 
 **Numpad \*** (or your shortcut) switches textures and all selected graphics
 off/on. Original preserves each checkbox and strength. Changes apply at a frame
@@ -43,11 +55,13 @@ Unrelated ReShade effects and settings are preserved.
 Lower presets reduce the captured image's processing resolution. They do not
 reduce the rendering work EQ2 already performed, so a performance gain is not
 guaranteed. Motion is estimated from images. More neural passes cost GPU time.
-The previous EQ2 frame-generation test showed a performance regression. This
-candidate removes a pacing feedback loop, pipelines optical-flow preparation
-and uses independently fenced GUI slots. One matched isolated 3840×2054 test
-increased accepted output from 96 to 128 FPS at 2x and from 131 to 209 FPS at 4x.
-These are synthetic compositor measurements, not EQ2 or monitor scanout results.
+The previous EQ2 frame-generation test showed a performance regression. The
+candidate now permits bounded capture-ahead in its existing three slots, retaining
+GPU-completion checks and newest-frame selection. It also includes the earlier
+pacing, optical-flow preparation and independent GUI-slot corrections. The old
+test's roughly 64 FPS source hid this capture bottleneck; the final comparison
+uses a faster measured source. Synthetic accepted Presents remain distinct from
+EQ2 performance, monitor scanout and perceived smoothness.
 
 Home does not pause selected processing. Original bypasses it, allowing submitted
 work to drain. Model allocations may remain in memory. Extra AIO hotkeys and game
@@ -55,6 +69,8 @@ window/input virtualization are disabled.
 
 **Show FPS** reports rendered Game frames and accepted compositor Output frames,
 including generated frames. Output is not measured monitor scanout.
+Output hides when processing is off and reads zero during a genuine output stall
+or initialization wait; it is never replaced with a guessed multiplied rate.
 
 This is a private local candidate, not a public release. SDK/CPU tests do not
 establish real EQ2 visuals, compatibility or performance. The renderer's upstream
