@@ -11,15 +11,18 @@ struct FrameRates {
 // Source callbacks count rendered game frames. Output counts are accepted
 // compositor Presents, including generated frames; they do not prove scanout.
 class FpsCounter {
+    static constexpr uint64_t SampleIntervalMs = 500;
     std::mutex Lock;
     bool Started = false, OutputActive = false;
     uint64_t Start = 0, Previous = 0, GameFrames = 0, OutputStart = 0, OutputPrevious = 0;
+    uint64_t OutputAdvanced = 0;
     FrameRates Last{};
 
     void Restart(uint64_t now, bool active, uint64_t output) {
         Started = true; OutputActive = active;
         Start = Previous = now; GameFrames = 0;
         OutputStart = OutputPrevious = output;
+        OutputAdvanced = now;
         Last = {}; Last.OutputActive = active;
     }
 public:
@@ -30,13 +33,18 @@ public:
             Restart(now, active, output);
             return;
         }
+        if (active && output != OutputPrevious) OutputAdvanced = now;
+        const bool stalled = active && now - OutputAdvanced >= SampleIntervalMs;
+        // An old burst must not leave a positive Output reading until the next
+        // window boundary. Continued game callbacks age it independently.
+        if (stalled) Last.Output = 0;
         ++GameFrames;
         Previous = now; OutputPrevious = output;
         const uint64_t elapsed = now - Start;
-        if (elapsed < 500) return;
+        if (elapsed < SampleIntervalMs) return;
         Last.Ready = true; Last.OutputActive = active;
         Last.Game = 1000.0 * double(GameFrames) / double(elapsed);
-        Last.Output = active ? 1000.0 * double(output - OutputStart) / double(elapsed) : Last.Game;
+        Last.Output = active ? (stalled ? 0 : 1000.0 * double(output - OutputStart) / double(elapsed)) : Last.Game;
         Start = now; GameFrames = 0; OutputStart = output;
     }
     FrameRates Snapshot() {

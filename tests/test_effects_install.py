@@ -18,9 +18,9 @@ def enable_fixture(runtime):
     path = runtime / 'RUNTIME.json'
     doc = json.loads(path.read_bytes())
     doc['schema'] = 'texturequest-graphics-runtime-v6'
-    doc['effects'] = dict(schema='texturequest-effects-runtime-v3', shader='effects/TQEffects.fx',
+    doc['effects'] = dict(schema='texturequest-effects-runtime-v4', shader='effects/TQEffects.fx',
                           effect_name='TQEffects.fx', techniques=['TQAmbientOcclusion', 'TQContactShadows',
-                          'TQIndirectLighting', 'TQAntiAliasing', 'TQDepthDiagnostic'])
+                          'TQDepthDiagnostic'])
     doc['files'].append(dict(name='effects/TQEffects.fx', bytes=shader.stat().st_size,
                              sha256=hashlib.sha256(shader.read_bytes()).hexdigest()))
     path.write_text(json.dumps(doc))

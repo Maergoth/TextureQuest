@@ -5,8 +5,7 @@ TextureQuest 1.12.1 private preview — Windows x64
 3. Select your game folder and components, then Install graphics hook.
 4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
-Textures are required. Graphical Effects adds AO, contact shadows, screen-space
-bounce light and edge AA. Home opens ReShade. Each effect has a requested
+Textures are required. Graphical Effects adds ambient occlusion and contact shadows. Home opens ReShade. Each effect has a requested
 checkbox and running/waiting status. Strength controls are below the list. Numpad * switches all TextureQuest features Original/Upscaled; use
 Shortcut to change it. Apply changes with EQ2 closed after selecting components.
 DLSS (Experimental) has three controls in Home → TextureQuest:

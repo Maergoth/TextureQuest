@@ -10,12 +10,14 @@
 
 namespace tq {
 inline constexpr char EffectsFile[] = "TQEffects.fx";
-inline constexpr std::array<const char*, 5> EffectNames = {
-    "TQAmbientOcclusion", "TQContactShadows", "TQIndirectLighting",
-    "TQAntiAliasing", "TQDepthDiagnostic"
+inline constexpr std::array<const char*, 3> EffectNames = {
+    "TQAmbientOcclusion", "TQContactShadows", "TQDepthDiagnostic"
 };
-inline constexpr uint32_t DefaultEffectRequests = 0x0f; // Debug is opt-in.
-inline constexpr uint32_t DepthEffectRequests = 0x17;
+inline constexpr std::array<const char*, 3> RetiredEffectNames = {
+    "TQBloom", "TQIndirectLighting", "TQAntiAliasing"
+};
+inline constexpr uint32_t DefaultEffectRequests = 0x03; // Debug is opt-in.
+inline constexpr uint32_t DepthEffectRequests = 0x07;
 inline constexpr size_t MaxEffectRuntimes = 4;
 inline bool EffectsEnabled(bool selected, bool original) noexcept { return selected && !original; }
 
@@ -86,9 +88,9 @@ class EffectsController {
         runtime->get_technique_effect_name(technique, file, &a);
         runtime->get_technique_name(technique, name, &b);
         if (!Exact(file, a, EffectsFile, sizeof(file))) return -1;
-        // Old owned caches can survive later user search-path changes. Retire
-        // only this exact old technique; foreign Bloom.fx remains untouched.
-        if (Exact(name, b, "TQBloom", sizeof(name))) return -2;
+        // Old owned caches can survive later user search-path changes.
+        for (const char* retired : RetiredEffectNames)
+            if (Exact(name, b, retired, sizeof(name))) return -2;
         for (size_t i = 0; i < EffectNames.size(); ++i)
             if (Exact(name, b, EffectNames[i], sizeof(name))) return static_cast<int>(i);
         return -1;
@@ -151,8 +153,13 @@ public:
         EffectSnapshot observed{};
         observed.DepthReady = depth;
         WriteScope ownWrite(this);
-        const auto retired = runtime->find_technique(EffectsFile, "TQBloom");
-        if (OwnedIndex(runtime, retired) == -2) {
+        bool hasRetired = false;
+        for (const char* name : RetiredEffectNames)
+            if (OwnedIndex(runtime, runtime->find_technique(EffectsFile, name)) == -2) {
+                hasRetired = true;
+                break;
+            }
+        if (hasRetired) {
             // Only old caches incur this scan. Multiple owned file copies may
             // be loaded after a user extends their search paths; retire all.
             runtime->enumerate_techniques(EffectsFile, [](Runtime* current, Technique technique, void*) {
@@ -184,7 +191,7 @@ public:
         Entry* entry = Find(runtime);
         if (!entry || entry->RenderThread != std::this_thread::get_id()) return false;
         const int index = OwnedIndex(runtime, technique);
-        if (index == -2) return enabled; // Removed owned bloom cannot reactivate.
+        if (index == -2) return enabled; // Removed owned effects cannot reactivate.
         if (index < 0) return false; // Other FX, including same-named ones, untouched.
         const uint32_t bit = 1u << index;
         if (enabled && selected) entry->Requested |= bit;

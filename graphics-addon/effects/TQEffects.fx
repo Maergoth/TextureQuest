@@ -17,15 +17,6 @@ uniform float TQContactThickness < ui_category = "Contact shadows"; ui_label = "
 uniform float TQContactAngle < ui_category = "Contact shadows"; ui_label = "Approximate light angle"; ui_min = 0.0; ui_max = 360.0; > = 225.0;
 uniform float TQContactElevation < ui_category = "Contact shadows"; ui_label = "Light direction toward camera"; ui_min = 0.05; ui_max = 2.0; > = 0.6;
 uniform int TQContactQuality < ui_category = "Contact shadows"; ui_type = "combo"; ui_label = "Contact quality"; ui_items = "Fast (6 steps)\0Balanced (10)\0High (16)\0"; > = 1;
-uniform float TQIndirectStrength < ui_category = "Indirect lighting"; ui_type = "slider"; ui_label = "Screen-space bounce strength"; ui_min = 0.0; ui_max = 1.0; > = 0.5;
-uniform float TQIndirectRadius < ui_category = "Indirect lighting"; ui_label = "Bounce radius"; ui_min = 0.05; ui_max = 5.0; > = 2.0;
-uniform float TQIndirectEmissiveBoost < ui_category = "Indirect lighting"; ui_label = "Bright-pixel emission estimate"; ui_min = 0.0; ui_max = 3.0; > = 1.5;
-uniform float TQIndirectThreshold < ui_category = "Indirect lighting"; ui_label = "Emission brightness threshold"; ui_min = 0.0; ui_max = 0.95; > = 0.25;
-uniform int TQIndirectQuality < ui_category = "Indirect lighting"; ui_type = "combo"; ui_label = "Bounce quality"; ui_items = "Fast (4 probes)\0Balanced (8)\0High (16)\0"; > = 0;
-uniform float TQAAStrength < ui_category = "Spatial anti-aliasing"; ui_type = "slider"; ui_label = "Edge smoothing strength"; ui_min = 0.0; ui_max = 1.0; > = 0.65;
-uniform float TQAAThreshold < ui_category = "Spatial anti-aliasing"; ui_label = "Edge contrast threshold"; ui_min = 0.01; ui_max = 0.3; > = 0.06;
-uniform float TQAASpan < ui_category = "Spatial anti-aliasing"; ui_label = "Edge smoothing span (pixels)"; ui_min = 0.5; ui_max = 2.0; > = 1.0;
-uniform int TQAAQuality < ui_category = "Spatial anti-aliasing"; ui_type = "combo"; ui_label = "Edge smoothing quality"; ui_items = "Fast\0Wide\0"; > = 0;
 uniform int TQDepthView < ui_category = "Depth diagnostic"; ui_type = "combo"; ui_label = "Depth view"; ui_items = "Raw depth\0Scene / raw split\0Depth edges\0"; > = 2;
 uniform float TQDepthScale < ui_category = "Depth diagnostic"; ui_label = "Raw depth contrast scale"; ui_min = 0.0; ui_max = 65536.0; > = 1.0;
 uniform float TQDepthOffset < ui_category = "Depth diagnostic"; ui_label = "Raw depth contrast offset"; ui_min = -65536.0; ui_max = 65536.0; > = 0.0;
@@ -33,14 +24,11 @@ uniform float TQDepthOffset < ui_category = "Depth diagnostic"; ui_label = "Raw 
 texture2D TQScene : COLOR;
 texture2D TQDiagnosticDepth : DEPTH;
 sampler2D TQScenePoint { Texture = TQScene; AddressU = CLAMP; AddressV = CLAMP; MinFilter = POINT; MagFilter = POINT; MipFilter = POINT; SRGBTexture = false; };
-sampler2D TQSceneLinear { Texture = TQScene; AddressU = CLAMP; AddressV = CLAMP; MinFilter = LINEAR; MagFilter = LINEAR; MipFilter = POINT; SRGBTexture = false; };
 sampler2D TQDepthSampler { Texture = TQDiagnosticDepth; AddressU = CLAMP; AddressV = CLAMP; MinFilter = POINT; MagFilter = POINT; MipFilter = POINT; SRGBTexture = false; };
 texture2D TQAOField { Width = (BUFFER_WIDTH + 1) / 2; Height = (BUFFER_HEIGHT + 1) / 2; Format = R16F; };
 texture2D TQContactField { Width = (BUFFER_WIDTH + 1) / 2; Height = (BUFFER_HEIGHT + 1) / 2; Format = R16F; };
-texture2D TQIndirectField { Width = (BUFFER_WIDTH + 1) / 2; Height = (BUFFER_HEIGHT + 1) / 2; Format = RGBA16F; };
 sampler2D TQAOSampler { Texture = TQAOField; AddressU = CLAMP; AddressV = CLAMP; MinFilter = POINT; MagFilter = POINT; MipFilter = POINT; };
 sampler2D TQContactSampler { Texture = TQContactField; AddressU = CLAMP; AddressV = CLAMP; MinFilter = POINT; MagFilter = POINT; MipFilter = POINT; };
-sampler2D TQIndirectSampler { Texture = TQIndirectField; AddressU = CLAMP; AddressV = CLAMP; MinFilter = POINT; MagFilter = POINT; MipFilter = POINT; };
 static const float2 TQPixel = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 static const float2 TQHalfSize = float2((BUFFER_WIDTH + 1) / 2, (BUFFER_HEIGHT + 1) / 2);
 static const float2 TQHalfPixel = 1.0 / TQHalfSize;
@@ -219,48 +207,6 @@ float4 TQContactCompositePS(float4 position : SV_Position, float2 uv : TEXCOORD0
     float amount = saturate(TQResolveOcclusion(TQContactSampler, uv, p, n));
     if (amount >= 0.999999) return original; return float4(TQEncoded(TQLinear(original.rgb) * amount), original.a);
 }
-bool TQIndirectValid() { return TQIndirectStrength >= 0.0 && TQIndirectStrength <= 1.0 && TQIndirectRadius >= 0.05 && TQIndirectRadius <= 5.0 && TQIndirectEmissiveBoost >= 0.0 && TQIndirectEmissiveBoost <= 3.0 && TQIndirectThreshold >= 0.0 && TQIndirectThreshold <= 0.95 && TQIndirectQuality >= 0 && TQIndirectQuality <= 2; }
-float4 TQIndirectEvaluatePS(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
-    float3 p, n; if (!TQIndirectValid() || TQIndirectStrength == 0.0 || !TQGeometry(uv, p, n)) return 0.0;
-    int count = TQProbeCount(TQIndirectQuality); float2 radius = TQProbeRadius(TQIndirectRadius, p.z); float3 bounce = 0.0;
-    [loop] for (int i = 0; i < 16; ++i) {
-        if (i >= count) break; float fraction = count == 16 ? (i < 8 ? 0.35 : 0.8) : 0.55;
-        float2 sampleUV = uv + TQDirection(i) * radius * fraction; float3 q;
-        if (!TQReadPosition(sampleUV, q)) continue; float3 d = q - p; float distance = length(d);
-        if (!(distance > 0.00001 && distance < TQIndirectRadius)) continue;
-        float3 encoded = TQSample0(TQScenePoint, sampleUV).rgb; if (!TQSDR(encoded)) continue;
-        float3 color = TQLinear(encoded); float emission = saturate((TQLuma(color) - TQIndirectThreshold) / max(1.0 - TQIndirectThreshold, 0.01));
-        float falloff = 1.0 - distance / TQIndirectRadius;
-        bounce += color * (0.3 + emission * TQIndirectEmissiveBoost) * max(dot(n, d / distance), 0.0) * falloff * falloff;
-    }
-    return float4(min(bounce / float(count), 2.0), 0.0);
-}
-float4 TQIndirectCompositePS(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
-    float4 original = TQSample0(TQScenePoint, uv); float3 p;
-    if (!TQSDR(original.rgb) || !TQIndirectValid() || TQIndirectStrength == 0.0 || !TQReadPosition(uv, p)) return original;
-    float3 bounce = max(TQBilateral(TQIndirectSampler, uv, p.z, 0.0).rgb, 0.0) * TQIndirectStrength;
-    if (all(bounce == 0.0)) return original;
-    return float4(TQEncoded(1.0 - (1.0 - TQLinear(original.rgb)) * exp(-bounce)), original.a);
-}
-float4 TQAntiAliasingPS(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
-    float4 original = TQSample0(TQScenePoint, uv);
-    if (!TQSDR(original.rgb) || !(TQAAStrength > 0.0 && TQAAStrength <= 1.0 && TQAAThreshold >= 0.01 && TQAAThreshold <= 0.3 && TQAASpan >= 0.5 && TQAASpan <= 2.0 && TQAAQuality >= 0 && TQAAQuality <= 1)) return original;
-    float3 left = TQSample0(TQScenePoint, uv - float2(TQPixel.x, 0.0)).rgb, right = TQSample0(TQScenePoint, uv + float2(TQPixel.x, 0.0)).rgb;
-    float3 above = TQSample0(TQScenePoint, uv - float2(0.0, TQPixel.y)).rgb, below = TQSample0(TQScenePoint, uv + float2(0.0, TQPixel.y)).rgb;
-    if (!TQUnitColor(left) || !TQUnitColor(right) || !TQUnitColor(above) || !TQUnitColor(below)) return original;
-    float c = TQLuma(original.rgb), l = TQLuma(left), r = TQLuma(right), a = TQLuma(above), b = TQLuma(below);
-    float range = max(c, max(max(l, r), max(a, b))) - min(c, min(min(l, r), min(a, b))); if (!(range > TQAAThreshold)) return original;
-    float2 direction = float2(-(b - a), r - l); float magnitude = dot(direction, direction); float3 filtered;
-    if (magnitude < 0.000001) filtered = (TQLinear(left) + TQLinear(right) + TQLinear(above) + TQLinear(below)) * 0.25;
-    else {
-        float2 offset = direction * rsqrt(magnitude) * TQPixel * TQAASpan;
-        float3 one = TQSample0(TQSceneLinear, uv - offset * 0.5).rgb, two = TQSample0(TQSceneLinear, uv + offset * 0.5).rgb;
-        if (!TQUnitColor(one) || !TQUnitColor(two)) return original; filtered = (TQLinear(one) + TQLinear(two)) * 0.5;
-        if (TQAAQuality == 1) { float3 three = TQSample0(TQSceneLinear, uv - offset).rgb, four = TQSample0(TQSceneLinear, uv + offset).rgb; if (!TQUnitColor(three) || !TQUnitColor(four)) return original; filtered = filtered * 0.75 + (TQLinear(three) + TQLinear(four)) * 0.125; }
-    }
-    float weight = saturate((range - TQAAThreshold) / max(range, 0.00001)) * TQAAStrength;
-    return float4(TQEncoded(lerp(TQLinear(original.rgb), filtered, weight)), original.a);
-}
 float4 TQDepthDiagnosticPS(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float4 original = TQSample0(TQScenePoint, uv);
     if (!(TQDepthView >= 0 && TQDepthView <= 2 && TQDepthScale >= 0.0 && TQDepthScale <= 65536.0 && TQDepthOffset >= -65536.0 && TQDepthOffset <= 65536.0)) return original;
@@ -281,9 +227,4 @@ technique TQContactShadows {
     pass Evaluate { VertexShader = TQFullscreenVS; PixelShader = TQContactEvaluatePS; RenderTarget = TQContactField; }
     pass Composite { VertexShader = TQFullscreenVS; PixelShader = TQContactCompositePS; BlendEnable = false; SRGBWriteEnable = false; }
 }
-technique TQIndirectLighting {
-    pass Evaluate { VertexShader = TQFullscreenVS; PixelShader = TQIndirectEvaluatePS; RenderTarget = TQIndirectField; }
-    pass Composite { VertexShader = TQFullscreenVS; PixelShader = TQIndirectCompositePS; BlendEnable = false; SRGBWriteEnable = false; }
-}
-technique TQAntiAliasing { pass Smooth { VertexShader = TQFullscreenVS; PixelShader = TQAntiAliasingPS; BlendEnable = false; SRGBWriteEnable = false; } }
 technique TQDepthDiagnostic { pass Diagnostic { VertexShader = TQFullscreenVS; PixelShader = TQDepthDiagnosticPS; BlendEnable = false; SRGBWriteEnable = false; } }

@@ -10,13 +10,13 @@ class SuiteInstall(EffectsInstall):
         path=self.runtime/'RUNTIME.json'
         doc=json.loads(path.read_bytes())
         doc['schema']='texturequest-graphics-runtime-v6'
-        doc['effects']=dict(schema='texturequest-effects-runtime-v3',shader='effects/TQEffects.fx',
+        doc['effects']=dict(schema='texturequest-effects-runtime-v4',shader='effects/TQEffects.fx',
             effect_name='TQEffects.fx',techniques=['TQAmbientOcclusion','TQContactShadows',
-            'TQIndirectLighting','TQAntiAliasing','TQDepthDiagnostic'])
+            'TQDepthDiagnostic'])
         path.write_text(json.dumps(doc))
 
     def test_suite_contract_is_exact(self):
-        self.assertEqual(len(self.manager._runtime()['effects']['techniques']),5)
+        self.assertEqual(len(self.manager._runtime()['effects']['techniques']),3)
         path=self.runtime/'RUNTIME.json';doc=json.loads(path.read_bytes())
         doc['effects']['techniques'].pop();path.write_text(json.dumps(doc))
         with self.assertRaisesRegex(ValueError,'Unknown optional effects'):

@@ -13,7 +13,7 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 This private candidate includes the public 1.9.5 updater fixes.
 
 - **Textures (required):** the released texture pack.
-- **Graphical Effects:** optional AO, contact shadows, bounce light and edge AA.
+- **Graphical Effects:** optional AO and contact shadows.
 - **DLSS (Experimental):** separate controls for Frame Generation (2x/3x/4x on supported hardware), Upscaling quality and Neural Rendering presets.
 
 Choose components, close EQ2, then **Apply changes**. **Home** opens ReShade,

@@ -53,6 +53,7 @@ DLSS_MODULES = ('feeder', 'consumer', 'sr', 'nr')
 AIO_PROFILE_ID = 'aio-09301f5-managed-nvof-nr-sr-fg-private-v1'
 AIO_V2_PROFILE_ID = 'aio-09301f5-managed-controls-mfg-private-v2'
 AIO_V3_PROFILE_ID = 'aio-09301f5-managed-continuous-gui-private-v3'
+AIO_V4_PROFILE_ID = 'aio-09301f5-managed-completion-cadence-private-v4'
 AIO_ROLES = {
     'aio': 'dlss/standalone-dlssnr.addon64', 'bridge': 'dlss/nvngx.dll',
     'nr': 'dlss/nvngx_dlssnr.dll', 'sr': 'dlss/nvngx_dlss.dll', 'fg': 'dlss/nvngx_dlssg.dll',
@@ -64,6 +65,7 @@ DLSS_PROFILES = {
     AIO_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES),
     AIO_V2_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES, settings='aio2'),
     AIO_V3_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES, settings='aio2'),
+    AIO_V4_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES, settings='aio2'),
 }
 
 
@@ -182,11 +184,14 @@ class GraphicsManager:
             legacy_suite = dict(schema='texturequest-effects-runtime-v2', shader='effects/TQEffects.fx',
                          effect_name='TQEffects.fx', techniques=['TQAmbientOcclusion', 'TQContactShadows',
                          'TQIndirectLighting', 'TQBloom', 'TQAntiAliasing', 'TQDepthDiagnostic'])
-            suite = dict(schema='texturequest-effects-runtime-v3', shader='effects/TQEffects.fx',
+            previous_suite = dict(schema='texturequest-effects-runtime-v3', shader='effects/TQEffects.fx',
                          effect_name='TQEffects.fx', techniques=['TQAmbientOcclusion', 'TQContactShadows',
                          'TQIndirectLighting', 'TQAntiAliasing', 'TQDepthDiagnostic'])
+            suite = dict(schema='texturequest-effects-runtime-v4', shader='effects/TQEffects.fx',
+                         effect_name='TQEffects.fx', techniques=['TQAmbientOcclusion', 'TQContactShadows',
+                         'TQDepthDiagnostic'])
             need(((doc['schema'] == 'texturequest-graphics-runtime-v5' and effects == bloom) or
-                  (doc['schema'] in ('texturequest-graphics-runtime-v6', 'texturequest-graphics-runtime-v7') and effects in (legacy_suite, suite))) and effects['shader'] in names,
+                  (doc['schema'] in ('texturequest-graphics-runtime-v6', 'texturequest-graphics-runtime-v7') and effects in (legacy_suite, previous_suite, suite))) and effects['shader'] in names,
                 'Unknown optional effects runtime.')
         elif doc['schema'] in ('texturequest-graphics-runtime-v5', 'texturequest-graphics-runtime-v6', 'texturequest-graphics-runtime-v7'):
             raise ValueError('Graphics runtime is missing its effects contract.')
@@ -236,7 +241,7 @@ class GraphicsManager:
 
     def _preflight_components(self, game, selection, runtime):
         need(not selection['effects'] or runtime.get('effects'), 'The optional effects runtime is not included.')
-        need(not selection['effects'] or runtime['effects'].get('schema') == 'texturequest-effects-runtime-v3',
+        need(not selection['effects'] or runtime['effects'].get('schema') == 'texturequest-effects-runtime-v4',
              'The bundled effects are outdated.')
         if not selection['dlss']:
             self._preflight_optional_settings(game, selection, runtime, None)
@@ -273,12 +278,12 @@ class GraphicsManager:
 
     def _preflight_optional_settings(self, game, selection, runtime, profile):
         """Exercise the same pure transforms without creating cache or settings."""
-        from texturequest_effects import prepare_effects_config, retire_bloom_settings
+        from texturequest_effects import prepare_effects_config, retire_removed_effect_settings
         ini = core._plain(game / 'ReShade.ini', game)
         raw = quiet_reshade(ini.read_bytes()) if ini.exists() else DEFAULT_RESHADE_INI
-        retire_bloom_settings(raw)
+        retire_removed_effect_settings(raw)
         for path in _preset_paths(raw, game):
-            retire_bloom_settings(path.read_bytes())
+            retire_removed_effect_settings(path.read_bytes())
         if not selection['effects'] and profile is None: return
         if selection['effects']:
             pin = next(row for row in runtime['files'] if row['name'] == runtime['effects']['shader'])
@@ -415,19 +420,19 @@ class GraphicsManager:
         from contextlib import ExitStack
         from texturequest_direct import FileCustody
         from texturequest_custody import DirectoryCustody
-        from texturequest_effects import retire_bloom_settings
+        from texturequest_effects import retire_removed_effect_settings
         self._assert_shortcuts_settled(game)
         ini = core._plain(game / 'ReShade.ini', game)
         if not ini.exists(): return dict(changed=0, paths=[])
         before = ini.read_bytes()
         after = quiet_reshade(before) if reset_shortcuts else before
         if transform: after = transform(after)
-        if reset_shortcuts: after = retire_bloom_settings(after)
+        if reset_shortcuts: after = retire_removed_effect_settings(after)
         plan = [(ini, before, after)]
         for path in (_preset_paths(before, game) if reset_shortcuts else []):
             need(str(path).casefold() != str(ini).casefold(), 'ReShade preset cannot be its configuration file.')
             raw = path.read_bytes()
-            plan.append((path, raw, retire_bloom_settings(sanitize_reshade_preset(raw))))
+            plan.append((path, raw, retire_removed_effect_settings(sanitize_reshade_preset(raw))))
         plan = [(p, a, b) for p, a, b in plan if a != b]
         if not plan: return dict(changed=0, paths=[])
         history = core._plain(self.state_dir / 'reshade-settings-history', self.state_dir)
@@ -830,7 +835,7 @@ class GraphicsManager:
         # Current effects supplement native rendering. No unverified disable
         # command is shipped; future reviewed overrides enter only here.
         settings = GameSettings(self.state_dir).apply(game, {}, features=(
-            'ambient_occlusion', 'contact_shadows', 'indirect_lighting', 'anti_aliasing'
+            'ambient_occlusion', 'contact_shadows'
         ) if selection['effects'] else ())
         report('Graphics hook installed. ' + label(binding) + ' switches quality.')
         return dict(self.status(game), native_settings=settings)

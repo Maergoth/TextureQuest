@@ -12,6 +12,7 @@
 #include "stock_paks.hpp"
 #include "dds_reader.hpp"
 #include "effects_controller.hpp"
+#include "renderer_binding_probe.hpp"
 #include "dlss_controller.hpp"
 #include "aio_controller.hpp"
 #include "fps_counter.hpp"
@@ -88,6 +89,7 @@ struct State {
     tq::DlssController<effect_runtime> DLSS;
     tq::AioController AIO;
     tq::FpsCounter FPS;
+    tq::RendererBindingProbe RendererProbe;
     std::atomic<bool> ShowFPS{true};
     std::mutex EffectsStatusLock;
     uint64_t EffectsStatusSignature = UINT64_MAX;
@@ -168,6 +170,32 @@ bool GameDevice(device* dev) {
 bool GameRuntime(effect_runtime* runtime) {
     return runtime && GameDevice(runtime->get_device()) && runtime->get_hwnd() != nullptr;
 }
+
+void OnRendererPipeline(device* dev,pipeline_layout,uint32_t count,const pipeline_subobject*items,pipeline handle) {
+    if(Global&&GameDevice(dev))Global->RendererProbe.Pipeline(dev,count,items,handle);
+}
+void OnRendererPipelineDestroyed(device*dev,pipeline handle) {
+    if(Global&&GameDevice(dev))Global->RendererProbe.DestroyPipeline(handle);
+}
+void OnRendererResourceDestroyed(device*dev,resource handle) {
+    if(Global&&GameDevice(dev))Global->RendererProbe.DestroyResource(handle);
+}
+bool OnRendererDraw(command_list*cmd,uint32_t count,uint32_t,uint32_t,uint32_t) {
+    if(Global)Global->RendererProbe.Draw(cmd,count);return false;
+}
+bool OnRendererDrawIndexed(command_list*cmd,uint32_t count,uint32_t,uint32_t,int32_t,uint32_t) {
+    if(Global)Global->RendererProbe.Draw(cmd,count);return false;
+}
+void OnRendererMap(device*dev,resource r,uint64_t offset,uint64_t size,map_access access,void**data) {
+    if(Global&&GameDevice(dev))Global->RendererProbe.Map(r,offset,size,access,data);
+}
+void OnRendererUnmap(device*dev,resource r) {
+    if(Global&&GameDevice(dev))Global->RendererProbe.Unmap(r);
+}
+bool OnRendererUpdate(device*dev,const void*data,resource r,uint64_t offset,uint64_t size) {
+    if(Global&&GameDevice(dev))Global->RendererProbe.Update(r,data,offset,size);return false;
+}
+
 
 bool OnCreateResource(device* dev, resource_desc& desc, subresource_data* initial_data, resource_usage) {
     if (!GameDevice(dev)) return false;
@@ -579,6 +607,7 @@ void OnReshadePresent(effect_runtime* runtime) {
     const bool outputActive = aio.Compatible && !Global->Original.load() &&
         (aio.Status.Flags & TQAIO_MasterAdmitted) != 0;
     Global->FPS.Frame(GetTickCount64(), outputActive, aio.Status.PresentedFrames);
+    Global->RendererProbe.Frame(runtime->get_device()->get_native());
 }
 
 void OnFpsOverlay(effect_runtime* runtime) {
@@ -615,7 +644,7 @@ bool OnOverlayTechnique(effect_runtime* runtime, effect_technique technique) {
         return true;
     }
     const int owned = Global->Effects.OwnedTechniqueIndex(runtime, technique);
-    if (owned == -2) return true; // Hide removed bloom from any retained owned cache.
+    if (owned == -2) return true; // Hide retired effects from retained owned caches.
     if (owned < 0) return false; // Preserve ReShade's controls for every other FX.
     const size_t index = static_cast<size_t>(owned);
     const bool selected = Global->Config.Effects, original = Global->Original.load();
@@ -730,12 +759,17 @@ void OnTextureQuestOverlay(effect_runtime* runtime) {
         DrawAioControls(original);
         ImGui::Separator();
     }
+    if(ImGui::Button("Capture world lighting (3 frames)"))
+        Global->RendererProbe.Arm(runtime->get_device()->get_native(),std::filesystem::path(Global->Config.Downloads).parent_path().parent_path());
+    const auto captureStatus=Global->RendererProbe.Status();
+    ImGui::Text("Lighting capture: %s",captureStatus==1?"Capturing":captureStatus==2?"Saving":captureStatus==3?"Saved to data diagnostics":captureStatus==4?"Could not save":"Off");
+    if(ImGui::IsItemHovered())ImGui::SetTooltip("Private graphics bindings only. No game files changed. Capture while looking at lamps in the world.");
     ImGui::Text("Graphics effects: %s", selected ? "Selected" : "Not installed");
     ImGui::Separator();
     constexpr const char* labels[] = {
-        "Ambient occlusion", "Contact shadows", "Indirect lighting",
-        "Edge smoothing", "Depth view"
+        "Ambient occlusion", "Contact shadows", "Depth view"
     };
+    static_assert(std::size(labels) == tq::EffectNames.size());
     ImGui::BeginDisabled(!selected);
     for (size_t i = 0; i < tq::EffectNames.size(); ++i) {
         bool requested = (state.Requested & (1u << i)) != 0;
@@ -783,6 +817,14 @@ void Start(HMODULE module) {
     reshade::register_event<reshade::addon_event::reshade_overlay>(&OnFpsOverlay);
     reshade::register_event<reshade::addon_event::reshade_overlay_technique>(&OnOverlayTechnique);
     reshade::register_overlay("TextureQuest", &OnTextureQuestOverlay);
+    reshade::register_event<reshade::addon_event::init_pipeline>(&OnRendererPipeline);
+    reshade::register_event<reshade::addon_event::destroy_pipeline>(&OnRendererPipelineDestroyed);
+    reshade::register_event<reshade::addon_event::destroy_resource>(&OnRendererResourceDestroyed);
+    reshade::register_event<reshade::addon_event::draw>(&OnRendererDraw);
+    reshade::register_event<reshade::addon_event::draw_indexed>(&OnRendererDrawIndexed);
+    reshade::register_event<reshade::addon_event::map_buffer_region>(&OnRendererMap);
+    reshade::register_event<reshade::addon_event::unmap_buffer_region>(&OnRendererUnmap);
+    reshade::register_event<reshade::addon_event::update_buffer_region>(&OnRendererUpdate);
     Global->Worker = std::thread(StockWorker);
     Global->Shortcut->Start();
     Log(reshade::log::level::info, "loaded " + std::to_string(state->Map.Rows.size()) + " textures from " + std::to_string(state->Map.Archives.size()) + " archives");
@@ -807,6 +849,15 @@ void Stop() {
     reshade::unregister_event<reshade::addon_event::reshade_begin_effects>(&OnBeginEffects);
     reshade::unregister_event<reshade::addon_event::reshade_present>(&OnReshadePresent);
     reshade::unregister_event<reshade::addon_event::reshade_overlay>(&OnFpsOverlay);
+    reshade::unregister_event<reshade::addon_event::update_buffer_region>(&OnRendererUpdate);
+    reshade::unregister_event<reshade::addon_event::unmap_buffer_region>(&OnRendererUnmap);
+    reshade::unregister_event<reshade::addon_event::map_buffer_region>(&OnRendererMap);
+    reshade::unregister_event<reshade::addon_event::draw_indexed>(&OnRendererDrawIndexed);
+    reshade::unregister_event<reshade::addon_event::draw>(&OnRendererDraw);
+    reshade::unregister_event<reshade::addon_event::destroy_resource>(&OnRendererResourceDestroyed);
+    reshade::unregister_event<reshade::addon_event::destroy_pipeline>(&OnRendererPipelineDestroyed);
+    reshade::unregister_event<reshade::addon_event::init_pipeline>(&OnRendererPipeline);
+    Global->RendererProbe.Stop();
     Global->Effects.Clear();
     Global->DLSS.Clear();
     Global->AIO.Clear();

@@ -61,7 +61,7 @@ int main() {
         tq::EffectsController<NamesRuntime> controller; NamesRuntime runtime; runtime.IncludesNul = includes;
         controller.Reload(&runtime);
         controller.Reconcile(&runtime, true, [](auto*) { return true; });
-        Check(runtime.Enabled == tq::DefaultEffectRequests && runtime.Writes == 4,
+        Check(runtime.Enabled == tq::DefaultEffectRequests && runtime.Writes == 2,
               "actual production controller accepts exact owned names with either SDK style");
     }
     for (const bool missingNul : {false, true}) {

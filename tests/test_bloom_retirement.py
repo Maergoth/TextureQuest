@@ -95,7 +95,7 @@ class BloomNormalFlow(Fixture):
     def test_old_bloom_bundle_cannot_be_selected_for_new_install(self):
         path = self.runtime / "RUNTIME.json"; doc = json.loads(path.read_bytes())
         doc["effects"]["schema"] = "texturequest-effects-runtime-v2"
-        doc["effects"]["techniques"].insert(3, "TQBloom")
+        doc["effects"]["techniques"] = ["TQAmbientOcclusion", "TQContactShadows", "TQIndirectLighting", "TQBloom", "TQAntiAliasing", "TQDepthDiagnostic"]
         path.write_text(json.dumps(doc))
         with self.assertRaisesRegex(ValueError, "outdated"):
             self.manager.preflight_components(self.game, self.selected)

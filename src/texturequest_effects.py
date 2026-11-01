@@ -175,8 +175,8 @@ def _search_after(before: str | None, directory: str, retired: str | None) -> st
     return ",".join(path.replace(",", ",,") for path in remaining)
 
 
-def retire_bloom_settings(raw: bytes) -> bytes:
-    """Retire only TextureQuest's removed bloom from config/preset bytes.
+def _retire_effect_settings(raw: bytes, techniques: tuple[str, ...], retired_uniforms: frozenset[str]) -> bytes:
+    """Retire exact removed owned settings from config/preset bytes.
 
     Normal settings custody/journals retain before-bytes. Foreign effects,
     paths, presets, unrelated uniforms and formatting remain untouched here.
@@ -184,8 +184,7 @@ def retire_bloom_settings(raw: bytes) -> bytes:
     """
     lines, bom = _decode(raw)
     section, result = "", []
-    selector = "TQBloom@TQEffects.fx"
-    retired_uniforms = {"TQGlowStrength", "TQGlowThreshold", "TQGlowRadius", "TQBloomQuality", "KeyTQBloom"}
+    selectors = {technique + "@" + EFFECT_FILE for technique in techniques}
     for line in lines:
         body, _ = _ending(line)
         if body.lstrip(" \t").startswith((";", "/", "#")):
@@ -195,22 +194,40 @@ def retire_bloom_settings(raw: bytes) -> bytes:
         if header:
             section = header[1].strip(" \t[]")
         elif body.lstrip(" \t").startswith("["):
-            raise ValueError("Malformed ReShade settings section; bloom settings preserved.")
+            raise ValueError("Malformed ReShade settings section; removed effect settings preserved.")
         row = _assignment(line)
         if row:
             key, _, value, _ = row
             if section in ("", "GENERAL"):
-                if key == "Key" + selector:
+                if key in {"Key" + selector for selector in selectors}:
                     continue
                 if key in ("Techniques", "TechniqueSorting"):
                     items = _split_paths(value.strip(" \t"))
-                    retained = [item for item in items if item.strip(" \t") != selector]
+                    retained = [item for item in items if item.strip(" \t") not in selectors]
                     if retained != items:
                         line = _replace_value(line, ",".join(item.replace(",", ",,") for item in retained))
             elif section == EFFECT_FILE and key in retired_uniforms:
                 continue
         result.append(line)
     return _encode(result, bom)
+
+
+_BLOOM_UNIFORMS = frozenset({"TQGlowStrength", "TQGlowThreshold", "TQGlowRadius", "TQBloomQuality", "KeyTQBloom"})
+
+
+def retire_bloom_settings(raw: bytes) -> bytes:
+    """Historical bloom-only transform retained for compatibility callers."""
+    return _retire_effect_settings(raw, ("TQBloom",), _BLOOM_UNIFORMS)
+
+
+def retire_removed_effect_settings(raw: bytes) -> bytes:
+    """Retire bloom, screen-color bounce and edge smoothing in normal setup."""
+    return _retire_effect_settings(raw, ("TQBloom", "TQIndirectLighting", "TQAntiAliasing"),
+        _BLOOM_UNIFORMS | frozenset({
+            "TQIndirectStrength", "TQIndirectRadius", "TQIndirectEmissiveBoost",
+            "TQIndirectThreshold", "TQIndirectQuality", "KeyTQIndirectLighting",
+            "TQAAStrength", "TQAAThreshold", "TQAASpan", "TQAAQuality", "KeyTQAntiAliasing",
+        }))
 
 
 def prepare_effects_config(raw: bytes, shader_directory: str, *, retired_shader_directory: str | None = None) -> tuple[bytes, dict]:
