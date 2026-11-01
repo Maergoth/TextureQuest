@@ -3,6 +3,8 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#define ImTextureID ImU64
+#include <imgui.h>
 #include <reshade.hpp>
 #include "config.hpp"
 #include "shortcut.hpp"
@@ -80,6 +82,9 @@ struct State {
     std::deque<StockJob> Jobs;
     std::thread Worker;
     tq::EffectsController<effect_runtime> Effects;
+    std::mutex EffectsStatusLock;
+    uint64_t EffectsStatusSignature = UINT64_MAX;
+    unsigned EffectsStatusLogs = 0;
 };
 
 State* Global = nullptr;
@@ -438,14 +443,63 @@ bool OnTechniqueState(effect_runtime* runtime, effect_technique technique, bool 
     return Global->Effects.TechniqueState(runtime, technique, enabled, Global->Config.Effects);
 }
 
+void ReconcileEffects(effect_runtime* runtime) {
+    if (!Global->Effects.Reconcile(runtime, OwnedEffectsEnabled(), OwnedDepthAvailable)) return;
+    const auto state = Global->Effects.Snapshot(runtime);
+    const bool selected = Global->Config.Effects, original = Global->Original.load();
+    const uint64_t signature = state.Requested | (uint64_t(state.Available) << 6) |
+        (uint64_t(state.Active) << 12) | (uint64_t(state.DepthReady) << 18) |
+        (uint64_t(selected) << 19) | (uint64_t(original) << 20);
+    bool emit = false;
+    {
+        std::lock_guard lock(Global->EffectsStatusLock);
+        if (Global->EffectsStatusLogs < 16 && (state.Available || Global->EffectsStatusLogs) &&
+            signature != Global->EffectsStatusSignature) {
+            Global->EffectsStatusSignature = signature;
+            ++Global->EffectsStatusLogs;
+            emit = true;
+        }
+    }
+    if (emit) Log(reshade::log::level::info, "effects status: selected=" + std::to_string(selected) +
+        " original=" + std::to_string(original) + " requested=" + std::to_string(state.Requested) +
+        " available=" + std::to_string(state.Available) + " active=" + std::to_string(state.Active) +
+        " depth=" + std::to_string(state.DepthReady));
+}
+
 void OnBeginEffects(effect_runtime* runtime, command_list*, resource_view, resource_view) {
-    Global->Effects.Reconcile(runtime, OwnedEffectsEnabled(), OwnedDepthAvailable);
+    ReconcileEffects(runtime);
 }
 
 void OnReshadePresent(effect_runtime* runtime) {
     // Runs even with no active FX, so the next Upscaled frame can restore the
     // requested effects. This query is phase-qualified, not a draw observation.
-    Global->Effects.Reconcile(runtime, OwnedEffectsEnabled(), OwnedDepthAvailable);
+    ReconcileEffects(runtime);
+}
+
+void OnTextureQuestOverlay(effect_runtime* runtime) {
+    if (!Global) return;
+    const bool original = Global->Original.load();
+    const bool selected = Global->Config.Effects;
+    const auto state = Global->Effects.Snapshot(runtime);
+    ImGui::Text("Mode: %s", original ? "Original" : "Upscaled");
+    ImGui::Text("Graphics effects: %s", selected ? "Selected" : "Not installed");
+    ImGui::Separator();
+    constexpr const char* labels[] = {
+        "Ambient occlusion", "Contact shadows", "Indirect lighting",
+        "Bloom", "Edge smoothing", "Depth view"
+    };
+    ImGui::BeginDisabled(!selected);
+    for (size_t i = 0; i < tq::EffectNames.size(); ++i) {
+        bool requested = (state.Requested & (1u << i)) != 0;
+        if (ImGui::Checkbox(labels[i], &requested))
+            Global->Effects.SetRequested(runtime, i, requested);
+        ImGui::SameLine(210.0f);
+        ImGui::TextUnformatted(tq::EffectStatus(state, i, selected, original));
+    }
+    ImGui::EndDisabled();
+    ImGui::Separator();
+    ImGui::TextUnformatted("Your texture hotkey switches everything to Original.");
+    ImGui::TextUnformatted("Effect choices stay selected when you switch back.");
 }
 
 void Start(HMODULE module) {
@@ -478,6 +532,7 @@ void Start(HMODULE module) {
     reshade::register_event<reshade::addon_event::reshade_set_technique_state>(&OnTechniqueState);
     reshade::register_event<reshade::addon_event::reshade_begin_effects>(&OnBeginEffects);
     reshade::register_event<reshade::addon_event::reshade_present>(&OnReshadePresent);
+    reshade::register_overlay("TextureQuest", &OnTextureQuestOverlay);
     Global->Worker = std::thread(StockWorker);
     Global->Shortcut->Start();
     Log(reshade::log::level::info, "loaded " + std::to_string(state->Map.Rows.size()) + " textures from " + std::to_string(state->Map.Archives.size()) + " archives");
@@ -488,6 +543,7 @@ void Start(HMODULE module) {
 void Stop() {
     if (!Global)
         return;
+    reshade::unregister_overlay("TextureQuest", &OnTextureQuestOverlay);
     reshade::unregister_event<reshade::addon_event::create_resource>(&OnCreateResource);
     reshade::unregister_event<reshade::addon_event::init_resource>(&OnInitResource);
     reshade::unregister_event<reshade::addon_event::destroy_resource>(&OnDestroyResource);

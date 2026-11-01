@@ -3,7 +3,8 @@
 Select **Graphical Effects**, close EQ2 and click **Apply changes**. Textures are
 required; DLSS/frame generation remain unavailable. Downloads stay cached.
 
-**Home** opens ReShade. Each TextureQuest effect has its own checkbox and strength:
+**Home** opens ReShade. Choose **TextureQuest** for individual checkboxes and
+live On/Off/Waiting for depth status. The **Home** tab has strength controls:
 
 | Effect | What to look for |
 | --- | --- |

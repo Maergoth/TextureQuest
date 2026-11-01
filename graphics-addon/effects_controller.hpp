@@ -19,6 +19,20 @@ inline constexpr uint32_t DepthEffectRequests = 0x27;
 inline constexpr size_t MaxEffectRuntimes = 4;
 inline bool EffectsEnabled(bool selected, bool original) noexcept { return selected && !original; }
 
+// Only small copied facts cross into the overlay. No technique, texture or
+// resource handle survives its render callback.
+struct EffectSnapshot {
+    uint32_t Requested = DefaultEffectRequests, Available = 0, Active = 0;
+    bool DepthReady = false;
+};
+inline const char* EffectStatus(const EffectSnapshot& state, size_t index, bool selected, bool original) {
+    if (index >= EffectNames.size() || !selected || !(state.Requested & (1u << index))) return "Off";
+    if (original) return "Original";
+    if (!(state.Available & (1u << index))) return "Shader unavailable";
+    if ((DepthEffectRequests & (1u << index)) && !state.DepthReady) return "Waiting for depth";
+    return (state.Active & (1u << index)) ? "On" : "Off";
+}
+
 // Public SDK docs include NUL in returned sizes; ReShade 6.8 caller-buffer
 // getters return the copied character count instead. Accept either exact count,
 // but always require capacity and byte equality for the entire name PLUS NUL.
@@ -39,6 +53,7 @@ class EffectsController {
         Runtime* RuntimeIdentity = nullptr;
         std::thread::id RenderThread{};
         uint32_t Requested = DefaultEffectRequests;
+        EffectSnapshot Last{};
     };
     std::mutex Lock;
     std::array<Entry, MaxEffectRuntimes> Entries{};
@@ -56,7 +71,7 @@ class EffectsController {
         if (!runtime) return nullptr;
         if (auto* entry = Find(runtime)) return entry;
         for (auto& entry : Entries) if (!entry.RuntimeIdentity) {
-            entry = {runtime, {}, DefaultEffectRequests};
+            entry = {runtime, {}, DefaultEffectRequests, {}};
             return &entry;
         }
         return nullptr;
@@ -80,7 +95,7 @@ public:
     // compiler or shutdown thread. Reload retains all in-session menu requests.
     void Reload(Runtime* runtime, bool = false) {
         std::lock_guard guard(Lock);
-        Ensure(runtime);
+        if (auto* entry = Ensure(runtime)) entry->Last = {};
     }
     void Forget(Runtime* runtime) {
         std::lock_guard guard(Lock);
@@ -89,6 +104,27 @@ public:
     void Clear() {
         std::lock_guard guard(Lock);
         Entries = {}; // No SDK call from AddonUninit's possibly non-render thread.
+    }
+
+    // Overlay seams are metadata only and may be called from its own thread.
+    // Activation remains deferred to the next guarded render reconciliation.
+    EffectSnapshot Snapshot(Runtime* runtime) {
+        std::lock_guard guard(Lock);
+        if (const auto* entry = Find(runtime)) {
+            auto result = entry->Last;
+            result.Requested = entry->Requested;
+            return result;
+        }
+        return {};
+    }
+    bool SetRequested(Runtime* runtime, size_t index, bool enabled) {
+        std::lock_guard guard(Lock);
+        auto* entry = Find(runtime);
+        if (!entry || index >= EffectNames.size()) return false;
+        const uint32_t bit = 1u << index;
+        if (enabled) entry->Requested |= bit;
+        else entry->Requested &= ~bit;
+        return true;
     }
 
     // Called only by genuine render callbacks. Probe must query fresh binding
@@ -103,16 +139,21 @@ public:
         if (entry->RenderThread == std::thread::id{}) entry->RenderThread = current;
         if (entry->RenderThread != current) return false;
         const bool depth = masterEnabled && (entry->Requested & DepthEffectRequests) && probe(runtime);
+        EffectSnapshot observed{};
+        observed.DepthReady = depth;
         WriteScope ownWrite(this);
         for (size_t i = 0; i < EffectNames.size(); ++i) {
             // Fresh exact-file lookup each callback: handles never outlive it.
             const auto technique = runtime->find_technique(EffectsFile, EffectNames[i]);
             if (OwnedIndex(runtime, technique) != static_cast<int>(i)) continue;
             const uint32_t bit = 1u << i;
+            observed.Available |= bit;
             const bool enabled = masterEnabled && (entry->Requested & bit) && (!(DepthEffectRequests & bit) || depth);
             if (runtime->get_technique_state(technique) != enabled)
                 runtime->set_technique_state(technique, enabled);
+            if (runtime->get_technique_state(technique)) observed.Active |= bit;
         }
+        entry->Last = observed;
         return true;
     }
 
