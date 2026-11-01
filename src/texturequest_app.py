@@ -444,7 +444,7 @@ class TextureQuestApp:
         self.component_controls = {}
         for key, caption, variable, hint in [
             ('textures', 'Textures (required)', self.component_textures, 'Our generated textures. The in-game toggle switches them off too.'),
-            ('effects', 'Graphical Effects · AO and contact shadows', self.component_effects, 'Screen-space ambient occlusion and contact shadows. Adjust each in ReShade (Home). Your texture toggle switches all TextureQuest features off. Native lighting/world shadows remain in use.'),
+            ('effects', 'Graphical Effects · lights, shadows and filtering', self.component_effects, 'EQ2 Graphics: point and glow lighting, character shadows, ambient occlusion, anisotropic filtering and smoother text. Adjust each in Home → TextureQuest. Your texture toggle switches everything off/on.'),
             ('dlss', 'DLSS · Experimental', self.component_dlss, 'Private DLSS test. Requires the verified optional profile. The same texture shortcut turns it off in Original mode.')]:
             row = tk.Frame(component_area, bg=WHITE)
             row.pack(fill='x')

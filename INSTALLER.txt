@@ -1,27 +1,29 @@
-TextureQuest 1.12.1 private preview — Windows x64
+TextureQuest 1.13.0 private preview — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract outside the game folder; keep data beside the EXE.
 3. Select your game folder and components, then Install graphics hook.
 4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
-Textures are required. Graphical Effects adds ambient occlusion and contact shadows. Home opens ReShade. Each effect has a requested
-checkbox and running/waiting status. Strength controls are below the list. Numpad * switches all TextureQuest features Original/Upscaled; use
-Shortcut to change it. Apply changes with EQ2 closed after selecting components.
+Textures are required. Graphical Effects adds EQ2 Graphics: point/glow lighting,
+character shadows, soft sun shadows, AO, anisotropic filtering and smoother text.
+Home → TextureQuest contains their checkboxes and strengths. Numpad * switches
+textures and graphics Original/Upscaled without changing your choices. Use
+Shortcut to change the key. Apply changes with EQ2 closed.
 DLSS (Experimental) has three controls in Home → TextureQuest:
 - Frame Generation: checkbox on/off, then 2x / 3x / 4x on supported hardware.
 - Upscaling: checkbox on/off, then Native/DLAA or a quality preset.
 - Neural Rendering: checkbox on/off, presets and Advanced model/pass controls.
 Unchecking keeps your preset. These choices can change while playing.
 Lower upscaling presets reduce DLSS processing resolution, not EQ2's original
-rendering cost. Motion is estimated; image quality, HUD and FPS need game testing.
+rendering cost. Frame generation includes a pacing/GUI-sharing correction.
+Motion is estimated; image quality, HUD and FPS still need game testing.
 Your TextureQuest shortcut controls everything. Extra AIO hotkeys are disabled.
 
-These effects supplement native rendering. Keep native lighting/world shadows.
-Managed game INI changes get full local backups before edits and safe restoration
-on uninstall. No native disable commands are enabled in this preview.
-Selecting effects also loads enabled effects in your existing ReShade preset.
-Your own effects retain their state. Other ReShade hotkeys are disabled.
+Keep native lighting, material shaders and world shadows enabled. The new
+renderer uses those inputs; native game INIs are unchanged. It replaces our old
+AO/contact shaders. Bloom, screen-color bounce and edge smoothing stay removed.
+Your own ReShade effects retain their state. Other ReShade hotkeys are disabled.
 
 About 17.7 GB downloads: only our generated/corrected channels and metadata.
 The app builds about 27.8 GB locally using your game files for protected channels,
@@ -37,6 +39,7 @@ owned files. Later user settings and unknown files are preserved. The included
 provider is a private ReShade 6.8 source build with a keyboard compatibility fix;
 existing compatible ReShade is reused. Third-party notices are included.
 
-This is a private test, not a public release. Appearance, depth setup, HUD effects
-and performance still need the combined EQ2 test. Graphics hooks have no official
+This includes a private adapter of Sichii's EQ2 Graphics renderer. See the
+included notices. It is a local test, not a public release. Appearance, HUD
+compatibility and performance still need the EQ2 test. Graphics hooks have no official
 approval. The unfinished texture generation batch is not included.

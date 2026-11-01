@@ -1,66 +1,63 @@
-# Graphics preview
+# Private graphics preview
 
-Choose optional **Graphical Effects** and **DLSS (Experimental)**, close EQ2 and
-click **Apply changes**. Textures are required. Downloads stay cached.
+Select **Graphical Effects**, close EQ2 and click **Apply changes**. Launch
+normally, then open **Home → TextureQuest**. Textures are required; DLSS is optional.
 
-Use **Home → TextureQuest** for the private AIO DLSS controls:
+The graphics component uses [Sichii's EQ2 Graphics renderer](https://github.com/Sichii/Eq2GraphicsAddonRS),
+with a small private adapter for TextureQuest's master toggle and menu. It works
+in EQ2's world rendering passes before the HUD, replacing our old screen-space
+AO/contact implementation.
 
-- **Frame Generation:** checkbox on/off; **2x / 3x / 4x** selects one, two or
-  three generated frames between real frames. Hardware/runtime support is required.
-- **Upscaling:** checkbox on/off; **Native/DLAA, Quality, Balanced, Performance,
-  Ultra Performance**. Lower presets process a reduced captured image; they do
-  not reduce EQ2's original rendering cost or guarantee higher FPS.
-- **Neural Rendering:** checkbox on/off; three model presets, with **Advanced**
-  model/pass controls. More passes cost GPU time.
-
-Unchecking preserves the selected preset. Choices apply while playing; Original
-temporarily stops them all. Motion is estimated from images. HUD behavior,
-temporal quality and combined EQ2 performance still need testing. Extra AIO
-hotkeys and game window/input virtualization are disabled.
-
-**Show FPS** displays rendered **Game** frames and compositor **Output** frames
-(including generated frames). Output counts accepted Presents, not monitor
-scanout. Selected effects and DLSS continue with Home open; the menu and FPS
-counter are drawn above the processed image. Bloom has been removed.
-
-**Home** opens ReShade. Each effect has a requested checkbox and separate
-On/Off/Waiting for depth status. Strength controls are below the list:
-
-| Effect | What to look for |
+| Control | Function |
 | --- | --- |
-| Ambient occlusion | Darkening around visible corners and close surface contact |
-| Contact shadows | Short directional shadows from visible nearby geometry |
-| Depth diagnostic | Debug view for finding the correct depth orientation/range |
+| Point-light shadows | Lamp lighting and shadows, with strength/range/count controls |
+| Character shadows | Moving-character shadows from those lights |
+| Emissive lights | Light estimated from recognized glowing meshes |
+| Sun-shadow softness | Softens native sun shadows; zero retains the game filter |
+| Ambient occlusion | Darkens nearby occlusion in ambient world lighting |
+| Anisotropic filtering | Up to 16x filtering on eligible world samplers |
+| Smooth interface text | Bilinear filtering for interface text; not scene antialiasing |
 
-**Numpad \*** (or your shortcut) switches all TextureQuest features off/on.
-Individual ReShade choices survive this toggle and shader reload within the
-session. Other people's effects are not controlled by TextureQuest.
-For the selected DLSS backend, Original stops new processing and hides generated
-output. Already submitted work drains; model allocations can remain in memory.
+Character and emissive lighting depend on the point-light parent control. Emissive
+lighting is an approximation, not a full multi-bounce lighting engine.
 
-These effects use the finished screen image and available depth. They cannot
-see off-screen lights/occluders or recover material/light information that EQ2
-does not expose. The light direction and camera settings are approximations,
-not automatically recovered game facts. AO/contact stay off without a
-valid depth binding. HDR currently bypasses the
-scene effects. Screen-space effects can affect the HUD and cost GPU time.
+**Numpad \*** (or your shortcut) switches textures and all selected graphics
+off/on. Original preserves each checkbox and strength. Changes apply at a frame
+boundary; work already submitted to the GPU finishes normally. Settings are kept
+in ReShade.ini under `[EQ2Graphics]` and survive reinstall.
 
-Keep native base lighting, materials and world shadows. No supported native
-AO disable command was established, so this preview changes none of
-those settings. The user's existing r_light_priority value is left alone.
-The native-settings manager backs up full originals before any future reviewed
-edit, stores them only in portable data, and restores on uninstall. Later edits
-are preserved with conflicts reported; eq2_default.ini is never modified.
+Keep native lighting, material shaders and world shadows enabled. The renderer
+needs their inputs. This preview changes no native EQ2 INI settings. The existing
+backup/restore manager remains available for future verified overrides.
+Bloom, screen-color bounce, contact-only shaders and edge smoothing are retired.
+Unrelated ReShade effects and settings are preserved.
 
-Enabling effects loads ReShade FX, including enabled effects in your own preset.
-Existing preset/search paths are preserved. Uninstall restores only settings
-still owned by TextureQuest. Keep data and its settings journals/backups.
+## Experimental DLSS
 
-One combined standalone compile/pixel test and an EQ2 test qualify this preview;
-CPU formulas or compilation alone do not prove EQ2 depth, appearance or FPS.
+**Home → TextureQuest** has independent checkboxes; unchecking keeps the preset:
 
-Point lights and bounce lighting are not implemented. The old screen-color bounce and edge smoothing effects were removed because they could affect UI text.
+- **Frame Generation:** 2x / 3x / 4x on supported hardware.
+- **Upscaling:** Native/DLAA, Quality, Balanced, Performance or Ultra Performance.
+- **Neural Rendering:** model presets and Advanced model/pass controls.
 
-For private lighting tests, **Capture world lighting (3 frames)** saves bounded
-graphics bindings under portable `data/diagnostics`. It changes no draw or game
-file. Missing bindings stay unknown; a saved capture is not working point lighting.
+Lower presets reduce the captured image's processing resolution. They do not
+reduce the rendering work EQ2 already performed, so a performance gain is not
+guaranteed. Motion is estimated from images. More neural passes cost GPU time.
+The previous EQ2 frame-generation test showed a performance regression. This
+candidate removes a pacing feedback loop, pipelines optical-flow preparation
+and uses independently fenced GUI slots. One matched isolated 3840×2054 test
+increased accepted output from 96 to 128 FPS at 2x and from 131 to 209 FPS at 4x.
+These are synthetic compositor measurements, not EQ2 or monitor scanout results.
+
+Home does not pause selected processing. Original bypasses it, allowing submitted
+work to drain. Model allocations may remain in memory. Extra AIO hotkeys and game
+window/input virtualization are disabled.
+
+**Show FPS** reports rendered Game frames and accepted compositor Output frames,
+including generated frames. Output is not measured monitor scanout.
+
+This is a private local candidate, not a public release. SDK/CPU tests do not
+establish real EQ2 visuals, compatibility or performance. The renderer's upstream
+sources are pinned at `4a656a9492584c10ab38f30391b7e99538475f87`; its author has
+not supplied a top-level redistribution license, so it must not be included in
+a public TextureQuest release without permission.

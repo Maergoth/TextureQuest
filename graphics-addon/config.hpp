@@ -10,7 +10,7 @@ namespace tq {
 
 struct Config {
     std::wstring Map, Downloads, Shortcut, GamePaks;
-    bool Effects = false, DLSS = false;
+    bool Effects = false, DLSS = false, WorldGraphics = false;
     std::string DLSSBackend = "feeder";
 };
 
@@ -25,6 +25,7 @@ inline bool ReadConfig(const std::wstring& ini, Config& config, std::string& err
     // invalid or otherwise unsuccessful read. Commit only after all checks.
     config.Effects = false;
     config.DLSS = false;
+    config.WorldGraphics = false;
     config.DLSSBackend = "feeder";
     error.clear();
     std::ifstream file(ini, std::ios::binary);
@@ -35,6 +36,7 @@ inline bool ReadConfig(const std::wstring& ini, Config& config, std::string& err
     std::map<std::string, std::string> values;
     bool section = false, effects_seen = false, effects = false, dlss_seen = false, dlss = false;
     bool backend_seen = false;
+    bool world_seen = false, world = false;
     std::string backend = "feeder";
     for (std::string line; std::getline(file, line);) {
         while (!line.empty() && (line.back() == '\r' || line.back() == ' '))
@@ -47,6 +49,15 @@ inline bool ReadConfig(const std::wstring& ini, Config& config, std::string& err
         }
         const size_t equals = line.find('=');
         if (section && equals != std::string::npos) {
+            if (line.substr(0, equals) == "WorldGraphics") {
+                const std::string value = line.substr(equals + 1);
+                if (world_seen || (value != "0" && value != "1")) {
+                    error = "TextureQuest.ini WorldGraphics must be one optional 0 or 1 entry";
+                    return false;
+                }
+                world_seen = true;
+                world = value == "1";
+            }
             if (line.substr(0, equals) == "Effects") {
                 const std::string value = line.substr(equals + 1);
                 if (effects_seen || (value != "0" && value != "1")) {
@@ -97,7 +108,12 @@ inline bool ReadConfig(const std::wstring& ini, Config& config, std::string& err
             value += L'\\';
         *key.Value = value;
     }
+    if (effects && world) {
+        error = "Legacy effects and world graphics cannot both be enabled";
+        return false;
+    }
     config.Effects = effects;
+    config.WorldGraphics = world;
     config.DLSS = dlss;
     config.DLSSBackend = backend;
     return true;

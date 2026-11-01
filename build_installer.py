@@ -52,6 +52,18 @@ def sha(path):
     return digest.hexdigest()
 
 
+def graphics_runtime_pins(manager, graphics, runtime_dir):
+    """Admit every separate profile before staging its exact payload files."""
+    rows = list(graphics["files"])
+    if graphics.get("dlss") is not None:
+        rows += manager._dlss_profile(graphics, full=True)["files"]
+    if graphics.get("renderer") is not None:
+        # The renderer verifier always performs a fresh full file hash.
+        rows += manager._renderer_profile(graphics)["files"]
+    return {"RUNTIME.json": sha(runtime_dir / "RUNTIME.json"),
+            **{row["name"]: row["sha256"] for row in rows}}
+
+
 def main():
     global BUILD, DEST
     parser = argparse.ArgumentParser(description="Build a manifest-pinned TextureQuest installer")
@@ -87,14 +99,7 @@ def main():
         graphics = graphics_manager._runtime()
         if graphics is None:
             raise ValueError("Missing graphics runtime descriptor")
-        graphics_rows = list(graphics["files"])
-        if graphics.get("dlss") is not None:
-            # Optional profile files stay separate in the descriptor, but are
-            # admitted, bundled and checked just like the core runtime.
-            profile = graphics_manager._dlss_profile(graphics, full=True)
-            graphics_rows += profile["files"]
-        graphics_pins = {"RUNTIME.json": sha(args.graphics_runtime_dir / "RUNTIME.json"),
-                         **{r["name"]: r["sha256"] for r in graphics_rows}}
+        graphics_pins = graphics_runtime_pins(graphics_manager, graphics, args.graphics_runtime_dir)
         resources_graphics = BUILD / "graphics-runtime"
         if resources_graphics.exists():
             raise RuntimeError("Preserve previous graphics build resources")

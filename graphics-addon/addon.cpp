@@ -16,6 +16,7 @@
 #include "dlss_controller.hpp"
 #include "aio_controller.hpp"
 #include "fps_counter.hpp"
+#include "world_graphics_controller.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -89,6 +90,7 @@ struct State {
     tq::DlssController<effect_runtime> DLSS;
     tq::AioController AIO;
     tq::FpsCounter FPS;
+    tq::WorldGraphicsController WorldGraphics;
     tq::RendererBindingProbe RendererProbe;
     std::atomic<bool> ShowFPS{true};
     std::mutex EffectsStatusLock;
@@ -396,6 +398,7 @@ void OnPushDescriptors(command_list* cmd, shader_stage stages, pipeline_layout l
 void OnPresent(command_queue* queue, swapchain* surface, const rect*, const rect*, uint32_t, const rect*) {
     if (!queue || !GameDevice(queue->get_device()) || !surface || !surface->get_hwnd()) return;
     const bool original = Global->Original;
+    Global->WorldGraphics.Reconcile(Global->Config.WorldGraphics, original);
     Global->AIO.Reconcile(Global->Config.DLSS && Global->Config.DLSSBackend == "aio", original);
     if (original == Global->PushRegistered)
         return;
@@ -567,6 +570,7 @@ bool OnTechniqueState(effect_runtime* runtime, effect_technique technique, bool 
 
 void ReconcileEffects(effect_runtime* runtime, unsigned phase) {
     if (!GameRuntime(runtime)) return;
+    Global->WorldGraphics.Reconcile(Global->Config.WorldGraphics, Global->Original.load());
     Global->AIO.Reconcile(Global->Config.DLSS && Global->Config.DLSSBackend == "aio", Global->Original.load());
     Global->DLSS.Reconcile(runtime, Global->Config.DLSS && Global->Config.DLSSBackend == "feeder", Global->Original.load(),
         [phase](effect_runtime* current) { return OwnedDepthAvailable(current, phase,
@@ -759,6 +763,15 @@ void OnTextureQuestOverlay(effect_runtime* runtime) {
         DrawAioControls(original);
         ImGui::Separator();
     }
+    if (Global->Config.WorldGraphics) {
+        ImGui::TextUnformatted("World graphics: EQ2 Graphics");
+        if (original) ImGui::TextDisabled("Paused in Original. Your choices are kept.");
+        if (!Global->WorldGraphics.Draw(runtime))
+            ImGui::TextDisabled("Waiting for the managed EQ2 Graphics addon.");
+        ImGui::Separator();
+        ImGui::TextUnformatted("Your texture hotkey switches textures and graphics off/on.");
+        return;
+    }
     if(ImGui::Button("Capture world lighting (3 frames)"))
         Global->RendererProbe.Arm(runtime->get_device()->get_native(),std::filesystem::path(Global->Config.Downloads).parent_path().parent_path());
     const auto captureStatus=Global->RendererProbe.Status();
@@ -861,6 +874,7 @@ void Stop() {
     Global->Effects.Clear();
     Global->DLSS.Clear();
     Global->AIO.Clear();
+    Global->WorldGraphics.Clear();
     if (Global->PushRegistered)
         reshade::unregister_event<reshade::addon_event::push_descriptors>(&OnPushDescriptors);
     {

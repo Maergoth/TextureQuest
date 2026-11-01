@@ -29,6 +29,9 @@ except ImportError:
     pass
 
 RUNTIME_SCHEMA = 'texturequest-graphics-runtime-v4'
+RENDERER_PROFILE_ID = 'sichii-4a656a9-texturequest-master-v1'
+RENDERER_FILE = 'renderer/EQ2Graphics.addon64'
+RENDERER_MODULE = 'EQ2Graphics.addon64'
 RECORD_SCHEMA = 'texturequest-graphics-addon-installation-v1'
 PROXY_NAMES = ('dxgi.dll', 'd3d11.dll')
 STANDARD_MARKER = b'only limited add-on functionality'
@@ -54,6 +57,7 @@ AIO_PROFILE_ID = 'aio-09301f5-managed-nvof-nr-sr-fg-private-v1'
 AIO_V2_PROFILE_ID = 'aio-09301f5-managed-controls-mfg-private-v2'
 AIO_V3_PROFILE_ID = 'aio-09301f5-managed-continuous-gui-private-v3'
 AIO_V4_PROFILE_ID = 'aio-09301f5-managed-completion-cadence-private-v4'
+AIO_V5_PROFILE_ID = 'aio-09301f5-managed-refresh-gui-ring-private-v5'
 AIO_ROLES = {
     'aio': 'dlss/standalone-dlssnr.addon64', 'bridge': 'dlss/nvngx.dll',
     'nr': 'dlss/nvngx_dlssnr.dll', 'sr': 'dlss/nvngx_dlss.dll', 'fg': 'dlss/nvngx_dlssg.dll',
@@ -66,6 +70,7 @@ DLSS_PROFILES = {
     AIO_V2_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES, settings='aio2'),
     AIO_V3_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES, settings='aio2'),
     AIO_V4_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES, settings='aio2'),
+    AIO_V5_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES, settings='aio2'),
 }
 
 
@@ -172,7 +177,7 @@ class GraphicsManager:
         if not path.exists():
             return None
         doc = _json(path)
-        need(doc.get('schema') in (RUNTIME_SCHEMA, 'texturequest-graphics-runtime-v5', 'texturequest-graphics-runtime-v6', 'texturequest-graphics-runtime-v7') and doc.get('reshade_build') == 'addon' and
+        need(doc.get('schema') in (RUNTIME_SCHEMA, 'texturequest-graphics-runtime-v5', 'texturequest-graphics-runtime-v6', 'texturequest-graphics-runtime-v7', 'texturequest-graphics-runtime-v8') and doc.get('reshade_build') == 'addon' and
              doc.get('map_schema') == 'TQMAP002', 'Unknown graphics runtime.')
         names = {row['name'] for row in doc['files']}
         need(doc.get('addon') in names and doc.get('reshade') in names, 'Graphics runtime does not pin its add-on and ReShade.')
@@ -191,12 +196,17 @@ class GraphicsManager:
                          effect_name='TQEffects.fx', techniques=['TQAmbientOcclusion', 'TQContactShadows',
                          'TQDepthDiagnostic'])
             need(((doc['schema'] == 'texturequest-graphics-runtime-v5' and effects == bloom) or
-                  (doc['schema'] in ('texturequest-graphics-runtime-v6', 'texturequest-graphics-runtime-v7') and effects in (legacy_suite, previous_suite, suite))) and effects['shader'] in names,
+                  (doc['schema'] in ('texturequest-graphics-runtime-v6', 'texturequest-graphics-runtime-v7', 'texturequest-graphics-runtime-v8') and effects in (legacy_suite, previous_suite, suite))) and effects['shader'] in names,
                 'Unknown optional effects runtime.')
         elif doc['schema'] in ('texturequest-graphics-runtime-v5', 'texturequest-graphics-runtime-v6', 'texturequest-graphics-runtime-v7'):
             raise ValueError('Graphics runtime is missing its effects contract.')
-        need(doc['schema'] == 'texturequest-graphics-runtime-v7' or 'dlss' not in doc,
+        need(doc['schema'] in ('texturequest-graphics-runtime-v7', 'texturequest-graphics-runtime-v8') or 'dlss' not in doc,
              'DLSS needs the versioned graphics runtime contract.')
+        need(doc['schema'] == 'texturequest-graphics-runtime-v8' or 'renderer' not in doc,
+             'The world renderer needs the versioned graphics runtime contract.')
+        if doc['schema'] == 'texturequest-graphics-runtime-v8':
+            need(effects is not None or doc.get('renderer') is not None,
+                 'Graphics runtime is missing its graphical effects contract.')
         for row in doc['files']:
             _pin(self.runtime_dir / row['name'], row)
         return doc
@@ -208,7 +218,7 @@ class GraphicsManager:
         File identity/size/timestamps invalidate it; installation never trusts it.
         """
         profile = runtime.get('dlss')
-        need(runtime.get('schema') == 'texturequest-graphics-runtime-v7' and type(profile) is dict,
+        need(runtime.get('schema') in ('texturequest-graphics-runtime-v7', 'texturequest-graphics-runtime-v8') and type(profile) is dict,
              'The experimental DLSS profile is not included.')
         need(set(profile) == {'schema', 'id', 'private', 'api', 'files'} and
              profile['schema'] == 'texturequest-dlss-runtime-v1' and
@@ -239,10 +249,47 @@ class GraphicsManager:
             self._dlss_verified = key
         return profile
 
+    def _renderer_profile(self, runtime):
+        profile = runtime.get('renderer')
+        need(runtime.get('schema') == 'texturequest-graphics-runtime-v8' and type(profile) is dict,
+             'The world renderer is not included.')
+        need(set(profile) == {'schema', 'id', 'private', 'api', 'files'} and
+             profile['schema'] == 'texturequest-world-renderer-v1' and
+             profile['id'] == RENDERER_PROFILE_ID and profile['private'] is True and
+             profile['api'] == 'd3d11', 'Unknown world renderer profile.')
+        rows = profile['files']
+        need(type(rows) is list and len(rows) == 1, 'Incomplete world renderer files.')
+        row = rows[0]
+        need(type(row) is dict and set(row) == {'name', 'bytes', 'sha256'} and
+             row['name'] == RENDERER_FILE and type(row['bytes']) is int and
+             0 < row['bytes'] <= 32 * 1024**2 and type(row['sha256']) is str and
+             re.fullmatch('[a-f0-9]{64}', row['sha256']), 'Invalid world renderer file pin.')
+        need(row['name'].casefold() not in {item['name'].casefold() for item in runtime['files']},
+             'World renderer collides with the core runtime.')
+        _pin(core._plain(self.runtime_dir / row['name'], self.runtime_dir), row)
+        return profile
+
+    def _preflight_renderer(self, game, runtime):
+        profile = self._renderer_profile(runtime)
+        path = core._plain(self._addon_folder(game) / RENDERER_MODULE)
+        if path.exists():
+            record = self._record(game)
+            owned = next((row for row in (record or {}).get('files', [])
+                          if core._plain(row['path']) == path), None)
+            need(record and record['phase'] != 'uninstalled' and
+                 record.get('renderer_profile') == RENDERER_PROFILE_ID and owned and
+                 _pin(path)['sha256'] == owned['sha256'],
+                 'World renderer file already exists or changed: ' + path.name + '. It was kept.')
+        return profile
+
     def _preflight_components(self, game, selection, runtime):
-        need(not selection['effects'] or runtime.get('effects'), 'The optional effects runtime is not included.')
-        need(not selection['effects'] or runtime['effects'].get('schema') == 'texturequest-effects-runtime-v4',
-             'The bundled effects are outdated.')
+        renderer = selection['effects'] and runtime.get('renderer') is not None
+        if renderer:
+            self._preflight_renderer(game, runtime)
+        else:
+            need(not selection['effects'] or runtime.get('effects'), 'The optional effects runtime is not included.')
+            need(not selection['effects'] or runtime['effects'].get('schema') == 'texturequest-effects-runtime-v4',
+                 'The bundled effects are outdated.')
         if not selection['dlss']:
             self._preflight_optional_settings(game, selection, runtime, None)
             return None
@@ -285,7 +332,7 @@ class GraphicsManager:
         for path in _preset_paths(raw, game):
             retire_removed_effect_settings(path.read_bytes())
         if not selection['effects'] and profile is None: return
-        if selection['effects']:
+        if selection['effects'] and runtime.get('renderer') is None:
             pin = next(row for row in runtime['files'] if row['name'] == runtime['effects']['shader'])
             directory = core._plain(self.state_dir / 'effects' / pin['sha256'], self.state_dir)
             raw, _ = prepare_effects_config(raw, str(directory))
@@ -537,12 +584,13 @@ class GraphicsManager:
             conflicts.append(str(error))
         return tuple(conflicts)
 
-    def _addon_ini(self, game, map_path, components=None, *, dlss_backend='feeder'):
+    def _addon_ini(self, game, map_path, components=None, *, dlss_backend='feeder', world_graphics=False):
         selection = component_selection(components)
         need(dlss_backend in ('feeder', 'aio'), 'Unknown DLSS backend.')
         lines = ['[TextureQuest]', 'Map=' + str(map_path), 'Downloads=' + str(self.state_dir / 'dds' / 'objects'),
                  'Shortcut=' + str(self.base / 'shortcut.txt'), 'GamePaks=' + str(game / 'paks'),
-                 'Effects=' + ('1' if selection['effects'] else '0'),
+                 'Effects=' + ('1' if selection['effects'] and not world_graphics else '0'),
+                 'WorldGraphics=' + ('1' if world_graphics else '0'),
                  'DLSS=' + ('1' if selection['dlss'] else '0'), 'DLSSBackend=' + dlss_backend, '']
         return '\r\n'.join(lines).encode('utf-8')
 
@@ -573,9 +621,17 @@ class GraphicsManager:
                 dlss_available, dlss_message = True, 'Experimental DLSS profile verified. Private testing only.'
             except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
                 dlss_message = 'Experimental DLSS unavailable: ' + str(error)
+        renderer_available, renderer_message = False, 'World renderer is not included.'
+        if runtime and runtime.get('renderer') is not None:
+            try:
+                self._renderer_profile(runtime)
+                renderer_available, renderer_message = True, 'World renderer verified. Private testing only.'
+            except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
+                renderer_message = 'World renderer unavailable: ' + str(error)
         result = dict(installed=False, running=False, active_sessions=0, available=runtime is not None,
                       dual_load=False, shortcut=normalize(), message='Graphics hook runtime is not included.',
-                      components=component_selection(), effects_available=bool(runtime and runtime.get('effects')),
+                      components=component_selection(), effects_available=bool(renderer_available or (runtime and runtime.get('effects'))),
+                      renderer_available=renderer_available, renderer_message=renderer_message,
                       dlss_available=dlss_available, dlss_installed=False, dlss_message=dlss_message,
                       dlss_backend=_dlss_contract(runtime['dlss'])['backend'] if dlss_available else None,
                       installed_app_version=None, installed_newer_app=False, refresh_required=False)
@@ -594,6 +650,10 @@ class GraphicsManager:
             refresh = refresh or (not newer and (record['phase'] != 'installed' or bool(missing)))
             refresh = refresh or bool(not newer and dlss_available and
                 component_selection(record.get('components'))['dlss'] and record.get('dlss_profile') != runtime['dlss']['id'])
+            refresh = refresh or bool(not newer and renderer_available and
+                component_selection(record.get('components'))['effects'] and
+                (record.get('renderer_profile') != runtime['renderer']['id'] or
+                 record.get('renderer_descriptor_sha256') != _sha(catalog.canonical(runtime['renderer']))))
             message = ('Interrupted graphics installation. Close EQ2 and Uninstall before retrying.' if record['phase'] != 'installed' else
                        'Hook file missing (' + ', '.join(missing) + '). Close EQ2, then Uninstall and Install to repair.' if missing else
                        'A newer launcher installed this hook. Update TextureQuest before reinstalling it.' if newer else
@@ -738,13 +798,15 @@ class GraphicsManager:
         game = core._plain(core.validate_game(game).parent)
         runtime = self._runtime()
         need(runtime, 'Graphics runtime missing.')
-        need(not selection['effects'] or runtime.get('effects'), 'The optional effects runtime is not included.')
+        need(not selection['effects'] or runtime.get('renderer') is not None or runtime.get('effects'),
+             'The optional effects runtime is not included.')
         ensure_closed()
         with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
             self._assert_shortcuts_settled(game)
             self._exclusive_mode(game)
             ensure_closed()
             dlss_profile = self._preflight_components(game, selection, runtime)
+            renderer_profile = self._renderer_profile(runtime) if selection['effects'] and runtime.get('renderer') is not None else None
             old = self._record(game)
             need(not old or old['phase'] == 'uninstalled', 'Uninstall Graphics hook before installing again.')
             standard = [name for name in PROXY_NAMES if classify(game / name) == 'standard']
@@ -760,7 +822,7 @@ class GraphicsManager:
             map_path = self._activate_prepared(game, prepared)
             self._write_key(binding)
             effects_lease, dlss_lease, consumer_lease = None, None, None
-            shader_folder, retired_shader = self._effects_shader(runtime) if selection['effects'] else (None, None)
+            shader_folder, retired_shader = self._effects_shader(runtime) if selection['effects'] and renderer_profile is None else (None, None)
             dlss_folder = self._dlss_shaders(dlss_profile) if dlss_profile is not None else None
             def configure_effects(raw):
                 nonlocal effects_lease, dlss_lease, consumer_lease
@@ -793,7 +855,7 @@ class GraphicsManager:
             folder = self._addon_folder(game)
             writes.append((folder / 'TextureQuest.addon64', (self.runtime_dir / runtime['addon']).read_bytes()))
             dlss_backend = _dlss_contract(dlss_profile)['backend'] if dlss_profile is not None else 'feeder'
-            writes.append((folder / 'TextureQuest.ini', self._addon_ini(game, map_path, selection, dlss_backend=dlss_backend)))
+            writes.append((folder / 'TextureQuest.ini', self._addon_ini(game, map_path, selection, dlss_backend=dlss_backend, world_graphics=renderer_profile is not None)))
             if dlss_profile is not None:
                 for row in dlss_profile['files']:
                     if row['role'] not in _dlss_contract(dlss_profile)['modules']: continue
@@ -802,6 +864,13 @@ class GraphicsManager:
                     raw = source.read_bytes()
                     need(len(raw) == row['bytes'] and _sha(raw) == row['sha256'], 'DLSS module changed while reading.')
                     writes.append((game / source.name, raw))
+            if renderer_profile is not None:
+                row = renderer_profile['files'][0]
+                source = core._plain(self.runtime_dir / row['name'], self.runtime_dir)
+                _pin(source, row)
+                raw = source.read_bytes()
+                need(len(raw) == row['bytes'] and _sha(raw) == row['sha256'], 'World renderer changed while reading.')
+                writes.append((folder / RENDERER_MODULE, raw))
             for path, _ in writes:
                 need(not path.exists(), path.name + ' already exists. It was left unchanged.')
             files = [dict(path=str(p), bytes=len(d), sha256=_sha(d)) for p, d in writes]
@@ -811,6 +880,8 @@ class GraphicsManager:
                        dlss_consumer_settings=consumer_lease,
                        dlss_profile=dlss_profile['id'] if dlss_profile is not None else None,
                        dlss_backend=dlss_backend if dlss_profile is not None else None,
+                       renderer_profile=renderer_profile['id'] if renderer_profile is not None else None,
+                       renderer_descriptor_sha256=_sha(catalog.canonical(renderer_profile)) if renderer_profile is not None else None,
                        app_version=APP_VERSION,
                        runtime_descriptor_sha256=_sha((self.runtime_dir / 'RUNTIME.json').read_bytes()))
             self._save(game, doc)
@@ -836,7 +907,7 @@ class GraphicsManager:
         # command is shipped; future reviewed overrides enter only here.
         settings = GameSettings(self.state_dir).apply(game, {}, features=(
             'ambient_occlusion', 'contact_shadows'
-        ) if selection['effects'] else ())
+        ) if selection['effects'] and renderer_profile is None else ('world_graphics',) if renderer_profile is not None else ())
         report('Graphics hook installed. ' + label(binding) + ' switches quality.')
         return dict(self.status(game), native_settings=settings)
 
