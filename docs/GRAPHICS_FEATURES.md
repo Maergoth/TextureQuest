@@ -18,6 +18,11 @@ temporarily stops them all. Motion is estimated from images. HUD behavior,
 temporal quality and combined EQ2 performance still need testing. Extra AIO
 hotkeys and game window/input virtualization are disabled.
 
+**Show FPS** displays rendered **Game** frames and compositor **Output** frames
+(including generated frames). Output counts accepted Presents, not monitor
+scanout. Selected effects and DLSS continue with Home open; the menu and FPS
+counter are drawn above the processed image. Bloom has been removed.
+
 **Home** opens ReShade. Each effect has a requested checkbox and separate
 On/Off/Waiting for depth status. Strength controls are below the list:
 
@@ -26,7 +31,6 @@ On/Off/Waiting for depth status. Strength controls are below the list:
 | Ambient occlusion | Darkening around visible corners and close surface contact |
 | Contact shadows | Short directional shadows from visible nearby geometry |
 | Indirect lighting | Approximate colour bounce from bright visible surfaces |
-| Bloom | A halo around bright pixels |
 | Anti-aliasing | Smoother high-contrast edges, with some possible softness |
 | Depth diagnostic | Debug view for finding the correct depth orientation/range |
 
@@ -40,11 +44,11 @@ These effects use the finished screen image and available depth. They cannot
 see off-screen lights/occluders or recover material/light information that EQ2
 does not expose. The light direction and camera settings are approximations,
 not automatically recovered game facts. AO/contact/bounce stay off without a
-valid depth binding; bloom and AA can still work. HDR currently bypasses the
+valid depth binding; AA can still work. HDR currently bypasses the
 scene effects. Screen-space effects can affect the HUD and cost GPU time.
 
 Keep native base lighting, materials and world shadows. No supported native
-AO/AA/bloom disable command was established, so this preview changes none of
+AO/AA disable command was established, so this preview changes none of
 those settings. The user's existing r_light_priority value is left alone.
 The native-settings manager backs up full originals before any future reviewed
 edit, stores them only in portable data, and restores on uninstall. Later edits

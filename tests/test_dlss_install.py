@@ -21,9 +21,9 @@ def enable_dlss_fixture(runtime):
     shader.write_bytes(b'// invented TQ suite, never executed\n')
     doc = json.loads((runtime / 'RUNTIME.json').read_bytes())
     doc['schema'] = 'texturequest-graphics-runtime-v7'
-    doc['effects'] = dict(schema='texturequest-effects-runtime-v2', shader='effects/TQEffects.fx',
+    doc['effects'] = dict(schema='texturequest-effects-runtime-v3', shader='effects/TQEffects.fx',
                          effect_name='TQEffects.fx', techniques=['TQAmbientOcclusion', 'TQContactShadows',
-                         'TQIndirectLighting', 'TQBloom', 'TQAntiAliasing', 'TQDepthDiagnostic'])
+                         'TQIndirectLighting', 'TQAntiAliasing', 'TQDepthDiagnostic'])
     doc['files'].append(dict(name='effects/TQEffects.fx', bytes=shader.stat().st_size,
                              sha256=hashlib.sha256(shader.read_bytes()).hexdigest()))
     rows = []

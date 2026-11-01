@@ -41,7 +41,7 @@ class LegacyEffectsMigration(Fixture):
         before = (self.legacy / "TQEffects.fx").read_bytes()
         self.install(components=self.selected)
         journal = self.manager._record(self.game)["effects_settings"]["journal"]
-        self.assertEqual(journal["schema"], effects.SCHEMA_V2)
+        self.assertEqual(journal["schema"], effects.SCHEMA_V3)
         self.assertEqual(journal["retired_shader_directory"], str(self.legacy))
         self.assertNotIn(effects.LEGACY_SHADER_SHA256, self.search())
         self.assertIn(".\\user\\**", self.search())
@@ -79,6 +79,7 @@ class LegacyEffectsMigration(Fixture):
         prepared, journal = effects.prepare_effects_config(raw, r"D:\TextureQuest\effects\new")
         body = {k: v for k, v in journal.items() if k not in ("record_sha256", "retired_shader_directory")}
         body["schema"] = effects.SCHEMA
+        body["technique"] = effects.LEGACY_TECHNIQUE
         self.assertEqual(effects.restore_effects_config(prepared, effects._seal(body)), (raw, ()))
         with self.assertRaisesRegex(ValueError, "verified legacy"):
             effects.prepare_effects_config(raw, "D:/TextureQuest/effects/" + "a" * 64,

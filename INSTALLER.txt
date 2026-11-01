@@ -1,4 +1,4 @@
-TextureQuest 1.12.0 private preview — Windows x64
+TextureQuest 1.12.1 private preview — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract outside the game folder; keep data beside the EXE.
@@ -6,7 +6,7 @@ TextureQuest 1.12.0 private preview — Windows x64
 4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
 Textures are required. Graphical Effects adds AO, contact shadows, screen-space
-bounce light, bloom and edge AA. Home opens ReShade. Each effect has a requested
+bounce light and edge AA. Home opens ReShade. Each effect has a requested
 checkbox and running/waiting status. Strength controls are below the list. Numpad * switches all TextureQuest features Original/Upscaled; use
 Shortcut to change it. Apply changes with EQ2 closed after selecting components.
 DLSS (Experimental) has three controls in Home → TextureQuest:

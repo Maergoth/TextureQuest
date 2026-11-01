@@ -20,7 +20,7 @@ struct FakeRuntime {
     void Live() { if (!Alive) throw std::runtime_error("dead runtime used"); ++Calls; }
     size_t Index(Handle h) {
         Live();
-        if (!Loaded || h.handle / 100 != Generation || h.handle % 100 < 1 || h.handle % 100 > 6)
+        if (!Loaded || h.handle / 100 != Generation || h.handle % 100 < 1 || h.handle % 100 > 5)
             throw std::runtime_error("stale, missing or unrelated handle used");
         return static_cast<size_t>(h.handle % 100 - 1);
     }
@@ -30,7 +30,11 @@ struct FakeRuntime {
         if (std::string(file) != "TQEffects.fx") throw std::runtime_error("global lookup");
         for (size_t i = 0; i < tq::EffectNames.size(); ++i)
             if (std::string(name) == tq::EffectNames[i]) return Loaded ? At(i) : Handle{};
+        if (std::string(name) == "TQBloom") return {};
         throw std::runtime_error("unowned technique lookup");
+    }
+    void enumerate_techniques(const char*, void(*callback)(FakeRuntime*, Handle, void*), void* data) {
+        if (Loaded) for (size_t i = 0; i < tq::EffectNames.size(); ++i) callback(this, At(i), data);
     }
     static void Text(const std::string& text, char* out, size_t* size) {
         const size_t n = *size ? std::min(*size - 1, text.size()) : 0;
@@ -81,39 +85,39 @@ int main() {
         controller.Reload(&main);
         Check(main.Calls == 0, "init/reload performs no SDK calls");
         controller.Reconcile(&main, true, Probe);
-        Check(main.Enabled == tq::DefaultEffectRequests && main.Writes == 5, "combined five effects initially on; debug opt-in");
+        Check(main.Enabled == tq::DefaultEffectRequests && main.Writes == 4, "combined four effects initially on; debug opt-in");
         const auto writes = main.Writes;
         for (unsigned frame = 0; frame < 20; ++frame) controller.Reconcile(&main, true, Probe);
         Check(main.Writes == writes && main.Probes == 21, "steady frame uses fresh probe without repeated writes");
-        main.Menu(3, false); // Bloom.
+        main.Menu(3, false); // Edge smoothing.
         controller.Reconcile(&main, true, Probe);
-        Check(main.Enabled == 0x17 && main.Writes == writes, "menu disable stays off instead of forced bloom enable");
-        main.Menu(5, true); // Debug enable is deferred to a guarded render callback.
-        Check(!(main.Enabled & 0x20), "menu enable deferred before depth/master guard");
+        Check(main.Enabled == 0x07 && main.Writes == writes, "menu disable stays off instead of forced edge smoothing enable");
+        main.Menu(4, true); // Debug enable is deferred to a guarded render callback.
+        Check(!(main.Enabled & 0x10), "menu enable deferred before depth/master guard");
         controller.Reconcile(&main, true, Probe);
-        Check(main.Enabled == 0x37, "menu enables debug after fresh depth guard");
+        Check(main.Enabled == 0x17, "menu enables debug after fresh depth guard");
         main.Menu(0, false); main.Menu(2, false);
         controller.Reconcile(&main, true, Probe);
-        Check(main.Enabled == 0x32, "three depth requests and bloom/AA have independent menu choices");
+        Check(main.Enabled == 0x12, "depth requests and edge smoothing have independent menu choices");
         controller.Reconcile(&main, false, Probe);
         Check(main.Enabled == 0, "Original disables all owned effects");
         controller.Reconcile(&main, true, Probe);
-        Check(main.Enabled == 0x32, "Upscaled restores exact individual choices, not defaults");
+        Check(main.Enabled == 0x12, "Upscaled restores exact individual choices, not defaults");
         controller.Reconcile(&main, false, Probe);
         main.Menu(3, true);
         controller.Reconcile(&main, false, Probe);
         controller.Reconcile(&main, true, Probe);
-        Check(main.Enabled == 0x3a, "enable requested while Original is remembered for Upscaled");
+        Check(main.Enabled == 0x1a, "enable requested while Original is remembered for Upscaled");
         main.Depth = false;
         controller.Reconcile(&main, true, Probe);
-        Check(main.Enabled == 0x18 && main.Unrelated, "invalid depth disables depth effects only; bloom/AA/unrelated remain");
+        Check(main.Enabled == 0x08 && main.Unrelated, "invalid depth disables depth effects only; AA/unrelated remain");
         main.Depth = true;
         controller.Reconcile(&main, true, Probe);
-        Check(main.Enabled == 0x3a, "depth recovery restores prior depth choices");
+        Check(main.Enabled == 0x1a, "depth recovery restores prior depth choices");
         ++main.Generation; main.Enabled = 0;
         controller.Reload(&main);
         controller.Reconcile(&main, true, Probe);
-        Check(main.Enabled == 0x3a, "FX reload preserves menu requests and uses fresh handles");
+        Check(main.Enabled == 0x1a, "FX reload preserves menu requests and uses fresh handles");
         const auto calls = main.Calls;
         bool foreignFrame = true, foreignEvent = true;
         std::thread foreign([&] {
@@ -127,13 +131,13 @@ int main() {
         second.Menu(1, false);
         controller.Reconcile(&second, true, Probe);
         controller.Reconcile(&main, true, Probe);
-        Check(second.Enabled == 0x1d && main.Enabled == 0x3a, "two runtimes never share choices or technique handles");
+        Check(second.Enabled == 0x0d && main.Enabled == 0x1a, "two runtimes never share choices or technique handles");
         FakeRuntime compiling; Attach(controller, compiling); compiling.Loaded = false;
         controller.Reload(&compiling); controller.Reconcile(&compiling, true, Probe);
         Check(compiling.Enabled == 0 && compiling.Writes == 0, "missing asynchronously compiling FX inert");
         compiling.Loaded = true; ++compiling.Generation;
         controller.Reload(&compiling); controller.Reconcile(&compiling, true, Probe);
-        Check(compiling.Enabled == 0x1f, "later reload discovers compiled FX");
+        Check(compiling.Enabled == 0x0f, "later reload discovers compiled FX");
         FakeRuntime impostor; Attach(controller, impostor); impostor.File = "UserEffects.fx";
         controller.Reconcile(&impostor, true, Probe);
         Check(impostor.Writes == 0 && impostor.Enabled == 0, "same names from another effect file are refused");
@@ -146,7 +150,7 @@ int main() {
         controller.Forget(&impostor);
         impostor.File = "TQEffects.fx"; impostor.WrongName = 0;
         controller.Reload(&impostor); controller.Reconcile(&impostor, true, Probe);
-        Check(impostor.Enabled == 0x1e, "wrong technique identity skipped without touching others");
+        Check(impostor.Enabled == 0x0e, "wrong technique identity skipped without touching others");
         const auto forgetCalls = main.Calls;
         controller.Forget(&main); main.Alive = false;
         controller.Clear();

@@ -14,6 +14,7 @@
 #include "effects_controller.hpp"
 #include "dlss_controller.hpp"
 #include "aio_controller.hpp"
+#include "fps_counter.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -86,6 +87,8 @@ struct State {
     tq::EffectsController<effect_runtime> Effects;
     tq::DlssController<effect_runtime> DLSS;
     tq::AioController AIO;
+    tq::FpsCounter FPS;
+    std::atomic<bool> ShowFPS{true};
     std::mutex EffectsStatusLock;
     uint64_t EffectsStatusSignature = UINT64_MAX;
     unsigned EffectsStatusLogs = 0;
@@ -504,6 +507,9 @@ bool OwnedDepthAvailable(effect_runtime* runtime, unsigned phase,
 
 void OnInitEffectRuntime(effect_runtime* runtime) {
     if (!GameRuntime(runtime)) return;
+    bool showFPS = true;
+    reshade::get_config_value(nullptr, "TextureQuest", "ShowFPS", showFPS);
+    Global->ShowFPS = showFPS;
     Global->Effects.Reload(runtime);
     Global->DLSS.Reload(runtime);
 }
@@ -525,7 +531,8 @@ bool OnTechniqueState(effect_runtime* runtime, effect_technique technique, bool 
     // callback must never take the other controller's lock in reverse order.
     if (Global->Config.DLSS && Global->Config.DLSSBackend == "feeder" && Global->DLSS.IsOwned(runtime, technique))
         return Global->DLSS.TechniqueState(runtime, technique, enabled, true);
-    if (Global->Effects.OwnedTechniqueIndex(runtime, technique) >= 0)
+    const int owned = Global->Effects.OwnedTechniqueIndex(runtime, technique);
+    if (owned >= 0 || owned == -2)
         return Global->Effects.TechniqueState(runtime, technique, enabled, Global->Config.Effects);
     return false;
 }
@@ -567,6 +574,28 @@ void OnReshadePresent(effect_runtime* runtime) {
     // Runs even with no active FX, so the next Upscaled frame can restore the
     // requested effects. This query is phase-qualified, not a draw observation.
     ReconcileEffects(runtime, 1);
+    if (!Global || !GameRuntime(runtime)) return;
+    const auto aio = Global->AIO.Snapshot();
+    const bool outputActive = aio.Compatible && !Global->Original.load() &&
+        (aio.Status.Flags & TQAIO_MasterAdmitted) != 0;
+    Global->FPS.Frame(GetTickCount64(), outputActive, aio.Status.PresentedFrames);
+}
+
+void OnFpsOverlay(effect_runtime* runtime) {
+    if (!Global || !GameRuntime(runtime) || !Global->ShowFPS.load()) return;
+    const auto rates = Global->FPS.Snapshot();
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.65f);
+    constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs |
+        ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDocking;
+    if (ImGui::Begin("TextureQuest FPS##TQFPS", nullptr, flags)) {
+        if (rates.Ready) {
+            ImGui::Text("Game %.0f FPS", rates.Game);
+            if (rates.OutputActive) ImGui::Text("Output %.0f FPS", rates.Output);
+        } else ImGui::TextUnformatted("FPS: measuring...");
+    }
+    ImGui::End();
 }
 
 bool OnOverlayTechnique(effect_runtime* runtime, effect_technique technique) {
@@ -586,6 +615,7 @@ bool OnOverlayTechnique(effect_runtime* runtime, effect_technique technique) {
         return true;
     }
     const int owned = Global->Effects.OwnedTechniqueIndex(runtime, technique);
+    if (owned == -2) return true; // Hide removed bloom from any retained owned cache.
     if (owned < 0) return false; // Preserve ReShade's controls for every other FX.
     const size_t index = static_cast<size_t>(owned);
     const bool selected = Global->Config.Effects, original = Global->Original.load();
@@ -689,6 +719,13 @@ void OnTextureQuestOverlay(effect_runtime* runtime) {
     const bool selected = Global->Config.Effects;
     const auto state = Global->Effects.Snapshot(runtime);
     ImGui::Text("Mode: %s", original ? "Original" : "Upscaled");
+    bool showFPS = Global->ShowFPS.load();
+    if (ImGui::Checkbox("Show FPS", &showFPS)) {
+        Global->ShowFPS = showFPS;
+        reshade::set_config_value(nullptr, "TextureQuest", "ShowFPS", showFPS);
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Game = rendered frames. Output = compositor Presents, including generated frames.\nOutput is not a monitor scanout measurement.");
     if (Global->Config.DLSS && Global->Config.DLSSBackend == "aio") {
         DrawAioControls(original);
         ImGui::Separator();
@@ -697,7 +734,7 @@ void OnTextureQuestOverlay(effect_runtime* runtime) {
     ImGui::Separator();
     constexpr const char* labels[] = {
         "Ambient occlusion", "Contact shadows", "Indirect lighting",
-        "Bloom", "Edge smoothing", "Depth view"
+        "Edge smoothing", "Depth view"
     };
     ImGui::BeginDisabled(!selected);
     for (size_t i = 0; i < tq::EffectNames.size(); ++i) {
@@ -743,6 +780,7 @@ void Start(HMODULE module) {
     reshade::register_event<reshade::addon_event::reshade_set_technique_state>(&OnTechniqueState);
     reshade::register_event<reshade::addon_event::reshade_begin_effects>(&OnBeginEffects);
     reshade::register_event<reshade::addon_event::reshade_present>(&OnReshadePresent);
+    reshade::register_event<reshade::addon_event::reshade_overlay>(&OnFpsOverlay);
     reshade::register_event<reshade::addon_event::reshade_overlay_technique>(&OnOverlayTechnique);
     reshade::register_overlay("TextureQuest", &OnTextureQuestOverlay);
     Global->Worker = std::thread(StockWorker);
@@ -768,6 +806,7 @@ void Stop() {
     reshade::unregister_event<reshade::addon_event::reshade_set_technique_state>(&OnTechniqueState);
     reshade::unregister_event<reshade::addon_event::reshade_begin_effects>(&OnBeginEffects);
     reshade::unregister_event<reshade::addon_event::reshade_present>(&OnReshadePresent);
+    reshade::unregister_event<reshade::addon_event::reshade_overlay>(&OnFpsOverlay);
     Global->Effects.Clear();
     Global->DLSS.Clear();
     Global->AIO.Clear();

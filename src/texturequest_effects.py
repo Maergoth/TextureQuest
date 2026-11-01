@@ -21,9 +21,11 @@ import re
 MAX_INI_BYTES = 4 * 1024 * 1024
 SCHEMA = "texturequest-effects-settings-v1"
 SCHEMA_V2 = "texturequest-effects-settings-v2"
+SCHEMA_V3 = "texturequest-effects-settings-v3"
 LEGACY_SHADER_SHA256 = "6a6ad2cb85693cb7ff13e50d51a73f3b930abe848b2e4db1a5657f8287a77feb"
 EFFECT_FILE = "TQEffects.fx"
-TECHNIQUE = "TQBloom"
+LEGACY_TECHNIQUE = "TQBloom"
+TECHNIQUE = "TQAmbientOcclusion"
 KEYS = ("EffectSearchPaths", "NoReloadOnInit", "SkipLoadingDisabledEffects")
 _HEX = re.compile(r"[0-9a-f]{64}")
 _SECTION = re.compile(r"^[ \t]*\[([^]\r\n]+)\].*$")
@@ -173,6 +175,44 @@ def _search_after(before: str | None, directory: str, retired: str | None) -> st
     return ",".join(path.replace(",", ",,") for path in remaining)
 
 
+def retire_bloom_settings(raw: bytes) -> bytes:
+    """Retire only TextureQuest's removed bloom from config/preset bytes.
+
+    Normal settings custody/journals retain before-bytes. Foreign effects,
+    paths, presets, unrelated uniforms and formatting remain untouched here.
+    This retirement is permanent; uninstall must not reactivate removed bloom.
+    """
+    lines, bom = _decode(raw)
+    section, result = "", []
+    selector = "TQBloom@TQEffects.fx"
+    retired_uniforms = {"TQGlowStrength", "TQGlowThreshold", "TQGlowRadius", "TQBloomQuality", "KeyTQBloom"}
+    for line in lines:
+        body, _ = _ending(line)
+        if body.lstrip(" \t").startswith((";", "/", "#")):
+            result.append(line)
+            continue
+        header = _SECTION.fullmatch(body)
+        if header:
+            section = header[1].strip(" \t[]")
+        elif body.lstrip(" \t").startswith("["):
+            raise ValueError("Malformed ReShade settings section; bloom settings preserved.")
+        row = _assignment(line)
+        if row:
+            key, _, value, _ = row
+            if section in ("", "GENERAL"):
+                if key == "Key" + selector:
+                    continue
+                if key in ("Techniques", "TechniqueSorting"):
+                    items = _split_paths(value.strip(" \t"))
+                    retained = [item for item in items if item.strip(" \t") != selector]
+                    if retained != items:
+                        line = _replace_value(line, ",".join(item.replace(",", ",,") for item in retained))
+            elif section == EFFECT_FILE and key in retired_uniforms:
+                continue
+        result.append(line)
+    return _encode(result, bom)
+
+
 def prepare_effects_config(raw: bytes, shader_directory: str, *, retired_shader_directory: str | None = None) -> tuple[bytes, dict]:
     """Prepare loading only; return bytes and a JSON-safe ownership journal.
 
@@ -223,7 +263,7 @@ def prepare_effects_config(raw: bytes, shader_directory: str, *, retired_shader_
         block = (["[GENERAL]" + newline] if created_general else []) + additions
         lines[position:position] = block
     result = _encode(lines, bom)
-    journal = _seal({"schema": SCHEMA_V2, "effect_file": EFFECT_FILE, "technique": TECHNIQUE,
+    journal = _seal({"schema": SCHEMA_V3, "effect_file": EFFECT_FILE, "technique": TECHNIQUE,
                      "retired_shader_directory": retired,
                      "shader_directory": directory, "requested": True, "installed": False,
                      "before_sha256": _sha(raw), "after_sha256": _sha(result), "changes": changes,
@@ -235,7 +275,7 @@ def prepare_effects_config(raw: bytes, shader_directory: str, *, retired_shader_
 def _validate_journal(journal: dict) -> None:
     keys = {"schema", "effect_file", "technique", "shader_directory", "requested", "installed",
             "before_sha256", "after_sha256", "changes", "path_added", "created_general", "tail_bridge", "record_sha256"}
-    if isinstance(journal, dict) and journal.get("schema") == SCHEMA_V2:
+    if isinstance(journal, dict) and journal.get("schema") in (SCHEMA_V2, SCHEMA_V3):
         keys.add("retired_shader_directory")
     if not isinstance(journal, dict) or set(journal) != keys:
         raise ValueError("Invalid effects settings journal.")
@@ -244,7 +284,10 @@ def _validate_journal(journal: dict) -> None:
         sealed = _seal(body)
     except (TypeError, ValueError) as error:
         raise ValueError("Invalid effects settings journal.") from error
-    if sealed != journal or journal["schema"] not in (SCHEMA, SCHEMA_V2) or journal["effect_file"] != EFFECT_FILE or journal["technique"] != TECHNIQUE:
+    legacy = journal["schema"] in (SCHEMA, SCHEMA_V2)
+    if (sealed != journal or journal["schema"] not in (SCHEMA, SCHEMA_V2, SCHEMA_V3)
+            or journal["effect_file"] != EFFECT_FILE
+            or journal["technique"] != (LEGACY_TECHNIQUE if legacy else TECHNIQUE)):
         raise ValueError("Effects settings journal identity/checksum mismatch.")
     if journal["requested"] is not True or journal["installed"] is not False:
         raise ValueError("Effects settings journal is not a preparation record.")

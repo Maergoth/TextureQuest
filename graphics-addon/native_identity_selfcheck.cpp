@@ -21,6 +21,9 @@ struct NamesRuntime {
             if (std::string(name) == tq::EffectNames[i]) return {i + 1};
         return {};
     }
+    void enumerate_techniques(const char*, void(*callback)(NamesRuntime*, Handle, void*), void* data) {
+        for (size_t i = 0; i < tq::EffectNames.size(); ++i) callback(this, {i + 1}, data);
+    }
     void Copy(const std::string& value, char* out, size_t* size) {
         const auto n = std::min(value.size(), *size - 1);
         std::copy_n(value.data(), n, out); out[n] = MissingNul ? '!' : 0;
@@ -58,7 +61,7 @@ int main() {
         tq::EffectsController<NamesRuntime> controller; NamesRuntime runtime; runtime.IncludesNul = includes;
         controller.Reload(&runtime);
         controller.Reconcile(&runtime, true, [](auto*) { return true; });
-        Check(runtime.Enabled == tq::DefaultEffectRequests && runtime.Writes == 5,
+        Check(runtime.Enabled == tq::DefaultEffectRequests && runtime.Writes == 4,
               "actual production controller accepts exact owned names with either SDK style");
     }
     for (const bool missingNul : {false, true}) {

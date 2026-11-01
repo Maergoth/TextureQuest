@@ -22,10 +22,6 @@ uniform float TQIndirectRadius < ui_category = "Indirect lighting"; ui_label = "
 uniform float TQIndirectEmissiveBoost < ui_category = "Indirect lighting"; ui_label = "Bright-pixel emission estimate"; ui_min = 0.0; ui_max = 3.0; > = 1.5;
 uniform float TQIndirectThreshold < ui_category = "Indirect lighting"; ui_label = "Emission brightness threshold"; ui_min = 0.0; ui_max = 0.95; > = 0.25;
 uniform int TQIndirectQuality < ui_category = "Indirect lighting"; ui_type = "combo"; ui_label = "Bounce quality"; ui_items = "Fast (4 probes)\0Balanced (8)\0High (16)\0"; > = 0;
-uniform float TQGlowStrength < ui_category = "Bloom"; ui_type = "slider"; ui_label = "Bloom strength"; ui_min = 0.0; ui_max = 1.0; > = 0.35;
-uniform float TQGlowThreshold < ui_category = "Bloom"; ui_label = "Linear highlight threshold"; ui_min = 0.05; ui_max = 1.0; > = 0.25;
-uniform float TQGlowRadius < ui_category = "Bloom"; ui_label = "Bloom radius (half-resolution pixels)"; ui_min = 0.5; ui_max = 12.0; > = 4.0;
-uniform int TQBloomQuality < ui_category = "Bloom"; ui_type = "combo"; ui_label = "Bloom quality"; ui_items = "Fast (5 taps)\0Wide (9 taps)\0"; > = 1;
 uniform float TQAAStrength < ui_category = "Spatial anti-aliasing"; ui_type = "slider"; ui_label = "Edge smoothing strength"; ui_min = 0.0; ui_max = 1.0; > = 0.65;
 uniform float TQAAThreshold < ui_category = "Spatial anti-aliasing"; ui_label = "Edge contrast threshold"; ui_min = 0.01; ui_max = 0.3; > = 0.06;
 uniform float TQAASpan < ui_category = "Spatial anti-aliasing"; ui_label = "Edge smoothing span (pixels)"; ui_min = 0.5; ui_max = 2.0; > = 1.0;
@@ -42,13 +38,9 @@ sampler2D TQDepthSampler { Texture = TQDiagnosticDepth; AddressU = CLAMP; Addres
 texture2D TQAOField { Width = (BUFFER_WIDTH + 1) / 2; Height = (BUFFER_HEIGHT + 1) / 2; Format = R16F; };
 texture2D TQContactField { Width = (BUFFER_WIDTH + 1) / 2; Height = (BUFFER_HEIGHT + 1) / 2; Format = R16F; };
 texture2D TQIndirectField { Width = (BUFFER_WIDTH + 1) / 2; Height = (BUFFER_HEIGHT + 1) / 2; Format = RGBA16F; };
-texture2D TQGlowA { Width = (BUFFER_WIDTH + 1) / 2; Height = (BUFFER_HEIGHT + 1) / 2; Format = RGBA16F; };
-texture2D TQGlowB { Width = (BUFFER_WIDTH + 1) / 2; Height = (BUFFER_HEIGHT + 1) / 2; Format = RGBA16F; };
 sampler2D TQAOSampler { Texture = TQAOField; AddressU = CLAMP; AddressV = CLAMP; MinFilter = POINT; MagFilter = POINT; MipFilter = POINT; };
 sampler2D TQContactSampler { Texture = TQContactField; AddressU = CLAMP; AddressV = CLAMP; MinFilter = POINT; MagFilter = POINT; MipFilter = POINT; };
 sampler2D TQIndirectSampler { Texture = TQIndirectField; AddressU = CLAMP; AddressV = CLAMP; MinFilter = POINT; MagFilter = POINT; MipFilter = POINT; };
-sampler2D TQGlowASampler { Texture = TQGlowA; AddressU = CLAMP; AddressV = CLAMP; MinFilter = LINEAR; MagFilter = LINEAR; MipFilter = POINT; };
-sampler2D TQGlowBSampler { Texture = TQGlowB; AddressU = CLAMP; AddressV = CLAMP; MinFilter = LINEAR; MagFilter = LINEAR; MipFilter = POINT; };
 static const float2 TQPixel = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 static const float2 TQHalfSize = float2((BUFFER_WIDTH + 1) / 2, (BUFFER_HEIGHT + 1) / 2);
 static const float2 TQHalfPixel = 1.0 / TQHalfSize;
@@ -250,27 +242,6 @@ float4 TQIndirectCompositePS(float4 position : SV_Position, float2 uv : TEXCOORD
     if (all(bounce == 0.0)) return original;
     return float4(TQEncoded(1.0 - (1.0 - TQLinear(original.rgb)) * exp(-bounce)), original.a);
 }
-bool TQBloomValid() { return TQGlowStrength >= 0.0 && TQGlowStrength <= 1.0 && TQGlowThreshold >= 0.05 && TQGlowThreshold <= 1.0 && TQGlowRadius >= 0.5 && TQGlowRadius <= 12.0 && TQBloomQuality >= 0 && TQBloomQuality <= 1; }
-float3 TQHighlight(float3 encoded) {
-    if (!TQBloomValid() || !TQSDR(encoded)) return 0.0;
-    float3 color = TQLinear(encoded); float brightness = TQLuma(color), soft = clamp(brightness - TQGlowThreshold + 0.05, 0.0, 0.1);
-    soft = soft * soft / 0.2; return color * saturate(max(brightness - TQGlowThreshold, soft) / max(brightness, 0.00001));
-}
-float4 TQExtractPS(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
-    float2 d = TQPixel * 0.5;
-    return float4((TQHighlight(TQSample0(TQScenePoint, uv + float2(-d.x, -d.y)).rgb) + TQHighlight(TQSample0(TQScenePoint, uv + float2(d.x, -d.y)).rgb) + TQHighlight(TQSample0(TQScenePoint, uv + float2(-d.x, d.y)).rgb) + TQHighlight(TQSample0(TQScenePoint, uv + float2(d.x, d.y)).rgb)) * 0.25, 0.0);
-}
-float4 TQBlur(sampler2D field, float2 uv, float2 step) {
-    if (TQBloomQuality == 0) return (TQSample0(field, uv) * 6.0 + (TQSample0(field, uv - step) + TQSample0(field, uv + step)) * 4.0 + TQSample0(field, uv - step * 2.0) + TQSample0(field, uv + step * 2.0)) / 16.0;
-    return (TQSample0(field, uv) * 70.0 + (TQSample0(field, uv - step) + TQSample0(field, uv + step)) * 56.0 + (TQSample0(field, uv - step * 2.0) + TQSample0(field, uv + step * 2.0)) * 28.0 + (TQSample0(field, uv - step * 3.0) + TQSample0(field, uv + step * 3.0)) * 8.0 + TQSample0(field, uv - step * 4.0) + TQSample0(field, uv + step * 4.0)) / 256.0;
-}
-float4 TQBlurHorizontalPS(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return TQBlur(TQGlowASampler, uv, float2(TQHalfPixel.x * clamp(TQGlowRadius, 0.5, 12.0), 0.0)); }
-float4 TQBlurVerticalPS(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target { return TQBlur(TQGlowBSampler, uv, float2(0.0, TQHalfPixel.y * clamp(TQGlowRadius, 0.5, 12.0))); }
-float4 TQBloomCompositePS(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
-    float4 original = TQSample0(TQScenePoint, uv); if (!TQSDR(original.rgb) || !TQBloomValid() || TQGlowStrength == 0.0) return original;
-    float3 glow = max(TQSample0(TQGlowASampler, uv).rgb, 0.0) * TQGlowStrength; if (all(glow == 0.0)) return original;
-    return float4(TQEncoded(1.0 - (1.0 - TQLinear(original.rgb)) * exp(-glow)), original.a);
-}
 float4 TQAntiAliasingPS(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float4 original = TQSample0(TQScenePoint, uv);
     if (!TQSDR(original.rgb) || !(TQAAStrength > 0.0 && TQAAStrength <= 1.0 && TQAAThreshold >= 0.01 && TQAAThreshold <= 0.3 && TQAASpan >= 0.5 && TQAASpan <= 2.0 && TQAAQuality >= 0 && TQAAQuality <= 1)) return original;
@@ -313,12 +284,6 @@ technique TQContactShadows {
 technique TQIndirectLighting {
     pass Evaluate { VertexShader = TQFullscreenVS; PixelShader = TQIndirectEvaluatePS; RenderTarget = TQIndirectField; }
     pass Composite { VertexShader = TQFullscreenVS; PixelShader = TQIndirectCompositePS; BlendEnable = false; SRGBWriteEnable = false; }
-}
-technique TQBloom {
-    pass Extract { VertexShader = TQFullscreenVS; PixelShader = TQExtractPS; RenderTarget = TQGlowA; }
-    pass Horizontal { VertexShader = TQFullscreenVS; PixelShader = TQBlurHorizontalPS; RenderTarget = TQGlowB; }
-    pass Vertical { VertexShader = TQFullscreenVS; PixelShader = TQBlurVerticalPS; RenderTarget = TQGlowA; }
-    pass Composite { VertexShader = TQFullscreenVS; PixelShader = TQBloomCompositePS; BlendEnable = false; SRGBWriteEnable = false; }
 }
 technique TQAntiAliasing { pass Smooth { VertexShader = TQFullscreenVS; PixelShader = TQAntiAliasingPS; BlendEnable = false; SRGBWriteEnable = false; } }
 technique TQDepthDiagnostic { pass Diagnostic { VertexShader = TQFullscreenVS; PixelShader = TQDepthDiagnosticPS; BlendEnable = false; SRGBWriteEnable = false; } }

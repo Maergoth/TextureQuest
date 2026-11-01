@@ -10,12 +10,12 @@
 
 namespace tq {
 inline constexpr char EffectsFile[] = "TQEffects.fx";
-inline constexpr std::array<const char*, 6> EffectNames = {
+inline constexpr std::array<const char*, 5> EffectNames = {
     "TQAmbientOcclusion", "TQContactShadows", "TQIndirectLighting",
-    "TQBloom", "TQAntiAliasing", "TQDepthDiagnostic"
+    "TQAntiAliasing", "TQDepthDiagnostic"
 };
-inline constexpr uint32_t DefaultEffectRequests = 0x1f; // Debug is opt-in.
-inline constexpr uint32_t DepthEffectRequests = 0x27;
+inline constexpr uint32_t DefaultEffectRequests = 0x0f; // Debug is opt-in.
+inline constexpr uint32_t DepthEffectRequests = 0x17;
 inline constexpr size_t MaxEffectRuntimes = 4;
 inline bool EffectsEnabled(bool selected, bool original) noexcept { return selected && !original; }
 
@@ -86,6 +86,9 @@ class EffectsController {
         runtime->get_technique_effect_name(technique, file, &a);
         runtime->get_technique_name(technique, name, &b);
         if (!Exact(file, a, EffectsFile, sizeof(file))) return -1;
+        // Old owned caches can survive later user search-path changes. Retire
+        // only this exact old technique; foreign Bloom.fx remains untouched.
+        if (Exact(name, b, "TQBloom", sizeof(name))) return -2;
         for (size_t i = 0; i < EffectNames.size(); ++i)
             if (Exact(name, b, EffectNames[i], sizeof(name))) return static_cast<int>(i);
         return -1;
@@ -148,6 +151,15 @@ public:
         EffectSnapshot observed{};
         observed.DepthReady = depth;
         WriteScope ownWrite(this);
+        const auto retired = runtime->find_technique(EffectsFile, "TQBloom");
+        if (OwnedIndex(runtime, retired) == -2) {
+            // Only old caches incur this scan. Multiple owned file copies may
+            // be loaded after a user extends their search paths; retire all.
+            runtime->enumerate_techniques(EffectsFile, [](Runtime* current, Technique technique, void*) {
+                if (OwnedIndex(current, technique) == -2 && current->get_technique_state(technique))
+                    current->set_technique_state(technique, false);
+            }, nullptr);
+        }
         for (size_t i = 0; i < EffectNames.size(); ++i) {
             // Fresh exact-file lookup each callback: handles never outlive it.
             const auto technique = runtime->find_technique(EffectsFile, EffectNames[i]);
@@ -172,6 +184,7 @@ public:
         Entry* entry = Find(runtime);
         if (!entry || entry->RenderThread != std::this_thread::get_id()) return false;
         const int index = OwnedIndex(runtime, technique);
+        if (index == -2) return enabled; // Removed owned bloom cannot reactivate.
         if (index < 0) return false; // Other FX, including same-named ones, untouched.
         const uint32_t bit = 1u << index;
         if (enabled && selected) entry->Requested |= bit;
