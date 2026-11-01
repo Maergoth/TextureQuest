@@ -20,6 +20,8 @@ import re
 
 MAX_INI_BYTES = 4 * 1024 * 1024
 SCHEMA = "texturequest-effects-settings-v1"
+SCHEMA_V2 = "texturequest-effects-settings-v2"
+LEGACY_SHADER_SHA256 = "6a6ad2cb85693cb7ff13e50d51a73f3b930abe848b2e4db1a5657f8287a77feb"
 EFFECT_FILE = "TQEffects.fx"
 TECHNIQUE = "TQBloom"
 KEYS = ("EffectSearchPaths", "NoReloadOnInit", "SkipLoadingDisabledEffects")
@@ -149,7 +151,29 @@ def _replace_value(line: str, replacement: str, scalar: bool = False) -> str:
     return prefix + leading + replacement + trailing + suffix + ending
 
 
-def prepare_effects_config(raw: bytes, shader_directory: str) -> tuple[bytes, dict]:
+def _retired_directory(directory: str, retired: str | None) -> str | None:
+    if retired is None: return None
+    retired = _directory(retired)
+    if (ntpath.basename(retired) != LEGACY_SHADER_SHA256 or
+            _path_identity(ntpath.dirname(retired)) != _path_identity(ntpath.dirname(directory)) or
+            ntpath.basename(ntpath.dirname(directory)).lower() != "effects" or
+            not _HEX.fullmatch(ntpath.basename(directory)) or _path_identity(retired) == _path_identity(directory)):
+        raise ValueError("Only the verified legacy TextureQuest effects cache may be retired.")
+    return retired
+
+
+def _search_after(before: str | None, directory: str, retired: str | None) -> str | None:
+    paths = _split_paths(_search_value(before))
+    present = any(_path_identity(path) == _path_identity(directory) for path in paths if path)
+    remaining = [path for path in paths if not retired or _path_identity(path) != _path_identity(retired)]
+    if present and remaining == paths: return None
+    if any(not path for path in paths):
+        raise ValueError("Empty effect-search list entries are ambiguous; settings preserved.")
+    if not present: remaining.append(directory)
+    return ",".join(path.replace(",", ",,") for path in remaining)
+
+
+def prepare_effects_config(raw: bytes, shader_directory: str, *, retired_shader_directory: str | None = None) -> tuple[bytes, dict]:
     """Prepare loading only; return bytes and a JSON-safe ownership journal.
 
     Existing effects/preset/paths are retained. This can load previously unloaded
@@ -158,6 +182,7 @@ def prepare_effects_config(raw: bytes, shader_directory: str) -> tuple[bytes, di
     Nothing returned here establishes that effects were installed or rendered.
     """
     directory = _directory(shader_directory)
+    retired = _retired_directory(directory, retired_shader_directory)
     lines, bom = _decode(raw)
     original_tail = lines[-1] if lines else ""
     rows, sections = _parse(lines)
@@ -169,13 +194,9 @@ def prepare_effects_config(raw: bytes, shader_directory: str) -> tuple[bytes, di
     for key in KEYS:
         before = lines[rows[key][0]] if rows[key] else None
         if key == "EffectSearchPaths":
-            old_value = _search_value(before)
-            paths = _split_paths(old_value)
-            if any(_path_identity(path) == _path_identity(directory) for path in paths if path):
+            value = _search_after(before, directory, retired)
+            if value is None:
                 continue  # A pre-existing path belongs to the user, never this journal.
-            if any(not path for path in paths):
-                raise ValueError("Empty effect-search list entries are ambiguous; settings preserved.")
-            value = (old_value + "," if old_value else "") + directory.replace(",", ",,")
             added_path = True
         else:
             value = "0"
@@ -202,7 +223,8 @@ def prepare_effects_config(raw: bytes, shader_directory: str) -> tuple[bytes, di
         block = (["[GENERAL]" + newline] if created_general else []) + additions
         lines[position:position] = block
     result = _encode(lines, bom)
-    journal = _seal({"schema": SCHEMA, "effect_file": EFFECT_FILE, "technique": TECHNIQUE,
+    journal = _seal({"schema": SCHEMA_V2, "effect_file": EFFECT_FILE, "technique": TECHNIQUE,
+                     "retired_shader_directory": retired,
                      "shader_directory": directory, "requested": True, "installed": False,
                      "before_sha256": _sha(raw), "after_sha256": _sha(result), "changes": changes,
                      "path_added": added_path, "created_general": created_general, "tail_bridge": tail_bridge})
@@ -213,6 +235,8 @@ def prepare_effects_config(raw: bytes, shader_directory: str) -> tuple[bytes, di
 def _validate_journal(journal: dict) -> None:
     keys = {"schema", "effect_file", "technique", "shader_directory", "requested", "installed",
             "before_sha256", "after_sha256", "changes", "path_added", "created_general", "tail_bridge", "record_sha256"}
+    if isinstance(journal, dict) and journal.get("schema") == SCHEMA_V2:
+        keys.add("retired_shader_directory")
     if not isinstance(journal, dict) or set(journal) != keys:
         raise ValueError("Invalid effects settings journal.")
     body = {key: value for key, value in journal.items() if key != "record_sha256"}
@@ -220,12 +244,13 @@ def _validate_journal(journal: dict) -> None:
         sealed = _seal(body)
     except (TypeError, ValueError) as error:
         raise ValueError("Invalid effects settings journal.") from error
-    if sealed != journal or journal["schema"] != SCHEMA or journal["effect_file"] != EFFECT_FILE or journal["technique"] != TECHNIQUE:
+    if sealed != journal or journal["schema"] not in (SCHEMA, SCHEMA_V2) or journal["effect_file"] != EFFECT_FILE or journal["technique"] != TECHNIQUE:
         raise ValueError("Effects settings journal identity/checksum mismatch.")
     if journal["requested"] is not True or journal["installed"] is not False:
         raise ValueError("Effects settings journal is not a preparation record.")
     if _directory(journal["shader_directory"]) != journal["shader_directory"]:
         raise ValueError("Invalid effects settings directory.")
+    retired = _retired_directory(journal["shader_directory"], journal.get("retired_shader_directory"))
     if any(not isinstance(journal[key], str) or not _HEX.fullmatch(journal[key]) for key in ("before_sha256", "after_sha256")):
         raise ValueError("Invalid effects settings file pin.")
     if type(journal["path_added"]) is not bool or type(journal["created_general"]) is not bool:
@@ -248,8 +273,12 @@ def _validate_journal(journal: dict) -> None:
                 raise ValueError("Invalid effects settings changed line.")
         before = change["before"]
         if change["key"] == "EffectSearchPaths":
-            old_value = _search_value(before)
-            expected = (old_value + "," if old_value else "") + journal["shader_directory"].replace(",", ",,")
+            if journal["schema"] == SCHEMA:
+                old_value = _search_value(before)
+                expected = (old_value + "," if old_value else "") + journal["shader_directory"].replace(",", ",,")
+            else:
+                expected = _search_after(before, journal["shader_directory"], retired)
+                if expected is None: raise ValueError("Effects search-path change is not owned.")
         else:
             # Preserve the scalar's suffix exactly as preparation did.
             expected_line = _replace_value(before, "0", scalar=True) if before is not None else None

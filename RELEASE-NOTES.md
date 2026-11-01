@@ -1,4 +1,4 @@
-TextureQuest 1.10.0 private graphics candidate
+TextureQuest 1.10.1 private graphics candidate
 
 - Optional AO, contact shadows, screen-space bounce light, bloom and spatial AA.
 - Individual ReShade controls; your texture toggle switches all our features off/on.

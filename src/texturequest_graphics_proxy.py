@@ -333,7 +333,18 @@ class GraphicsManager:
             with path.open('xb') as stream:
                 stream.write(raw); stream.flush(); os.fsync(stream.fileno())
         need(path.read_bytes() == raw, 'Saved effects shader changed; it was preserved.')
-        return folder
+        # A historical private preview predated settings leases. Recognize just
+        # its one exact cache artifact; never infer ownership from a hash name.
+        from texturequest_effects import LEGACY_SHADER_SHA256
+        legacy = core._plain(self.state_dir / 'effects' / LEGACY_SHADER_SHA256, self.state_dir)
+        retired = None
+        if legacy != folder and legacy.is_dir():
+            entries = list(legacy.iterdir())
+            if len(entries) == 1 and entries[0].name == 'TQEffects.fx':
+                old = core._plain(entries[0], self.state_dir)
+                if old.is_file() and old.stat().st_size <= 4 * 1024**2 and _pin(old)['sha256'] == LEGACY_SHADER_SHA256:
+                    retired = legacy
+        return folder, retired
 
     def _restore_effect_settings(self, game, record):
         lease = record.get('effects_settings')
@@ -540,12 +551,13 @@ class GraphicsManager:
             map_path = self._activate_prepared(game, prepared)
             self._write_key(binding)
             effects_lease = None
-            shader_folder = self._effects_shader(runtime) if selection['effects'] else None
+            shader_folder, retired_shader = self._effects_shader(runtime) if selection['effects'] else (None, None)
             def configure_effects(raw):
                 nonlocal effects_lease
                 if shader_folder is None: return raw
                 from texturequest_effects import prepare_effects_config
-                after, journal = prepare_effects_config(raw, str(shader_folder))
+                after, journal = prepare_effects_config(raw, str(shader_folder),
+                    retired_shader_directory=str(retired_shader) if retired_shader is not None else None)
                 lease = dict(schema='texturequest-effects-lease-v1', path=str(game / 'ReShade.ini'), journal=journal)
                 need(effects_lease is None or effects_lease == lease, 'ReShade settings changed before installation; settings preserved.')
                 effects_lease = lease
