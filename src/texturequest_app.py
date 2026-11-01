@@ -445,7 +445,7 @@ class TextureQuestApp:
         for key, caption, variable, hint in [
             ('textures', 'Textures (required)', self.component_textures, 'Our generated textures. The in-game toggle switches them off too.'),
             ('effects', 'Graphical Effects · AO, shadows, light, bloom, AA', self.component_effects, 'Screen-space AO, contact shadows, bounce light, bloom and edge AA. Adjust each in ReShade (Home). Your texture toggle switches all TextureQuest features off. Native lighting/world shadows remain in use.'),
-            ('dlss', 'DLSS · In development', self.component_dlss, 'Not included in this preview. Still in development.')]:
+            ('dlss', 'DLSS · Experimental', self.component_dlss, 'Private DLSS test. Requires the verified optional profile. The same texture shortcut turns it off in Original mode.')]:
             row = tk.Frame(component_area, bg=WHITE)
             row.pack(fill='x')
             row.columnconfigure(0, weight=1)
@@ -613,17 +613,20 @@ class TextureQuestApp:
     def load_components(self):
         self.component_snapshot, self.component_error = None, ''
         self.component_effects.set(False)
+        self.component_dlss.set(False)
         game = self.game.get().strip()
         if not game: return
         try:
             self.component_snapshot = components.load(self.state_dir, game)
             self.component_effects.set(self.component_snapshot['selection']['effects'])
+            self.component_dlss.set(self.component_snapshot['selection']['dlss'])
         except (OSError, ValueError, KeyError, TypeError) as error:
             self.component_error = 'Saved component choices need attention: ' + str(error)
 
     def selected_components(self):
         value = components.normalize()
         value['effects'] = self.component_effects.get()
+        value['dlss'] = self.component_dlss.get()
         return components.normalize(value)
 
     def components_changed(self):
@@ -631,6 +634,8 @@ class TextureQuestApp:
         try:
             if self.busy or not game:
                 raise ValueError('Choose a game folder before changing components.')
+            if self.component_dlss.get() and not self.graphics_status(game).get('dlss_available'):
+                raise ValueError('The complete experimental DLSS profile is not available in this app.')
             self.component_snapshot = components.save(self.state_dir, game, self.selected_components(),
                                                        expected_before=self.component_snapshot)
             self.component_error = ''
@@ -674,7 +679,10 @@ class TextureQuestApp:
         graphics = self.graphics_status(game)
         component_pending = graphics.get('installed') and components.normalize(graphics.get('components')) != self.selected_components()
         self.component_controls['textures'].configure(state='disabled')
-        self.component_controls['dlss'].configure(state='disabled')
+        # A missing optional bundle must still let an old saved choice be
+        # switched off. components_changed refuses enabling it without proof.
+        self.component_controls['dlss'].configure(state='normal' if not self.busy and game and
+            (graphics.get('dlss_available') or self.component_dlss.get()) and not self.component_error else 'disabled')
         self.component_controls['effects'].configure(state='normal' if not self.busy and game and graphics.get('effects_available') and not self.component_error else 'disabled')
         loader = self.loader_status(game)
         legacy = self.loader_in_use(loader)
@@ -895,6 +903,9 @@ class TextureQuestApp:
                 return self.graphics_manager.uninstall(game, progress=self.report)
             if fresh["running"] or fresh["active_sessions"]:
                 raise RuntimeError("Close the previous graphics-hook sessions first.")
+            # Verify optional binaries, paths and collisions before removing
+            # a working installation. Install repeats this under its lock.
+            self.graphics_manager.preflight_components(game, selection)
             if changing:
                 # Display-only receipts may describe files that have since
                 # disappeared. Validate them before removing a working hook.

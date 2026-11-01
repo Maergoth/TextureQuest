@@ -96,6 +96,9 @@ def prepare_graphics(game, source_fetch, choices, store, graphics, upgrade, *,
         check_pause(pause)
     # No pause checkpoint between retirement and the new installation: finish
     # this short normal handoff, then honor cancellation during optional cleanup.
+    if components is not None and (components['dlss'] or components['effects']):
+        # Optional payload/settings refusal must leave the existing hook intact.
+        graphics.preflight_components(game, components)
     if migrate:
         upgrade.before(game, report, snapshot=snapshot, pause=pause)
     else:

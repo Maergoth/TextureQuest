@@ -83,11 +83,18 @@ def main():
     graphics = None
     if args.graphics_runtime_dir:
         from texturequest_graphics import GraphicsManager
-        graphics = GraphicsManager(BUILD / "unused-state", runtime_dir=args.graphics_runtime_dir)._runtime()
+        graphics_manager = GraphicsManager(BUILD / "unused-state", runtime_dir=args.graphics_runtime_dir)
+        graphics = graphics_manager._runtime()
         if graphics is None:
             raise ValueError("Missing graphics runtime descriptor")
+        graphics_rows = list(graphics["files"])
+        if graphics.get("dlss") is not None:
+            # Optional profile files stay separate in the descriptor, but are
+            # admitted, bundled and checked just like the core runtime.
+            profile = graphics_manager._dlss_profile(graphics, full=True)
+            graphics_rows += profile["files"]
         graphics_pins = {"RUNTIME.json": sha(args.graphics_runtime_dir / "RUNTIME.json"),
-                         **{r["name"]: r["sha256"] for r in graphics["files"]}}
+                         **{r["name"]: r["sha256"] for r in graphics_rows}}
         resources_graphics = BUILD / "graphics-runtime"
         if resources_graphics.exists():
             raise RuntimeError("Preserve previous graphics build resources")

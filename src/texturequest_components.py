@@ -24,7 +24,7 @@ _SHA = re.compile(r"[a-f0-9]{64}")
 
 
 def normalize(value=None):
-    """Return a strict fresh selection; DLSS remains explicitly unavailable."""
+    """Return strict preferences; installation separately verifies capabilities."""
     if value is None:
         return dict(schema=SCHEMA, textures=True, dlss=False, effects=False)
     if type(value) is not dict or set(value) != _SELECTION_KEYS:
@@ -35,8 +35,6 @@ def normalize(value=None):
         raise ValueError("TextureQuest component choices must be booleans.")
     if not value["textures"]:
         raise ValueError("Textures are required.")
-    if value["dlss"]:
-        raise ValueError("DLSS is not available yet; it cannot be selected.")
     return {key: value[key] for key in ("schema", "textures", "dlss", "effects")}
 
 

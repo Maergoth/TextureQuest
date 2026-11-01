@@ -10,7 +10,8 @@ namespace tq {
 
 struct Config {
     std::wstring Map, Downloads, Shortcut, GamePaks;
-    bool Effects = false;
+    bool Effects = false, DLSS = false;
+    std::string DLSSBackend = "feeder";
 };
 
 inline std::wstring Widen(const std::string& text) {
@@ -23,6 +24,8 @@ inline bool ReadConfig(const std::wstring& ini, Config& config, std::string& err
     // A reused Config must never retain an earlier opt-in after an absent,
     // invalid or otherwise unsuccessful read. Commit only after all checks.
     config.Effects = false;
+    config.DLSS = false;
+    config.DLSSBackend = "feeder";
     error.clear();
     std::ifstream file(ini, std::ios::binary);
     if (!file) {
@@ -30,7 +33,9 @@ inline bool ReadConfig(const std::wstring& ini, Config& config, std::string& err
         return false;
     }
     std::map<std::string, std::string> values;
-    bool section = false, effects_seen = false, effects = false;
+    bool section = false, effects_seen = false, effects = false, dlss_seen = false, dlss = false;
+    bool backend_seen = false;
+    std::string backend = "feeder";
     for (std::string line; std::getline(file, line);) {
         while (!line.empty() && (line.back() == '\r' || line.back() == ' '))
             line.pop_back();
@@ -50,6 +55,24 @@ inline bool ReadConfig(const std::wstring& ini, Config& config, std::string& err
                 }
                 effects_seen = true;
                 effects = value == "1";
+            }
+            if (line.substr(0, equals) == "DLSS") {
+                const std::string value = line.substr(equals + 1);
+                if (dlss_seen || (value != "0" && value != "1")) {
+                    error = "TextureQuest.ini DLSS must be one optional 0 or 1 entry";
+                    return false;
+                }
+                dlss_seen = true;
+                dlss = value == "1";
+            }
+            if (line.substr(0, equals) == "DLSSBackend") {
+                const std::string value = line.substr(equals + 1);
+                if (backend_seen || (value != "feeder" && value != "aio")) {
+                    error = "TextureQuest.ini DLSSBackend must be one feeder or aio entry";
+                    return false;
+                }
+                backend_seen = true;
+                backend = value;
             }
             values[line.substr(0, equals)] = line.substr(equals + 1);
         }
@@ -75,6 +98,8 @@ inline bool ReadConfig(const std::wstring& ini, Config& config, std::string& err
         *key.Value = value;
     }
     config.Effects = effects;
+    config.DLSS = dlss;
+    config.DLSSBackend = backend;
     return true;
 }
 

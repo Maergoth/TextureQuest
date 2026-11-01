@@ -51,8 +51,7 @@ class Components(unittest.TestCase):
                     components.normalize(dict(components.normalize(), **{key: value}))
         with self.assertRaisesRegex(ValueError, "required"):
             components.normalize(dict(components.normalize(), textures=False))
-        with self.assertRaisesRegex(ValueError, "not available"):
-            components.normalize(dict(components.normalize(), dlss=True))
+        self.assertTrue(components.normalize(dict(components.normalize(), dlss=True))['dlss'])
 
     def test_absent_load_does_not_create_state_or_read_game(self):
         expected = dict(selection=components.normalize(), record_sha256=None)
@@ -149,7 +148,7 @@ class Components(unittest.TestCase):
                 components.save(self.state, self.game, self.effects(), expected_before=before)
         self.assertEqual(self.record_path().read_bytes(), raw)
 
-    def test_invalid_snapshot_or_game_or_dlss_has_no_writes(self):
+    def test_invalid_snapshot_or_game_has_no_writes_and_dlss_preference_is_allowed(self):
         for value in (True, {}, dict(selection=self.effects(), record_sha256=None),
                       dict(selection=None, record_sha256=None),
                       dict(selection=components.normalize(), record_sha256="bad")):
@@ -158,9 +157,10 @@ class Components(unittest.TestCase):
         for game in (None, "", "relative game", b"bytes", "D:\\bad\x00path", "D:\\" + "x" * 3000):
             with self.subTest(game=game), self.assertRaises(ValueError):
                 components.load(self.state, game)
-        with self.assertRaisesRegex(ValueError, "not available"):
-            components.save(self.state, self.game, dict(components.normalize(), dlss=True), expected_before=None)
         self.assertFalse(self.state.exists())
+        saved = components.save(self.state, self.game, dict(components.normalize(), dlss=True), expected_before=None)
+        self.assertTrue(saved['selection']['dlss'])
+        self.assertFalse(self.game.exists())
 
 
 if __name__ == "__main__":

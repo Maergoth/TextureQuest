@@ -1,7 +1,15 @@
 # Graphics preview
 
-Select **Graphical Effects**, close EQ2 and click **Apply changes**. Textures are
-required; DLSS/frame generation remain unavailable. Downloads stay cached.
+Choose optional **Graphical Effects** and **DLSS (Experimental)**, close EQ2 and
+click **Apply changes**. Textures are required. Downloads stay cached.
+
+The private AIO DLSS backend includes neural rendering, Super Resolution/DLAA
+and 2x frame generation. It does not include multi-frame generation. Use
+**Home → Add-ons → Standalone DLSSNR** for its settings. Native-size processing
+is DLAA; upscaling needs a lower-resolution input. Processing a downsampled
+finished frame does not guarantee higher FPS. Motion is estimated from images;
+HUD behavior, temporal quality and combined EQ2 performance still need testing.
+Its own hotkeys and game window/input virtualization are disabled.
 
 **Home** opens ReShade. Each effect has a requested checkbox and separate
 On/Off/Waiting for depth status. Strength controls are below the list:
@@ -18,6 +26,8 @@ On/Off/Waiting for depth status. Strength controls are below the list:
 **Numpad \*** (or your shortcut) switches all TextureQuest features off/on.
 Individual ReShade choices survive this toggle and shader reload within the
 session. Other people's effects are not controlled by TextureQuest.
+For the selected DLSS backend, Original stops new processing and hides generated
+output. Already submitted work drains; model allocations can remain in memory.
 
 These effects use the finished screen image and available depth. They cannot
 see off-screen lights/occluders or recover material/light information that EQ2

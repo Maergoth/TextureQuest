@@ -35,6 +35,38 @@ STANDARD_MARKER = b'only limited add-on functionality'
 RESHADE_MARKER = b'ReShadeRegisterAddon'
 PROVIDER_170_SHA256 = '239005eae82cbf4a14e7c06d44448dd426dedc2e826896b3369e289b8398f168'
 DEFAULT_RESHADE_INI = sanitize_reshade_config(b'[GENERAL]\r\nNoReloadOnInit=1\r\n[INPUT]\r\nKeyOverlay=36,0,0,0\r\n[OVERLAY]\r\nTutorialProgress=4\r\nShowFPS=0\r\nShowClock=0\r\nShowFrameTime=0\r\nShowPresetName=0\r\nShowPresetTransitionMessage=0\r\n')
+DLSS_PROFILE_ID = 'feeder-renodx-10.8.0-nr310.8.0-sr310.9.16-lumenite3-private-v1'
+# One reviewed private graph. No discovery of arbitrary downloaded DLLs or
+# scripts, and no public-redistribution claim is implied by its availability.
+DLSS_ROLES = {
+    'feeder': 'dlss/dlss5-feed.addon64', 'consumer': 'dlss/renodx-dlss5.addon64',
+    'sr': 'dlss/nvngx_dlss.dll', 'nr': 'dlss/nvngx_dlssnr.dll',
+    'feed_shader': 'dlss/shaders/DLSS5_Feed.fx',
+    'motion_shader': 'dlss/shaders/lumenite_Kernel.fx',
+    'reshade_include': 'dlss/shaders/ReShade.fxh',
+    'motion_color': 'dlss/shaders/include/lumenite_ColorManagement.fxh',
+    'motion_compute': 'dlss/shaders/include/lumenite_Compute.fxh',
+    'motion_helpers': 'dlss/shaders/include/lumenite_Helpers.fxh',
+    'motion_projections': 'dlss/shaders/include/lumenite_Projections.fxh',
+}
+DLSS_MODULES = ('feeder', 'consumer', 'sr', 'nr')
+AIO_PROFILE_ID = 'aio-09301f5-managed-nvof-nr-sr-fg-private-v1'
+AIO_ROLES = {
+    'aio': 'dlss/standalone-dlssnr.addon64', 'bridge': 'dlss/nvngx.dll',
+    'nr': 'dlss/nvngx_dlssnr.dll', 'sr': 'dlss/nvngx_dlss.dll', 'fg': 'dlss/nvngx_dlssg.dll',
+    'feed_shader': 'dlss/shaders/DLSS5_AIO_Feed.fx', 'reshade_include': 'dlss/shaders/ReShade.fxh',
+}
+AIO_MODULES = ('aio', 'bridge', 'nr', 'sr', 'fg')
+DLSS_PROFILES = {
+    DLSS_PROFILE_ID: dict(backend='feeder', roles=DLSS_ROLES, modules=DLSS_MODULES),
+    AIO_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES),
+}
+
+
+def _dlss_contract(profile):
+    identity = profile.get('id') if type(profile) is dict else None
+    need(type(identity) is str and identity in DLSS_PROFILES, 'Unknown experimental DLSS profile.')
+    return DLSS_PROFILES[identity]
 
 
 def quiet_reshade(raw):
@@ -127,13 +159,14 @@ class GraphicsManager:
         self.base = self.state_dir / 'graphics'
         self.records = self.state_dir / 'graphics-addon'
         self.proxy_records = self.state_dir / 'graphics-proxy'
+        self._dlss_verified = None
 
     def _runtime(self):
         path = self.runtime_dir / 'RUNTIME.json'
         if not path.exists():
             return None
         doc = _json(path)
-        need(doc.get('schema') in (RUNTIME_SCHEMA, 'texturequest-graphics-runtime-v5', 'texturequest-graphics-runtime-v6') and doc.get('reshade_build') == 'addon' and
+        need(doc.get('schema') in (RUNTIME_SCHEMA, 'texturequest-graphics-runtime-v5', 'texturequest-graphics-runtime-v6', 'texturequest-graphics-runtime-v7') and doc.get('reshade_build') == 'addon' and
              doc.get('map_schema') == 'TQMAP002', 'Unknown graphics runtime.')
         names = {row['name'] for row in doc['files']}
         need(doc.get('addon') in names and doc.get('reshade') in names, 'Graphics runtime does not pin its add-on and ReShade.')
@@ -146,13 +179,133 @@ class GraphicsManager:
                          effect_name='TQEffects.fx', techniques=['TQAmbientOcclusion', 'TQContactShadows',
                          'TQIndirectLighting', 'TQBloom', 'TQAntiAliasing', 'TQDepthDiagnostic'])
             need(((doc['schema'] == 'texturequest-graphics-runtime-v5' and effects == bloom) or
-                  (doc['schema'] == 'texturequest-graphics-runtime-v6' and effects == suite)) and effects['shader'] in names,
+                  (doc['schema'] in ('texturequest-graphics-runtime-v6', 'texturequest-graphics-runtime-v7') and effects == suite)) and effects['shader'] in names,
                 'Unknown optional effects runtime.')
-        elif doc['schema'] in ('texturequest-graphics-runtime-v5', 'texturequest-graphics-runtime-v6'):
+        elif doc['schema'] in ('texturequest-graphics-runtime-v5', 'texturequest-graphics-runtime-v6', 'texturequest-graphics-runtime-v7'):
             raise ValueError('Graphics runtime is missing its effects contract.')
+        need(doc['schema'] == 'texturequest-graphics-runtime-v7' or 'dlss' not in doc,
+             'DLSS needs the versioned graphics runtime contract.')
         for row in doc['files']:
             _pin(self.runtime_dir / row['name'], row)
         return doc
+
+    def _dlss_profile(self, runtime, *, full=False):
+        """Verify optional bytes once for display, freshly for every mutation.
+
+        The cache only avoids rehashing large model DLLs during GUI refresh.
+        File identity/size/timestamps invalidate it; installation never trusts it.
+        """
+        profile = runtime.get('dlss')
+        need(runtime.get('schema') == 'texturequest-graphics-runtime-v7' and type(profile) is dict,
+             'The experimental DLSS profile is not included.')
+        need(set(profile) == {'schema', 'id', 'private', 'api', 'files'} and
+             profile['schema'] == 'texturequest-dlss-runtime-v1' and
+             profile['private'] is True and profile['api'] == 'd3d11', 'Unknown experimental DLSS profile.')
+        contract = _dlss_contract(profile)
+        roles = contract['roles']
+        rows = profile['files']
+        need(type(rows) is list and len(rows) == len(roles), 'Incomplete DLSS role map.')
+        seen, sources, fingerprints = set(), [], []
+        for row in rows:
+            need(type(row) is dict and set(row) == {'role', 'name', 'bytes', 'sha256'}, 'Unknown DLSS file fields.')
+            role = row['role']
+            need(type(role) is str and role in roles and role not in seen and row['name'] == roles[role],
+                 'Unknown, duplicate or unsafe DLSS role.')
+            need(type(row['bytes']) is int and 0 < row['bytes'] <= 256 * 1024**2 and
+                 type(row['sha256']) is str and re.fullmatch('[a-f0-9]{64}', row['sha256']), 'Invalid DLSS file pin.')
+            seen.add(role)
+            source = core._plain(self.runtime_dir / row['name'], self.runtime_dir)
+            stat = source.stat()
+            need(source.is_file(), 'Missing experimental DLSS file: ' + source.name)
+            sources.append((source, row))
+            fingerprints.append((str(source), stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns))
+        need(not ({row['name'].casefold() for row in rows} & {row['name'].casefold() for row in runtime['files']}),
+             'DLSS roles collide with the core runtime.')
+        key = (_sha(catalog.canonical(profile)), tuple(fingerprints))
+        if full or self._dlss_verified != key:
+            for source, row in sources: _pin(source, row)
+            self._dlss_verified = key
+        return profile
+
+    def _preflight_components(self, game, selection, runtime):
+        need(not selection['effects'] or runtime.get('effects'), 'The optional effects runtime is not included.')
+        if not selection['dlss']:
+            self._preflight_optional_settings(game, selection, runtime, None)
+            return None
+        profile = self._dlss_profile(runtime, full=True)
+        need(self._addon_folder(game) == game,
+             'Experimental DLSS currently needs ReShade add-ons in the game folder. Your AddonPath was kept.')
+        record = self._record(game)
+        owned = {str(core._plain(row['path'])).casefold(): row for row in (record or {}).get('files', [])}
+        contract = _dlss_contract(profile)
+        targets = {Path(contract['roles'][role]).name.casefold() for role in contract['modules']}
+        known_modules = {Path(info['roles'][role]).name.casefold()
+                         for info in DLSS_PROFILES.values() for role in info['modules']}
+        def removable(path):
+            row = owned.get(str(path).casefold())
+            return bool(record and record['phase'] != 'uninstalled' and path.name.casefold() in known_modules and
+                        row and _pin(path)['sha256'] == row['sha256'])
+        for name in targets:
+            path = core._plain(game / name, game)
+            if not path.exists(): continue
+            need(removable(path),
+                 'DLSS file already exists or changed: ' + path.name + '. It was kept.')
+        addons = list(game.glob('*.addon64'))
+        need(len(addons) <= 256, 'Too many add-ons for a bounded DLSS conflict check.')
+        conflicts = [p.name for p in addons if p.name.casefold() not in targets and
+                     any(word in p.name.casefold() for word in ('dlss', 'optiscaler', 'streamline')) and
+                     not removable(core._plain(p, game))]
+        for name in (known_modules - targets) | {'optiscaler.dll', 'sl.interposer.dll'}:
+            path = core._plain(game / name, game)
+            if path.exists() and not removable(path): conflicts.append(path.name)
+        need(not conflicts, 'Another DLSS add-on is installed: ' + ', '.join(conflicts) + '. It was kept.')
+        self._preflight_optional_settings(game, selection, runtime, profile)
+        return profile
+
+    def _preflight_optional_settings(self, game, selection, runtime, profile):
+        """Exercise the same pure transforms without creating cache or settings."""
+        if not selection['effects'] and profile is None: return
+        from texturequest_effects import prepare_effects_config
+        ini = core._plain(game / 'ReShade.ini', game)
+        raw = quiet_reshade(ini.read_bytes()) if ini.exists() else DEFAULT_RESHADE_INI
+        if selection['effects']:
+            pin = next(row for row in runtime['files'] if row['name'] == runtime['effects']['shader'])
+            directory = core._plain(self.state_dir / 'effects' / pin['sha256'], self.state_dir)
+            raw, _ = prepare_effects_config(raw, str(directory))
+        if profile is not None:
+            from texturequest_dlss import prepare_dlss_config
+            directory = core._plain(self.state_dir / 'dlss' / _sha(catalog.canonical(profile)), self.state_dir)
+            raw, _ = prepare_effects_config(raw, str(directory))
+            prepare_dlss_config(raw, profile=_dlss_contract(profile)['backend'])
+
+    def preflight_components(self, game, components=None):
+        """Before Apply changes removes anything, verify selected optional graph."""
+        selection = component_selection(components)
+        game = core._plain(core.validate_game(game).parent)
+        ensure_closed()
+        with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
+            runtime = self._runtime()
+            need(runtime, 'Graphics runtime missing.')
+            self._preflight_components(game, selection, runtime)
+        return dict(verified=True, components=selection)
+
+    def _dlss_shaders(self, profile):
+        folder = core._plain(self.state_dir / 'dlss' / _sha(catalog.canonical(profile)), self.state_dir)
+        modules = _dlss_contract(profile)['modules']
+        for row in profile['files']:
+            if row['role'] in modules: continue
+            source = core._plain(self.runtime_dir / row['name'], self.runtime_dir)
+            _pin(source, row)
+            raw = source.read_bytes()
+            need(len(raw) == row['bytes'] and _sha(raw) == row['sha256'], 'DLSS shader changed while reading.')
+            relative = Path(row['name']).relative_to('dlss/shaders')
+            target = core._plain(folder / relative, self.state_dir)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.exists():
+                with target.open('xb') as stream:
+                    stream.write(raw); stream.flush(); os.fsync(stream.fileno())
+            _pin(target, row)
+        return folder
 
     def _key(self, game):
         return hashlib.sha256(str(core._plain(game)).casefold().encode()).hexdigest()[:24]
@@ -346,8 +499,8 @@ class GraphicsManager:
                     retired = legacy
         return folder, retired
 
-    def _restore_effect_settings(self, game, record):
-        lease = record.get('effects_settings')
+    def _restore_effect_settings(self, game, record, key='effects_settings'):
+        lease = record.get(key)
         if not lease: return ()
         from texturequest_effects import restore_effects_config
         conflicts = []
@@ -364,18 +517,47 @@ class GraphicsManager:
             conflicts.append(str(error))
         return tuple(conflicts)
 
-    def _addon_ini(self, game, map_path, components=None):
+    def _addon_ini(self, game, map_path, components=None, *, dlss_backend='feeder'):
         selection = component_selection(components)
+        need(dlss_backend in ('feeder', 'aio'), 'Unknown DLSS backend.')
         lines = ['[TextureQuest]', 'Map=' + str(map_path), 'Downloads=' + str(self.state_dir / 'dds' / 'objects'),
                  'Shortcut=' + str(self.base / 'shortcut.txt'), 'GamePaks=' + str(game / 'paks'),
-                 'Effects=' + ('1' if selection['effects'] else '0'), '']
+                 'Effects=' + ('1' if selection['effects'] else '0'),
+                 'DLSS=' + ('1' if selection['dlss'] else '0'), 'DLSSBackend=' + dlss_backend, '']
         return '\r\n'.join(lines).encode('utf-8')
+
+    def _restore_dlss_consumer_settings(self, game, record):
+        lease = record.get('dlss_consumer_settings')
+        if not lease: return ()
+        from texturequest_dlss import restore_dlss_config
+        need(lease.get('schema') == 'texturequest-dlss-lease-v1' and
+             core._plain(lease.get('path', ''), game) == game / 'ReShade.ini', 'DLSS settings ownership changed.')
+        if not (game / 'ReShade.ini').exists(): return ('ReShade.ini missing',)
+        conflicts = []
+        def restore(raw):
+            after, changed = restore_dlss_config(raw, lease['journal'])
+            conflicts.extend(changed)
+            return after
+        try:
+            self._repair_shortcuts(game, restore, reset_shortcuts=False)
+        except (ValueError, UnicodeError) as error:
+            conflicts.append(str(error))
+        return tuple(conflicts)
 
     def status(self, game):
         runtime = self._runtime()
+        dlss_available, dlss_message = False, 'Experimental DLSS is not included.'
+        if runtime and runtime.get('dlss') is not None:
+            try:
+                self._dlss_profile(runtime)
+                dlss_available, dlss_message = True, 'Experimental DLSS profile verified. Private testing only.'
+            except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
+                dlss_message = 'Experimental DLSS unavailable: ' + str(error)
         result = dict(installed=False, running=False, active_sessions=0, available=runtime is not None,
                       dual_load=False, shortcut=normalize(), message='Graphics hook runtime is not included.',
                       components=component_selection(), effects_available=bool(runtime and runtime.get('effects')),
+                      dlss_available=dlss_available, dlss_installed=False, dlss_message=dlss_message,
+                      dlss_backend=_dlss_contract(runtime['dlss'])['backend'] if dlss_available else None,
                       installed_app_version=None, installed_newer_app=False, refresh_required=False)
         if not str(game).strip():
             return result
@@ -390,6 +572,8 @@ class GraphicsManager:
             binding = normalize(record.get('shortcut'))
             missing = [Path(x['path']).name for x in record['files'] if not Path(x['path']).is_file()]
             refresh = refresh or (not newer and (record['phase'] != 'installed' or bool(missing)))
+            refresh = refresh or bool(not newer and dlss_available and
+                component_selection(record.get('components'))['dlss'] and record.get('dlss_profile') != runtime['dlss']['id'])
             message = ('Interrupted graphics installation. Close EQ2 and Uninstall before retrying.' if record['phase'] != 'installed' else
                        'Hook file missing (' + ', '.join(missing) + '). Close EQ2, then Uninstall and Install to repair.' if missing else
                        'A newer launcher installed this hook. Update TextureQuest before reinstalling it.' if newer else
@@ -398,6 +582,9 @@ class GraphicsManager:
                        'Graphics hook installed. ' + label(binding) + ' switches Original/Upscaled.')
             return dict(result, installed=True, active_sessions=self._games_open(game), available=True, shortcut=binding, message=message,
                         components=component_selection(record.get('components')), installation_revision=record['record_sha256'],
+                        dlss_installed=bool(record['phase'] == 'installed' and not missing and
+                                            component_selection(record.get('components'))['dlss']),
+                        dlss_backend=record.get('dlss_backend', 'feeder') if component_selection(record.get('components'))['dlss'] else None,
                         installed_app_version=stamp, installed_newer_app=newer, refresh_required=refresh)
         if self._proxy_170(game):
             return dict(result, installed=True, active_sessions=self._games_open(game), available=True,
@@ -536,6 +723,8 @@ class GraphicsManager:
         with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
             self._assert_shortcuts_settled(game)
             self._exclusive_mode(game)
+            ensure_closed()
+            dlss_profile = self._preflight_components(game, selection, runtime)
             old = self._record(game)
             need(not old or old['phase'] == 'uninstalled', 'Uninstall Graphics hook before installing again.')
             standard = [name for name in PROXY_NAMES if classify(game / name) == 'standard']
@@ -550,19 +739,29 @@ class GraphicsManager:
             report('Verifying loose DDS files and texture map.')
             map_path = self._activate_prepared(game, prepared)
             self._write_key(binding)
-            effects_lease = None
+            effects_lease, dlss_lease, consumer_lease = None, None, None
             shader_folder, retired_shader = self._effects_shader(runtime) if selection['effects'] else (None, None)
+            dlss_folder = self._dlss_shaders(dlss_profile) if dlss_profile is not None else None
             def configure_effects(raw):
-                nonlocal effects_lease
-                if shader_folder is None: return raw
+                nonlocal effects_lease, dlss_lease, consumer_lease
                 from texturequest_effects import prepare_effects_config
-                after, journal = prepare_effects_config(raw, str(shader_folder),
-                    retired_shader_directory=str(retired_shader) if retired_shader is not None else None)
-                lease = dict(schema='texturequest-effects-lease-v1', path=str(game / 'ReShade.ini'), journal=journal)
-                need(effects_lease is None or effects_lease == lease, 'ReShade settings changed before installation; settings preserved.')
-                effects_lease = lease
-                return after
-            if shader_folder is not None and (game / 'ReShade.ini').exists():
+                for folder, previous, key in ((shader_folder, retired_shader, 'effects'), (dlss_folder, None, 'dlss')):
+                    if folder is None: continue
+                    raw, journal = prepare_effects_config(raw, str(folder),
+                        retired_shader_directory=str(previous) if previous is not None else None)
+                    lease = dict(schema='texturequest-effects-lease-v1', path=str(game / 'ReShade.ini'), journal=journal)
+                    old_lease = effects_lease if key == 'effects' else dlss_lease
+                    need(old_lease is None or old_lease == lease, 'ReShade settings changed before installation; settings preserved.')
+                    if key == 'effects': effects_lease = lease
+                    else: dlss_lease = lease
+                if dlss_folder is not None:
+                    from texturequest_dlss import prepare_dlss_config
+                    raw, journal = prepare_dlss_config(raw, profile=_dlss_contract(dlss_profile)['backend'])
+                    lease = dict(schema='texturequest-dlss-lease-v1', path=str(game / 'ReShade.ini'), journal=journal)
+                    need(consumer_lease is None or consumer_lease == lease, 'DLSS settings changed before installation; settings preserved.')
+                    consumer_lease = lease
+                return raw
+            if (shader_folder is not None or dlss_folder is not None) and (game / 'ReShade.ini').exists():
                 configure_effects(quiet_reshade((game / 'ReShade.ini').read_bytes()))
             writes, owned = [], False
             if all(kind == 'none' for kind in kinds.values()):
@@ -572,13 +771,25 @@ class GraphicsManager:
                 writes.append((game / 'ReShade.ini', configure_effects(DEFAULT_RESHADE_INI)))
             folder = self._addon_folder(game)
             writes.append((folder / 'TextureQuest.addon64', (self.runtime_dir / runtime['addon']).read_bytes()))
-            writes.append((folder / 'TextureQuest.ini', self._addon_ini(game, map_path, selection)))
+            dlss_backend = _dlss_contract(dlss_profile)['backend'] if dlss_profile is not None else 'feeder'
+            writes.append((folder / 'TextureQuest.ini', self._addon_ini(game, map_path, selection, dlss_backend=dlss_backend)))
+            if dlss_profile is not None:
+                for row in dlss_profile['files']:
+                    if row['role'] not in _dlss_contract(dlss_profile)['modules']: continue
+                    source = core._plain(self.runtime_dir / row['name'], self.runtime_dir)
+                    _pin(source, row)
+                    raw = source.read_bytes()
+                    need(len(raw) == row['bytes'] and _sha(raw) == row['sha256'], 'DLSS module changed while reading.')
+                    writes.append((game / source.name, raw))
             for path, _ in writes:
                 need(not path.exists(), path.name + ' already exists. It was left unchanged.')
             files = [dict(path=str(p), bytes=len(d), sha256=_sha(d)) for p, d in writes]
             doc = dict(schema=RECORD_SCHEMA, phase='installing', id=uuid.uuid4().hex, game=str(game), files=files,
                        reshade_owned=owned, shortcut=binding, map=str(map_path), payload='loose-dds',
-                       components=selection, effects_settings=effects_lease,
+                       components=selection, effects_settings=effects_lease, dlss_settings=dlss_lease,
+                       dlss_consumer_settings=consumer_lease,
+                       dlss_profile=dlss_profile['id'] if dlss_profile is not None else None,
+                       dlss_backend=dlss_backend if dlss_profile is not None else None,
                        app_version=APP_VERSION,
                        runtime_descriptor_sha256=_sha((self.runtime_dir / 'RUNTIME.json').read_bytes()))
             self._save(game, doc)
@@ -646,7 +857,11 @@ class GraphicsManager:
                 if progress:
                     progress('Old graphics hook removed.')
                 return self.status(game)
-            settings_conflicts = self._restore_effect_settings(game, doc)
+            # The DLSS path was added last; reverse leases so shared loading
+            # keys and preexisting user paths restore without false conflicts.
+            settings_conflicts = (self._restore_dlss_consumer_settings(game, doc) +
+                                  self._restore_effect_settings(game, doc, 'dlss_settings') +
+                                  self._restore_effect_settings(game, doc))
             for row in doc['files']:
                 p = core._plain(row['path'])
                 if not p.exists():

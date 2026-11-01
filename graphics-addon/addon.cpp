@@ -12,6 +12,8 @@
 #include "stock_paks.hpp"
 #include "dds_reader.hpp"
 #include "effects_controller.hpp"
+#include "dlss_controller.hpp"
+#include "aio_controller.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -82,6 +84,8 @@ struct State {
     std::deque<StockJob> Jobs;
     std::thread Worker;
     tq::EffectsController<effect_runtime> Effects;
+    tq::DlssController<effect_runtime> DLSS;
+    tq::AioController AIO;
     std::mutex EffectsStatusLock;
     uint64_t EffectsStatusSignature = UINT64_MAX;
     unsigned EffectsStatusLogs = 0;
@@ -345,6 +349,7 @@ void OnPushDescriptors(command_list* cmd, shader_stage stages, pipeline_layout l
 // deferred-context command lists would raise push_descriptors on other threads.
 void OnPresent(command_queue* queue, swapchain*, const rect*, const rect*, uint32_t, const rect*) {
     const bool original = Global->Original;
+    Global->AIO.Reconcile(Global->Config.DLSS && Global->Config.DLSSBackend == "aio", original);
     if (original == Global->PushRegistered)
         return;
     Global->PushRegistered = original;
@@ -434,17 +439,19 @@ bool RecordDepthResult(unsigned phase, const char* reason, const std::string& fa
 // Fresh descriptor/readiness query inside the controller's claimed render
 // callback only. These copied facts describe this query phase, not a later
 // draw's exact binding, world projection or the original game's MSAA.
-bool OwnedDepthAvailable(effect_runtime* runtime, unsigned phase) {
-    const auto ready = runtime->find_uniform_variable(tq::EffectsFile, "TQDepthReady");
-    const auto depth = runtime->find_texture_variable(tq::EffectsFile, "TQDiagnosticDepth");
+bool OwnedDepthAvailable(effect_runtime* runtime, unsigned phase,
+    const char* effectsFile = tq::EffectsFile, const char* readyName = "TQDepthReady",
+    const char* depthName = "TQDiagnosticDepth") {
+    const auto ready = runtime->find_uniform_variable(effectsFile, readyName);
+    const auto depth = runtime->find_texture_variable(effectsFile, depthName);
     if (!ready.handle || !depth.handle) return RecordDepthResult(phase, "missing_uniform_or_texture",
         " uniform=" + std::to_string(ready.handle != 0) + " texture=" + std::to_string(depth.handle != 0));
     char file[256]{}, name[128]{}, annotation[64]{};
     size_t a = sizeof(file), b = sizeof(name), c = sizeof(annotation);
     runtime->get_uniform_variable_effect_name(ready, file, &a);
     runtime->get_uniform_variable_name(ready, name, &b);
-    if (!ExactEffectText(file, a, tq::EffectsFile, sizeof(file)) ||
-        !ExactEffectText(name, b, "TQDepthReady", sizeof(name))) return RecordDepthResult(phase, "uniform_identity");
+    if (!ExactEffectText(file, a, effectsFile, sizeof(file)) ||
+        !ExactEffectText(name, b, readyName, sizeof(name))) return RecordDepthResult(phase, "uniform_identity");
     if (!runtime->get_annotation_string_from_uniform_variable(ready, "source", annotation, &c) ||
         !ExactEffectText(annotation, c, "bufready_depth", sizeof(annotation))) return RecordDepthResult(phase, "source_annotation");
     bool available = false;
@@ -453,8 +460,8 @@ bool OwnedDepthAvailable(effect_runtime* runtime, unsigned phase) {
     a = sizeof(file); b = sizeof(name);
     runtime->get_texture_variable_effect_name(depth, file, &a);
     runtime->get_texture_variable_name(depth, name, &b);
-    if (!ExactEffectText(file, a, tq::EffectsFile, sizeof(file)) ||
-        !ExactEffectText(name, b, "TQDiagnosticDepth", sizeof(name))) return RecordDepthResult(phase, "texture_identity");
+    if (!ExactEffectText(file, a, effectsFile, sizeof(file)) ||
+        !ExactEffectText(name, b, depthName, sizeof(name))) return RecordDepthResult(phase, "texture_identity");
     resource_view linear{}, srgb{};
     runtime->get_texture_binding(depth, &linear, &srgb);
     if (!linear.handle) return RecordDepthResult(phase, "linear_unbound"); // Never substitute sRGB.
@@ -481,21 +488,34 @@ bool OwnedDepthAvailable(effect_runtime* runtime, unsigned phase) {
 
 void OnInitEffectRuntime(effect_runtime* runtime) {
     Global->Effects.Reload(runtime);
+    Global->DLSS.Reload(runtime);
 }
 
 void OnReloadedEffects(effect_runtime* runtime) {
     Global->Effects.Reload(runtime); // Metadata only; requests survive, handles do not.
+    Global->DLSS.Reload(runtime);
 }
 
 void OnDestroyEffectRuntime(effect_runtime* runtime) {
     Global->Effects.Forget(runtime);
+    Global->DLSS.Forget(runtime);
 }
 
 bool OnTechniqueState(effect_runtime* runtime, effect_technique technique, bool enabled) {
-    return Global->Effects.TechniqueState(runtime, technique, enabled, Global->Config.Effects);
+    // Dispatch before acquiring either controller's mutex. A synchronous setter
+    // callback must never take the other controller's lock in reverse order.
+    if (Global->Config.DLSS && Global->Config.DLSSBackend == "feeder" && Global->DLSS.IsOwned(runtime, technique))
+        return Global->DLSS.TechniqueState(runtime, technique, enabled, true);
+    if (Global->Effects.OwnedTechniqueIndex(runtime, technique) >= 0)
+        return Global->Effects.TechniqueState(runtime, technique, enabled, Global->Config.Effects);
+    return false;
 }
 
 void ReconcileEffects(effect_runtime* runtime, unsigned phase) {
+    Global->AIO.Reconcile(Global->Config.DLSS && Global->Config.DLSSBackend == "aio", Global->Original.load());
+    Global->DLSS.Reconcile(runtime, Global->Config.DLSS && Global->Config.DLSSBackend == "feeder", Global->Original.load(),
+        [phase](effect_runtime* current) { return OwnedDepthAvailable(current, phase,
+            tq::DlssFeedFile, "TQDlssDepthReady", "TQDlssDepth"); });
     if (!Global->Effects.Reconcile(runtime, OwnedEffectsEnabled(),
         [phase](effect_runtime* current) { return OwnedDepthAvailable(current, phase); })) return;
     const auto state = Global->Effects.Snapshot(runtime);
@@ -531,6 +551,19 @@ void OnReshadePresent(effect_runtime* runtime) {
 
 bool OnOverlayTechnique(effect_runtime* runtime, effect_technique technique) {
     if (!Global) return false;
+    if (Global->Config.DLSS && Global->Config.DLSSBackend == "feeder" && Global->DLSS.IsFeed(runtime, technique)) {
+        const auto state = Global->DLSS.Snapshot(runtime);
+        ImGui::TextDisabled("[%s]", tq::DlssStatus(state, Global->Config.DLSS, Global->Original.load()));
+        ImGui::SameLine();
+        bool requested = state.Requested;
+        ImGui::BeginDisabled(!Global->Config.DLSS);
+        if (ImGui::Checkbox("DLSS 5 (experimental) [DLSS5_Feed.fx]", &requested))
+            Global->DLSS.SetRequested(runtime, requested);
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("Neural rendering with estimated motion. Feeding is not a model-success check.\nOriginal stops both motion estimation and neural input; re-enable resets history.");
+        return true;
+    }
     const int owned = Global->Effects.OwnedTechniqueIndex(runtime, technique);
     if (owned < 0) return false; // Preserve ReShade's controls for every other FX.
     const size_t index = static_cast<size_t>(owned);
@@ -557,6 +590,19 @@ void OnTextureQuestOverlay(effect_runtime* runtime) {
     const bool selected = Global->Config.Effects;
     const auto state = Global->Effects.Snapshot(runtime);
     ImGui::Text("Mode: %s", original ? "Original" : "Upscaled");
+    if (Global->Config.DLSS && Global->Config.DLSSBackend == "aio") {
+        const auto aio = Global->AIO.Snapshot();
+        const auto& status = aio.Status;
+        ImGui::Text("DLSS: %s", original ? "Original" : !aio.Present ? "Waiting for add-on" :
+            !aio.Compatible ? "Add-on unavailable" : (status.Flags & TQAIO_Failed) ? "See add-on error" :
+            (status.Flags & TQAIO_Draining) ? "Finishing queued work" :
+            (status.Flags & TQAIO_MasterAdmitted) ? "Pipeline admitted" : "Waiting for pipeline");
+        ImGui::Text("Completed frames: NR %llu / SR %llu / FG %llu",
+            static_cast<unsigned long long>(status.NrFrames), static_cast<unsigned long long>(status.SrFrames),
+            static_cast<unsigned long long>(status.FgFrames));
+        ImGui::TextUnformatted("Home > Add-ons: neural rendering, upscaling and frame generation.");
+        ImGui::Separator();
+    }
     ImGui::Text("Graphics effects: %s", selected ? "Selected" : "Not installed");
     ImGui::Separator();
     constexpr const char* labels[] = {
@@ -633,6 +679,8 @@ void Stop() {
     reshade::unregister_event<reshade::addon_event::reshade_begin_effects>(&OnBeginEffects);
     reshade::unregister_event<reshade::addon_event::reshade_present>(&OnReshadePresent);
     Global->Effects.Clear();
+    Global->DLSS.Clear();
+    Global->AIO.Clear();
     if (Global->PushRegistered)
         reshade::unregister_event<reshade::addon_event::push_descriptors>(&OnPushDescriptors);
     {
