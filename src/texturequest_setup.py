@@ -5,13 +5,19 @@ from texturequest_release import check_pause
 
 
 def prepare_graphics(game, source_fetch, choices, store, graphics, upgrade, *,
-                     minimum, binding, in_use, auto_install=False, upgrading=False,
+                     minimum, binding, in_use, auto_install=False, upgrading=False, components=None,
                      report=lambda _: None, overall=lambda *_: None, pause=None):
     ensure_closed()
     check_pause(pause)
     if graphics.status(game).get('installed_newer_app'):
         raise ValueError('This hook belongs to a newer TextureQuest app. It was left unchanged.')
-    migrate = upgrading or upgrade.needed(game)
+    changed_components = False
+    if components is not None:
+        from texturequest_components import normalize
+        components = normalize(components)
+        current = graphics.status(game)
+        changed_components = bool(current.get('installed') and normalize(current.get('components')) != components)
+    migrate = upgrading or upgrade.needed(game) or changed_components
     snapshot = upgrade.snapshot(game) if migrate else None
     report('Checking the texture release. Your installed hook stays in place.')
     overall('Checking the texture release', 0, 0, 0, 0)
@@ -41,7 +47,8 @@ def prepare_graphics(game, source_fetch, choices, store, graphics, upgrade, *,
         # install performs its own activation under its normal ownership locks.
         # Always enter that admission after retirement: a concurrent installation
         # must refuse there, not be silently adopted or have its map redirected.
-        graphics.install(game, prepared, progress=report, shortcut=binding)
+        graphics.install(game, prepared, progress=report, shortcut=binding,
+                         **({} if components is None else dict(components=components)))
         upgrade.complete(game, prepared, report, pause=pause)
     else:
         graphics.activate_prepared(game, prepared)

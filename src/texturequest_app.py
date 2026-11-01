@@ -1051,26 +1051,10 @@ class TextureQuestApp:
         def setup():
             from texturequest_setup import prepare_graphics
             choices = core._json(resource('shared-texture-choices.json').read_bytes())
-<<<<<<< HEAD
-            prepared = self.dds_store.prepare(source, game, choices, pause=self.pause.is_set,
-                progress=self.report, overall=self.report_overall, in_use=self.downloads_in_use)
-            self.graphics_manager.activate_prepared(game, prepared)
-            if auto_install or migrate:
-                current = self.graphics_manager.status(game)
-                if current.get('installed') and components.normalize(current.get('components')) != selection:
-                    removed = self.graphics_manager.uninstall(game, progress=self.report)
-                    if any(name.casefold() != 'reshade.ini' for name in removed.get('kept', [])):
-                        raise ValueError('Changed hook files were kept. Resolve them before installing new component choices.')
-                    current = self.graphics_manager.status(game)
-                if not current.get('installed'):
-                    self.graphics_manager.install(game, prepared, progress=self.report, shortcut=binding, components=selection)
-                    self.upgrade.complete(game, prepared, self.report, pause=self.pause.is_set)
-=======
             source, prepared = prepare_graphics(game, fetch_dds_source, choices, self.dds_store,
                 self.graphics_manager, self.upgrade, minimum=minimum, binding=binding,
-                in_use=self.downloads_in_use, auto_install=auto_install, upgrading=upgrading,
+                in_use=self.downloads_in_use, auto_install=auto_install, upgrading=upgrading, components=selection,
                 report=self.report, overall=self.report_overall, pause=self.pause.is_set)
->>>>>>> f5c2b1acb681a665f17e68562524919619bc603c
             self.dds_source = source
             return self.release, prepared, {}, None
         def work():
