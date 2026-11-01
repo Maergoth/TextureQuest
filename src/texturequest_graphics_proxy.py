@@ -18,6 +18,13 @@ from texturequest_shortcut import normalize, label
 from texturequest_dds_source import DDSStore
 import texturequest_graphics_catalog as catalog
 from texturequest_hotkeys import sanitize_reshade_config, sanitize_reshade_preset
+from texturequest_version import APP_VERSION
+from texturequest_latest import version_number
+
+try:
+    from texturequest_build_pin import APP_VERSION
+except ImportError:
+    pass
 
 RUNTIME_SCHEMA = 'texturequest-graphics-runtime-v4'
 RECORD_SCHEMA = 'texturequest-graphics-addon-installation-v1'
@@ -301,20 +308,32 @@ class GraphicsManager:
     def status(self, game):
         runtime = self._runtime()
         result = dict(installed=False, running=False, active_sessions=0, available=runtime is not None,
-                      dual_load=False, shortcut=normalize(), message='Graphics hook runtime is not included.')
+                      dual_load=False, shortcut=normalize(), message='Graphics hook runtime is not included.',
+                      installed_app_version=None, installed_newer_app=False, refresh_required=False)
         if not str(game).strip():
             return result
         record = self._record(game)
         if record and record['phase'] != 'uninstalled':
+            stamp = record.get('app_version')
+            if 'app_version' in record:
+                version_number(stamp)
+            current_version = version_number(APP_VERSION)
+            newer = stamp is not None and version_number(stamp) > current_version
+            refresh = not newer and (stamp is None or version_number(stamp) < current_version)
             binding = normalize(record.get('shortcut'))
             missing = [Path(x['path']).name for x in record['files'] if not Path(x['path']).is_file()]
+            refresh = refresh or (not newer and (record['phase'] != 'installed' or bool(missing)))
             message = ('Interrupted graphics installation. Close EQ2 and Uninstall before retrying.' if record['phase'] != 'installed' else
                        'Hook file missing (' + ', '.join(missing) + '). Close EQ2, then Uninstall and Install to repair.' if missing else
+                       'A newer launcher installed this hook. Update TextureQuest before reinstalling it.' if newer else
+                       'This launcher needs to refresh your graphics hook and ReShade settings. Close EQ2, then Finish upgrade.' if refresh else
                        'Old PAK-reading hook. Close EQ2, then Uninstall and Install to use DDS files.' if record.get('payload') != 'loose-dds' else
                        'Graphics hook installed. ' + label(binding) + ' switches Original/Upscaled.')
-            return dict(result, installed=True, active_sessions=self._games_open(game), available=True, shortcut=binding, message=message)
+            return dict(result, installed=True, active_sessions=self._games_open(game), available=True, shortcut=binding, message=message,
+                        installed_app_version=stamp, installed_newer_app=newer, refresh_required=refresh)
         if self._proxy_170(game):
             return dict(result, installed=True, active_sessions=self._games_open(game), available=True,
+                        refresh_required=True,
                         message='TextureQuest 1.7.0 graphics hook. Close EQ2 and Uninstall here, then Install the add-on.')
         legacy = self._legacy(game)
         if legacy:
@@ -324,10 +343,15 @@ class GraphicsManager:
             running = bool(watcher and _alive(watcher, Path(legacy['runtime_dir']) / 'TextureQuestGraphics.exe'))
             if legacy['phase'] != 'uninstalled' or running or count:
                 return dict(result, installed=legacy['phase'] != 'uninstalled', running=running, active_sessions=count,
-                            available=True, message='Old injected graphics hook. Close EQ2 and Uninstall here, then Install the add-on.')
+                            available=True, refresh_required=True,
+                            message='Old injected graphics hook. Close EQ2 and Uninstall here, then Install the add-on.')
         if runtime:
             result['message'] = 'Upscaled textures through a ReShade add-on. ' + label() + ' switches Original/Upscaled. Close EQ2 to install.'
         return result
+
+    def refresh_needed(self, game):
+        """Owned hooks are refreshed once per newer launcher, even for equal DLLs."""
+        return self.status(game)['refresh_required']
 
     def _all_games(self):
         found = {}
@@ -460,8 +484,8 @@ class GraphicsManager:
             if all(kind == 'none' for kind in kinds.values()):
                 owned = True
                 writes.append((game / 'dxgi.dll', (self.runtime_dir / runtime['reshade']).read_bytes()))
-                if not (game / 'ReShade.ini').exists():
-                    writes.append((game / 'ReShade.ini', DEFAULT_RESHADE_INI))
+            if not (game / 'ReShade.ini').exists():
+                writes.append((game / 'ReShade.ini', DEFAULT_RESHADE_INI))
             folder = self._addon_folder(game)
             writes.append((folder / 'TextureQuest.addon64', (self.runtime_dir / runtime['addon']).read_bytes()))
             writes.append((folder / 'TextureQuest.ini', self._addon_ini(game, map_path)))
@@ -470,7 +494,9 @@ class GraphicsManager:
             self._repair_shortcuts(game)
             files = [dict(path=str(p), bytes=len(d), sha256=_sha(d)) for p, d in writes]
             doc = dict(schema=RECORD_SCHEMA, phase='installing', id=uuid.uuid4().hex, game=str(game), files=files,
-                       reshade_owned=owned, shortcut=binding, map=str(map_path), payload='loose-dds')
+                       reshade_owned=owned, shortcut=binding, map=str(map_path), payload='loose-dds',
+                       app_version=APP_VERSION,
+                       runtime_descriptor_sha256=_sha((self.runtime_dir / 'RUNTIME.json').read_bytes()))
             self._save(game, doc)
             for path, data in writes:
                 ensure_closed()

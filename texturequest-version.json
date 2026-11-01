@@ -1,8 +1,8 @@
 {
   "schema": "texturequest-version-v1",
-  "app_version": "1.9.2",
+  "app_version": "1.9.3",
   "texture_version": "1.3.0",
   "manifest_version": "1.3.0",
   "manifest_sha256": "a9057b253d6006fc317f801466ce1f55b9d4a27d0baf5e3227863a1cf9e6924c",
-  "installer_name": "TextureQuest-Installer-1.9.2-windows-x64.zip"
+  "installer_name": "TextureQuest-Installer-1.9.3-windows-x64.zip"
 }

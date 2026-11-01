@@ -948,6 +948,8 @@ class TextureQuestApp:
         minimum = (self.prepared or {}).get('texture_version', '1.3.0')
         binding = dict(self.shortcut)
         def setup():
+            if (auto_install or upgrading) and self.graphics_status(game).get('installed_newer_app'):
+                raise ValueError('This hook belongs to a newer TextureQuest app. It was left unchanged.')
             migrate = upgrading or self.upgrade.needed(game)
             if migrate:
                 self.upgrade.before(game, self.report)

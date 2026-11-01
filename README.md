@@ -31,7 +31,7 @@ ReShade's tutorial bar and stats are hidden by default. **Home** opens/closes it
 
 **After a patch:** unchanged texture content still matches. Changed assets stay original; **Verify / Update textures** rebuilds the map against your current stock files. New artwork for a changed source requires a compatible texture release. If the patcher removes our files, reinstall the hook. An existing ReShade add-on build is used as is. A standard ReShade build is left unchanged and installation stops, explaining that the ReShade add-on build is needed. Any other `dxgi.dll`/`d3d11.dll` is left unchanged and installation stops.
 
-**Get app update** downloads, verifies, installs and restarts TextureQuest, keeping **data**. The new app handles the hook transition and cleanup. Close EQ2 when prompted; no manual cache deletion or repeated uninstall/install steps are needed.
+**Get app update** downloads, verifies, installs and restarts TextureQuest, keeping **data**. Every new app version automatically reinstalls its owned hook and reapplies ReShade defaults, even if the hook is already present. The tutorial stays disabled. Close EQ2 when prompted; saved textures are reused. Changed or unknown files are preserved.
 
 <details>
 <summary>Pack contents and compatibility</summary>

@@ -1,14 +1,11 @@
-TextureQuest 1.9.2
+TextureQuest 1.9.3
 
-- Fixes automatic upgrades from older apps, including 1.4.2, that reported
-  "Bundled texture/release versions disagree".
-- Home is the only configurable ReShade shortcut left enabled.
-- Screenshot, effect, preset-switch and referenced preset hotkeys are disabled.
-- Your custom TextureQuest toggle stays unchanged (Numpad * by default).
-- Settings → Reset ReShade shortcuts reapplies these defaults without deleting textures.
-- Keeps texture data 1.3.0, the existing graphics renderer, downloads and settings history.
+- Every new app version reinstalls its owned graphics hook, even when the DLL is unchanged.
+- Reapplies hidden tutorial/stats and Home/custom-toggle shortcut defaults.
+- Fixes an older completed upgrade receipt masking a hook that still needs updating.
+- Normal update flow handles everything; no new button or manual reinstall step.
+- Keeps data, custom settings, texture pack 1.3.0 and the existing renderer.
 
-Close EQ2 before finishing the upgrade, then reopen it normally. Keep the data
-folder in place. F10/Alt+3 were not assigned in the inspected ReShade config;
-their reported freeze/tone has not yet been confirmed resolved in game.
-Unfinished DLSS/effects work is not included in this hotfix.
+Close EQ2, then Get app update. Setup handles the hook refresh automatically;
+Finish upgrade continues if the game was open. Unknown or changed files are kept.
+The optional effects/DLSS preview is not included in this bug-fix release.
