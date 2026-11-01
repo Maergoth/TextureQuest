@@ -225,6 +225,9 @@ class TextureQuestApp:
                 self.loader_manager = LoaderManager(self.state_dir)
             except Exception as error:
                 self.loader_error = "Background loader unavailable: " + str(error)
+        from texturequest_upgrade import Upgrade
+        self.upgrade = Upgrade(self.state_dir, self.graphics_manager, self.loader_manager)
+        self.upgrade_auto_attempted = False
         try:
             from texturequest_build_pin import MANIFEST_SHA256
         except ImportError:
@@ -277,6 +280,7 @@ class TextureQuestApp:
         try:
             initial_game = initial_loader_game(self.loader_manager, initial_game)
             initial_game = initial_loader_game(self.graphics_manager, initial_game)
+            initial_game = initial_loader_game(self.upgrade, initial_game)
         except Exception as error:
             self.loader_status_unknown = True
             self.loader_error = "Cannot discover the owned background loader: " + str(error)
@@ -614,9 +618,10 @@ class TextureQuestApp:
         if not self.busy and graphics.get('installed'):
             self.shortcut = shortcut_spec(graphics.get('shortcut'))
         self.shortcut_button.configure(text="Shortcut: " + shortcut_label(self.shortcut), state='disabled' if self.busy else 'normal')
-        ready = not self.busy and game and graphics.get('available') and not legacy
+        upgrading = self.upgrade_pending()
+        ready = not self.busy and game and graphics.get('available') and (upgrading or not legacy)
         self.button_state(self.install_button, bool(ready))
-        self.install_button.configure(text="Uninstall graphics hook" if graphics.get('installed') else "Install graphics hook")
+        self.install_button.configure(text="Finish upgrade" if upgrading else "Uninstall graphics hook" if graphics.get('installed') else "Install graphics hook")
         self.menu.entryconfigure(self.legacy_uninstall_index, state="normal" if not self.busy and loader.get('installed') else "disabled")
         try:
             game_executable(game)
@@ -643,7 +648,8 @@ class TextureQuestApp:
         self.download_button.configure(text="Verify / Update textures" if self.prepared else "Download / Resume")
         pending = (self.prepared or {}).get('coverage', {}).get('pending_groups', 0)
         self.download_label.configure(text=(f"{pending:,} changed source groups stay original" if pending else "Saved textures verified") if self.prepared else "Custom channels only · about 27.8 GB local cache")
-        self.install_label.configure(text=("Use Settings → Uninstall old Memory hook first." if legacy else
+        self.install_label.configure(text=("Close EQ2, then Finish upgrade. Old hooks and verified PAK caches are removed automatically." if upgrading else
+            "Use Settings → Uninstall old Memory hook first." if legacy else
             graphics.get('message', '') if graphics.get('installed') or not graphics.get('available') else
             "Choose your game folder first." if not game else
             "Install downloads and prepares everything automatically." if not self.prepared else
@@ -794,6 +800,9 @@ class TextureQuestApp:
         if self.busy or not self.graphics_selected():
             return False
         game = self.game.get().strip()
+        if self.upgrade_pending():
+            self._download_latest(auto_install=True, upgrading=True)
+            return True
         status = self.graphics_status(game)
         if not game or not status["available"] or status["unknown"]:
             self.set_message(status["message"] if game else "Choose your game folder first.", error=True)
@@ -812,7 +821,10 @@ class TextureQuestApp:
                 return self.graphics_manager.uninstall(game, progress=self.report)
             if fresh["running"] or fresh["active_sessions"]:
                 raise RuntimeError("Close the previous graphics-hook sessions first.")
-            return self.graphics_manager.install(game, self.prepared, dual_load=False, progress=self.report,shortcut=self.shortcut)
+            result = self.graphics_manager.install(game, self.prepared, dual_load=False, progress=self.report,shortcut=self.shortcut)
+            if self.prepared.get('distribution') == 'generated-channels-only':
+                self.upgrade.complete(game, self.prepared, self.report)
+            return result
         self.begin("graphics-uninstall" if removing else "graphics-install",
                    "Uninstalling Graphics hook…" if removing else "Installing Graphics hook…", work)
         return True
@@ -909,7 +921,13 @@ class TextureQuestApp:
             return result
         self.begin("check", "Checking app and DDS texture updates…", work)
 
-    def _download_latest(self, base_zip=None, auto_install=False):
+    def upgrade_pending(self):
+        try:
+            return self.upgrade.needed(self.game.get().strip())
+        except (OSError, ValueError, KeyError, TypeError):
+            return False  # Normal status/install checks explain unknown records.
+
+    def _download_latest(self, base_zip=None, auto_install=False, upgrading=False):
         if self.busy:
             return
         game = self.game.get().strip()
@@ -918,16 +936,23 @@ class TextureQuestApp:
             return
         minimum = (self.prepared or {}).get('texture_version', '1.3.0')
         binding = dict(self.shortcut)
-        def work():
+        def setup():
+            migrate = upgrading or self.upgrade.needed(game)
+            if migrate:
+                self.upgrade.before(game, self.report)
             source = fetch_dds_source(pause=self.pause.is_set, minimum=minimum)
             choices = core._json(resource('shared-texture-choices.json').read_bytes())
             prepared = self.dds_store.prepare(source, game, choices, pause=self.pause.is_set,
                 progress=self.report, overall=self.report_overall, in_use=self.downloads_in_use)
             self.graphics_manager.activate_prepared(game, prepared)
-            if auto_install and not self.graphics_manager.status(game).get('installed'):
+            if (auto_install or migrate) and not self.graphics_manager.status(game).get('installed'):
                 self.graphics_manager.install(game, prepared, progress=self.report, shortcut=binding)
+                self.upgrade.complete(game, prepared, self.report, pause=self.pause.is_set)
             self.dds_source = source
             return self.release, prepared, {}, None
+        def work():
+            with core._lock(self.state_dir / 'upgrade.lock'):
+                return setup()
         self.begin("update", "Downloading custom channels and building local textures…", work)
 
     def request_pause(self):
@@ -1023,7 +1048,9 @@ class TextureQuestApp:
                     if self.update_check.get("pack", {}).get("status") == "verified":
                         self.update_check["pack"]["update_available"] = False
                     pending = self.prepared.get('coverage', {}).get('pending_groups', 0)
-                    self.set_message("DDS files ready. Close EQ2, then install the graphics hook." +
+                    self.set_message(("Ready to play. " + shortcut_label(self.shortcut) + " switches Original/Upscaled." if
+                        self.graphics_status(self.game.get().strip()).get('installed') else
+                        "Textures ready. Close EQ2, then install the graphics hook.") +
                         (f" {pending} stock matches need attention; see the preparation receipt." if pending else ""))
                     self.finish_progress("download")
                 elif kind == "check":
@@ -1041,6 +1068,10 @@ class TextureQuestApp:
                     self.set_message(" ".join(dict.fromkeys(failures)) if failures else
                                      "Version checks complete. Use Get app update to update and restart; texture downloads are prepared here.", error=bool(failures))
                     if self.release_checked and self.game.get().strip():
+                        if self.upgrade_pending() and not self.upgrade_auto_attempted:
+                            self.upgrade_auto_attempted = True
+                            self._download_latest(auto_install=True, upgrading=True)
+                            continue
                         if self.initial_pack:
                             initial, self.initial_pack = self.initial_pack, None
                             self.prepare_zip(initial)

@@ -155,6 +155,10 @@ def read_sources(game, recipes, index, pause):
 
 
 class ChannelStore(DDSStore):
+    def saved(self):
+        value = super().saved()
+        return value if value and value.get('distribution') == 'generated-channels-only' else None
+
     def prepare(self,source,game,choices,*,opener=urlopen,pause=None,progress=lambda _:None,overall=lambda *_:None,in_use=lambda:False):
         from texturequest_loose_map import build
         source=validate_source(source);game=core._plain(core.validate_game(game).parent)

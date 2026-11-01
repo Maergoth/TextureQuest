@@ -24,7 +24,40 @@ PROXY_NAMES = ('dxgi.dll', 'd3d11.dll')
 STANDARD_MARKER = b'only limited add-on functionality'
 RESHADE_MARKER = b'ReShadeRegisterAddon'
 PROVIDER_170_SHA256 = '239005eae82cbf4a14e7c06d44448dd426dedc2e826896b3369e289b8398f168'
-DEFAULT_RESHADE_INI = b'[GENERAL]\r\nNoReloadOnInit=1\r\n[INPUT]\r\nKeyOverlay=0,0,0,0\r\n[OVERLAY]\r\nTutorialProgress=4\r\n'
+DEFAULT_RESHADE_INI = b'[GENERAL]\r\nNoReloadOnInit=1\r\n[INPUT]\r\nKeyOverlay=36,0,0,0\r\n[OVERLAY]\r\nTutorialProgress=4\r\nShowFPS=0\r\nShowClock=0\r\nShowFrameTime=0\r\nShowPresetName=0\r\nShowPresetTransitionMessage=0\r\n'
+
+
+def quiet_reshade(raw):
+    """Hide persistent tutorial/stats; preserve effects, add-ons and custom keys."""
+    need(len(raw) <= 4 * 1024**2, 'ReShade configuration is too large.')
+    text = raw.decode('utf-8-sig')
+    parser = configparser.ConfigParser(strict=False, interpolation=None)
+    parser.read_string(text)
+    values = dict(TutorialProgress='4', ShowFPS='0', ShowClock='0', ShowFrameTime='0',
+                  ShowPresetName='0', ShowPresetTransitionMessage='0')
+    newline = '\r\n' if '\r\n' in text else '\n'
+    lines, section, seen, found = [], '', set(), False
+    for line in text.splitlines():
+        match = re.match(r'\s*\[([^]]+)\]', line)
+        if match:
+            if section == 'overlay':
+                lines.extend(k + '=' + v for k, v in values.items() if k not in seen)
+            section = match[1].casefold()
+            found |= section == 'overlay'
+        key = re.match(r'\s*([^=;#]+?)\s*=', line)
+        name = next((k for k in values if key and k.casefold() == key[1].casefold()), None)
+        if section == 'overlay' and name:
+            line = name + '=' + values[name]
+            seen.add(name)
+        if section == 'input' and key and key[1].casefold() == 'keyoverlay' and re.fullmatch(r'\s*0(?:\s*,\s*0){3}\s*', line.split('=', 1)[1]):
+            line = 'KeyOverlay=36,0,0,0'
+        lines.append(line)
+    if section == 'overlay':
+        lines.extend(k + '=' + v for k, v in values.items() if k not in seen)
+    elif not found:
+        lines.extend(['', '[OVERLAY]'] + [k + '=' + v for k, v in values.items()])
+    result = (newline.join(lines) + newline).encode('utf-8')
+    return (b'\xef\xbb\xbf' + result) if raw.startswith(b'\xef\xbb\xbf') else result
 
 
 def need(ok, why):
@@ -318,6 +351,27 @@ class GraphicsManager:
             writes.append((folder / 'TextureQuest.ini', self._addon_ini(game, map_path)))
             for path, _ in writes:
                 need(not path.exists(), path.name + ' already exists. It was left unchanged.')
+            # An existing ReShade installation keeps its presets, add-ons and
+            # shortcuts. Only the persistent tutorial/stat displays are hidden.
+            ini = core._plain(game / 'ReShade.ini', game)
+            if ini.exists():
+                before = ini.read_bytes()
+                after = quiet_reshade(before)
+                if after != before:
+                    history = core._plain(self.state_dir / 'reshade-settings-history', self.state_dir)
+                    history.mkdir(exist_ok=True)
+                    backup = history / (_sha(before) + '.ini')
+                    if not backup.exists():
+                        with backup.open('xb') as stream: stream.write(before)
+                    need(ini.read_bytes() == before, 'ReShade settings changed during installation.')
+                    ensure_closed()
+                    temp = ini.with_name('ReShade.ini.' + uuid.uuid4().hex + '.tmp')
+                    try:
+                        with temp.open('xb') as stream:
+                            stream.write(after); stream.flush(); os.fsync(stream.fileno())
+                        os.replace(temp, ini)
+                    finally:
+                        temp.unlink(missing_ok=True)
             files = [dict(path=str(p), bytes=len(d), sha256=_sha(d)) for p, d in writes]
             doc = dict(schema=RECORD_SCHEMA, phase='installing', id=uuid.uuid4().hex, game=str(game), files=files,
                        reshade_owned=owned, shortcut=binding, map=str(map_path), payload='loose-dds')
@@ -368,7 +422,7 @@ class GraphicsManager:
                     message = 'Graphics hook removed.' + (' Changed files kept: ' + ', '.join(kept) + '.' if kept else '')
                     if progress:
                         progress(message)
-                    return dict(self.status(game), message=message)
+                    return dict(self.status(game), message=message, kept=kept)
                 legacy = self._legacy(game)
                 need(legacy and legacy['phase'] != 'uninstalled', 'No installed graphics hook.')
                 self._uninstall_legacy(game, legacy)
@@ -392,7 +446,7 @@ class GraphicsManager:
         message = 'Graphics hook removed.' + (' Changed files kept: ' + ', '.join(kept) + '.' if kept else '')
         if progress:
             progress(message)
-        return dict(self.status(game), message=message)
+        return dict(self.status(game), message=message, kept=kept)
 
     def set_shortcut(self, game, shortcut, progress=None):
         binding = normalize(shortcut)

@@ -35,6 +35,17 @@ Close EQ2 before installing, uninstalling or activating texture updates. Keep
 the app and its data folder in place; the app need not remain open while playing.
 Saved DDS are reused. Get app update preserves portable data.
 
+On upgrade, setup removes old owned hooks and reinstalls the current add-on.
+It reclaims verified obsolete PAK/DDS caches only after the new setup succeeds.
+Unknown/changed files and custom settings stay. Finish upgrade resumes a stopped
+transition. Old Replace installs may require one official Validate Game Assets
+repair; the installer detects saved replacement bytes and explains that step.
+
+Persistent ReShade tutorial/stats displays are off by default. Home opens or
+closes ReShade (custom keys are preserved); its brief startup notice may appear.
+Existing effects, presets and other add-ons remain configured. Before changing
+overlay settings, the installer saves the exact old INI in data/reshade-settings-history.
+
 Verify / Update textures rebuilds matching against current stock. Unchanged
 content survives patches; changed sources remain original until supported.
 Reinstall the hook if the patcher removes its files.

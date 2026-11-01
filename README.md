@@ -23,11 +23,15 @@ The installer downloads only our generated/corrected channels from [TextureQuest
 
 **To remove Graphics hook:** close EQ2, open TextureQuest and click **Uninstall graphics hook**. Only the files it added and still recognises are removed; ReShade is removed only if TextureQuest installed it and it is unchanged. Saved DDS files are kept. If you previously used Replace mode, use the official patcher once to restore stock PAKs.
 
-**Upgrading an old hook:** close EQ2 and uninstall the old Graphics hook in the app before installing this version. For an old Memory hook, use **Settings → Uninstall old Memory hook** first. The modes cannot be combined.
+**Upgrading:** close EQ2 and update the app. Setup resumes automatically, replaces old owned hooks and removes verified obsolete PAK/DDS caches after success. Custom textures, settings and receipts are kept. If a step needs attention, use **Finish upgrade**. Changed or unknown files are preserved.
+
+**Previously used Replace PAK files?** If setup asks, run the official EQ2 launcher → **Advanced Tools → Validate Game Assets** once. Close the launcher, then click **Finish upgrade**. TextureQuest cannot restore original game files itself.
+
+ReShade's tutorial bar and stats are hidden by default. **Home** opens/closes its panel; a custom ReShade key is kept. Its brief startup notice may still appear. **Numpad \*** remains the texture switch.
 
 **After a patch:** unchanged texture content still matches. Changed assets stay original; **Verify / Update textures** rebuilds the map against your current stock files. New artwork for a changed source requires a compatible texture release. If the patcher removes our files, reinstall the hook. An existing ReShade add-on build is used as is. A standard ReShade build is left unchanged and installation stops, explaining that the ReShade add-on build is needed. Any other `dxgi.dll`/`d3d11.dll` is left unchanged and installation stops.
 
-**Get app update** downloads, verifies, installs and restarts TextureQuest, keeping **data** and downloads. Close EQ2, uninstall the hook when prompted, then reinstall it after updating.
+**Get app update** downloads, verifies, installs and restarts TextureQuest, keeping **data**. The new app handles the hook transition and cleanup. Close EQ2 when prompted; no manual cache deletion or repeated uninstall/install steps are needed.
 
 <details>
 <summary>Pack contents and compatibility</summary>

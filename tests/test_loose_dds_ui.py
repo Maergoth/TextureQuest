@@ -39,6 +39,7 @@ class GraphicsOnlyUI(Fixture):
         loader.cache_in_use.return_value = False
         self.stack.enter_context(patch.object(app, 'LoaderManager', return_value=loader))
         self.stack.enter_context(patch.object(proxy, 'ensure_closed'))
+        self.stack.enter_context(patch('texturequest_upgrade.ensure_closed'))
         self.ui = app.TextureQuestApp(self.tk, self.state, self.game, startup_check=False)
         self.addCleanup(self.close_window)
 
@@ -80,6 +81,29 @@ class GraphicsOnlyUI(Fixture):
             self.assertEqual(self.ui.install(), 'graphics')
             self.assertEqual(self.ui.install_selected(), 'graphics')
         self.assertEqual(run.call_count, 2)
+
+    def test_old_hook_shows_finish_upgrade_and_one_click_replaces_it(self):
+        from test_channels import fixture
+        game, source, index, examples, choices, opener, requests = fixture(self.root/'upgrade-input')
+        self.ui.game.set(str(game))
+        core = proxy.core
+        files = []
+        for name, raw in [('d3d11.dll', b'old owned proxy'), ('TextureQuest.ini', b'old config')]:
+            (game / name).write_bytes(raw)
+            files.append(dict(path=str(game/name), bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest()))
+        doc = dict(schema='texturequest-graphics-proxy-installation-v1', game=str(game), phase='installed', files=files)
+        doc['record_sha256'] = core._digest(doc)
+        core._save(self.manager._proxy_170_path(game), doc)
+        self.ui.refresh_controls()
+        self.assertEqual(self.ui.install_button.cget('text'), 'Finish upgrade')
+        real_prepare = self.ui.dds_store.prepare
+        with patch.object(app, 'fetch_dds_source', return_value=source), \
+             patch.object(self.ui.dds_store, 'prepare', side_effect=lambda *a, **kw: real_prepare(*a, **kw, opener=opener)), \
+             patch.object(self.ui, 'begin', side_effect=lambda kind, message, action: action()):
+            self.assertTrue(self.ui.manage_graphics())
+        self.assertFalse((game/'d3d11.dll').exists())
+        self.assertTrue(self.manager.status(game)['installed'])
+        self.assertFalse(self.ui.upgrade.needed(game))
 
     def test_real_install_uses_dds_root_and_preserves_game_archive(self):
         prepared = self.prepared()
