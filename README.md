@@ -25,6 +25,8 @@ The installer downloads only our generated/corrected channels from [TextureQuest
 
 **Upgrading:** close EQ2 and update the app. Setup resumes automatically, replaces old owned hooks and removes verified obsolete PAK/DDS caches after success. Custom textures, settings and receipts are kept. If a step needs attention, use **Finish upgrade**. Changed or unknown files are preserved.
 
+Version checks only read update metadata. Updates reuse unchanged files and start required downloads while the remaining comparison continues. Files are verified before installation.
+
 **Previously used Replace PAK files?** If setup asks, run the official EQ2 launcher → **Advanced Tools → Validate Game Assets** once. Close the launcher, then click **Finish upgrade**. TextureQuest cannot restore original game files itself.
 
 ReShade's tutorial bar and stats are hidden by default. **Home** opens/closes its panel. Other configurable ReShade shortcuts are disabled, including screenshots, preset switching and effect/uniform hotkeys. **Numpad \*** (or your custom shortcut) remains the TextureQuest switch. **Settings → Reset ReShade shortcuts** reapplies these defaults with EQ2 closed. The brief ReShade startup notice may still appear.

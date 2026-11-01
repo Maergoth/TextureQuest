@@ -1,11 +1,10 @@
-TextureQuest 1.9.3
+TextureQuest 1.9.4
 
-- Every new app version reinstalls its owned graphics hook, even when the DLL is unchanged.
-- Reapplies hidden tutorial/stats and Home/custom-toggle shortcut defaults.
-- Fixes an older completed upgrade receipt masking a hook that still needs updating.
-- Normal update flow handles everything; no new button or manual reinstall step.
-- Keeps data, custom settings, texture pack 1.3.0 and the existing renderer.
+- Fast update checks: compare verified version metadata without scanning the texture cache.
+- App and texture checks run together and show results as they arrive.
+- Updates reuse unchanged textures and start required downloads while the remaining files are compared.
+- Full verification stays in installation and explicit Verify. Interrupted downloads remain resumable.
 
-Close EQ2, then Get app update. Setup handles the hook refresh automatically;
-Finish upgrade continues if the game was open. Unknown or changed files are kept.
-The optional effects/DLSS preview is not included in this bug-fix release.
+Get app update preserves your data and refreshes the owned hook automatically.
+The tutorial stays disabled. Texture data remains 1.3.0; no renderer, graphics
+effects or DLSS changes are included in this bug-fix release.

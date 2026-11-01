@@ -4,12 +4,14 @@ No stock channel, DDS or PAK download fallback is admitted. DDSStore below is
 only the local immutable cache/receipt reader also used by the graphics manager.
 """
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 from pathlib import Path
 import re
 import shutil
 import stat
+import threading
 import zipfile
 from urllib.request import urlopen
 
@@ -155,6 +157,10 @@ def read_sources(game, recipes, index, pause):
 
 
 class ChannelStore(DDSStore):
+    def summary(self):
+        value = super().summary()
+        return value if value and value.get('distribution') == 'generated-channels-only' else None
+
     def saved(self):
         value = super().saved()
         return value if value and value.get('distribution') == 'generated-channels-only' else None
@@ -186,38 +192,28 @@ class ChannelStore(DDSStore):
             downloads=core._plain(self.base/'downloads',self.base);downloads.mkdir(exist_ok=True)
             scratch=core._plain(self.base/'scratch',self.base);scratch.mkdir(exist_ok=True)
             assembler=codec.LocalAssembler(None,scratch,catalog)
-            payloads={o['sha256']:o for o in index['objects']}
-            recipes=index['recipes'];ready=[];missing=[];pending=[]
+            recipes=index['recipes'];ready=[];pending=[]
             total=len(recipes)
-            for row in recipes:
-                check_pause(pause)
-                path=core._plain(self.objects/'dds'/(row['object_sha256']+'.dds'),self.objects)
-                if path.exists():
-                    obj=dict(sha256=row['object_sha256'],bytes=128+row['target']['mip_bytes']+row['target']['tail_bytes'])
-                    pin_file(path,obj);ready.append(row)
-                else:missing.append(row)
-            overall('Verified cached textures',len(ready),total,len(ready),total)
             chunks={c['name']:c for c in source['chunks']}
-            download_done=0
-            download_total=sum(chunks[name]['bytes'] for name in {r['payload']['chunk'] for r in missing})
-            for name,chunk in chunks.items():
-                check_pause(pause)
-                required=[r for r in missing if r['payload']['chunk']==name]
-                if not required:continue
-                progress('Reading local game channels for '+name)
-                originals=read_sources(game,required,index,pause)
-                usable=[r for r in required if r['id'] in originals]
-                pending.extend(dict(id=r['id'],owner=r['owner'],member=r['member'],reason='current-source-unmatched')
-                               for r in required if r['id'] not in originals)
-                if not usable:continue
-                need(not in_use(),'Close EQ2 before building texture updates.')
-                output_bytes=sum(128+r['target']['mip_bytes']+r['target']['tail_bytes'] for r in usable)
-                need(shutil.disk_usage(self.base).free>=chunk['bytes']+output_bytes+64*core.CHUNK,'Not enough space for this download and local reconstruction.')
-                progress('Downloading custom channels '+str(round(download_done/1e9,1))+' / '+str(round(download_total/1e9,1))+' GB')
+            chunk_rows=defaultdict(list)
+            for row in recipes:chunk_rows[row['payload']['chunk']].append(row)
+            cancelled=threading.Event()
+            def stopped():
+                return cancelled.is_set() or bool(pause and pause())
+            def open_transfer(request, **kwargs):
+                check_pause(stopped)
+                return opener(request, **kwargs)
+            def transfer(chunk):
+                check_pause(stopped)
                 download=dict(chunk,entries=chunk['objects']);download.pop('objects')
-                path=_download(download,downloads,
-                    notify=lambda m,done=0,total=1:overall('Downloading custom channels',download_done+done,download_total,len(ready),len(recipes)),
-                    pause=pause,opener=opener)
+                return _download(download,downloads,
+                    notify=lambda m,done=0,total=1:overall('Downloading custom channels',done,total,len(ready),len(recipes)),
+                    pause=stopped,opener=open_transfer)
+            def finish_transfer(active):
+                future,name,usable,originals=active
+                path=future.result()
+                check_pause(pause)
+                need(not in_use(),'Close EQ2 before building texture updates.')
                 expected={o['entry']:o for o in index['objects'] if o['chunk']==name}
                 with catalog.held(path),zipfile.ZipFile(path) as archive:
                     infos=archive.infolist()
@@ -234,8 +230,46 @@ class ChannelStore(DDSStore):
                         destination=core._plain(self.objects/'dds'/(row['object_sha256']+'.dds'),self.objects)
                         _write_new(destination,raw);ready.append(row)
                         overall('Building local textures',len(ready),total,len(ready),total)
-                download_done+=chunk['bytes']
                 path.unlink() # Only our verified transport ZIP; local DDS survive interruption.
+            # One transport can run while the next chunk's local outputs are
+            # checked. No whole-cache census precedes the first needed ZIP.
+            # A failed scan cancels the owned worker before either lock exits.
+            workers=ThreadPoolExecutor(max_workers=1)
+            active=None;checked=0
+            try:
+                for name,chunk in chunks.items():
+                    check_pause(pause)
+                    required=[]
+                    for row in chunk_rows[name]:
+                        check_pause(pause)
+                        if active is not None and active[0].done():active[0].result()
+                        path=core._plain(self.objects/'dds'/(row['object_sha256']+'.dds'),self.objects)
+                        if path.exists():
+                            obj=dict(sha256=row['object_sha256'],bytes=128+row['target']['mip_bytes']+row['target']['tail_bytes'])
+                            pin_file(path,obj);ready.append(row)
+                        else:required.append(row)
+                        checked+=1
+                    overall('Checking saved textures',checked,total,checked,total)
+                    if not required:continue
+                    if active is not None:
+                        finish_transfer(active)
+                        active=None
+                    progress('Reading local game channels for '+name+'; remaining differences are still being checked.')
+                    originals=read_sources(game,required,index,pause)
+                    usable=[r for r in required if r['id'] in originals]
+                    pending.extend(dict(id=r['id'],owner=r['owner'],member=r['member'],reason='current-source-unmatched')
+                                   for r in required if r['id'] not in originals)
+                    if not usable:continue
+                    check_pause(pause)
+                    need(not in_use(),'Close EQ2 before building texture updates.')
+                    output_bytes=sum(128+r['target']['mip_bytes']+r['target']['tail_bytes'] for r in usable)
+                    need(shutil.disk_usage(self.base).free>=chunk['bytes']+output_bytes+64*core.CHUNK,'Not enough space for this download and local reconstruction.')
+                    progress('Downloading missing custom channels: '+name)
+                    active=(workers.submit(transfer,chunk),name,usable,originals)
+                if active is not None:finish_transfer(active)
+            finally:
+                cancelled.set()
+                workers.shutdown(wait=True,cancel_futures=True)
             check_pause(pause);need(not in_use(),'Close EQ2 before activating texture updates.')
             need(ready,'No compatible local game sources were found. Patch EQ2 to stock, then try again.')
             local=project(index,ready)

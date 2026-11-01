@@ -29,7 +29,7 @@ class HookRefreshUI(GraphicsOnlyUI):
              patch.object(self.manager, 'install', wraps=self.manager.install) as install:
             self.assertTrue(self.ui.manage_graphics())
         install.assert_called_once()
-        self.assertEqual(self.manager._record(game)['app_version'], '1.9.3')
+        self.assertEqual(self.manager._record(game)['app_version'], app.APP_VERSION)
         self.assertNotEqual(self.manager._record(game)['id'], old['id'])
         self.assertEqual((game/'TextureQuest.addon64').read_bytes(), dll)
         self.assertEqual((game/'paks/test.vpk').read_bytes(), pak)
