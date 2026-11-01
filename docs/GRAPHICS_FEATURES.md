@@ -11,7 +11,7 @@ AO/contact implementation.
 | Control | Function |
 | --- | --- |
 | Point-light shadows | Adds shadows while preserving native lamp lighting by default |
-| Character shadows | Moving-character shadows from those lights |
+| Character shadows | Moving-character shadows from supported point and window lights |
 | Emissive lights | Light estimated from recognized glowing meshes |
 | Sun-shadow softness | Softens native sun shadows; zero retains the game filter |
 | Ambient occlusion | Darkens nearby occlusion in ambient world lighting |
@@ -20,6 +20,10 @@ AO/contact implementation.
 
 Character and emissive lighting depend on the point-light parent control. Emissive
 lighting is an approximation, not a full multi-bounce lighting engine.
+
+The private window-light extension preserves the captured native projection and
+adds character occlusion to that light contribution. Unsupported projected-light
+shaders remain native. It does not replace EQ2's directional shadow system.
 
 The main panel has feature checkboxes and shadowed lights **Min (10), Med (50),
 Max (all supported; currently 256)**. Detailed controls and diagnostics are under
@@ -38,7 +42,7 @@ off/on. Original preserves each checkbox and strength. Changes apply at a frame
 boundary; work already submitted to the GPU finishes normally. Settings are kept
 in ReShade.ini under `[EQ2Graphics]` and survive reinstall.
 
-Keep native lighting, material shaders and world shadows enabled. The renderer
+Keep native lighting, material shaders and GPU shadows enabled. The renderer
 needs their inputs. This preview changes no native EQ2 INI settings. The existing
 backup/restore manager remains available for future verified overrides.
 Bloom, screen-color bounce, contact-only shaders and edge smoothing are retired.
@@ -55,13 +59,10 @@ Unrelated ReShade effects and settings are preserved.
 Lower presets reduce the captured image's processing resolution. They do not
 reduce the rendering work EQ2 already performed, so a performance gain is not
 guaranteed. Motion is estimated from images. More neural passes cost GPU time.
-The previous EQ2 frame-generation test showed a performance regression. The
-candidate now permits bounded capture-ahead in its existing three slots, retaining
-GPU-completion checks and newest-frame selection. It also includes the earlier
-pacing, optical-flow preparation and independent GUI-slot corrections. The old
-test's roughly 64 FPS source hid this capture bottleneck; the final comparison
-uses a faster measured source. Synthetic accepted Presents remain distinct from
-EQ2 performance, monitor scanout and perceived smoothness.
+Capture queues at most one frame ahead while active consumers finish. GPU
+completion checks, newest-frame selection and resource ownership remain enforced.
+A game cap near 60 FPS can help pacing; your saved cap is preserved. Synthetic
+accepted Presents do not establish EQ2 performance, monitor scanout or smoothness.
 
 Home does not pause selected processing. Original bypasses it, allowing submitted
 work to drain. Model allocations may remain in memory. Extra AIO hotkeys and game

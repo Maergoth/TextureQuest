@@ -59,6 +59,7 @@ AIO_V3_PROFILE_ID = 'aio-09301f5-managed-continuous-gui-private-v3'
 AIO_V4_PROFILE_ID = 'aio-09301f5-managed-completion-cadence-private-v4'
 AIO_V5_PROFILE_ID = 'aio-09301f5-managed-refresh-gui-ring-private-v5'
 AIO_V6_PROFILE_ID = 'aio-09301f5-managed-capture-ahead-private-v6'
+AIO_V7_PROFILE_ID = 'aio-09301f5-managed-latest-capture-private-v7'
 AIO_ROLES = {
     'aio': 'dlss/standalone-dlssnr.addon64', 'bridge': 'dlss/nvngx.dll',
     'nr': 'dlss/nvngx_dlssnr.dll', 'sr': 'dlss/nvngx_dlss.dll', 'fg': 'dlss/nvngx_dlssg.dll',
@@ -73,6 +74,7 @@ DLSS_PROFILES = {
     AIO_V4_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES, settings='aio2'),
     AIO_V5_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES, settings='aio2'),
     AIO_V6_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES, settings='aio2'),
+    AIO_V7_PROFILE_ID: dict(backend='aio', roles=AIO_ROLES, modules=AIO_MODULES, settings='aio2'),
 }
 
 

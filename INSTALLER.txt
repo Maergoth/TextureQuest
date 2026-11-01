@@ -21,8 +21,11 @@ rendering cost. Frame generation includes bounded capture-ahead and pacing fixes
 Motion is estimated; image quality, HUD and FPS still need game testing.
 Your TextureQuest shortcut controls everything. Extra AIO hotkeys are disabled.
 
-Keep native lighting, material shaders and world shadows enabled. The new
-renderer uses those inputs; native game INIs are unchanged. Lamp lighting is
+Defaults: shadow strength 1; character softness 0.05; AO radius 0.35/strength 1.25.
+Shadowed lights: Min 10, Med 50, Max all supported lights.
+
+Keep native lighting, material shaders and GPU shadows enabled. A game cap near
+60 FPS can help frame-generation pacing. Native game INIs are unchanged. Lamp lighting is
 preserved by default; rebuilt lamp lighting is an Advanced experiment. It replaces our old
 AO/contact shaders. Bloom, screen-color bounce and edge smoothing stay removed.
 Your own ReShade effects retain their state. Other ReShade hotkeys are disabled.

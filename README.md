@@ -20,6 +20,8 @@ This private candidate includes the public 1.9.5 updater fixes.
 Choose components, close EQ2, then **Apply changes**. **Home** opens ReShade,
 then use **Home → TextureQuest** for feature toggles and Min/Med/Max shadowed lights.
 Further tuning is under **Advanced**. AF uses 16x when enabled.
+Defaults: shadow strength 1, character softness 0.05, AO radius 0.35/strength 1.25.
+Shadowed lights: Min 10, Med 50, Max all supported lights.
 **Numpad \*** switches textures and graphics off/on without changing your choices.
 Each DLSS component has an on/off
 checkbox that keeps its preset. Neural Rendering also has **Advanced** model/pass
@@ -32,6 +34,7 @@ into the world rendering passes before the HUD. It replaces our earlier
 screen-space AO/contact effects. Bloom, screen-color bounce and edge smoothing
 remain removed. Keep native lighting, material shaders and world shadows enabled;
 they supply inputs this renderer needs. Native game INIs are unchanged.
+Keep GPU shadows enabled. A game cap near 60 FPS can help frame-generation pacing.
 Point-light shadows preserve native lamp lighting by default. Rebuilt lamp
 lighting is an Advanced experiment because it changes brightness and falloff.
 This is an unpublished local test. Frame generation includes a pacing/GUI-sharing
