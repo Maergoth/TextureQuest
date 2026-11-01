@@ -91,6 +91,12 @@ class EffectsController {
         return -1;
     }
 public:
+    // The Home-list callback receives a current technique handle. Validate its
+    // exact identity synchronously, outside Lock; never retain it in UI state.
+    static int OwnedTechniqueIndex(Runtime* runtime, Technique technique) {
+        return runtime ? OwnedIndex(runtime, technique) : -1;
+    }
+
     // Init/reload/destroy are metadata-only, even if ReShade raises them from a
     // compiler or shutdown thread. Reload retains all in-session menu requests.
     void Reload(Runtime* runtime, bool = false) {

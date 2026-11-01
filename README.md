@@ -17,8 +17,8 @@ This private candidate includes the public 1.9.5 updater fixes.
 - **DLSS:** unavailable; no DLSS or frame generation is included.
 
 Choose components, close EQ2, then **Apply changes**. **Home** opens ReShade,
-then choose **TextureQuest** for individual checkboxes and live status.
-The Home tab contains the detailed strength controls. **Numpad \*** switches all
+where each effect has a requested switch and running/waiting status.
+Strength controls are below the effect list. **Numpad \*** switches all
 TextureQuest features off/on and remembers those choices for the session.
 
 These are screen-space effects, not a replacement for EQ2's entire renderer.

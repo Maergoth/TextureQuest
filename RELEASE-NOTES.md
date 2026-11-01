@@ -1,8 +1,9 @@
-TextureQuest 1.10.2 private graphics candidate
+TextureQuest 1.10.3 private graphics candidate
 
 - Optional AO, contact shadows, screen-space bounce light, bloom and spatial AA.
 - Home menu input restored while preserving Alt handling.
-- TextureQuest panel shows individual checkboxes and active/depth status.
+- Home effect switches show requested state separately from running/waiting status.
+- Correct valid DX11 2D depth views whose unused layer field is zero.
 - Individual ReShade controls; your texture toggle switches all our features off/on.
 - Depth diagnostic and safe fallback when depth is unavailable.
 - Exact local INI backup/restore support; no unverified native-disable commands.

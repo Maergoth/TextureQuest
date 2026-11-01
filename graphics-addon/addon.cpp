@@ -85,6 +85,8 @@ struct State {
     std::mutex EffectsStatusLock;
     uint64_t EffectsStatusSignature = UINT64_MAX;
     unsigned EffectsStatusLogs = 0;
+    std::string DepthStatusSignature[2];
+    unsigned DepthStatusLogs = 0;
 };
 
 State* Global = nullptr;
@@ -372,59 +374,109 @@ bool ExactEffectText(const char* text, size_t size, const char* expected, size_t
     return tq::ExactEffectText(text, size, expected, capacity);
 }
 
+// TQ_DEPTH_DESCRIPTOR_POLICY_BEGIN
+// Pure copied-descriptor validation; no resource/view handles are retained.
+const char* DepthDescriptorReason(const resource_desc& desc, const resource_view_desc& view) {
+    if (desc.type != resource_type::texture_2d) return "resource_type";
+    if (view.type != resource_view_type::texture_2d) return "view_type";
+    if (desc.texture.samples != 1) return "samples";
+    if (desc.texture.depth_or_layers != 1) return "resource_layers";
+    if (!desc.texture.width || !desc.texture.height || desc.texture.width > 16384 || desc.texture.height > 16384)
+        return "extent";
+    if (!desc.texture.levels || desc.texture.levels > 32) return "resource_mips";
+    if (view.texture.first_level >= desc.texture.levels) return "first_mip";
+    if (!view.texture.levels) return "view_mips";
+    if (view.texture.first_layer != 0) return "first_layer";
+    // D3D11's non-array SRV converter leaves the ignored layers field zero.
+    // This exception is reached only for an exact 2D view of a single-layer 2D resource.
+    if (view.texture.layers != 0 && view.texture.layers != 1 && view.texture.layers != UINT32_MAX)
+        return "view_layers";
+    if (view.texture.levels != UINT32_MAX && view.texture.levels > desc.texture.levels - view.texture.first_level)
+        return "mip_range";
+    bool compatible = false;
+    switch (view.format) {
+    case format::r16_unorm:
+        compatible = desc.texture.format == format::r16_typeless || desc.texture.format == format::d16_unorm || desc.texture.format == view.format;
+        break;
+    case format::r32_float:
+        compatible = desc.texture.format == format::r32_typeless || desc.texture.format == format::d32_float || desc.texture.format == view.format;
+        break;
+    case format::r24_unorm_x8_uint:
+        compatible = desc.texture.format == format::r24_g8_typeless || desc.texture.format == format::d24_unorm_s8_uint ||
+            desc.texture.format == format::d24_unorm_x8_uint || desc.texture.format == view.format;
+        break;
+    case format::r32_float_x8_uint:
+        compatible = desc.texture.format == format::r32_g8_typeless || desc.texture.format == format::d32_float_s8_uint || desc.texture.format == view.format;
+        break;
+    default: return "unsupported_view_format";
+    }
+    return compatible ? nullptr : "incompatible_resource_format";
+}
+// TQ_DEPTH_DESCRIPTOR_POLICY_END
+
+bool RecordDepthResult(unsigned phase, const char* reason, const std::string& facts = {}) {
+    const std::string message = std::string("depth binding: phase=") +
+        (phase == 0 ? "begin_effects_binding" : "effects_present_binding") +
+        " reason=" + (reason ? reason : "accepted") + facts;
+    bool emit = false;
+    {
+        std::lock_guard lock(Global->EffectsStatusLock);
+        if (Global->DepthStatusLogs < 16 && Global->DepthStatusSignature[phase] != message) {
+            Global->DepthStatusSignature[phase] = message;
+            ++Global->DepthStatusLogs;
+            emit = true;
+        }
+    }
+    if (emit) Log(reshade::log::level::info, message);
+    return reason == nullptr;
+}
+
 // Fresh descriptor/readiness query inside the controller's claimed render
-// callback only. It never copies depth, changes Generic Depth or retains an
-// SRV/resource. These are facts about the binding queried now, not proof of
-// world projection, the original game's MSAA or a later draw's exact binding.
-bool OwnedDepthAvailable(effect_runtime* runtime) {
+// callback only. These copied facts describe this query phase, not a later
+// draw's exact binding, world projection or the original game's MSAA.
+bool OwnedDepthAvailable(effect_runtime* runtime, unsigned phase) {
     const auto ready = runtime->find_uniform_variable(tq::EffectsFile, "TQDepthReady");
     const auto depth = runtime->find_texture_variable(tq::EffectsFile, "TQDiagnosticDepth");
-    if (!ready.handle || !depth.handle) return false;
+    if (!ready.handle || !depth.handle) return RecordDepthResult(phase, "missing_uniform_or_texture",
+        " uniform=" + std::to_string(ready.handle != 0) + " texture=" + std::to_string(depth.handle != 0));
     char file[256]{}, name[128]{}, annotation[64]{};
     size_t a = sizeof(file), b = sizeof(name), c = sizeof(annotation);
     runtime->get_uniform_variable_effect_name(ready, file, &a);
     runtime->get_uniform_variable_name(ready, name, &b);
     if (!ExactEffectText(file, a, tq::EffectsFile, sizeof(file)) ||
-        !ExactEffectText(name, b, "TQDepthReady", sizeof(name)) ||
-        !runtime->get_annotation_string_from_uniform_variable(ready, "source", annotation, &c) ||
-        !ExactEffectText(annotation, c, "bufready_depth", sizeof(annotation))) return false;
+        !ExactEffectText(name, b, "TQDepthReady", sizeof(name))) return RecordDepthResult(phase, "uniform_identity");
+    if (!runtime->get_annotation_string_from_uniform_variable(ready, "source", annotation, &c) ||
+        !ExactEffectText(annotation, c, "bufready_depth", sizeof(annotation))) return RecordDepthResult(phase, "source_annotation");
     bool available = false;
     runtime->get_uniform_value_bool(ready, &available, 1);
-    if (!available) return false;
+    if (!available) return RecordDepthResult(phase, "readiness_false");
     a = sizeof(file); b = sizeof(name);
     runtime->get_texture_variable_effect_name(depth, file, &a);
     runtime->get_texture_variable_name(depth, name, &b);
     if (!ExactEffectText(file, a, tq::EffectsFile, sizeof(file)) ||
-        !ExactEffectText(name, b, "TQDiagnosticDepth", sizeof(name))) return false;
+        !ExactEffectText(name, b, "TQDiagnosticDepth", sizeof(name))) return RecordDepthResult(phase, "texture_identity");
     resource_view linear{}, srgb{};
     runtime->get_texture_binding(depth, &linear, &srgb);
-    if (!linear.handle) return false; // An sRGB view is never substituted.
+    if (!linear.handle) return RecordDepthResult(phase, "linear_unbound"); // Never substitute sRGB.
     auto* dev = runtime->get_device();
-    if (!dev) return false;
+    if (!dev) return RecordDepthResult(phase, "no_device");
+    std::string facts = " api=" + std::to_string(static_cast<uint32_t>(dev->get_api()));
     const auto resource = dev->get_resource_from_view(linear);
-    if (!resource.handle) return false;
+    if (!resource.handle) return RecordDepthResult(phase, "no_resource", facts);
     const auto view = dev->get_resource_view_desc(linear);
     const auto desc = dev->get_resource_desc(resource);
-    if (desc.type != resource_type::texture_2d || view.type != resource_view_type::texture_2d ||
-        desc.texture.samples != 1 || desc.texture.depth_or_layers != 1 ||
-        !desc.texture.width || !desc.texture.height || desc.texture.width > 16384 || desc.texture.height > 16384 ||
-        !desc.texture.levels || desc.texture.levels > 32 || view.texture.first_level >= desc.texture.levels ||
-        !view.texture.levels || view.texture.first_layer != 0 ||
-        (view.texture.layers != 1 && view.texture.layers != UINT32_MAX) ||
-        (view.texture.levels != UINT32_MAX && view.texture.levels > desc.texture.levels - view.texture.first_level))
-        return false;
-    switch (view.format) {
-    case format::r16_unorm:
-        return desc.texture.format == format::r16_typeless || desc.texture.format == format::d16_unorm || desc.texture.format == view.format;
-    case format::r32_float:
-        return desc.texture.format == format::r32_typeless || desc.texture.format == format::d32_float || desc.texture.format == view.format;
-    case format::r24_unorm_x8_uint:
-        return desc.texture.format == format::r24_g8_typeless || desc.texture.format == format::d24_unorm_s8_uint ||
-            desc.texture.format == format::d24_unorm_x8_uint || desc.texture.format == view.format;
-    case format::r32_float_x8_uint:
-        return desc.texture.format == format::r32_g8_typeless || desc.texture.format == format::d32_float_s8_uint || desc.texture.format == view.format;
-    default: return false;
-    }
+    facts += " resource_type=" + std::to_string(static_cast<uint32_t>(desc.type)) +
+        " view_type=" + std::to_string(static_cast<uint32_t>(view.type)) +
+        " view_format=" + std::to_string(static_cast<uint32_t>(view.format));
+    if (desc.type == resource_type::texture_2d) facts +=
+        " resource_format=" + std::to_string(static_cast<uint32_t>(desc.texture.format)) +
+        " width=" + std::to_string(desc.texture.width) + " height=" + std::to_string(desc.texture.height) +
+        " resource_layers=" + std::to_string(desc.texture.depth_or_layers) +
+        " samples=" + std::to_string(desc.texture.samples) + " resource_mips=" + std::to_string(desc.texture.levels);
+    if (view.type == resource_view_type::texture_2d) facts +=
+        " first_mip=" + std::to_string(view.texture.first_level) + " view_mips=" + std::to_string(view.texture.levels) +
+        " first_layer=" + std::to_string(view.texture.first_layer) + " view_layers=" + std::to_string(view.texture.layers);
+    return RecordDepthResult(phase, DepthDescriptorReason(desc, view), facts);
 }
 
 void OnInitEffectRuntime(effect_runtime* runtime) {
@@ -443,8 +495,9 @@ bool OnTechniqueState(effect_runtime* runtime, effect_technique technique, bool 
     return Global->Effects.TechniqueState(runtime, technique, enabled, Global->Config.Effects);
 }
 
-void ReconcileEffects(effect_runtime* runtime) {
-    if (!Global->Effects.Reconcile(runtime, OwnedEffectsEnabled(), OwnedDepthAvailable)) return;
+void ReconcileEffects(effect_runtime* runtime, unsigned phase) {
+    if (!Global->Effects.Reconcile(runtime, OwnedEffectsEnabled(),
+        [phase](effect_runtime* current) { return OwnedDepthAvailable(current, phase); })) return;
     const auto state = Global->Effects.Snapshot(runtime);
     const bool selected = Global->Config.Effects, original = Global->Original.load();
     const uint64_t signature = state.Requested | (uint64_t(state.Available) << 6) |
@@ -467,13 +520,35 @@ void ReconcileEffects(effect_runtime* runtime) {
 }
 
 void OnBeginEffects(effect_runtime* runtime, command_list*, resource_view, resource_view) {
-    ReconcileEffects(runtime);
+    ReconcileEffects(runtime, 0);
 }
 
 void OnReshadePresent(effect_runtime* runtime) {
     // Runs even with no active FX, so the next Upscaled frame can restore the
     // requested effects. This query is phase-qualified, not a draw observation.
-    ReconcileEffects(runtime);
+    ReconcileEffects(runtime, 1);
+}
+
+bool OnOverlayTechnique(effect_runtime* runtime, effect_technique technique) {
+    if (!Global) return false;
+    const int owned = Global->Effects.OwnedTechniqueIndex(runtime, technique);
+    if (owned < 0) return false; // Preserve ReShade's controls for every other FX.
+    const size_t index = static_cast<size_t>(owned);
+    const bool selected = Global->Config.Effects, original = Global->Original.load();
+    const auto state = Global->Effects.Snapshot(runtime);
+    // Keep the checkbox last so ReShade's existing focus, drag and context-menu
+    // handling still targets that item and its normal lower strength editor.
+    ImGui::TextDisabled("[%s]", tq::EffectStatus(state, index, selected, original));
+    ImGui::SameLine();
+    bool requested = (state.Requested & (1u << index)) != 0;
+    const std::string label = std::string(tq::EffectNames[index]) + " [" + tq::EffectsFile + "]";
+    ImGui::BeginDisabled(!selected);
+    if (ImGui::Checkbox(label.c_str(), &requested))
+        Global->Effects.SetRequested(runtime, index, requested);
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip("Checked = your choice. Status = what is running.\nDepth effects wait for depth; Original temporarily disables all.");
+    return true;
 }
 
 void OnTextureQuestOverlay(effect_runtime* runtime) {
@@ -532,6 +607,7 @@ void Start(HMODULE module) {
     reshade::register_event<reshade::addon_event::reshade_set_technique_state>(&OnTechniqueState);
     reshade::register_event<reshade::addon_event::reshade_begin_effects>(&OnBeginEffects);
     reshade::register_event<reshade::addon_event::reshade_present>(&OnReshadePresent);
+    reshade::register_event<reshade::addon_event::reshade_overlay_technique>(&OnOverlayTechnique);
     reshade::register_overlay("TextureQuest", &OnTextureQuestOverlay);
     Global->Worker = std::thread(StockWorker);
     Global->Shortcut->Start();
@@ -544,6 +620,7 @@ void Stop() {
     if (!Global)
         return;
     reshade::unregister_overlay("TextureQuest", &OnTextureQuestOverlay);
+    reshade::unregister_event<reshade::addon_event::reshade_overlay_technique>(&OnOverlayTechnique);
     reshade::unregister_event<reshade::addon_event::create_resource>(&OnCreateResource);
     reshade::unregister_event<reshade::addon_event::init_resource>(&OnInitResource);
     reshade::unregister_event<reshade::addon_event::destroy_resource>(&OnDestroyResource);
