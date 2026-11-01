@@ -37,7 +37,23 @@ def fake_app(folder):
     app.release=dict(schema='texturequest-release-v3',texture_version='1.2.3',version='1.3.7',archives=[],texture_count=0)
     app.update_check={'installer':dict(status='verified',update_available=True,version='1.3.6',bytes=10,sha256='a'*64)}
     app.game=types.SimpleNamespace(get=lambda:'')
-    for name in ('game_entry','menu_button','install_button','launch_button','version_label','app_update_label','pack_update_label','installer_update_button','pack_versions_label','pack_description','download_label','download_button','install_label','menu','progress','overall_label','pause_button'):
+    # Current graphics-only controls use these fields even while an app-only
+    # worker is active. Keep normal refresh_controls/cache guards under test.
+    app.mode_controls=[Widget()];app.install_mode=types.SimpleNamespace(get=lambda:'graphics')
+    app.shortcut={'vk':106,'modifiers':0};app.dds_source=None;app.initial_pack=None
+    app.loader_error='';app.loader_status_unknown=False;app.cache_guard=None
+    app.legacy_uninstall_index=0;app.post_update_setup=False
+    app.graphics_manager=MagicMock()
+    app.graphics_manager.status.return_value=dict(installed=False,running=False,active_sessions=0,
+        available=True,message='Invented available graphics runtime',shortcut=app.shortcut)
+    for name in ('legacy_in_use','cache_in_use','downloads_in_use'):
+        getattr(app.graphics_manager,name).return_value=False
+    app.loader_manager=MagicMock()
+    app.loader_manager.status.return_value=dict(installed=False,running=False,active_sessions=0,available=False,message='')
+    app.loader_manager.cache_in_use.return_value=False
+    app.upgrade=MagicMock();app.upgrade.needed.return_value=False
+    app.dds_store=MagicMock();app.dds_store.summary.return_value=None
+    for name in ('game_entry','menu_button','install_button','launch_button','version_label','app_update_label','pack_update_label','installer_update_button','pack_versions_label','pack_description','download_label','download_button','install_label','menu','progress','overall_label','pause_button','shortcut_button'):
         setattr(app,name,Widget())
     app.controls=[app.install_button,app.launch_button,app.download_button,app.installer_update_button]
     app.messages=[];app.set_message=lambda text,error=False:app.messages.append((text,error))

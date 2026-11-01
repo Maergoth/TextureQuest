@@ -23,9 +23,9 @@ The installer downloads only our generated/corrected channels from [TextureQuest
 
 **To remove Graphics hook:** close EQ2, open TextureQuest and click **Uninstall graphics hook**. Only the files it added and still recognises are removed; ReShade is removed only if TextureQuest installed it and it is unchanged. Saved DDS files are kept. If you previously used Replace mode, use the official patcher once to restore stock PAKs.
 
-**Upgrading:** close EQ2 and update the app. Setup resumes automatically, replaces old owned hooks and removes verified obsolete PAK/DDS caches after success. Custom textures, settings and receipts are kept. If a step needs attention, use **Finish upgrade**. Changed or unknown files are preserved.
+**Upgrading:** close EQ2 and use **Get app update**. After the app restarts, setup prepares and verifies the replacement before refreshing the owned hook. Verified obsolete PAK/DDS caches are removed after success. Custom textures, settings and receipts are kept. If a step needs attention, use **Finish upgrade**. Changed or unknown files are preserved.
 
-Version checks only read update metadata. Updates reuse unchanged files and start required downloads while the remaining comparison continues. Files are verified before installation.
+Checking for updates leaves your installed hook and saved textures unchanged. Version checks only read update metadata. Updates reuse unchanged files and start required downloads while the remaining comparison continues. Files are verified before installation.
 
 **Previously used Replace PAK files?** If setup asks, run the official EQ2 launcher → **Advanced Tools → Validate Game Assets** once. Close the launcher, then click **Finish upgrade**. TextureQuest cannot restore original game files itself.
 

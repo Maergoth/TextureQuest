@@ -1,4 +1,4 @@
-TextureQuest 1.9.4 — Windows x64
+TextureQuest 1.9.5 — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract this app outside the game folder; keep data beside the EXE.
@@ -25,7 +25,8 @@ only owned, unchanged hook files and keeps the local texture cache.
 After patches, unchanged assets still match. Verify / Update textures refreshes
 the map; changed or unavailable sources stay original with a coverage report.
 Get app update downloads, verifies, replaces and restarts the app, preserving data.
-Each new app version reinstalls its owned hook and reapplies ReShade defaults.
+After the app restarts, setup verifies the replacement before refreshing its hook.
+Checking for updates leaves your hook and saved textures unchanged.
 
 Includes third-party notices. Graphics hooks are not officially approved;
 account-policy risk is unknown. The unfinished generation batch is not included.

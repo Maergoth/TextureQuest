@@ -6,9 +6,16 @@ from texture_swapper import core
 
 
 class HookRefreshUI(GraphicsOnlyUI):
+    def setUp(self):
+        super().setUp()
+        # The new coordinator has its own closed-game leaf; these fixtures
+        # represent only invented D game directories, never actual processes.
+        self.stack.enter_context(patch('texturequest_setup.ensure_closed'))
+        self.stack.enter_context(patch.object(self.manager, '_games_open', return_value=0))
+
     def test_new_version_reinstalls_same_dll_and_hides_tutorial_with_cached_textures(self):
         from test_channels import fixture
-        game, source, index, examples, choices, opener, requests = fixture(self.root/'channel-current')
+        game, source, index, examples, choices, opener, requests = fixture(self.root/'channel-current', (4,))
         self.game = game; self.ui.game.set(str(game))
         prepared = self.ui.dds_store.prepare(source, game, choices, opener=opener)
         self.manager.install(game, prepared)
@@ -45,7 +52,7 @@ class HookRefreshUI(GraphicsOnlyUI):
     def test_auto_refresh_cannot_downgrade_a_newer_hook(self):
         status = self.ui.graphics_status(str(self.game))
         status['installed_newer_app'] = True
-        with patch.object(self.ui, 'graphics_status', return_value=status), \
+        with patch.object(self.manager, 'status', return_value=status), \
              patch.object(self.ui, 'begin', side_effect=lambda kind,message,action: action()), \
              patch.object(app, 'fetch_dds_source') as fetch:
             with self.assertRaisesRegex(ValueError, 'newer TextureQuest app'):

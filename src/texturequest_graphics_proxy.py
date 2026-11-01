@@ -532,12 +532,14 @@ class GraphicsManager:
         while watcher and _alive(watcher,Path(record['runtime_dir'])/'TextureQuestGraphics.exe'):
             need(time.monotonic()<end,'Legacy watcher stop not confirmed. Preserve its files.');time.sleep(.05)
 
-    def uninstall(self, game, progress=None):
+    def uninstall(self, game, progress=None, *, expected_record=...):
         game = core._plain(core.validate_game(game).parent)
         ensure_closed()
         kept = []
         with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
             doc = self._record(game)
+            if expected_record is not ...:
+                need(doc == expected_record, 'Graphics installation record changed. The installed hook was kept.')
             if not doc or doc['phase'] == 'uninstalled':
                 if self._proxy_170(game):
                     kept = self._uninstall_proxy_170(game)

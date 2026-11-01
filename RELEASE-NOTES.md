@@ -1,10 +1,10 @@
-TextureQuest 1.9.4
+TextureQuest 1.9.5
 
-- Fast update checks: compare verified version metadata without scanning the texture cache.
-- App and texture checks run together and show results as they arrive.
-- Updates reuse unchanged textures and start required downloads while the remaining files are compared.
-- Full verification stays in installation and explicit Verify. Interrupted downloads remain resumable.
+- Checking for updates leaves your working graphics hook installed.
+- App updates take priority over texture setup.
+- Setup prepares and verifies the replacement before removing the old hook.
+- If a newer app release appears after you checked, the updater refreshes the target automatically.
+- Preparation failures keep the existing hook and saved textures intact.
 
-Get app update preserves your data and refreshes the owned hook automatically.
-The tutorial stays disabled. Texture data remains 1.3.0; no renderer, graphics
-effects or DLSS changes are included in this bug-fix release.
+The app restarts after updating and preserves data. Texture data remains 1.3.0;
+this release does not change the graphics runtime or add experimental effects.
