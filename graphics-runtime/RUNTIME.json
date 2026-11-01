@@ -1,20 +1,20 @@
 {
-  "schema": "texturequest-graphics-runtime-v5",
+  "schema": "texturequest-graphics-runtime-v6",
   "addon": "TextureQuest.addon64",
   "reshade": "ReShade64.dll",
-  "reshade_version": "6.8.0",
+  "reshade_version": "6.8.0.1-private",
   "reshade_build": "addon",
   "map_schema": "TQMAP002",
   "files": [
     {
       "name": "TextureQuest.addon64",
       "bytes": 351232,
-      "sha256": "9386acf0653324f70814b3160194782589d890188c0220ec29c57feff3be8f10"
+      "sha256": "646461501bf52b8609b093d73747230185e98b63a7275470dc65baddbf82b0f0"
     },
     {
       "name": "ReShade64.dll",
-      "bytes": 5592064,
-      "sha256": "0cee63f9c9f13f3ac909c5b4903f4dbb4b719a7ab3b4f13b0deaf83c814b94f7"
+      "bytes": 5391360,
+      "sha256": "bdf28a5012b58017444b8aaa8fc973ebf92d3105819a8fe674c2afe86d3a988f"
     },
     {
       "name": "licenses/ReShade-d3d12.txt",
@@ -48,14 +48,76 @@
     },
     {
       "name": "effects/TQEffects.fx",
-      "bytes": 5877,
-      "sha256": "6a6ad2cb85693cb7ff13e50d51a73f3b930abe848b2e4db1a5657f8287a77feb"
+      "bytes": 24467,
+      "sha256": "653f511c837d4ba50fcc10f90ffe5859e44e28880c16c42a1e385b30a12d79a5"
+    },
+    {
+      "name": "licenses/ReShade-LICENSE.md.txt",
+      "bytes": 1481,
+      "sha256": "237ded5b8344f820113efab1e65e91e1f159d9202c5b4856606a0590d3ffdab0"
+    },
+    {
+      "name": "licenses/ReShade-deps-imgui-LICENSE.txt.txt",
+      "bytes": 1104,
+      "sha256": "55e058cc5899e6077a819ad1005d6d1f4528f65ae100795c9692f9fa6525a8ce"
+    },
+    {
+      "name": "licenses/ReShade-deps-minhook-LICENSE.txt.txt",
+      "bytes": 4365,
+      "sha256": "d5c2224982b0b95a16b098a561335fa93f3eaf4d0aa964b7843edb986df78dc8"
+    },
+    {
+      "name": "licenses/ReShade-deps-stb-LICENSE.txt",
+      "bytes": 2510,
+      "sha256": "bebfe904b14301657e4e5d655c811d51fd31b97c455b9cc2d8600d6bac6cff63"
+    },
+    {
+      "name": "licenses/ReShade-deps-glad-LICENSE.txt",
+      "bytes": 3014,
+      "sha256": "cbb325cd4ac5bd06717ffa34a322b984f9d285e4c67c8ca1b7380d6ef08c2a77"
+    },
+    {
+      "name": "licenses/ReShade-deps-utfcpp-LICENSE.txt",
+      "bytes": 1338,
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+    },
+    {
+      "name": "licenses/ReShade-deps-spirv-LICENSE.txt",
+      "bytes": 1309,
+      "sha256": "9b243f6f0bf44e295ff411a0f7b7642d1d0dff7cdc42507e9f7206f439e51b5a"
+    },
+    {
+      "name": "licenses/ReShade-deps-vma-LICENSE.txt.txt",
+      "bytes": 1099,
+      "sha256": "8d70e4cf2a9941f6454da71cd60e38484dd3e34810c824760d550e982af6d97a"
+    },
+    {
+      "name": "licenses/ReShade-deps-openvr-LICENSE.txt",
+      "bytes": 1488,
+      "sha256": "f56ff606104d4ef18e617921a75c73ad73b5a1a1d70c69590c29de16919e04ad"
+    },
+    {
+      "name": "licenses/ReShade-deps-openxr-LICENSE.txt",
+      "bytes": 11560,
+      "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+    },
+    {
+      "name": "licenses/ReShade-deps-jxl_simple_lossless-LICENSE.txt",
+      "bytes": 1508,
+      "sha256": "8405932022a556380c2d8c272eff154a923feb197233f348ce5f7334fb0a5ede"
     }
   ],
   "effects": {
-    "schema": "texturequest-effects-runtime-v1",
+    "schema": "texturequest-effects-runtime-v2",
     "shader": "effects/TQEffects.fx",
     "effect_name": "TQEffects.fx",
-    "technique": "TQBloom"
+    "techniques": [
+      "TQAmbientOcclusion",
+      "TQContactShadows",
+      "TQIndirectLighting",
+      "TQBloom",
+      "TQAntiAliasing",
+      "TQDepthDiagnostic"
+    ]
   }
 }

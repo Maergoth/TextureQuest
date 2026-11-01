@@ -444,7 +444,7 @@ class TextureQuestApp:
         self.component_controls = {}
         for key, caption, variable, hint in [
             ('textures', 'Textures (required)', self.component_textures, 'Our generated textures. The in-game toggle switches them off too.'),
-            ('effects', 'Graphical Effects · Glow preview', self.component_effects, 'Optional gentle glow. Uses the same toggle as textures. Also loads enabled effects in your existing ReShade preset. AO, shadows and scene lighting are still in development.'),
+            ('effects', 'Graphical Effects · AO, shadows, light, bloom, AA', self.component_effects, 'Screen-space AO, contact shadows, bounce light, bloom and edge AA. Adjust each in ReShade (Home). Your texture toggle switches all TextureQuest features off. Native lighting/world shadows remain in use.'),
             ('dlss', 'DLSS · In development', self.component_dlss, 'Not included in this preview. Still in development.')]:
             row = tk.Frame(component_area, bg=WHITE)
             row.pack(fill='x')
@@ -1244,6 +1244,93 @@ class TextureQuestApp:
             self.root.destroy()
 
 
+class LocalBuildInstallUI:
+    """Explicit packaged CLI install intent, using the normal updater engine."""
+    def __init__(self, root, archive, install_dir):
+        self.root, self.archive, self.install_dir = root, archive, install_dir
+        self.events = queue.Queue()
+        self.started = self.busy = self.closing = False
+        root.title("TextureQuest — Install local build")
+        root.geometry("620x220")
+        root.minsize(540, 200)
+        root.configure(bg=BG)
+        body = tk.Frame(root, bg=BG, padx=24, pady=20)
+        body.pack(fill="both", expand=True)
+        tk.Label(body, text="Install local build " + APP_VERSION, bg=BG, fg=INK,
+                 font=("Segoe UI", 17, "bold"), anchor="w").pack(fill="x")
+        tk.Label(body, text=str(install_dir), bg=BG, fg=MUTED, anchor="w",
+                 wraplength=560).pack(fill="x", pady=(6, 12))
+        self.status = tk.Label(body, text="Preparing local installation…", bg=BG, fg=INK,
+                               anchor="w", justify="left", wraplength=560)
+        self.status.pack(fill="x")
+        self.progress = ttk.Progressbar(body, mode="indeterminate")
+        self.progress.pack(fill="x", pady=(12, 8))
+        self.close_button = ttk.Button(body, text="Close", command=self.close)
+        self.close_button.pack(side="right")
+        root.protocol("WM_DELETE_WINDOW", self.close)
+        root.after_idle(self.start)
+        root.after(100, self.poll)
+
+    def start(self):
+        if self.started:
+            return
+        self.started = self.busy = True
+        self.close_button.configure(state="disabled")
+        self.progress.start(12)
+        def work():
+            try:
+                from texturequest_self_update import stage_local_build_install, launch_updater
+                request = stage_local_build_install(self.archive, app_dir=self.install_dir, running_version=APP_VERSION,
+                    report=lambda value: self.events.put(("progress", dict(value))))
+                ready = launch_updater(request)
+                self.events.put(("ready", request, ready))
+            except Exception as error:
+                self.events.put(("error", str(error) or type(error).__name__))
+        threading.Thread(target=work, daemon=True).start()
+
+    def poll(self):
+        try:
+            while True:
+                event = self.events.get_nowait()
+                if event[0] == "progress":
+                    value = event[1]
+                    self.status.configure(text=str(value.get("message") or "Preparing local installation…"))
+                    done, total = value.get("done", 0), value.get("total", 0)
+                    if type(done) is int and type(total) is int and total > 0:
+                        self.progress.stop()
+                        self.progress.configure(mode="determinate", maximum=total, value=max(0, min(done, total)))
+                elif event[0] == "ready":
+                    request, ready = event[1:]
+                    if (not isinstance(request, dict) or not isinstance(ready, dict)
+                            or ready.get("status") != "helper_ready"
+                            or not request.get("nonce") or not request.get("request_path")
+                            or any(ready.get(key) != value for key, value in request.items())):
+                        self.events.put(("error", "The updater did not confirm this local installation. The installed app was kept."))
+                        continue
+                    self.status.configure(text="Restarting TextureQuest; saved textures and settings are kept.")
+                    self.closing = True
+                    # Only this actual candidate GUI exits. The retained helper
+                    # parent handle must signal before any target root moves.
+                    self.root.destroy()
+                    return
+                elif event[0] == "error":
+                    self.busy = False
+                    self.progress.stop()
+                    self.status.configure(text="Local installation stopped: " + event[1], fg=ERROR)
+                    self.close_button.configure(state="normal")
+        except queue.Empty:
+            pass
+        if not self.closing:
+            self.root.after(100, self.poll)
+
+    def close(self):
+        if self.busy:
+            self.status.configure(text="Please let verification and the safe restart finish.")
+            return
+        self.closing = True
+        self.root.destroy()
+
+
 def finish_app_update_startup(app, request, nonce, *, failed=False, smoke_test=False):
     """Acknowledge only an initialized visible app; rollback notices never ack."""
     app.root.update_idletasks()
@@ -1276,8 +1363,22 @@ def main(argv=None):
     modes.add_argument("--apply-app-update", type=Path, help=argparse.SUPPRESS)
     modes.add_argument("--app-update-ack", type=Path, help=argparse.SUPPRESS)
     modes.add_argument("--app-update-failed", type=Path, help=argparse.SUPPRESS)
+    modes.add_argument("--install-build", type=Path, metavar="ZIP", help="Install this packaged local build into an existing portable app")
+    parser.add_argument("--install-dir", type=Path, help="Existing portable TextureQuest folder for --install-build")
     parser.add_argument("--update-nonce", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.install_build:
+        if (not args.install_dir or args.data_dir or args.game_dir or args.pack or args.verify_runtime
+                or args.update_nonce or args.smoke_test):
+            parser.error("Local installation requires --install-dir and cannot combine other operations or custom data")
+        if not getattr(sys, "frozen", False):
+            parser.error("Local-build installation requires the packaged TextureQuest app")
+        root = tk.Tk()
+        LocalBuildInstallUI(root, args.install_build, args.install_dir)
+        root.mainloop()
+        return 0
+    if args.install_dir:
+        parser.error("--install-dir requires --install-build")
     update_mode = args.apply_app_update or args.app_update_ack or args.app_update_failed
     if bool(update_mode) != bool(args.update_nonce):
         parser.error("App update requests require their matching nonce")

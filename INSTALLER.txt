@@ -1,36 +1,36 @@
-TextureQuest 1.10.0 preview — Windows x64
+TextureQuest 1.10.0 private preview — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
-2. Close EQ2. Extract this app outside the game folder; keep data beside the EXE.
-3. Choose your game folder, then Install graphics hook. Setup is automatic.
+2. Close EQ2. Extract outside the game folder; keep data beside the EXE.
+3. Select your game folder and components, then Install graphics hook.
 4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
-Numpad * switches Original/Upscaled. Use Shortcut to change it.
-Textures are required. Graphical Effects is an optional glow preview; DLSS is
-still in development. The same key toggles all selected TextureQuest features.
-Close EQ2 and Apply changes after changing components. Your textures stay cached.
-Glow also loads enabled effects from your ReShade preset. It does not replace
-EQ2's AO, shadows or scene lighting. No native game graphics settings are changed.
-Home opens ReShade. Its other configurable shortcuts are disabled. Settings →
-Reset ReShade shortcuts reapplies this while keeping your TextureQuest shortcut.
+Textures are required. Graphical Effects adds AO, contact shadows, screen-space
+bounce light, bloom and edge AA. Home opens ReShade for individual switches and
+strengths. Numpad * switches all TextureQuest features Original/Upscaled; use
+Shortcut to change it. Apply changes with EQ2 closed after selecting components.
+DLSS and frame generation are unavailable.
 
-About 17.7 GB downloads: our generated/corrected channels and lookup metadata.
-The app builds about 27.8 GB of local textures using your own game files for
-protected original channels, DDS headers and tails. Those parts are not downloaded.
-No game PAK writes, manual mapping, extra tools or background watcher. Keep data.
-Verified cached work is reused; interrupted downloads resume safely.
-Version checks do not scan your textures. Updates reuse unchanged files and
-start required downloads while the remaining files are compared.
+These effects supplement native rendering. Keep native lighting/world shadows.
+Managed game INI changes get full local backups before edits and safe restoration
+on uninstall. No native disable commands are enabled in this preview.
+Selecting effects also loads enabled effects in your existing ReShade preset.
+Your own effects retain their state. Other ReShade hotkeys are disabled.
 
-The hook uses stock full-add-on ReShade. Existing compatible ReShade is reused;
-otherwise official ReShade is added as dxgi.dll. Unknown proxies stay untouched.
-Close EQ2 before installing, uninstalling or activating updates. Uninstall removes
-only owned, unchanged hook files and keeps the local texture cache.
+About 17.7 GB downloads: only our generated/corrected channels and metadata.
+The app builds about 27.8 GB locally using your game files for protected channels,
+DDS headers and tails. Keep data. No game PAK changes or background watcher.
 
-After patches, unchanged assets still match. Verify / Update textures refreshes
-the map; changed or unavailable sources stay original with a coverage report.
-Get app update downloads, verifies, replaces and restarts the app, preserving data.
-Each new app version reinstalls its owned hook and reapplies ReShade defaults.
+Get app update verifies, replaces and restarts the app, preserving data, then
+refreshes the owned hook through normal setup. Verified cached textures are reused.
+After a game patch, Verify / Update textures refreshes the stock matching map.
+Changed or unavailable assets remain original with a coverage report.
 
-Includes third-party notices. Graphics hooks are not officially approved;
-account-policy risk is unknown. The unfinished generation batch is not included.
+Close EQ2 before install, update or uninstall. Uninstall removes only unchanged
+owned files. Later user settings and unknown files are preserved. The included
+provider is a private ReShade 6.8 source build with a keyboard compatibility fix;
+existing compatible ReShade is reused. Third-party notices are included.
+
+This is a private test, not a public release. Appearance, depth setup, HUD effects
+and performance still need the combined EQ2 test. Graphics hooks have no official
+approval. The unfinished texture generation batch is not included.

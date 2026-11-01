@@ -1,88 +1,137 @@
 #pragma once
-// Owns only TextureQuest's exact FX technique. The shortcut thread changes the
-// existing atomic master state; runtime/render callbacks apply it here.
+// Project-owned effects only. A menu request is distinct from the effective
+// master/depth gate, so a disabled effect is never forced back on every frame.
+#include <array>
+#include <cstdint>
 #include <cstring>
 #include <mutex>
-#include <unordered_map>
+#include <thread>
 #include <utility>
 
 namespace tq {
+inline constexpr char EffectsFile[] = "TQEffects.fx";
+inline constexpr std::array<const char*, 6> EffectNames = {
+    "TQAmbientOcclusion", "TQContactShadows", "TQIndirectLighting",
+    "TQBloom", "TQAntiAliasing", "TQDepthDiagnostic"
+};
+inline constexpr uint32_t DefaultEffectRequests = 0x1f; // Debug is opt-in.
+inline constexpr uint32_t DepthEffectRequests = 0x27;
+inline constexpr size_t MaxEffectRuntimes = 4;
+inline bool EffectsEnabled(bool selected, bool original) noexcept { return selected && !original; }
 
-inline bool EffectsEnabled(bool selected, bool original) noexcept {
-    return selected && !original;
+// Public SDK docs include NUL in returned sizes; ReShade 6.8 caller-buffer
+// getters return the copied character count instead. Accept either exact count,
+// but always require capacity and byte equality for the entire name PLUS NUL.
+inline bool ExactEffectText(const char* text, size_t reported, const char* expected, size_t capacity) {
+    if (!text || !expected) return false;
+    const size_t length = std::strlen(expected);
+    return length < capacity && (reported == length || reported == length + 1) &&
+        std::memcmp(text, expected, length + 1) == 0;
 }
 
-// Runtime is effect_runtime in the add-on and a CPU fake in the self-check.
-// No graphics resources or device operations are needed by this controller.
-template <class Runtime>
+// Runtime is the real SDK interface or the CPU fake. Only runtime identity,
+// requested bits and render-thread identity survive a callback: no FX, SRV or
+// resource handle is cached or reused after reload/destroy.
+template<class Runtime>
 class EffectsController {
     using Technique = decltype(std::declval<Runtime*>()->find_technique("", ""));
-    struct Entry { Technique Handle{}; };
+    struct Entry {
+        Runtime* RuntimeIdentity = nullptr;
+        std::thread::id RenderThread{};
+        uint32_t Requested = DefaultEffectRequests;
+    };
     std::mutex Lock;
-    std::unordered_map<Runtime*, Entry> Runtimes;
-
-    static Technique FindOwned(Runtime* runtime) {
-        Technique handle = runtime->find_technique("TQEffects.fx", "TQBloom");
-        if (!handle.handle)
-            return {};
-        // A filename and technique name form the ownership boundary. Never
-        // search globally or accept another effect's same-named technique.
+    std::array<Entry, MaxEffectRuntimes> Entries{};
+    inline static thread_local const EffectsController* Writing = nullptr;
+    struct WriteScope {
+        const EffectsController* Previous;
+        explicit WriteScope(const EffectsController* value) : Previous(Writing) { Writing = value; }
+        ~WriteScope() { Writing = Previous; }
+    };
+    Entry* Find(Runtime* runtime) {
+        for (auto& entry : Entries) if (runtime && entry.RuntimeIdentity == runtime) return &entry;
+        return nullptr;
+    }
+    Entry* Ensure(Runtime* runtime) {
+        if (!runtime) return nullptr;
+        if (auto* entry = Find(runtime)) return entry;
+        for (auto& entry : Entries) if (!entry.RuntimeIdentity) {
+            entry = {runtime, {}, DefaultEffectRequests};
+            return &entry;
+        }
+        return nullptr;
+    }
+    static bool Exact(const char* text, size_t size, const char* expected, size_t capacity) {
+        return ExactEffectText(text, size, expected, capacity);
+    }
+    static int OwnedIndex(Runtime* runtime, Technique technique) {
+        if (!technique.handle) return -1;
         char file[256]{}, name[128]{};
-        size_t file_size = sizeof(file), name_size = sizeof(name);
-        runtime->get_technique_effect_name(handle, file, &file_size);
-        runtime->get_technique_name(handle, name, &name_size);
-        file[sizeof(file) - 1] = '\0';
-        name[sizeof(name) - 1] = '\0';
-        if (file_size > sizeof(file) || name_size > sizeof(name) ||
-            std::strcmp(file, "TQEffects.fx") || std::strcmp(name, "TQBloom"))
-            return {};
-        return handle;
+        size_t a = sizeof(file), b = sizeof(name);
+        runtime->get_technique_effect_name(technique, file, &a);
+        runtime->get_technique_name(technique, name, &b);
+        if (!Exact(file, a, EffectsFile, sizeof(file))) return -1;
+        for (size_t i = 0; i < EffectNames.size(); ++i)
+            if (Exact(name, b, EffectNames[i], sizeof(name))) return static_cast<int>(i);
+        return -1;
     }
-
-    static void Apply(Runtime* runtime, const Entry& entry, bool enabled) {
-        if (entry.Handle.handle && runtime->get_technique_state(entry.Handle) != enabled)
-            runtime->set_technique_state(entry.Handle, enabled);
-    }
-
 public:
-    // Initialization may precede asynchronous FX compilation. The later
-    // reloaded-effects event supplies the newly valid handles in that case.
-    void Reload(Runtime* runtime, bool enabled) {
-        if (!runtime)
-            return;
-        std::lock_guard lock(Lock);
-        Entry& entry = Runtimes[runtime];
-        entry = {}; // All previous technique handles are invalid after reload.
-        entry.Handle = FindOwned(runtime);
-        Apply(runtime, entry, enabled);
+    // Init/reload/destroy are metadata-only, even if ReShade raises them from a
+    // compiler or shutdown thread. Reload retains all in-session menu requests.
+    void Reload(Runtime* runtime, bool = false) {
+        std::lock_guard guard(Lock);
+        Ensure(runtime);
     }
-
-    // Per-frame, never per-draw. Resolve once for a runtime already alive when
-    // this add-on was loaded; misses are retried only at an FX reload event.
-    void Reconcile(Runtime* runtime, bool enabled) {
-        if (!runtime)
-            return;
-        std::lock_guard lock(Lock);
-        auto [it, added] = Runtimes.try_emplace(runtime);
-        if (added)
-            it->second.Handle = FindOwned(runtime);
-        Apply(runtime, it->second, enabled);
-    }
-
-    // A resetting/destroying runtime must not receive any more API calls.
     void Forget(Runtime* runtime) {
-        std::lock_guard lock(Lock);
-        Runtimes.erase(runtime);
+        std::lock_guard guard(Lock);
+        if (auto* entry = Find(runtime)) *entry = {};
+    }
+    void Clear() {
+        std::lock_guard guard(Lock);
+        Entries = {}; // No SDK call from AddonUninit's possibly non-render thread.
     }
 
-    // Called only after runtime callbacks are unregistered during orderly
-    // add-on unload. Remaining entries refer to live effect runtimes.
-    void DisableAndClear() {
-        std::lock_guard lock(Lock);
-        for (const auto& [runtime, entry] : Runtimes)
-            Apply(runtime, entry, false);
-        Runtimes.clear();
+    // Called only by genuine render callbacks. Probe must query fresh binding
+    // facts synchronously; it is never retained. An extra runtime or a later
+    // foreign thread receives no SDK calls, including no depth probe.
+    template<class DepthProbe>
+    bool Reconcile(Runtime* runtime, bool masterEnabled, DepthProbe&& probe) {
+        std::lock_guard guard(Lock);
+        Entry* entry = Ensure(runtime);
+        if (!entry) return false;
+        const auto current = std::this_thread::get_id();
+        if (entry->RenderThread == std::thread::id{}) entry->RenderThread = current;
+        if (entry->RenderThread != current) return false;
+        const bool depth = masterEnabled && (entry->Requested & DepthEffectRequests) && probe(runtime);
+        WriteScope ownWrite(this);
+        for (size_t i = 0; i < EffectNames.size(); ++i) {
+            // Fresh exact-file lookup each callback: handles never outlive it.
+            const auto technique = runtime->find_technique(EffectsFile, EffectNames[i]);
+            if (OwnedIndex(runtime, technique) != static_cast<int>(i)) continue;
+            const uint32_t bit = 1u << i;
+            const bool enabled = masterEnabled && (entry->Requested & bit) && (!(DepthEffectRequests & bit) || depth);
+            if (runtime->get_technique_state(technique) != enabled)
+                runtime->set_technique_state(technique, enabled);
+        }
+        return true;
+    }
+
+    // ReShade calls this BEFORE changing a technique. Own synchronous writes
+    // must be accepted before the mutex/any SDK call to avoid deadlock and to
+    // prevent a master/readiness disable becoming a new menu request.
+    bool TechniqueState(Runtime* runtime, Technique technique, bool enabled, bool selected) {
+        if (Writing == this) return false;
+        std::lock_guard guard(Lock);
+        Entry* entry = Find(runtime);
+        if (!entry || entry->RenderThread != std::this_thread::get_id()) return false;
+        const int index = OwnedIndex(runtime, technique);
+        if (index < 0) return false; // Other FX, including same-named ones, untouched.
+        const uint32_t bit = 1u << index;
+        if (enabled && selected) entry->Requested |= bit;
+        else entry->Requested &= ~bit;
+        // Disable immediately. Remember enables but defer them to the next
+        // render callback, which checks the master and fresh depth binding.
+        return enabled;
     }
 };
-
-}
+} // namespace tq

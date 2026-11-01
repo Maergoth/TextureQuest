@@ -8,18 +8,22 @@ TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim i
 
 AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,694 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
 
-## 1.10 preview components
+## 1.10 graphics preview
 
-This branch is a local preview. Public app 1.9.2 is unchanged.
+This private candidate includes the public 1.9.5 updater fixes.
 
-- **Textures (required):** the existing texture pack.
-- **Graphical Effects:** optional glow preview, off by default. Uses the same toggle.
-- **DLSS:** in development; unavailable in this preview.
+- **Textures (required):** the released texture pack.
+- **Graphical Effects:** optional AO, contact shadows, bounce light, bloom and edge AA.
+- **DLSS:** unavailable; no DLSS or frame generation is included.
 
-Select components, close EQ2, then **Apply changes**. Choices are saved per game
-folder. Existing textures stay cached. Glow also loads enabled effects from your
-ReShade preset; your own effects keep their separate state. AO, shadows and
-scene lighting are not replaced. [Preview details](docs/GRAPHICS_FEATURES.md).
+Choose components, close EQ2, then **Apply changes**. **Home** opens ReShade,
+where each effect has its own switch and strength. **Numpad \*** switches all
+TextureQuest features off/on and remembers those choices for the session.
+
+These are screen-space effects, not a replacement for EQ2's entire renderer.
+Native base lighting and world shadows remain necessary. Supported managed INI
+changes receive full local backups and safe restoration on uninstall; this
+preview ships no guessed native disable commands. [Details](docs/GRAPHICS_FEATURES.md).
 
 ## Download and install
 

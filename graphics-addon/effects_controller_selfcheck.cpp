@@ -1,153 +1,170 @@
-// CPU-only contract check: no ReShade, graphics device, game or GPU is used.
+// CPU fake exercises the actual production controller, including reentrant
+// SDK writes. No ReShade DLL, graphics device, game, hooks or GPU are used.
 #include "effects_controller.hpp"
 #include <algorithm>
-#include <cstdint>
 #include <cstdio>
+#include <functional>
 #include <stdexcept>
 #include <string>
 
 namespace {
 struct Handle { uint64_t handle = 0; };
-
 struct FakeRuntime {
-    bool Alive = true, Loaded = true, Enabled = false, UnrelatedEnabled = true;
-    uint64_t Current = 1;
-    unsigned Finds = 0, Reads = 0, Writes = 0;
-    std::string File = "TQEffects.fx", Name = "TQBloom";
-
-    void Validate(Handle value) const {
-        if (!Alive || !Loaded || value.handle != Current)
-            throw std::runtime_error("stale, unrelated or dead runtime handle used");
+    bool Alive = true, Loaded = true, Depth = true, Unrelated = true;
+    uint64_t Generation = 1;
+    uint32_t Enabled = 0;
+    unsigned Calls = 0, Finds = 0, Writes = 0, Probes = 0;
+    int WrongName = -1;
+    std::string File = "TQEffects.fx";
+    std::function<bool(Handle, bool)> Event;
+    void Live() { if (!Alive) throw std::runtime_error("dead runtime used"); ++Calls; }
+    size_t Index(Handle h) {
+        Live();
+        if (!Loaded || h.handle / 100 != Generation || h.handle % 100 < 1 || h.handle % 100 > 6)
+            throw std::runtime_error("stale, missing or unrelated handle used");
+        return static_cast<size_t>(h.handle % 100 - 1);
     }
+    Handle At(size_t i) const { return {Generation * 100 + i + 1}; }
     Handle find_technique(const char* file, const char* name) {
-        if (!Alive || std::string(file) != "TQEffects.fx" || std::string(name) != "TQBloom")
-            throw std::runtime_error("non-owned lookup or dead runtime used");
-        ++Finds;
-        return {Loaded ? Current : 0};
+        Live(); ++Finds;
+        if (std::string(file) != "TQEffects.fx") throw std::runtime_error("global lookup");
+        for (size_t i = 0; i < tq::EffectNames.size(); ++i)
+            if (std::string(name) == tq::EffectNames[i]) return Loaded ? At(i) : Handle{};
+        throw std::runtime_error("unowned technique lookup");
     }
-    static void Text(const std::string& value, char* out, size_t* size) {
-        const size_t capacity = *size;
-        if (capacity) {
-            const size_t copy = std::min(value.size(), capacity - 1);
-            std::copy_n(value.data(), copy, out);
-            out[copy] = '\0';
+    static void Text(const std::string& text, char* out, size_t* size) {
+        const size_t n = *size ? std::min(*size - 1, text.size()) : 0;
+        std::copy_n(text.data(), n, out);
+        if (*size) out[n] = 0;
+        *size = text.size() + 1;
+    }
+    void get_technique_effect_name(Handle h, char* out, size_t* size) { Index(h); Text(File, out, size); }
+    void get_technique_name(Handle h, char* out, size_t* size) {
+        const auto i = Index(h);
+        Text(static_cast<int>(i) == WrongName ? "UserEffect" : tq::EffectNames[i], out, size);
+    }
+    bool get_technique_state(Handle h) { return (Enabled & (1u << Index(h))) != 0; }
+    void set_technique_state(Handle h, bool enabled) {
+        const size_t i = Index(h); ++Writes;
+        if (Event && Event(h, enabled)) return;
+        if (enabled) Enabled |= 1u << i;
+        else Enabled &= ~(1u << i);
+    }
+    void Menu(size_t i, bool enabled) {
+        const auto h = At(i);
+        if (!Event || !Event(h, enabled)) {
+            if (enabled) Enabled |= 1u << i;
+            else Enabled &= ~(1u << i);
         }
-        *size = value.size() + 1;
-    }
-    void get_technique_effect_name(Handle value, char* out, size_t* size) const {
-        Validate(value);
-        Text(File, out, size);
-    }
-    void get_technique_name(Handle value, char* out, size_t* size) const {
-        Validate(value);
-        Text(Name, out, size);
-    }
-    bool get_technique_state(Handle value) {
-        Validate(value);
-        ++Reads;
-        return Enabled;
-    }
-    void set_technique_state(Handle value, bool enabled) {
-        Validate(value);
-        ++Writes;
-        Enabled = enabled;
     }
 };
-
+using Controller = tq::EffectsController<FakeRuntime>;
+auto Probe = [](FakeRuntime* runtime) { runtime->Live(); ++runtime->Probes; return runtime->Depth; };
+void Attach(Controller& controller, FakeRuntime& runtime, bool selected = true) {
+    runtime.Event = [&controller, &runtime, selected](Handle h, bool on) {
+        return controller.TechniqueState(&runtime, h, on, selected);
+    };
+}
 unsigned Checks = 0, Failures = 0;
-void Check(bool condition, const char* description) {
+void Check(bool value, const char* description) {
     ++Checks;
-    std::printf("%s %s\n", condition ? "PASS" : "FAIL", description);
-    if (!condition)
-        ++Failures;
+    std::printf("%s %s\n", value ? "PASS" : "FAIL", description);
+    if (!value) ++Failures;
 }
 }
-
 int main() {
     try {
         Check(!tq::EffectsEnabled(false, false) && !tq::EffectsEnabled(false, true) &&
-              !tq::EffectsEnabled(true, true) && tq::EffectsEnabled(true, false),
-              "selection and Original master truth table");
-
-        tq::EffectsController<FakeRuntime> controller;
-        FakeRuntime main;
-        controller.Reload(&main, true);
-        Check(main.Enabled && main.Finds == 1 && main.Writes == 1, "startup resolves and enables owned technique");
-        for (unsigned frame = 0; frame < 100; ++frame)
-            controller.Reconcile(&main, true);
-        Check(main.Finds == 1 && main.Writes == 1, "steady frames use cache and avoid repeated state writes");
-        controller.Reconcile(&main, false);
-        Check(!main.Enabled && main.Writes == 2, "Original master disables owned technique");
-        controller.Reconcile(&main, true);
-        Check(main.Enabled && main.Writes == 3, "Upscaled master enables owned technique again");
-        Check(main.UnrelatedEnabled, "unrelated user technique stays enabled");
-
-        // All old handles become invalid before the reload callback.
-        main.Current = 2;
-        main.Enabled = true;
-        controller.Reload(&main, false);
-        Check(!main.Enabled && main.Finds == 2, "reload discards stale handle before disabling newly loaded technique");
-        main.Enabled = true; // Simulated preset/overlay change while Original.
-        controller.Reconcile(&main, false);
-        Check(!main.Enabled, "per-frame reconciliation enforces master after preset change");
-
-        FakeRuntime compiling;
-        compiling.Loaded = false;
-        controller.Reload(&compiling, true);
-        controller.Reconcile(&compiling, true);
-        Check(compiling.Finds == 1 && compiling.Reads == 0, "missing technique is inert without a search loop");
-        compiling.Loaded = true;
-        controller.Reload(&compiling, true);
-        Check(compiling.Enabled && compiling.Finds == 2, "asynchronous FX completion resolves at reload");
-
-        FakeRuntime late;
-        controller.Reconcile(&late, false);
-        Check(late.Finds == 1 && !late.Enabled, "already alive runtime is discovered on first frame");
-        FakeRuntime second;
-        controller.Reload(&second, true);
-        controller.Reconcile(&main, true);
-        controller.Reconcile(&second, false);
-        Check(main.Enabled && !second.Enabled, "runtime technique handles are isolated");
-
-        FakeRuntime impostor_file;
-        impostor_file.File = "UserEffects.fx";
-        controller.Reload(&impostor_file, true);
-        Check(impostor_file.Reads == 0 && impostor_file.Writes == 0, "same technique name from another file is refused");
-        FakeRuntime impostor_name;
-        impostor_name.Name = "UserBloom";
-        controller.Reload(&impostor_name, true);
-        Check(impostor_name.Reads == 0 && impostor_name.Writes == 0, "wrong technique name is refused");
-        FakeRuntime oversized;
-        oversized.File.assign(600, 'x');
-        controller.Reload(&oversized, true);
-        Check(oversized.Reads == 0 && oversized.Writes == 0, "truncated or oversized effect name is refused");
-
-        controller.Forget(&main);
-        main.Alive = false;
-        const auto stopped_writes = main.Writes;
-        controller.DisableAndClear();
-        Check(main.Writes == stopped_writes, "destroyed runtime is forgotten without API calls");
-        Check(!compiling.Enabled && !late.Enabled && !second.Enabled, "orderly unload disables all live owned techniques");
-        Check(compiling.UnrelatedEnabled && late.UnrelatedEnabled && second.UnrelatedEnabled,
-              "orderly unload preserves unrelated techniques");
-
-        // A reset can reuse the same runtime address with different handles.
-        main.Alive = true;
-        main.Current = 3;
-        main.Enabled = false;
-        controller.Reload(&main, true);
-        Check(main.Enabled && main.Finds == 3, "reset runtime address resolves a new handle");
-        controller.Forget(&main);
-        main.Alive = false;
-        controller.Reload(nullptr, true);
-        controller.Reconcile(nullptr, false);
-        controller.Forget(nullptr);
-        controller.DisableAndClear();
-        Check(true, "null callbacks and repeated clear are inert");
+              !tq::EffectsEnabled(true, true) && tq::EffectsEnabled(true, false), "selection/master truth table");
+        Controller controller;
+        FakeRuntime main; Attach(controller, main);
+        controller.Reload(&main);
+        Check(main.Calls == 0, "init/reload performs no SDK calls");
+        controller.Reconcile(&main, true, Probe);
+        Check(main.Enabled == tq::DefaultEffectRequests && main.Writes == 5, "combined five effects initially on; debug opt-in");
+        const auto writes = main.Writes;
+        for (unsigned frame = 0; frame < 20; ++frame) controller.Reconcile(&main, true, Probe);
+        Check(main.Writes == writes && main.Probes == 21, "steady frame uses fresh probe without repeated writes");
+        main.Menu(3, false); // Bloom.
+        controller.Reconcile(&main, true, Probe);
+        Check(main.Enabled == 0x17 && main.Writes == writes, "menu disable stays off instead of forced bloom enable");
+        main.Menu(5, true); // Debug enable is deferred to a guarded render callback.
+        Check(!(main.Enabled & 0x20), "menu enable deferred before depth/master guard");
+        controller.Reconcile(&main, true, Probe);
+        Check(main.Enabled == 0x37, "menu enables debug after fresh depth guard");
+        main.Menu(0, false); main.Menu(2, false);
+        controller.Reconcile(&main, true, Probe);
+        Check(main.Enabled == 0x32, "three depth requests and bloom/AA have independent menu choices");
+        controller.Reconcile(&main, false, Probe);
+        Check(main.Enabled == 0, "Original disables all owned effects");
+        controller.Reconcile(&main, true, Probe);
+        Check(main.Enabled == 0x32, "Upscaled restores exact individual choices, not defaults");
+        controller.Reconcile(&main, false, Probe);
+        main.Menu(3, true);
+        controller.Reconcile(&main, false, Probe);
+        controller.Reconcile(&main, true, Probe);
+        Check(main.Enabled == 0x3a, "enable requested while Original is remembered for Upscaled");
+        main.Depth = false;
+        controller.Reconcile(&main, true, Probe);
+        Check(main.Enabled == 0x18 && main.Unrelated, "invalid depth disables depth effects only; bloom/AA/unrelated remain");
+        main.Depth = true;
+        controller.Reconcile(&main, true, Probe);
+        Check(main.Enabled == 0x3a, "depth recovery restores prior depth choices");
+        ++main.Generation; main.Enabled = 0;
+        controller.Reload(&main);
+        controller.Reconcile(&main, true, Probe);
+        Check(main.Enabled == 0x3a, "FX reload preserves menu requests and uses fresh handles");
+        const auto calls = main.Calls;
+        bool foreignFrame = true, foreignEvent = true;
+        std::thread foreign([&] {
+            controller.Reload(&main); // Metadata-only even on a different thread.
+            foreignFrame = controller.Reconcile(&main, true, Probe);
+            foreignEvent = controller.TechniqueState(&main, main.At(0), false, true);
+        }); foreign.join();
+        Check(!foreignFrame && !foreignEvent && main.Calls == calls, "wrong thread cannot query or write SDK state");
+        FakeRuntime second; Attach(controller, second);
+        controller.Reconcile(&second, true, Probe);
+        second.Menu(1, false);
+        controller.Reconcile(&second, true, Probe);
+        controller.Reconcile(&main, true, Probe);
+        Check(second.Enabled == 0x1d && main.Enabled == 0x3a, "two runtimes never share choices or technique handles");
+        FakeRuntime compiling; Attach(controller, compiling); compiling.Loaded = false;
+        controller.Reload(&compiling); controller.Reconcile(&compiling, true, Probe);
+        Check(compiling.Enabled == 0 && compiling.Writes == 0, "missing asynchronously compiling FX inert");
+        compiling.Loaded = true; ++compiling.Generation;
+        controller.Reload(&compiling); controller.Reconcile(&compiling, true, Probe);
+        Check(compiling.Enabled == 0x1f, "later reload discovers compiled FX");
+        FakeRuntime impostor; Attach(controller, impostor); impostor.File = "UserEffects.fx";
+        controller.Reconcile(&impostor, true, Probe);
+        Check(impostor.Writes == 0 && impostor.Enabled == 0, "same names from another effect file are refused");
+        FakeRuntime excess;
+        Check(!controller.Reconcile(&excess, true, Probe) && excess.Calls == 0, "bounded fifth runtime gets zero SDK calls");
+        controller.Forget(&impostor);
+        impostor.File.assign(600, 'x');
+        controller.Reload(&impostor); controller.Reconcile(&impostor, true, Probe);
+        Check(impostor.Writes == 0, "oversized/truncated file identity refused");
+        controller.Forget(&impostor);
+        impostor.File = "TQEffects.fx"; impostor.WrongName = 0;
+        controller.Reload(&impostor); controller.Reconcile(&impostor, true, Probe);
+        Check(impostor.Enabled == 0x1e, "wrong technique identity skipped without touching others");
+        const auto forgetCalls = main.Calls;
+        controller.Forget(&main); main.Alive = false;
+        controller.Clear();
+        Check(main.Calls == forgetCalls, "destroy and unload clear metadata without dead/off-thread SDK calls");
+        main.Alive = true; ++main.Generation; main.Enabled = 0;
+        controller.Reload(&main); controller.Reconcile(&main, true, Probe);
+        Check(main.Enabled == tq::DefaultEffectRequests, "reused destroyed runtime address starts fresh");
+        controller.Clear();
+        FakeRuntime unselected; Attach(controller, unselected, false);
+        controller.Reconcile(&unselected, false, Probe);
+        unselected.Menu(3, true);
+        controller.Reconcile(&unselected, false, Probe);
+        Check(unselected.Enabled == 0 && unselected.Probes == 0, "unselected effects cannot enable from menu or probe depth");
+        Check(!controller.Reconcile(nullptr, true, Probe), "null runtime is inert");
+        controller.Reload(nullptr); controller.Forget(nullptr); controller.Clear();
     } catch (const std::exception& error) {
-        ++Failures;
-        std::printf("FAIL exception: %s\n", error.what());
+        ++Failures; std::printf("FAIL exception: %s\n", error.what());
     }
-    std::printf("effects controller: %u checks, %u failures\n", Checks, Failures);
+    std::printf("combined effects controller: %u checks, %u failures\n", Checks, Failures);
     return Failures ? 1 : 0;
 }

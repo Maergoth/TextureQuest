@@ -1,0 +1,103 @@
+--- a/source/input_windows.cpp
++++ b/source/input_windows.cpp
+@@ -765,6 +765,46 @@
+ 
+ static concurrency::concurrent_unordered_map<UINT64, std::pair<HHOOK, HOOKPROC>> s_windows_hooks;
+ 
++// Private compatibility evidence only. No key codes, text, scan codes, handles,
++// addresses or thread IDs are logged. One shared cap lasts for this DLL load.
++#if defined(TQ_PRIVATE_INPUT_COMPAT_TRACE) && TQ_PRIVATE_INPUT_COMPAT_TRACE
++static std::atomic<unsigned int> s_tq_private_input_events = 0;
++static void tq_private_input_event(const char *event, DWORD hook_id, bool global, bool alt_honored)
++{
++	if (hook_id != WH_KEYBOARD && hook_id != WH_KEYBOARD_LL)
++		return;
++	unsigned int count = s_tq_private_input_events.load(std::memory_order_relaxed);
++	while (count < 16)
++	{
++		if (s_tq_private_input_events.compare_exchange_strong(count, count + 1, std::memory_order_relaxed))
++		{
++			reshade::log::message(reshade::log::level::info,
++				"TQ_INPUT_COMPAT v1 event=%s hook=%s scope=%s alt_class=%s original_nonzero_honored=%s limit=16",
++				event, hook_id == WH_KEYBOARD ? "keyboard" : "keyboard_ll", global ? "global" : "thread",
++				alt_honored ? "1" : "not_applicable", alt_honored ? "1" : "not_applicable");
++			return;
++		}
++	}
++}
++template <DWORD hook_id>
++static void tq_private_input_honored(LPARAM lParam, bool global)
++{
++	if (s_tq_private_input_events.load(std::memory_order_relaxed) >= 16)
++		return;
++	bool alt_class = false;
++	if constexpr (hook_id == WH_KEYBOARD)
++		alt_class = (static_cast<UINT64>(lParam) & (UINT64(1) << 29)) != 0;
++	else if constexpr (hook_id == WH_KEYBOARD_LL)
++		alt_class = lParam != 0 && (reinterpret_cast<const KBDLLHOOKSTRUCT *>(lParam)->flags & LLKHF_ALTDOWN) != 0;
++	if (alt_class)
++		tq_private_input_event("original_nonzero_honored", hook_id, global, true);
++}
++#else
++static void tq_private_input_event(const char *, DWORD, bool, bool) {}
++template <DWORD hook_id>
++static void tq_private_input_honored(LPARAM, bool) {}
++#endif
++
+ template <DWORD hook_id, bool(*is_blocking_input)(reshade::input::window_handle)>
+ static LRESULT CALLBACK handle_windows_hook(int nCode, WPARAM wParam, LPARAM lParam)
+ {
+@@ -778,9 +818,17 @@
+ 			it != s_windows_hooks.end())
+ 		{
+ 			const HOOKPROC orig_hook_proc = it->second.second;
+-			// A non-zero result value prevents the system from passing the message to the target window procedure
+-			// In that case our 'GetMessage' and 'PeekMessage' hooks will not receive them, so ignore that result and continue with the hook chain instead below
+-			if (orig_hook_proc(nCode, wParam, lParam) == 0)
++			// Keyboard hooks retain their original result below. Mouse behavior remains unchanged.
++			// Nonzero mouse results continue the chain so ReShade can still receive input.
++			const LRESULT result = orig_hook_proc(nCode, wParam, lParam);
++			if constexpr (hook_id == WH_KEYBOARD || hook_id == WH_KEYBOARD_LL)
++			{
++				// Preserve the game's keyboard decision while ReShade is not capturing.
++				if (result != 0)
++					tq_private_input_honored<hook_id>(lParam, false);
++				return result;
++			}
++			else if (result == 0)
+ 				return 0;
+ 		}
+ 
+@@ -789,7 +837,15 @@
+ 			it != s_windows_hooks.end())
+ 		{
+ 			const HOOKPROC orig_hook_proc = it->second.second;
+-			if (orig_hook_proc(nCode, wParam, lParam) == 0)
++			const LRESULT result = orig_hook_proc(nCode, wParam, lParam);
++			if constexpr (hook_id == WH_KEYBOARD || hook_id == WH_KEYBOARD_LL)
++			{
++				// Preserve the game's keyboard decision while ReShade is not capturing.
++				if (result != 0)
++					tq_private_input_honored<hook_id>(lParam, true);
++				return result;
++			}
++			else if (result == 0)
+ 				return 0;
+ 		}
+ 	}
+@@ -843,6 +899,7 @@
+ #endif
+ 
+ 		s_windows_hooks[thread_lookup_key] = std::make_pair(result, orig_hook_proc);
++		tq_private_input_event("registered", idHook, dwThreadId == 0, false);
+ 	}
+ 
+ 	return result;
+@@ -892,6 +949,7 @@
+ #endif
+ 
+ 		s_windows_hooks[thread_lookup_key] = std::make_pair(result, orig_hook_proc);
++		tq_private_input_event("registered", idHook, dwThreadId == 0, false);
+ 	}
+ 
+ 	return result;

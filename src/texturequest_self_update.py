@@ -43,6 +43,7 @@ MAX_JSON = 4 * 1024**2
 MAX_FILES = 20000
 READY_SECONDS, PARENT_SECONDS, ACK_SECONDS = 20, 120, 60
 REQUEST_SCHEMA = "texturequest-app-update-request-v1"
+LOCAL_REQUEST_SCHEMA = "texturequest-local-build-install-request-v1"
 _HEX = re.compile(r"[0-9a-f]{64}")
 _NONCE = re.compile(r"[0-9a-f]{32}")
 _RESERVED = re.compile(r"(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?", re.I)
@@ -520,6 +521,18 @@ class WindowsProcesses:
         user.MessageBoxW(None, message, "TextureQuest app update", 0x10)
 
 
+def _local_installer(value, current_version):
+    """Explicit local-build identity; never masquerades as published metadata."""
+    if (not isinstance(value, dict) or set(value) != {"mode", "version", "archive", "bytes", "sha256"}
+            or value.get("mode") != "local-build" or not isinstance(value.get("archive"), str)
+            or not Path(value["archive"]).is_absolute() or type(value.get("bytes")) is not int
+            or not 0 < value["bytes"] <= MAX_ZIP or not _HEX.fullmatch(str(value.get("sha256", "")))):
+        raise AppUpdateError("Invalid local-build installer identity")
+    if latest.version_number(value["version"]) <= latest.version_number(current_version):
+        raise AppUpdateError("Local build must be newer than the installed app")
+    return dict(value)
+
+
 def _request(path, nonce):
     if not isinstance(nonce, str) or not _NONCE.fullmatch(nonce):
         raise AppUpdateError("Invalid app-update nonce")
@@ -527,16 +540,111 @@ def _request(path, nonce):
     value = _load(path)
     required = {"schema", "nonce", "app_dir", "data_dir", "app_identity", "stage_identity", "current_version", "target_version",
                 "installer", "parent", "old_bundle", "new_bundle", "record_sha256"}
-    if set(value) != required or value["schema"] != REQUEST_SCHEMA or value["nonce"] != nonce:
+    local = value.get("schema") == LOCAL_REQUEST_SCHEMA
+    if local:
+        required.add("bootstrap")
+    if set(value) != required or value["schema"] not in (REQUEST_SCHEMA, LOCAL_REQUEST_SCHEMA) or value["nonce"] != nonce:
         raise AppUpdateError("App-update request identity mismatch")
     app, data = _layout(value["app_dir"], value["data_dir"])
     stage = _plain(app.parent / (".TextureQuest-update-" + nonce))
     if not _same_path(path, stage / "request.json") or _identity(stage) != value["stage_identity"] or _identity(app) != value["app_identity"]:
         raise AppUpdateError("Application or update directory identity changed")
-    installer = _installer(value["installer"], value["current_version"])
-    if installer["version"] != value["target_version"] or not _same_path(_valid_process(value["parent"])["exe"], app / "TextureQuest.exe"):
+    parent = _valid_process(value["parent"])
+    if local:
+        installer = _local_installer(value["installer"], value["current_version"])
+        bootstrap = value["bootstrap"]
+        if not isinstance(bootstrap, dict) or set(bootstrap) != {"app_dir", "directory_identity", "bundle"}:
+            raise AppUpdateError("Invalid local-build bootstrap identity")
+        if not isinstance(bootstrap["app_dir"], str) or not Path(bootstrap["app_dir"]).is_absolute():
+            raise AppUpdateError("Invalid local-build caller path")
+        # After helper READY/parent exit this is retained identity, not a live
+        # external-file dependency. Staged payload/target remain fully guarded.
+        caller = Path(os.path.abspath(bootstrap["app_dir"]))
+        if (_same_path(caller, app) or caller in app.parents or app in caller.parents
+                or bootstrap["bundle"] != value["new_bundle"]
+                or not _same_path(parent["exe"], caller / "TextureQuest.exe")):
+            raise AppUpdateError("Local-build caller or target does not match")
+    else:
+        installer = _installer(value["installer"], value["current_version"])
+        if not _same_path(parent["exe"], app / "TextureQuest.exe"):
+            raise AppUpdateError("App-update parent or target does not match")
+    if installer["version"] != value["target_version"]:
         raise AppUpdateError("App-update parent or target does not match")
     return value, path, app, data, stage
+
+
+def _local_bootstrap(value):
+    """Full real-caller custody before READY; not needed after caller exit."""
+    caller = _plain(value["bootstrap"]["app_dir"])
+    if (_identity(caller) != value["bootstrap"]["directory_identity"]
+            or _bundle(caller, value["target_version"]) != value["new_bundle"]):
+        raise AppUpdateError("Running local candidate changed before helper handoff")
+
+
+def _stage_verified_archive(installer, archive, *, app, data, current_version, parent, old, report, bootstrap=None):
+    """Common protected extraction/inventory path after each mode's admission."""
+    nonce = uuid.uuid4().hex
+    stage = _plain(app.parent / (".TextureQuest-update-" + nonce))
+    stage.mkdir()
+    _progress(report, "verify", "Verifying and staging the new app")
+    payload_parent = stage / "payload"
+    payload_parent.mkdir()
+    payload = payload_parent / "TextureQuest"
+    new = _extract(archive, payload, installer["version"], {"bytes": installer["bytes"], "sha256": installer["sha256"]})
+    if bootstrap is not None and (new != bootstrap["bundle"] or
+            _bundle(bootstrap["app_dir"], installer["version"]) != bootstrap["bundle"]):
+        raise AppUpdateError("Local installer ZIP must exactly match the running candidate bundle")
+    install = stage / "install"
+    install.mkdir()
+    for name in MANAGED:
+        source, target = _plain(payload / name), _plain(install / name)
+        if name in DIRECTORIES:
+            shutil.copytree(source, target, copy_function=shutil.copy2)
+        else:
+            shutil.copy2(source, target)
+    if _bundle(install, installer["version"]) != new or _bundle(app, current_version) != old:
+        raise AppUpdateError("Application files changed while staging")
+    value = {"schema": LOCAL_REQUEST_SCHEMA if bootstrap is not None else REQUEST_SCHEMA,
+             "nonce": nonce, "app_dir": str(app), "data_dir": str(data),
+             "app_identity": _identity(app), "stage_identity": _identity(stage), "current_version": current_version,
+             "target_version": installer["version"], "installer": installer, "parent": parent, "old_bundle": old, "new_bundle": new}
+    if bootstrap is not None:
+        value["bootstrap"] = bootstrap
+    path = stage / "request.json"
+    _write(path, value)
+    _progress(report, "staged", "App update verified; preparing a safe restart")
+    return {"request_path": str(path), "nonce": nonce, "target_version": installer["version"], "app_dir": str(app), "data_dir": str(data)}
+
+
+def stage_local_build_install(archive, *, app_dir, running_version, report=None, processes=None):
+    """Packaged candidate GUI installs its exact local ZIP into an older app.
+
+    This is explicit local install intent, not an official update or an alternate
+    parent identity. The real running candidate is the parent which must exit
+    after helper READY. The target portable app must already be closed.
+    """
+    if not getattr(sys, "frozen", False):
+        raise AppUpdateError("Local-build installation requires the packaged TextureQuest app")
+    processes = processes or WindowsProcesses()
+    app, data = _layout(app_dir, Path(app_dir) / "data")
+    parent = _valid_process(processes.identity())
+    caller = _plain(Path(parent["exe"]).parent)
+    if (not _same_path(parent["exe"], caller / "TextureQuest.exe")
+            or not _same_path(sys.executable, parent["exe"]) or not processes.alive(parent)):
+        raise AppUpdateError("Start local installation from the running packaged candidate")
+    if _same_path(caller, app) or caller in app.parents or app in caller.parents:
+        raise AppUpdateError("Local candidate and installed app must be separate portable folders")
+    processes.other_instances(app, (parent,))
+    _progress(report, "verify", "Verifying the running local build and installed app; saved data is kept")
+    candidate = _bundle(caller, running_version)
+    current_version = _read(app / "BUILD-MANIFEST.json").get("version")
+    old = _bundle(app, current_version)
+    archive = _plain(archive)
+    installer = _local_installer(dict(mode="local-build", version=running_version, archive=str(archive),
+                                      **_file(archive, MAX_ZIP)), current_version)
+    bootstrap = dict(app_dir=str(caller), directory_identity=_identity(caller), bundle=candidate)
+    return _stage_verified_archive(installer, archive, app=app, data=data, current_version=current_version,
+                                   parent=parent, old=old, report=report, bootstrap=bootstrap)
 
 
 def stage_downloaded_update(installer_result, archive, *, app_dir, data_dir, current_version, report=None, processes=None):
@@ -544,7 +652,8 @@ def stage_downloaded_update(installer_result, archive, *, app_dir, data_dir, cur
 
     ROOT's isolated onedir smoke may patch ``process_identity`` during staging to
     bind the actual separately launched fixture parent. The real helper validates
-    that parent's Windows handle; no alternative parent authority exists in CLI.
+    that parent's Windows handle. Explicit local installation is admitted only by
+    its separate schema and actual packaged candidate parent, never this path.
     """
     processes = processes or WindowsProcesses()
     app, data = _layout(app_dir, data_dir)
@@ -556,31 +665,8 @@ def stage_downloaded_update(installer_result, archive, *, app_dir, data_dir, cur
     old = _bundle(app, current_version)
     if _file(archive, MAX_ZIP) != {"bytes": installer["bytes"], "sha256": installer["sha256"]}:
         raise AppUpdateError("Downloaded installer checksum differs from official metadata")
-    nonce = uuid.uuid4().hex
-    stage = _plain(app.parent / (".TextureQuest-update-" + nonce))
-    stage.mkdir()
-    _progress(report, "verify", "Verifying and staging the new app")
-    payload_parent = stage / "payload"
-    payload_parent.mkdir()
-    payload = payload_parent / "TextureQuest"
-    new = _extract(archive, payload, installer["version"], {"bytes": installer["bytes"], "sha256": installer["sha256"]})
-    install = stage / "install"
-    install.mkdir()
-    for name in MANAGED:
-        source, target = _plain(payload / name), _plain(install / name)
-        if name in DIRECTORIES:
-            shutil.copytree(source, target, copy_function=shutil.copy2)
-        else:
-            shutil.copy2(source, target)
-    if _bundle(install, installer["version"]) != new or _bundle(app, current_version) != old:
-        raise AppUpdateError("Application files changed while staging")
-    value = {"schema": REQUEST_SCHEMA, "nonce": nonce, "app_dir": str(app), "data_dir": str(data),
-             "app_identity": _identity(app), "stage_identity": _identity(stage), "current_version": current_version,
-             "target_version": installer["version"], "installer": installer, "parent": parent, "old_bundle": old, "new_bundle": new}
-    path = stage / "request.json"
-    _write(path, value)
-    _progress(report, "staged", "App update verified; preparing a safe restart")
-    return {"request_path": str(path), "nonce": nonce, "target_version": installer["version"], "app_dir": str(app), "data_dir": str(data)}
+    return _stage_verified_archive(installer, archive, app=app, data=data, current_version=current_version,
+                                   parent=parent, old=old, report=report)
 
 
 def stage_update(installer_result, *, app_dir, data_dir, current_version, report=None, opener=None):
@@ -643,6 +729,8 @@ def launch_updater(request, smoke_test=False, *, processes=None):
     value, path, app, data, stage = _request(request["request_path"], request["nonce"])
     if not _same_process(processes.identity(), value["parent"]):
         raise AppUpdateError("Only the requesting app may launch its updater")
+    if value["schema"] == LOCAL_REQUEST_SCHEMA:
+        _local_bootstrap(value)
     if _bundle(app, value["current_version"]) != value["old_bundle"] or _bundle(stage / "payload/TextureQuest", value["target_version"]) != value["new_bundle"]:
         raise AppUpdateError("App-update files changed before helper launch")
     for name in ("apply-claim.json", "helper-ready.json", "result.json"):
@@ -705,6 +793,8 @@ def apply_update(request_path, nonce, smoke_test=False, *, processes=None):
             raise AppUpdateError("App updater must run from its verified staging folder")
         if _bundle(stage / "payload/TextureQuest", value["target_version"]) != value["new_bundle"]:
             raise AppUpdateError("Staged updater files changed")
+        if value["schema"] == LOCAL_REQUEST_SCHEMA:
+            _local_bootstrap(value)
         if _bundle(stage / "install", value["target_version"]) != value["new_bundle"] or _bundle(app, value["current_version"]) != value["old_bundle"]:
             raise AppUpdateError("Installed or staged replacement files changed")
         lock = app.parent / (".TextureQuest-update-lock-" + hashlib.sha256(os.path.normcase(str(app)).encode()).hexdigest()[:24] + ".json")
@@ -780,6 +870,12 @@ def apply_update(request_path, nonce, smoke_test=False, *, processes=None):
             if stage is not None and pin is not None and not (stage / "result.json").exists():
                 _receipt(stage, "result.json", pin, nonce, status="failed", message=message, rollback=rollback)
             if parent_closed and value is not None and rollback in ("restored", "not_needed"):
+                # An older app may not understand this new local request schema.
+                # Its original restart path is retained; the helper supplies the
+                # precise failure notice without fabricating official metadata.
+                if value["schema"] == LOCAL_REQUEST_SCHEMA and hasattr(processes, "alert"):
+                    processes.alert("Local app installation could not finish. The previous app was kept or restored; "
+                                    "saved data was not changed. " + message + " Details: " + str(stage))
                 args = ["--app-update-failed", str(path), "--update-nonce", nonce]
                 if smoke_test:
                     args.append("--smoke-test")

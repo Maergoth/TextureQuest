@@ -19,6 +19,7 @@ from texturequest_dds_source import DDSStore
 import texturequest_graphics_catalog as catalog
 from texturequest_hotkeys import sanitize_reshade_config, sanitize_reshade_preset
 from texturequest_components import normalize as component_selection
+from texturequest_game_settings import GameSettings
 from texturequest_version import APP_VERSION
 from texturequest_latest import version_number
 
@@ -132,17 +133,22 @@ class GraphicsManager:
         if not path.exists():
             return None
         doc = _json(path)
-        need(doc.get('schema') in (RUNTIME_SCHEMA, 'texturequest-graphics-runtime-v5') and doc.get('reshade_build') == 'addon' and
+        need(doc.get('schema') in (RUNTIME_SCHEMA, 'texturequest-graphics-runtime-v5', 'texturequest-graphics-runtime-v6') and doc.get('reshade_build') == 'addon' and
              doc.get('map_schema') == 'TQMAP002', 'Unknown graphics runtime.')
         names = {row['name'] for row in doc['files']}
         need(doc.get('addon') in names and doc.get('reshade') in names, 'Graphics runtime does not pin its add-on and ReShade.')
         effects = doc.get('effects')
         if effects is not None:
-            need(doc['schema'] == 'texturequest-graphics-runtime-v5' and effects == dict(
+            bloom = dict(
                 schema='texturequest-effects-runtime-v1', shader='effects/TQEffects.fx',
-                effect_name='TQEffects.fx', technique='TQBloom') and effects['shader'] in names,
+                effect_name='TQEffects.fx', technique='TQBloom')
+            suite = dict(schema='texturequest-effects-runtime-v2', shader='effects/TQEffects.fx',
+                         effect_name='TQEffects.fx', techniques=['TQAmbientOcclusion', 'TQContactShadows',
+                         'TQIndirectLighting', 'TQBloom', 'TQAntiAliasing', 'TQDepthDiagnostic'])
+            need(((doc['schema'] == 'texturequest-graphics-runtime-v5' and effects == bloom) or
+                  (doc['schema'] == 'texturequest-graphics-runtime-v6' and effects == suite)) and effects['shader'] in names,
                 'Unknown optional effects runtime.')
-        elif doc['schema'] == 'texturequest-graphics-runtime-v5':
+        elif doc['schema'] in ('texturequest-graphics-runtime-v5', 'texturequest-graphics-runtime-v6'):
             raise ValueError('Graphics runtime is missing its effects contract.')
         for row in doc['files']:
             _pin(self.runtime_dir / row['name'], row)
@@ -581,8 +587,14 @@ class GraphicsManager:
                     tmp.unlink(missing_ok=True)
             doc['phase'] = 'installed'
             self._save(game, doc)
+        # Native settings use their own normal locks and exact full backups.
+        # Current effects supplement native rendering. No unverified disable
+        # command is shipped; future reviewed overrides enter only here.
+        settings = GameSettings(self.state_dir).apply(game, {}, features=(
+            'ambient_occlusion', 'contact_shadows', 'indirect_lighting', 'bloom', 'anti_aliasing'
+        ) if selection['effects'] else ())
         report('Graphics hook installed. ' + label(binding) + ' switches quality.')
-        return self.status(game)
+        return dict(self.status(game), native_settings=settings)
 
     def _uninstall_legacy(self, game, record):
         need(record['stop_event']=='Local\\TQWatch-'+record['installation_id'] and
@@ -634,15 +646,26 @@ class GraphicsManager:
                     continue
                 ensure_closed()
                 p.unlink()
-            doc['phase'] = 'uninstalled'
+            # Do not declare completion before native INI restoration. If that
+            # separate transaction refuses, normal Uninstall can finish it.
+            doc['phase'] = 'uninstalling'
             doc['kept'] = kept
             doc['settings_conflicts'] = settings_conflicts
             self._save(game, doc)
+            doc = self._record(game)  # canonical JSON lists for the later CAS
+        native_settings = GameSettings(self.state_dir).restore(game)
+        with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
+            ensure_closed()
+            need(self._record(game) == doc, 'Graphics record changed during settings restore; preserve its journals.')
+            doc['phase'] = 'uninstalled'
+            self._save(game, doc)
         message = 'Graphics hook removed.' + (' Changed files kept: ' + ', '.join(kept) + '.' if kept else '')
         if settings_conflicts: message += ' Changed ReShade settings were kept: ' + ', '.join(settings_conflicts) + '.'
+        if native_settings.get('conflicts'): message += ' Later game settings were kept; see the native-settings journal.'
         if progress:
             progress(message)
-        return dict(self.status(game), message=message, kept=kept, settings_conflicts=settings_conflicts)
+        return dict(self.status(game), message=message, kept=kept, settings_conflicts=settings_conflicts,
+                    native_settings=native_settings)
 
     def set_shortcut(self, game, shortcut, progress=None):
         binding = normalize(shortcut)

@@ -1,0 +1,12 @@
+--- a/deps/glad/glad/files/__init__.py
++++ b/deps/glad/glad/files/__init__.py
+@@ -54,6 +54,9 @@
+         if data is not None:
+             raise GladFileException('can not resolve requests with payload')
+ 
++        parsed = urlparse(url)
++        if parsed.scheme == 'file' and parsed.path in ('gl.xml', 'wgl.xml', 'vk.xml'):
++            return open(parsed.path, 'rb')
+         filename = urlparse(url).path.rsplit('/', 1)[-1]
+         return open_local(filename, 'rb')
+ 

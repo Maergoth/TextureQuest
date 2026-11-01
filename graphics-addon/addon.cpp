@@ -363,26 +363,89 @@ bool OwnedEffectsEnabled() {
     return tq::EffectsEnabled(Global->Config.Effects, Global->Original.load());
 }
 
+bool ExactEffectText(const char* text, size_t size, const char* expected, size_t capacity) {
+    return tq::ExactEffectText(text, size, expected, capacity);
+}
+
+// Fresh descriptor/readiness query inside the controller's claimed render
+// callback only. It never copies depth, changes Generic Depth or retains an
+// SRV/resource. These are facts about the binding queried now, not proof of
+// world projection, the original game's MSAA or a later draw's exact binding.
+bool OwnedDepthAvailable(effect_runtime* runtime) {
+    const auto ready = runtime->find_uniform_variable(tq::EffectsFile, "TQDepthReady");
+    const auto depth = runtime->find_texture_variable(tq::EffectsFile, "TQDiagnosticDepth");
+    if (!ready.handle || !depth.handle) return false;
+    char file[256]{}, name[128]{}, annotation[64]{};
+    size_t a = sizeof(file), b = sizeof(name), c = sizeof(annotation);
+    runtime->get_uniform_variable_effect_name(ready, file, &a);
+    runtime->get_uniform_variable_name(ready, name, &b);
+    if (!ExactEffectText(file, a, tq::EffectsFile, sizeof(file)) ||
+        !ExactEffectText(name, b, "TQDepthReady", sizeof(name)) ||
+        !runtime->get_annotation_string_from_uniform_variable(ready, "source", annotation, &c) ||
+        !ExactEffectText(annotation, c, "bufready_depth", sizeof(annotation))) return false;
+    bool available = false;
+    runtime->get_uniform_value_bool(ready, &available, 1);
+    if (!available) return false;
+    a = sizeof(file); b = sizeof(name);
+    runtime->get_texture_variable_effect_name(depth, file, &a);
+    runtime->get_texture_variable_name(depth, name, &b);
+    if (!ExactEffectText(file, a, tq::EffectsFile, sizeof(file)) ||
+        !ExactEffectText(name, b, "TQDiagnosticDepth", sizeof(name))) return false;
+    resource_view linear{}, srgb{};
+    runtime->get_texture_binding(depth, &linear, &srgb);
+    if (!linear.handle) return false; // An sRGB view is never substituted.
+    auto* dev = runtime->get_device();
+    if (!dev) return false;
+    const auto resource = dev->get_resource_from_view(linear);
+    if (!resource.handle) return false;
+    const auto view = dev->get_resource_view_desc(linear);
+    const auto desc = dev->get_resource_desc(resource);
+    if (desc.type != resource_type::texture_2d || view.type != resource_view_type::texture_2d ||
+        desc.texture.samples != 1 || desc.texture.depth_or_layers != 1 ||
+        !desc.texture.width || !desc.texture.height || desc.texture.width > 16384 || desc.texture.height > 16384 ||
+        !desc.texture.levels || desc.texture.levels > 32 || view.texture.first_level >= desc.texture.levels ||
+        !view.texture.levels || view.texture.first_layer != 0 ||
+        (view.texture.layers != 1 && view.texture.layers != UINT32_MAX) ||
+        (view.texture.levels != UINT32_MAX && view.texture.levels > desc.texture.levels - view.texture.first_level))
+        return false;
+    switch (view.format) {
+    case format::r16_unorm:
+        return desc.texture.format == format::r16_typeless || desc.texture.format == format::d16_unorm || desc.texture.format == view.format;
+    case format::r32_float:
+        return desc.texture.format == format::r32_typeless || desc.texture.format == format::d32_float || desc.texture.format == view.format;
+    case format::r24_unorm_x8_uint:
+        return desc.texture.format == format::r24_g8_typeless || desc.texture.format == format::d24_unorm_s8_uint ||
+            desc.texture.format == format::d24_unorm_x8_uint || desc.texture.format == view.format;
+    case format::r32_float_x8_uint:
+        return desc.texture.format == format::r32_g8_typeless || desc.texture.format == format::d32_float_s8_uint || desc.texture.format == view.format;
+    default: return false;
+    }
+}
+
 void OnInitEffectRuntime(effect_runtime* runtime) {
-    Global->Effects.Reload(runtime, OwnedEffectsEnabled());
+    Global->Effects.Reload(runtime);
 }
 
 void OnReloadedEffects(effect_runtime* runtime) {
-    Global->Effects.Reload(runtime, OwnedEffectsEnabled());
+    Global->Effects.Reload(runtime); // Metadata only; requests survive, handles do not.
 }
 
 void OnDestroyEffectRuntime(effect_runtime* runtime) {
     Global->Effects.Forget(runtime);
 }
 
+bool OnTechniqueState(effect_runtime* runtime, effect_technique technique, bool enabled) {
+    return Global->Effects.TechniqueState(runtime, technique, enabled, Global->Config.Effects);
+}
+
 void OnBeginEffects(effect_runtime* runtime, command_list*, resource_view, resource_view) {
-    Global->Effects.Reconcile(runtime, OwnedEffectsEnabled());
+    Global->Effects.Reconcile(runtime, OwnedEffectsEnabled(), OwnedDepthAvailable);
 }
 
 void OnReshadePresent(effect_runtime* runtime) {
-    // Also runs with no active FX, so switching back from Original can enable
-    // the owned technique even when it was the only loaded effect.
-    Global->Effects.Reconcile(runtime, OwnedEffectsEnabled());
+    // Runs even with no active FX, so the next Upscaled frame can restore the
+    // requested effects. This query is phase-qualified, not a draw observation.
+    Global->Effects.Reconcile(runtime, OwnedEffectsEnabled(), OwnedDepthAvailable);
 }
 
 void Start(HMODULE module) {
@@ -412,6 +475,7 @@ void Start(HMODULE module) {
     reshade::register_event<reshade::addon_event::init_effect_runtime>(&OnInitEffectRuntime);
     reshade::register_event<reshade::addon_event::destroy_effect_runtime>(&OnDestroyEffectRuntime);
     reshade::register_event<reshade::addon_event::reshade_reloaded_effects>(&OnReloadedEffects);
+    reshade::register_event<reshade::addon_event::reshade_set_technique_state>(&OnTechniqueState);
     reshade::register_event<reshade::addon_event::reshade_begin_effects>(&OnBeginEffects);
     reshade::register_event<reshade::addon_event::reshade_present>(&OnReshadePresent);
     Global->Worker = std::thread(StockWorker);
@@ -432,9 +496,10 @@ void Stop() {
     reshade::unregister_event<reshade::addon_event::init_effect_runtime>(&OnInitEffectRuntime);
     reshade::unregister_event<reshade::addon_event::destroy_effect_runtime>(&OnDestroyEffectRuntime);
     reshade::unregister_event<reshade::addon_event::reshade_reloaded_effects>(&OnReloadedEffects);
+    reshade::unregister_event<reshade::addon_event::reshade_set_technique_state>(&OnTechniqueState);
     reshade::unregister_event<reshade::addon_event::reshade_begin_effects>(&OnBeginEffects);
     reshade::unregister_event<reshade::addon_event::reshade_present>(&OnReshadePresent);
-    Global->Effects.DisableAndClear();
+    Global->Effects.Clear();
     if (Global->PushRegistered)
         reshade::unregister_event<reshade::addon_event::push_descriptors>(&OnPushDescriptors);
     {

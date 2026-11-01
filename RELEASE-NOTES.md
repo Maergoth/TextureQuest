@@ -1,15 +1,13 @@
-TextureQuest 1.10.0 private preview
+TextureQuest 1.10.0 private graphics candidate
 
-- Textures (required), optional Graphical Effects, and an unavailable DLSS choice.
-- First effect: subtle glow/bloom, off by default. AO/shadows/scene lighting pending.
-- Your custom key toggles every selected TextureQuest component together.
-- Saved choices per game; Apply changes reuses the texture cache.
-- Reversible ReShade FX settings; user presets and external edits preserved.
-- Includes released 1.9.3 automatic owned-hook refresh and shortcut fixes.
-- New app versions reapply hook/settings automatically, even for unchanged DLLs.
-- Includes released 1.9.4 metadata-only update checks and concurrent results.
-- Needed downloads start during cache comparison; full verification stays in installation and explicit Verify.
+- Optional AO, contact shadows, screen-space bounce light, bloom and spatial AA.
+- Individual ReShade controls; your texture toggle switches all our features off/on.
+- Depth diagnostic and safe fallback when depth is unavailable.
+- Exact local INI backup/restore support; no unverified native-disable commands.
+- Private ReShade keyboard compatibility correction for the reported Alt chime.
+- Includes 1.9.5 updater recovery and normal automatic owned-hook refresh.
+- One coherent launcher/hook build and a normal local-build update path.
 
-This candidate is for a private EQ2 test, not public release. Close EQ2 before
-installing or applying choices. Enabling glow also loads enabled effects from
-your ReShade preset. No native EQ2 graphics settings or game archives are edited.
+Private testing only. These supplement the native renderer; no DLSS/frame
+generation, full lighting replacement or actual game performance claim.
+Data 1.3.0 and the running generator are unchanged.
