@@ -1,6 +1,7 @@
 """Dedicated consumer UI. Shared installer engine; no developer workspace."""
 from __future__ import annotations
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 from pathlib import Path
 import queue
@@ -639,11 +640,10 @@ class TextureQuestApp:
         self.refresh_controls()
 
     def restore_saved_ready(self):
-        saved = self.dds_store.saved()
+        saved = self.dds_store.summary()
         if saved is None:
             return False
         self.prepared = saved
-        self.release_checked = True
         return True
 
     def saved_zip_path(self):
@@ -701,15 +701,17 @@ class TextureQuestApp:
         else:
             self.installer_update_button.grid_remove()
         source = self.update_check.get('dds_source') or self.dds_source or {}
-        version = source.get('texture_version', self.prepared.get('texture_version') if self.prepared else texture_version(self.release))
         count = source.get('named_texture_count', self.prepared.get('named_textures') if self.prepared else self.release.get('texture_count', 0))
         size = source.get('compressed_download_bytes', 17_669_319_485)
         self.pack_description.configure(text=f"{count:,} textures · {human_bytes(size)} download")
-        self.pack_update_label.configure(text=self.update_check.get('dds_error') or "Latest textures: " + version)
-        self.pack_versions_label.configure(text=("Saved textures: " + self.prepared['texture_version']) if self.prepared else "Uses your game files to build a local texture cache")
+        fresh_source = self.update_check.get('dds_source')
+        _, pack_notice = update_messages(self.update_check, self.app_version)
+        self.pack_update_label.configure(text=self.update_check.get('dds_error') or
+            ("Latest textures: " + fresh_source['texture_version'] if fresh_source else pack_notice))
+        self.pack_versions_label.configure(text=("Saved texture cache: " + self.prepared['texture_version']) if self.prepared else "Uses your game files to build a local texture cache")
         self.download_button.configure(text="Verify / Update textures" if self.prepared else "Download / Resume")
         pending = (self.prepared or {}).get('coverage', {}).get('pending_groups', 0)
-        self.download_label.configure(text=(f"{pending:,} changed source groups stay original" if pending else "Saved textures verified") if self.prepared else "Custom channels only · about 27.8 GB local cache")
+        self.download_label.configure(text=(f"Saved texture cache · {pending:,} changed source groups stay original" if pending else "Saved texture cache") if self.prepared else "Custom channels only · about 27.8 GB local cache")
         self.install_label.configure(text=(self.component_error if self.component_error else
             "Close EQ2, then Apply changes. Your textures stay cached." if component_pending else
             "Close EQ2, then Finish upgrade. Old hooks and verified PAK caches are removed automatically." if upgrading else
@@ -892,6 +894,9 @@ class TextureQuestApp:
             if fresh["running"] or fresh["active_sessions"]:
                 raise RuntimeError("Close the previous graphics-hook sessions first.")
             if changing:
+                # Display-only receipts may describe files that have since
+                # disappeared. Validate them before removing a working hook.
+                self.dds_store.verify(self.prepared, full=True)
                 removed = self.graphics_manager.uninstall(game, progress=self.report)
                 if any(name.casefold() != 'reshade.ini' for name in removed.get('kept', [])):
                     raise ValueError('Changed hook files were kept. Resolve the listed files before installing the new choices.')
@@ -996,13 +1001,29 @@ class TextureQuestApp:
     def check_updates(self):
         if self.busy:
             return
+        release, app_version, state_dir = self.release, self.app_version, self.state_dir
+        minimum = (self.prepared or {}).get('texture_version', '1.3.0')
         def work():
-            result = check_versions(self.release, self.app_version, self.state_dir)
-            try:
-                result['dds_source'] = fetch_dds_source(minimum=(self.prepared or {}).get('texture_version', '1.3.0'))
-            except (OSError, ValueError) as error:
-                result['dds_error'] = 'Texture check unavailable: ' + str(error)
+            result = {}
+            with ThreadPoolExecutor(max_workers=2) as workers:
+                checks = {workers.submit(check_versions, release, app_version, state_dir): 'versions',
+                          workers.submit(fetch_dds_source, minimum=minimum): 'source'}
+                for future in as_completed(checks):
+                    try:
+                        if checks[future] == 'versions':
+                            partial = future.result()
+                        else:
+                            partial = {'dds_source': future.result()}
+                    except Exception as error:
+                        if checks[future] == 'versions':
+                            unavailable = {'status': 'unavailable', 'message': str(error) or 'Version check unavailable.'}
+                            partial = {'installer': dict(unavailable), 'pack': dict(unavailable)}
+                        else:
+                            partial = {'dds_error': 'Texture check unavailable: ' + str(error)}
+                    result.update(partial)
+                    self.events.put(('version-progress', partial))
             return result
+        self.update_check = {}
         self.begin("check", "Checking app and DDS texture updates…", work)
 
     def upgrade_pending(self):
@@ -1070,6 +1091,11 @@ class TextureQuestApp:
                 event = self.events.get_nowait()
                 if event[0] == "progress":
                     self.set_message(event[1])
+                    continue
+                if event[0] == 'version-progress':
+                    if self.busy == 'check':
+                        self.update_check.update(event[1])
+                        self.refresh_controls()
                     continue
                 if event[0] == "app-update-progress":
                     value = event[1]
@@ -1169,8 +1195,6 @@ class TextureQuestApp:
                         if self.initial_pack:
                             initial, self.initial_pack = self.initial_pack, None
                             self.prepare_zip(initial)
-                        else:
-                            self.verify_installation(full=False)
                     elif self.release_checked and self.initial_pack:
                         initial, self.initial_pack = self.initial_pack, None
                         self.prepare_zip(initial)

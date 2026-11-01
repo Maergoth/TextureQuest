@@ -155,6 +155,10 @@ def read_sources(game, recipes, index, pause):
 
 
 class ChannelStore(DDSStore):
+    def summary(self):
+        value = super().summary()
+        return value if value and value.get('distribution') == 'generated-channels-only' else None
+
     def saved(self):
         value = super().saved()
         return value if value and value.get('distribution') == 'generated-channels-only' else None

@@ -128,6 +128,38 @@ class DDSStore:
         self.base = self.state_dir / 'dds'
         self.objects = self.base / 'objects'
 
+    def summary(self):
+        """Read the small cache receipt for display, without checking its files.
+
+        This is not readiness or installation authority. saved() retains its
+        inventory checks; normal installation still verifies every object.
+        """
+        try:
+            pointer = core._plain(self.state_dir / 'dds-prepared.json', self.state_dir)
+            need(0 < pointer.stat().st_size <= 64 * 1024, 'DDS summary size differs')
+            value = core._load(pointer)
+            need(value.get('schema') == 'texturequest-loose-dds-prepared-v1', 'Unsupported DDS preparation')
+            version_number(value['texture_version'])
+            need(type(value['object_count']) is int and 0 < value['object_count'] <= 100000 and
+                 type(value['object_bytes']) is int and 0 < value['object_bytes'] <= value['object_count'] * (catalog.MAX_DDS + 4096) and
+                 type(value['named_textures']) is int and 0 < value['named_textures'] <= 200000,
+                 'Invalid DDS summary counts')
+            need(isinstance(value['game'], str) and isinstance(value['object_root'], str), 'Invalid DDS summary paths')
+            for key in ('source_sha256', 'index_sha256', 'choices_sha256'):
+                need(re.fullmatch('[a-f0-9]{64}', str(value[key])) is not None, 'Invalid DDS summary identity')
+            for key in ('objects', 'map'):
+                pin = value[key]
+                need(isinstance(pin, dict) and isinstance(pin.get('path'), str) and
+                     type(pin.get('bytes')) is int and pin['bytes'] > 0 and
+                     re.fullmatch('[a-f0-9]{64}', str(pin.get('sha256'))) is not None,
+                     'Invalid DDS summary file identity')
+            coverage = value.get('coverage', {})
+            need(isinstance(coverage, dict) and type(coverage.get('pending_groups', 0)) is int and
+                 0 <= coverage.get('pending_groups', 0) <= 200000, 'Invalid DDS summary coverage')
+            return value
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            return None
+
     def saved(self):
         try:
             value = core._load(self.state_dir / 'dds-prepared.json')
