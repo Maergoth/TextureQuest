@@ -1,4 +1,4 @@
-TextureQuest 1.9.1 — Windows x64
+TextureQuest 1.9.2 — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract this app outside the game folder; keep data beside the EXE.
@@ -6,6 +6,8 @@ TextureQuest 1.9.1 — Windows x64
 4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
 Numpad * switches Original/Upscaled. Use Shortcut to change it.
+Home opens ReShade. Its other configurable shortcuts are disabled. Settings →
+Reset ReShade shortcuts reapplies this while keeping your TextureQuest shortcut.
 
 About 17.7 GB downloads: our generated/corrected channels and lookup metadata.
 The app builds about 27.8 GB of local textures using your own game files for

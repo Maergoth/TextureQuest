@@ -17,6 +17,7 @@ from texturequest_processes import ensure_closed
 from texturequest_shortcut import normalize, label
 from texturequest_dds_source import DDSStore
 import texturequest_graphics_catalog as catalog
+from texturequest_hotkeys import sanitize_reshade_config, sanitize_reshade_preset
 
 RUNTIME_SCHEMA = 'texturequest-graphics-runtime-v4'
 RECORD_SCHEMA = 'texturequest-graphics-addon-installation-v1'
@@ -24,11 +25,11 @@ PROXY_NAMES = ('dxgi.dll', 'd3d11.dll')
 STANDARD_MARKER = b'only limited add-on functionality'
 RESHADE_MARKER = b'ReShadeRegisterAddon'
 PROVIDER_170_SHA256 = '239005eae82cbf4a14e7c06d44448dd426dedc2e826896b3369e289b8398f168'
-DEFAULT_RESHADE_INI = b'[GENERAL]\r\nNoReloadOnInit=1\r\n[INPUT]\r\nKeyOverlay=36,0,0,0\r\n[OVERLAY]\r\nTutorialProgress=4\r\nShowFPS=0\r\nShowClock=0\r\nShowFrameTime=0\r\nShowPresetName=0\r\nShowPresetTransitionMessage=0\r\n'
+DEFAULT_RESHADE_INI = sanitize_reshade_config(b'[GENERAL]\r\nNoReloadOnInit=1\r\n[INPUT]\r\nKeyOverlay=36,0,0,0\r\n[OVERLAY]\r\nTutorialProgress=4\r\nShowFPS=0\r\nShowClock=0\r\nShowFrameTime=0\r\nShowPresetName=0\r\nShowPresetTransitionMessage=0\r\n')
 
 
 def quiet_reshade(raw):
-    """Hide persistent tutorial/stats; preserve effects, add-ons and custom keys."""
+    """Hide persistent tutorial/stats and reset configurable ReShade shortcuts."""
     need(len(raw) <= 4 * 1024**2, 'ReShade configuration is too large.')
     text = raw.decode('utf-8-sig')
     parser = configparser.ConfigParser(strict=False, interpolation=None)
@@ -57,7 +58,33 @@ def quiet_reshade(raw):
     elif not found:
         lines.extend(['', '[OVERLAY]'] + [k + '=' + v for k, v in values.items()])
     result = (newline.join(lines) + newline).encode('utf-8')
-    return (b'\xef\xbb\xbf' + result) if raw.startswith(b'\xef\xbb\xbf') else result
+    result = (b'\xef\xbb\xbf' + result) if raw.startswith(b'\xef\xbb\xbf') else result
+    return sanitize_reshade_config(result)
+
+
+def _preset_paths(raw, game):
+    parser = configparser.ConfigParser(strict=False, interpolation=None)
+    parser.read_string(raw.decode('utf-8-sig'))
+    values = [parser.get('GENERAL', key, fallback='').replace(',,', ',') for key in ('PresetPath', 'StartupPresetPath')]
+    # ReShade escapes literal commas by doubling them in string-list values.
+    pending, current = [], ''
+    value = parser.get('GENERAL', 'PresetShortcutPaths', fallback='')
+    pos = 0
+    while pos < len(value):
+        if value[pos:pos+2] == ',,': current += ','; pos += 2
+        elif value[pos] == ',': pending.append(current); current = ''; pos += 1
+        else: current += value[pos]; pos += 1
+    if current: pending.append(current)
+    values += pending
+    need(len(values) <= 64, 'Too many ReShade preset paths; settings preserved.')
+    found = {}
+    for value in values:
+        value = value.strip().strip('"')
+        if not value: continue
+        path = Path(value) if Path(value).is_absolute() else game / value
+        path = core._plain(path, game)
+        if path.is_file(): found[str(path).casefold()] = path
+    return list(found.values())
 
 
 def need(ok, why):
@@ -177,6 +204,94 @@ class GraphicsManager:
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp, self.base / 'shortcut.txt')
+
+    def _assert_shortcuts_settled(self, game):
+        """Never mistake a missing interrupted settings file for a fresh install."""
+        history = core._plain(self.state_dir / 'reshade-settings-history', self.state_dir)
+        if not history.exists(): return
+        journals = list(history.glob('*-shortcuts.json'))
+        need(len(journals) <= 1024, 'Too many settings journals; settings preserved.')
+        for path in journals:
+            need(path.stat().st_size <= 4 * 1024**2, 'Settings journal is too large; settings preserved.')
+            doc = _json(path)
+            need(doc.get('schema') == 'texturequest-reshade-shortcuts-v1' and
+                 doc.get('phase') in ('prepared', 'complete') and isinstance(doc.get('files'), list),
+                 'Unknown settings journal; settings preserved: ' + str(path))
+            if doc['phase'] == 'prepared':
+                targets = [core._plain(row['path']) for row in doc['files']]
+                need(not any(p.is_relative_to(game) for p in targets),
+                     'An interrupted ReShade settings reset needs recovery. Original settings and backups are preserved: ' + str(path))
+
+    def _repair_shortcuts(self, game):
+        """Caller owns operation locks. Keep settings-only backups and a journal."""
+        from contextlib import ExitStack
+        from texturequest_direct import FileCustody
+        from texturequest_custody import DirectoryCustody
+        self._assert_shortcuts_settled(game)
+        ini = core._plain(game / 'ReShade.ini', game)
+        if not ini.exists(): return dict(changed=0, paths=[])
+        before = ini.read_bytes()
+        plan = [(ini, before, quiet_reshade(before))]
+        for path in _preset_paths(before, game):
+            need(str(path).casefold() != str(ini).casefold(), 'ReShade preset cannot be its configuration file.')
+            raw = path.read_bytes()
+            plan.append((path, raw, sanitize_reshade_preset(raw)))
+        plan = [(p, a, b) for p, a, b in plan if a != b]
+        if not plan: return dict(changed=0, paths=[])
+        history = core._plain(self.state_dir / 'reshade-settings-history', self.state_dir)
+        history.mkdir(exist_ok=True)
+        journal = history / (uuid.uuid4().hex + '-shortcuts.json')
+        doc = dict(schema='texturequest-reshade-shortcuts-v1', phase='prepared', files=[])
+        with ExitStack() as stack:
+            retained = {}
+            for path, raw, after in plan:
+                stack.enter_context(DirectoryCustody(path.parent))
+                held = stack.enter_context(FileCustody(path))
+                retained[str(path)] = held
+                held.checked(dict(name=path.name, bytes=len(raw), sha256=_sha(raw)))
+                backup = history / (_sha(raw) + '.ini')
+                if not backup.exists():
+                    with backup.open('xb') as stream:
+                        stream.write(raw); stream.flush(); os.fsync(stream.fileno())
+                need(backup.read_bytes() == raw, 'ReShade settings backup changed; originals preserved.')
+                doc['files'].append(dict(path=str(path), before_sha256=_sha(raw), after_sha256=_sha(after), backup=str(backup)))
+            core._atomic(journal, doc)
+            for path, raw, after in plan:
+                ensure_closed()
+                retained[str(path)].checked(dict(name=path.name, bytes=len(raw), sha256=_sha(raw)))
+                temp = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
+                try:
+                    with temp.open('xb') as stream:
+                        stream.write(after); stream.flush(); os.fsync(stream.fileno())
+                    with DirectoryCustody(path.parent) as directories, FileCustody(temp) as output:
+                        output.checked(dict(name=temp.name, bytes=len(after), sha256=_sha(after)))
+                        # Keep the exact original handle through its move. A
+                        # concurrent writer cannot be overwritten by our commit.
+                        original = retained[str(path)]
+                        saved = path.with_name('.' + path.name + '.tq-old-' + uuid.uuid4().hex)
+                        row = next(x for x in doc['files'] if x['path'] == str(path))
+                        row['original_stash'] = str(saved); core._atomic(journal, doc)
+                        original.rename_new(saved, directories)
+                        try:
+                            output.rename_new(path, directories)
+                        except Exception:
+                            if not path.exists(): original.rename_new(path, directories)
+                            raise
+                        original.remove()
+                finally: temp.unlink(missing_ok=True)
+                next(x for x in doc['files'] if x['path'] == str(path))['committed'] = True
+                core._atomic(journal, doc)
+        doc['phase'] = 'complete'; core._atomic(journal, doc)
+        return dict(changed=len(plan), paths=[str(p) for p, _, _ in plan], receipt=str(journal))
+
+    def repair_shortcuts(self, game, progress=None):
+        game = core._plain(core.validate_game(game).parent)
+        ensure_closed()
+        with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
+            result = self._repair_shortcuts(game)
+        result['message'] = 'ReShade shortcuts reset. Home opens ReShade; your TextureQuest shortcut is unchanged. Restart EQ2.'
+        if progress: progress(result['message'])
+        return result
 
     def _addon_ini(self, game, map_path):
         lines = ['[TextureQuest]', 'Map=' + str(map_path), 'Downloads=' + str(self.state_dir / 'dds' / 'objects'),
@@ -325,6 +440,7 @@ class GraphicsManager:
         need(runtime, 'Graphics runtime missing.')
         ensure_closed()
         with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
+            self._assert_shortcuts_settled(game)
             self._exclusive_mode(game)
             old = self._record(game)
             need(not old or old['phase'] == 'uninstalled', 'Uninstall Graphics hook before installing again.')
@@ -351,27 +467,7 @@ class GraphicsManager:
             writes.append((folder / 'TextureQuest.ini', self._addon_ini(game, map_path)))
             for path, _ in writes:
                 need(not path.exists(), path.name + ' already exists. It was left unchanged.')
-            # An existing ReShade installation keeps its presets, add-ons and
-            # shortcuts. Only the persistent tutorial/stat displays are hidden.
-            ini = core._plain(game / 'ReShade.ini', game)
-            if ini.exists():
-                before = ini.read_bytes()
-                after = quiet_reshade(before)
-                if after != before:
-                    history = core._plain(self.state_dir / 'reshade-settings-history', self.state_dir)
-                    history.mkdir(exist_ok=True)
-                    backup = history / (_sha(before) + '.ini')
-                    if not backup.exists():
-                        with backup.open('xb') as stream: stream.write(before)
-                    need(ini.read_bytes() == before, 'ReShade settings changed during installation.')
-                    ensure_closed()
-                    temp = ini.with_name('ReShade.ini.' + uuid.uuid4().hex + '.tmp')
-                    try:
-                        with temp.open('xb') as stream:
-                            stream.write(after); stream.flush(); os.fsync(stream.fileno())
-                        os.replace(temp, ini)
-                    finally:
-                        temp.unlink(missing_ok=True)
+            self._repair_shortcuts(game)
             files = [dict(path=str(p), bytes=len(d), sha256=_sha(d)) for p, d in writes]
             doc = dict(schema=RECORD_SCHEMA, phase='installing', id=uuid.uuid4().hex, game=str(game), files=files,
                        reshade_owned=owned, shortcut=binding, map=str(map_path), payload='loose-dds')
