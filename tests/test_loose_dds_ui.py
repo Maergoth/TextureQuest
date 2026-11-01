@@ -49,7 +49,28 @@ class GraphicsOnlyUI(Fixture):
 
     def prepared(self):
         import texturequest_shared_textures as shared
-        return self.ui.dds_store.prepare(self.source, self.game, shared.propose(self.index), opener=self.opener)
+        # This suite retains its historical full-DDS fixture to exercise the
+        # unchanged local cache/native installer contract, not network routing.
+        from texturequest_dds_source import DDSStore
+        return DDSStore(self.state).prepare(self.source, self.game, shared.propose(self.index), opener=self.opener)
+
+    def test_first_install_downloads_builds_and_installs_without_second_click(self):
+        from test_channels import fixture
+        game,source,index,examples,choices,opener,requests=fixture(self.root/'channel-input')
+        self.ui.game.set(str(game))
+        original=(game/'paks/test.vpk').read_bytes()
+        real_prepare=self.ui.dds_store.prepare
+        def prepare(*args,**kwargs):
+            return real_prepare(*args,**kwargs,opener=opener)
+        with patch.object(app,'fetch_dds_source',return_value=source), \
+             patch.object(self.ui.dds_store,'prepare',side_effect=prepare), \
+             patch.object(self.ui,'begin',side_effect=lambda kind,message,action:action()):
+            self.assertTrue(self.ui.manage_graphics())
+        self.assertTrue(self.manager.status(game)['installed'])
+        self.assertEqual((game/'paks/test.vpk').read_bytes(),original)
+        self.assertTrue(requests)
+        self.assertFalse(any('/dds-' in url or '.vpk' in url for url in requests))
+        self.manager.uninstall(game)
 
     def test_only_graphics_option_and_no_pak_install_handler(self):
         self.assertEqual([r[1] for r in app.INSTALL_MODE_INFO], ['graphics'])

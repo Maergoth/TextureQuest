@@ -4,7 +4,11 @@ TextureQuest is an add-on for unmodified ReShade 6.8.0 with full add-on support.
 There is no external injector, watcher, service or startup task. ReShade loads
 it whenever EQ2 starts normally, including after reboot.
 
-The installer saves individual verified DDS files outside the game folder.
+Downloads contain only our generated/corrected channels and lookup metadata.
+The installer builds individual verified DDS files outside the game folder,
+using original alpha, headers and tails from the player's own installed game.
+The map builds automatically; no model-by-model mapping is needed. Reconstruction
+runs during setup, not every frame. Verified cached work is reused.
 It adds TextureQuest.addon64 and TextureQuest.ini beside EverQuest2.exe or in
 ReShade's AddonPath. If ReShade is absent, it also adds official ReShade as
 dxgi.dll and a minimal configuration. Existing full-add-on ReShade is reused;

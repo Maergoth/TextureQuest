@@ -15,7 +15,7 @@ from texture_swapper import core
 from texturequest_release import load_manifest, prepare_release, download, Paused
 from texturequest_updates import prepare_update
 from texturequest_direct import DirectSwapper
-from texturequest_dds_source import DDSStore, fetch_source as fetch_dds_source
+from texturequest_channels import ChannelStore as DDSStore, fetch_source as fetch_dds_source
 from texturequest_latest import fetch_latest
 from texturequest_launch import game_executable, launch_game as start_game
 from texturequest_graphics import GraphicsManager
@@ -45,7 +45,8 @@ BUTTON, HOVER, ERROR = "#293b4a", "#354e60", "#ffa58d"
 INSTALL_SUCCESS_MESSAGE = "Textures Installed. Launch via the EQ2 EXE, not the launcher!"
 INSTALL_MODE_INFO = (
     ("Graphics hook", "graphics", "Loads with EQ2. Numpad * switches quality.",
-     "Loads individual DDS textures through a stock ReShade add-on. "
+     "Downloads only our generated channels, then builds textures using your local game files. "
+     "Uses a stock ReShade add-on. "
      "Existing game EXE and PAK files stay unchanged. No background watcher. "
      "Install once, then launch EQ2 normally, even after reboot. Keep the data folder in place.\n\n"
      "Numpad * switches Original/Upscaled. Change it with Shortcut. "
@@ -613,7 +614,7 @@ class TextureQuestApp:
         if not self.busy and graphics.get('installed'):
             self.shortcut = shortcut_spec(graphics.get('shortcut'))
         self.shortcut_button.configure(text="Shortcut: " + shortcut_label(self.shortcut), state='disabled' if self.busy else 'normal')
-        ready = not self.busy and game and graphics.get('available') and not legacy and (graphics.get('installed') or self.prepared)
+        ready = not self.busy and game and graphics.get('available') and not legacy
         self.button_state(self.install_button, bool(ready))
         self.install_button.configure(text="Uninstall graphics hook" if graphics.get('installed') else "Install graphics hook")
         self.menu.entryconfigure(self.legacy_uninstall_index, state="normal" if not self.busy and loader.get('installed') else "disabled")
@@ -635,15 +636,17 @@ class TextureQuestApp:
         source = self.update_check.get('dds_source') or self.dds_source or {}
         version = source.get('texture_version', self.prepared.get('texture_version') if self.prepared else texture_version(self.release))
         count = source.get('named_texture_count', self.prepared.get('named_textures') if self.prepared else self.release.get('texture_count', 0))
-        self.pack_description.configure(text=f"{count:,} textures · Individual DDS files")
+        size = source.get('compressed_download_bytes', 17_669_319_485)
+        self.pack_description.configure(text=f"{count:,} textures · {human_bytes(size)} download")
         self.pack_update_label.configure(text=self.update_check.get('dds_error') or "Latest textures: " + version)
-        self.pack_versions_label.configure(text=("Saved textures: " + self.prepared['texture_version']) if self.prepared else "No verified DDS download yet")
+        self.pack_versions_label.configure(text=("Saved textures: " + self.prepared['texture_version']) if self.prepared else "Uses your game files to build a local texture cache")
         self.download_button.configure(text="Verify / Update textures" if self.prepared else "Download / Resume")
-        self.download_label.configure(text="Saved DDS files verified" if self.prepared else "Downloads DDS chunks, then extracts individual files")
+        pending = (self.prepared or {}).get('coverage', {}).get('pending_groups', 0)
+        self.download_label.configure(text=(f"{pending:,} changed source groups stay original" if pending else "Saved textures verified") if self.prepared else "Custom channels only · about 27.8 GB local cache")
         self.install_label.configure(text=("Use Settings → Uninstall old Memory hook first." if legacy else
             graphics.get('message', '') if graphics.get('installed') or not graphics.get('available') else
             "Choose your game folder first." if not game else
-            "Download the textures first." if not self.prepared else
+            "Install downloads and prepares everything automatically." if not self.prepared else
             "Ready. Close EQ2, then install. " + shortcut_label(self.shortcut) + " switches Original/Upscaled."))
         self.menu.entryconfigure(0, state="normal" if game and not self.busy else "disabled")
 
@@ -797,8 +800,8 @@ class TextureQuestApp:
             return False
         removing = status["installed"]
         if not removing and (not self.prepared or not self.release_checked):
-            self.set_message("Prepare and verify the full texture pack first.", error=True)
-            return False
+            self._download_latest(auto_install=True)
+            return True
         def work():
             if self.loader_in_use(self.loader_status(game)):
                 raise RuntimeError("Uninstall Memory hook and close its active sessions first.")
@@ -900,29 +903,32 @@ class TextureQuestApp:
         def work():
             result = check_versions(self.release, self.app_version, self.state_dir)
             try:
-                result['dds_source'] = fetch_dds_source(minimum=(self.prepared or {}).get('texture_version', '1.2.4'))
+                result['dds_source'] = fetch_dds_source(minimum=(self.prepared or {}).get('texture_version', '1.3.0'))
             except (OSError, ValueError) as error:
                 result['dds_error'] = 'Texture check unavailable: ' + str(error)
             return result
         self.begin("check", "Checking app and DDS texture updates…", work)
 
-    def _download_latest(self, base_zip=None):
+    def _download_latest(self, base_zip=None, auto_install=False):
         if self.busy:
             return
         game = self.game.get().strip()
         if not game:
             self.set_message("Choose your game folder first so the texture map can match its stock files.")
             return
-        minimum = (self.prepared or {}).get('texture_version', '1.2.4')
+        minimum = (self.prepared or {}).get('texture_version', '1.3.0')
+        binding = dict(self.shortcut)
         def work():
             source = fetch_dds_source(pause=self.pause.is_set, minimum=minimum)
             choices = core._json(resource('shared-texture-choices.json').read_bytes())
             prepared = self.dds_store.prepare(source, game, choices, pause=self.pause.is_set,
                 progress=self.report, overall=self.report_overall, in_use=self.downloads_in_use)
             self.graphics_manager.activate_prepared(game, prepared)
+            if auto_install and not self.graphics_manager.status(game).get('installed'):
+                self.graphics_manager.install(game, prepared, progress=self.report, shortcut=binding)
             self.dds_source = source
             return self.release, prepared, {}, None
-        self.begin("update", "Downloading and verifying individual DDS textures…", work)
+        self.begin("update", "Downloading custom channels and building local textures…", work)
 
     def request_pause(self):
         if self.busy in ("download", "update"):
@@ -973,8 +979,14 @@ class TextureQuestApp:
                     # Commit/final preparation may still fail after the last byte.
                     percent = min(100 * done / max(total, 1), 99.9)
                     self.progress.configure(mode="determinate", value=percent)
-                    caption = "Overall install" if self.busy == "install" else "Overall download"
-                    self.overall_label.configure(text=f"{caption}: {percent:.1f}% · {completed}/{files} DDS files · {human_bytes(done)} of {human_bytes(total)}")
+                    if message in ('Building local textures', 'Verified cached textures'):
+                        caption = f"Local setup: {percent:.1f}% · {completed:,}/{files:,} textures"
+                    elif message == 'Downloading custom channels':
+                        caption = f"Download: {percent:.1f}% · {human_bytes(done)} of {human_bytes(total)}"
+                    else:
+                        name = "Overall install" if self.busy == "install" else "Overall download"
+                        caption = f"{name}: {percent:.1f}% · {completed}/{files} DDS files · {human_bytes(done)} of {human_bytes(total)}"
+                    self.overall_label.configure(text=caption)
                     self.set_message(message)
                     continue
                 event_type, kind, value = event
@@ -1148,8 +1160,8 @@ def main(argv=None):
         root.withdraw()
         def smoke():
             root.update_idletasks()
-            total = sum(row['bytes'] for row in app.release['archives'])
-            files = len(app.release['archives'])
+            total = sum(row['bytes'] for row in app.release['archives']) or 1000
+            files = len(app.release['archives']) or 100
             app.busy = "update"
             app.events.put(("overall-progress", "Downloading fixture.dds", total // 2, total, files // 2, files))
             app.events.put(("download-progress", "Current file commit", 0, 1))

@@ -1,30 +1,26 @@
-TextureQuest 1.9.0 — Windows x64
+TextureQuest 1.9.1 — Windows x64
 
-1. Patch EQ2 to stock first if you previously used Replace mode, then close EQ2.
-2. Extract the app outside the game folder. Keep data beside TextureQuest.exe.
-3. Choose your game folder, then Download / Resume.
-4. Click Install graphics hook. Launch EQ2 normally, including after reboot.
+1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
+2. Close EQ2. Extract this app outside the game folder; keep data beside the EXE.
+3. Choose your game folder, then Install graphics hook. Setup is automatic.
+4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
 Numpad * switches Original/Upscaled. Use Shortcut to change it.
-TextureQuest can stay closed while playing. Keep the data folder in place.
 
-Textures download as ZIP chunks containing individual DDS files. The app verifies
-and extracts the DDS; it never downloads replacement PAKs or rewrites game archives.
-Identical stock textures share one existing upscale. Known later corrections win.
+About 17.7 GB downloads: our generated/corrected channels and lookup metadata.
+The app builds about 27.8 GB of local textures using your own game files for
+protected original channels, DDS headers and tails. Those parts are not downloaded.
+No game PAK writes, manual mapping, extra tools or background watcher. Keep data.
+Verified cached work is reused; interrupted downloads resume safely.
 
-The hook is a stock ReShade add-on. It adds TextureQuest.addon64 and
-TextureQuest.ini; it installs official full-add-on ReShade as dxgi.dll only if no
-ReShade is present. Existing full-add-on ReShade is reused. Standard ReShade needs
-upgrading; unknown proxies are preserved and installation stops.
+The hook uses stock full-add-on ReShade. Existing compatible ReShade is reused;
+otherwise official ReShade is added as dxgi.dll. Unknown proxies stay untouched.
+Close EQ2 before installing, uninstalling or activating updates. Uninstall removes
+only owned, unchanged hook files and keeps the local texture cache.
 
-Close EQ2 to install, uninstall or activate updates. Uninstall removes only owned,
-unchanged hook files; saved DDS files are kept. Remove an old graphics hook before
-installing this version. Settings can remove an old Memory hook.
+After patches, unchanged assets still match. Verify / Update textures refreshes
+the map; changed or unavailable sources stay original with a coverage report.
+Get app update downloads, verifies, replaces and restarts the app, preserving data.
 
-Unchanged stock textures keep matching after patches. Verify / Update textures
-refreshes the local stock map. Changed source assets stay original until supported.
-Get app update downloads, verifies and restarts the app, keeping data intact.
-
-Graphics hooks are not officially approved; account-policy risk is unknown.
-This community app includes third-party notices. The unfinished generation batch
-is not part of the published DDS source.
+Includes third-party notices. Graphics hooks are not officially approved;
+account-policy risk is unknown. The unfinished generation batch is not included.

@@ -22,7 +22,7 @@ CHECK_SCHEMA = "texturequest-update-check-v1"
 
 
 def texture_version(manifest):
-    version = (manifest.get("texture_version") if manifest.get("schema") == "texturequest-release-v3"
+    version = (manifest.get("texture_version") if manifest.get("schema") in ("texturequest-release-v3", "texturequest-release-v4")
                else manifest.get("update", {}).get("version", manifest.get("version")))
     latest.version_number(version)
     return version
@@ -30,6 +30,8 @@ def texture_version(manifest):
 
 def pack_identity(value):
     """Ignore envelope versions and archive display metadata, never byte identity."""
+    if value.get('schema') == 'texturequest-release-v4':
+        return core._digest(value['channel_source'])
     rows = value.get("archives", [])
     if not isinstance(rows, list) or not rows:
         return None
@@ -213,7 +215,9 @@ def check_updates(current_manifest, app_version, state_dir=None, opener=urlopen,
             result[key] = {"status": "unavailable", "message": error_message(error)}
     pack = result["pack"]
     if pack["status"] == "verified":
-        if current_manifest.get("schema") == "texturequest-release-v3" and pack["manifest"].get("schema") != "texturequest-release-v3":
+        if current_manifest.get('schema') == 'texturequest-release-v4' and pack['manifest'].get('schema') != 'texturequest-release-v4':
+            result['pack'] = {'status':'unavailable','message':'This app requires generated-channel texture data. Saved files are kept.'}
+        elif current_manifest.get("schema") == "texturequest-release-v3" and pack["manifest"].get("schema") != "texturequest-release-v3":
             result["pack"] = {"status": "unavailable", "message": "This app requires direct VPK downloads. The latest release is using an older format."}
         elif latest.version_number(pack["version"]) < latest.version_number(current_version):
             result["pack"] = {"status": "unavailable", "message": "GitHub returned older textures. Saved version is kept."}

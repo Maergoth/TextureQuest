@@ -1,74 +1,49 @@
-# Individual DDS installation
+# Channel downloads and the local DDS cache
 
-The installer uses the existing **TextureQuest-Textures** release. It downloads
-`texture-source.json`, its SHA-256-pinned `texture-index.json`, and required ZIP
-chunks. Chunks are transport only: the installed payload is individual DDS files.
-No replacement VPK is downloaded, rebuilt, or installed.
+TextureQuest 1.9.1 downloads channel-source.json, its pinned channel-index.json
+and required channels-*.zip chunks from TextureQuest-Textures. Downloads contain
+only generated/corrected RGB channels plus layout/lookup metadata. No original
+alpha planes, original DDS headers/tails, whole DDS or game PAKs are downloaded.
 
-The source/index retain every archive/member identity, category, map type, source
-layout/fingerprint and target mip/tail identity. Named aliases can share one DDS
-object without losing their categories.
+Install graphics hook downloads, reconstructs, builds the map and installs the
+hook automatically. Download / Resume can also prepare the cache separately.
+About 17.7 GB downloads become about 27.8 GB of local reconstructed textures.
+The player's existing EQ2 installation supplies protected original channels.
 
-## Shared originals
+## Reconstruction and updates
 
-One identical stock layout/fingerprint gets one upscale:
+- Exact original DDS SHA/layout/mip fingerprint, channel ownership, payload SHA,
+  wraps and target DDS/mip/tail hashes must match. No downloaded-stock fallback.
+- The CPU recipe matches the approved local test: padded float32 Lanczos4,
+  explicit per-axis wraps, BOX mips and pinned DirectXTex. No AI model is needed.
+- Four released RGB profiles are admitted. Alpha-only, scalar, joint and signed
+  generations need separate ownership profiles before future publication.
+- The 46 explicit new source-alpha references retain prior hashes as history;
+  BC1 may requantize generated colour blocks where transparency requires it.
+- Cache files and maps are immutable and verified before reuse. Interrupted
+  downloads resume using checked prefixes; completed local DDS survive.
+- Current source matching builds the lookup automatically from the local PAKs,
+  read with writes denied. Changed or missing source groups remain original and
+  are reported explicitly. No manual texture-to-model mapping is needed.
+- An interrupted update keeps the old map and its referenced textures. Activation
+  happens only with EQ2 closed; the hook loads it on the next normal launch.
 
-1. Prefer the known correction with the latest correction revision.
-2. Otherwise select the target outcome used by the most named copies.
-3. Break ties deterministically using layout/fingerprint and DDS identity.
+Local mixed-origin DDS must never be re-uploaded. Public payloads remain separate
+from this private cache. Categories and every named alias stay in the index.
+Shared originals prefer known later corrections, then the most-used version with
+a stable tie-break. All accepted body, stone and Ratonga corrections are retained.
 
-`src/shared-texture-choices.json` records the current result and correction
-priorities. New groups are selected automatically. There is no appearance review
-or per-texture approval step. The current 1.2.4 data has 208 conflicting groups
-covering 486 named files; all receive a shared choice. The four native-AI
-corrections in 1.2.4 and six Ratonga corrections in 1.2.1 have priority over ordinary
-generations. Existing variants and masters are preserved; nothing is regenerated.
+## Graphics runtime
 
-For a later correction, record its named ID and increasing revision:
+Stock full-add-on ReShade 6.8 and the reviewed graphics callbacks remain.
+TQMAP002 maps sorted XXH3-128 original mip fingerprints to local DDS files.
+Each local file is checked for SHA-256, size, layout and mips before use.
+File paths are restricted to dds/<digest>.dds; arbitrary paths are refused.
 
-```powershell
-python tools/select_shared_textures.py texture-index.json choices.json --correction <named-id>:125
-```
+The product has two states: Original / Upscaled. Numpad * toggles them and the
+installer can change the shortcut. No background watcher or service. ReShade
+loads the add-on on normal EQ2 launches, including after reboot.
 
-Existing correction priorities are carried forward. Texture releases must remain
-cumulative so later exports never revert earlier selected repairs.
-Future published index rows can carry a positive, increasing `correction_revision`;
-the installer then prefers the later correction without requiring an app update.
-Do not infer correction order from download/extraction file timestamps.
-
-## Download and activation
-
-- GitHub asset metadata supplies the manifest checksum; the manifest pins the
-  index and ZIPs. Downloads reuse bounded range requests and checkpoint journals.
-- Extraction verifies exact ZIP membership/type and full DDS SHA-256, layout,
-  mip fingerprint and opaque tail. Paths are `dds/<sha256>.dds`. Existing unknown
-  or corrupt objects are preserved and refused, never overwritten.
-- Only selected objects are stored. One ZIP is extracted at a time and removed
-  after verification. Completed DDS files and interrupted checkpoints survive.
-- The installer builds the existing XXH3 lookup by reading selected stock members
-  from the client's PAKs with writes denied. Exact source DDS SHA-256, layout and
-  TQABUP01 fingerprint must match. Changed or missing sources remain pending;
-  filename equality is not remapping authority.
-- Objects and finished maps are immutable. The ready receipt commits only after
-  all selected DDS and map checks. An interrupted update leaves the old map and
-  its referenced files intact. Activation replaces only the map pointer with
-  EQ2 closed; an installed DDS hook uses it on its next launch.
-
-The only game-folder writes are explicit hook Install/Uninstall. Existing Replace
-users restore stock with the official patcher once. Old PAK downloads are kept.
-
-## Runtime contract
-
-Stock ReShade 6.8.0 and PR #1's graphics callbacks remain. A DDS reader replaces
-the replacement-VPK reader. It denies writes during the read, closes its handle,
-verifies the full file SHA-256 and dimensions/mips, and supplies the existing
-creation hook. Headers, channel representation, mip bytes and tails are unchanged.
-
-`TQMAP002` retains the sorted XXH3-128 lookup and 88-byte rows. The file table
-adds full-file size, string offset and SHA-256. Paths must equal
-`dds/<digest>.dds`; arbitrary paths and legacy PAK maps cannot supply replacements.
-Stock PAK reads remain for Original comparison only.
-
-The product has two states: **Original / Upscaled**. The private three-way hall
-test is separate and untouched. Full-pack EQ2 validation is required before
-publishing a new installer; this PR does not install or launch a game.
+Game PAKs stay unchanged. Existing Replace users should restore stock with the
+official patcher once. Uninstall removes only owned, unchanged hook files and
+keeps the local cache. Get app update preserves portable data.

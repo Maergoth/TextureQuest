@@ -1,0 +1,10 @@
+{
+  "schema": "texturequest-local-cpu-codec-v1",
+  "texconv_sha256": "dcfdec10244e02cf5037fba089c55fb7e1326b1c8181742d77d15fa5cb5eef06",
+  "scope": "Four released RGB profiles only; identical resample and codec flags to approved local test.",
+  "dependencies": {
+    "numpy": "2.5.2",
+    "opencv-python-headless": "5.0.0.93",
+    "Pillow": "12.3.0"
+  }
+}

@@ -14,10 +14,10 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 
 1. Patch EQ2 Origins, then close the game and launcher. If you previously replaced PAKs, use the official patcher to restore stock files before installing the hook.
 2. Extract the app outside your game folder. Keep your existing **data** folder alongside **TextureQuest.exe**.
-3. Open TextureQuest, select your game folder, then **Download / Resume**.
-4. Click **Install graphics hook**, then launch EQ2 normally. **Numpad \*** switches Original/Upscaled; use **Shortcut** to change it.
+3. Open TextureQuest, select your game folder, then click **Install graphics hook**. It downloads and prepares everything automatically.
+4. Launch EQ2 normally. **Numpad \*** switches Original/Upscaled; use **Shortcut** to change it.
 
-The installer downloads individual DDS textures from [TextureQuest-Textures](https://github.com/Maergoth/TextureQuest-Textures/releases/latest). It extracts one copy of each needed DDS into its data folder. It does not download replacement PAKs or modify the game's archives.
+The installer downloads only our generated/corrected channels from [TextureQuest-Textures](https://github.com/Maergoth/TextureQuest-Textures/releases/latest), about **17.7 GB**. It reads protected channels, headers and tails from your own game files and builds a **27.8 GB local texture cache** plus the lookup map automatically. No manual mapping, extra tools or game PAK changes. Setup reuses verified cached files; reconstruction does not run every frame.
 
 **Install once, then launch normally.** ReShade loads the add-on when EQ2 starts, including after a reboot. No background watcher, service or startup task. TextureQuest can stay closed; keep the app, **data** and downloads in place.
 
@@ -32,9 +32,9 @@ The installer downloads individual DDS textures from [TextureQuest-Textures](htt
 <details>
 <summary>Pack contents and compatibility</summary>
 
-Texture pack **1.2.4** includes **24,694 named replacements**, including 312 recovered 2K Maj'Dul/Desert of Flames textures and earlier repairs. Includes corrected shared Fae/Arasai male and female bodies, Qeynos stone trim and its companion map. Other released textures and recovered Maj'Dul content are preserved. The larger generation batch is still unfinished.
+Texture pack **1.3.0** includes **24,694 named replacements**, including 312 recovered 2K Maj'Dul/Desert of Flames textures and earlier repairs. Includes corrected shared Fae/Arasai male and female bodies, Qeynos stone trim and its companion map. Other released textures and recovered Maj'Dul content are preserved. The larger generation batch is still unfinished.
 
-Compatibility with every asset, other graphics add-ons and future clients is not established. ReShade's add-on build is not intended for games with anti-cheat that inspects loaded modules. Neither installation method has official approval; account-policy risk is unknown.
+Compatibility with every asset, other graphics add-ons and future clients is not established. ReShade's add-on build is not intended for games with anti-cheat that inspects loaded modules. This graphics hook has no official approval; account-policy risk is unknown.
 
 Matching DDS files replace stock data when EQ2 creates GPU textures. The stock-ReShade add-on and its Original/Upscaled hotkey remain. Upscaled mode needs no per-draw replacement work. Original mode loads stock copies on demand within a 512 MiB budget.
 

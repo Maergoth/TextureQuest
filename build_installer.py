@@ -129,10 +129,20 @@ def main():
             raise RuntimeError("Loader resources changed while staging")
         command += ["--add-data", str(descriptor) + ":.", "--add-data", str(payload) + ":sideload",
                     "--hidden-import", "dataclasses", "--hidden-import", "zlib"]
-    for name in ("torch", "transformers", "diffusers", "scipy", "matplotlib", "pandas", "nightly", "nightly_fast", "PIL", "numpy", "texture_swapper.app", "texture_swapper.explorer", "texture_swapper.self_check"):
+    for name in ("torch", "transformers", "diffusers", "scipy", "matplotlib", "pandas", "nightly", "nightly_fast", "texture_swapper.app", "texture_swapper.explorer", "texture_swapper.self_check"):
         command += ["--exclude-module", name]
     if graphics:
         command += ["--add-data", str(resources_graphics) + ":graphics-runtime"]
+    cpu_codec = ROOT / 'cpu-codec'
+    codec_doc = json.loads((cpu_codec / 'CODEC.json').read_text(encoding='utf-8'))
+    if sha(cpu_codec / 'texconv.exe') != codec_doc['texconv_sha256']:
+        raise ValueError('Local CPU codec differs from its reviewed reference')
+    for name, expected in codec_doc['dependencies'].items():
+        if importlib.metadata.version(name) != expected:
+            raise ValueError('CPU reconstruction dependency differs: ' + name)
+    for name in ('texconv.exe', 'CODEC.json', 'DirectXTex-LICENSE.txt'):
+        source_hashes['cpu-codec/' + name] = sha(cpu_codec / name)
+    command += ['--add-data', str(cpu_codec) + ':cpu-codec']
     shared_choices = ROOT / 'src' / 'shared-texture-choices.json'
     shutil.copy2(shared_choices, stage / shared_choices.name)
     source_hashes['src/shared-texture-choices.json'] = sha(shared_choices)
@@ -160,7 +170,7 @@ def main():
     licenses = folder / "licenses"
     licenses.mkdir(exist_ok=True)
     versions = {}
-    for name in ("psutil", "xxhash", "pyinstaller", "pyinstaller-hooks-contrib", "altgraph", "pywin32-ctypes"):
+    for name in ("psutil", "xxhash", "numpy", "Pillow", "opencv-python-headless", "pyinstaller", "pyinstaller-hooks-contrib", "altgraph", "pywin32-ctypes"):
         dist = importlib.metadata.distribution(name)
         versions[name] = dist.version
         for item in dist.files or []:
