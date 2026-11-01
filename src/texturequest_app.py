@@ -1126,6 +1126,8 @@ class TextureQuestApp:
                     self.progress.configure(mode="determinate", value=percent)
                     if message in ('Building local textures', 'Verified cached textures'):
                         caption = f"Local setup: {percent:.1f}% · {completed:,}/{files:,} textures"
+                    elif message == 'Checking saved textures':
+                        caption = f"Checking saved cache: {completed:,}/{files:,} · downloading differences as found"
                     elif message == 'Downloading custom channels':
                         caption = f"Download: {percent:.1f}% · {human_bytes(done)} of {human_bytes(total)}"
                     else:

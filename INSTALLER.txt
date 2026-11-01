@@ -19,6 +19,8 @@ The app builds about 27.8 GB of local textures using your own game files for
 protected original channels, DDS headers and tails. Those parts are not downloaded.
 No game PAK writes, manual mapping, extra tools or background watcher. Keep data.
 Verified cached work is reused; interrupted downloads resume safely.
+Version checks do not scan your textures. Updates reuse unchanged files and
+start required downloads while the remaining files are compared.
 
 The hook uses stock full-add-on ReShade. Existing compatible ReShade is reused;
 otherwise official ReShade is added as dxgi.dll. Unknown proxies stay untouched.
