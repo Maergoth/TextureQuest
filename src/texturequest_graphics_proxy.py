@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Install the TextureQuest add-on for stock ReShade; never inject into or launch the game.
 
 The game folder receives the add-on, its TextureQuest.ini, and, only when no
@@ -654,3 +655,591 @@ class GraphicsManager:
         if progress:
             progress('Shortcut saved: ' + label(binding) + '. Active only while EQ2 is focused.')
         return self.status(game)
+=======
+"""Install the TextureQuest add-on for stock ReShade; never inject into or launch the game.
+
+The game folder receives the add-on, its TextureQuest.ini, and, only when no
+ReShade is present, the official ReShade add-on build as dxgi.dll.
+"""
+from pathlib import Path
+import configparser
+import hashlib
+import os
+import re
+import time
+import uuid
+
+from texture_swapper import core
+from texturequest_sideload import LoaderManager, _pin, _json, _alive, _live_status_bytes, _remove_run, _signal_stop
+from texturequest_processes import ensure_closed
+from texturequest_shortcut import normalize, label
+from texturequest_dds_source import DDSStore
+import texturequest_graphics_catalog as catalog
+from texturequest_hotkeys import sanitize_reshade_config, sanitize_reshade_preset
+from texturequest_version import APP_VERSION
+from texturequest_latest import version_number
+
+try:
+    from texturequest_build_pin import APP_VERSION
+except ImportError:
+    pass
+
+RUNTIME_SCHEMA = 'texturequest-graphics-runtime-v4'
+RECORD_SCHEMA = 'texturequest-graphics-addon-installation-v1'
+PROXY_NAMES = ('dxgi.dll', 'd3d11.dll')
+STANDARD_MARKER = b'only limited add-on functionality'
+RESHADE_MARKER = b'ReShadeRegisterAddon'
+PROVIDER_170_SHA256 = '239005eae82cbf4a14e7c06d44448dd426dedc2e826896b3369e289b8398f168'
+DEFAULT_RESHADE_INI = sanitize_reshade_config(b'[GENERAL]\r\nNoReloadOnInit=1\r\n[INPUT]\r\nKeyOverlay=36,0,0,0\r\n[OVERLAY]\r\nTutorialProgress=4\r\nShowFPS=0\r\nShowClock=0\r\nShowFrameTime=0\r\nShowPresetName=0\r\nShowPresetTransitionMessage=0\r\n')
+
+
+def quiet_reshade(raw):
+    """Hide persistent tutorial/stats and reset configurable ReShade shortcuts."""
+    need(len(raw) <= 4 * 1024**2, 'ReShade configuration is too large.')
+    text = raw.decode('utf-8-sig')
+    parser = configparser.ConfigParser(strict=False, interpolation=None)
+    parser.read_string(text)
+    values = dict(TutorialProgress='4', ShowFPS='0', ShowClock='0', ShowFrameTime='0',
+                  ShowPresetName='0', ShowPresetTransitionMessage='0')
+    newline = '\r\n' if '\r\n' in text else '\n'
+    lines, section, seen, found = [], '', set(), False
+    for line in text.splitlines():
+        match = re.match(r'\s*\[([^]]+)\]', line)
+        if match:
+            if section == 'overlay':
+                lines.extend(k + '=' + v for k, v in values.items() if k not in seen)
+            section = match[1].casefold()
+            found |= section == 'overlay'
+        key = re.match(r'\s*([^=;#]+?)\s*=', line)
+        name = next((k for k in values if key and k.casefold() == key[1].casefold()), None)
+        if section == 'overlay' and name:
+            line = name + '=' + values[name]
+            seen.add(name)
+        if section == 'input' and key and key[1].casefold() == 'keyoverlay' and re.fullmatch(r'\s*0(?:\s*,\s*0){3}\s*', line.split('=', 1)[1]):
+            line = 'KeyOverlay=36,0,0,0'
+        lines.append(line)
+    if section == 'overlay':
+        lines.extend(k + '=' + v for k, v in values.items() if k not in seen)
+    elif not found:
+        lines.extend(['', '[OVERLAY]'] + [k + '=' + v for k, v in values.items()])
+    result = (newline.join(lines) + newline).encode('utf-8')
+    result = (b'\xef\xbb\xbf' + result) if raw.startswith(b'\xef\xbb\xbf') else result
+    return sanitize_reshade_config(result)
+
+
+def _preset_paths(raw, game):
+    parser = configparser.ConfigParser(strict=False, interpolation=None)
+    parser.read_string(raw.decode('utf-8-sig'))
+    values = [parser.get('GENERAL', key, fallback='').replace(',,', ',') for key in ('PresetPath', 'StartupPresetPath')]
+    # ReShade escapes literal commas by doubling them in string-list values.
+    pending, current = [], ''
+    value = parser.get('GENERAL', 'PresetShortcutPaths', fallback='')
+    pos = 0
+    while pos < len(value):
+        if value[pos:pos+2] == ',,': current += ','; pos += 2
+        elif value[pos] == ',': pending.append(current); current = ''; pos += 1
+        else: current += value[pos]; pos += 1
+    if current: pending.append(current)
+    values += pending
+    need(len(values) <= 64, 'Too many ReShade preset paths; settings preserved.')
+    found = {}
+    for value in values:
+        value = value.strip().strip('"')
+        if not value: continue
+        path = Path(value) if Path(value).is_absolute() else game / value
+        path = core._plain(path, game)
+        if path.is_file(): found[str(path).casefold()] = path
+    return list(found.values())
+
+
+def need(ok, why):
+    if not ok:
+        raise ValueError(why)
+
+
+def exclusive(path, value):
+    with core._plain(path).open('xb') as f:
+        f.write(catalog.canonical(value)+b'\n'); f.flush(); os.fsync(f.fileno())
+
+
+def _sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def classify(path):
+    """'none', 'addon', 'standard' or 'foreign' for a proxy DLL in the game folder."""
+    if not path.is_file():
+        return 'none'
+    data = path.read_bytes()
+    if RESHADE_MARKER not in data or _sha(data) == PROVIDER_170_SHA256:
+        return 'foreign'
+    return 'standard' if STANDARD_MARKER in data else 'addon'
+
+
+class GraphicsManager:
+    def __init__(self, state_dir, *, runtime_dir=None):
+        self.state_dir = core._plain(state_dir)
+        self.runtime_dir = Path(runtime_dir) if runtime_dir else Path(__file__).resolve().parent / 'graphics-runtime'
+        self.base = self.state_dir / 'graphics'
+        self.records = self.state_dir / 'graphics-addon'
+        self.proxy_records = self.state_dir / 'graphics-proxy'
+
+    def _runtime(self):
+        path = self.runtime_dir / 'RUNTIME.json'
+        if not path.exists():
+            return None
+        doc = _json(path)
+        need(doc.get('schema') == RUNTIME_SCHEMA and doc.get('reshade_build') == 'addon' and
+             doc.get('map_schema') == 'TQMAP002', 'Unknown graphics runtime.')
+        names = {row['name'] for row in doc['files']}
+        need(doc.get('addon') in names and doc.get('reshade') in names, 'Graphics runtime does not pin its add-on and ReShade.')
+        for row in doc['files']:
+            _pin(self.runtime_dir / row['name'], row)
+        return doc
+
+    def _key(self, game):
+        return hashlib.sha256(str(core._plain(game)).casefold().encode()).hexdigest()[:24]
+
+    def _record_path(self, game):
+        return self.records / (self._key(game) + '.json')
+
+    def _legacy_path(self, game): return self.base/'registrations'/(self._key(game)+'.json')
+
+    def _read_legacy(self, path, game):
+        raw = _live_status_bytes(path)
+        if raw is None: return None
+        d = core._json(raw)
+        need(d.get('record_sha256')==core._digest({k:v for k,v in d.items() if k!='record_sha256'}) and
+             str(core._plain(d['game'])).casefold()==str(core._plain(game)).casefold(), 'Graphics record changed; preserve it for recovery.')
+        need(d.get('schema')=='texturequest-graphics-installation-v1' and
+             re.fullmatch('[a-f0-9]{32}',d.get('installation_id','')) is not None,
+             'Unknown legacy graphics record.')
+        return d
+
+    def _legacy(self, game): return self._read_legacy(self._legacy_path(game),game)
+
+    def _record(self, game):
+        path = self._record_path(game)
+        if not path.exists():
+            return None
+        doc = _json(path)
+        need(doc.get('schema') == RECORD_SCHEMA and doc.get('record_sha256') == core._digest({k: v for k, v in doc.items() if k != 'record_sha256'}),
+             'Graphics record changed; preserve it for recovery.')
+        return doc
+
+    def _save(self, game, doc):
+        doc['record_sha256'] = core._digest({k: v for k, v in doc.items() if k != 'record_sha256'})
+        self.records.mkdir(parents=True, exist_ok=True)
+        core._atomic(self._record_path(game), doc)
+
+    def _games_open(self, game):
+        import psutil
+        target = str(core._plain(game) / 'EverQuest2.exe').casefold()
+        count = 0
+        for p in psutil.process_iter(['pid', 'name']):
+            if (p.info['name'] or '').casefold() == 'everquest2.exe':
+                try:
+                    count += p.exe().casefold() == target
+                except psutil.NoSuchProcess:
+                    pass
+        return count
+
+    def _addon_folder(self, game):
+        ini = game / 'ReShade.ini'
+        if not ini.is_file():
+            return game
+        parser = configparser.ConfigParser(strict=False, interpolation=None)
+        try:
+            parser.read_string(ini.read_text(encoding='utf-8-sig', errors='replace'))
+        except configparser.Error as error:
+            raise ValueError('ReShade.ini could not be read: ' + str(error)) from error
+        value = parser.get('ADDON', 'AddonPath', fallback='').strip()
+        if not value:
+            return game
+        folder = Path(value) if Path(value).is_absolute() else game / value
+        need(folder.is_dir(), 'ReShade AddonPath folder does not exist: ' + value)
+        return core._plain(folder)
+
+    def _write_key(self, binding):
+        self.base.mkdir(parents=True, exist_ok=True)
+        raw = ('TQKEY1\n' + str(binding['vk']) + '\n' + str(binding['modifiers']) + '\n').encode()
+        tmp = self.base / ('shortcut-' + uuid.uuid4().hex + '.tmp')
+        with tmp.open('xb') as f:
+            f.write(raw)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, self.base / 'shortcut.txt')
+
+    def _assert_shortcuts_settled(self, game):
+        """Never mistake a missing interrupted settings file for a fresh install."""
+        history = core._plain(self.state_dir / 'reshade-settings-history', self.state_dir)
+        if not history.exists(): return
+        journals = list(history.glob('*-shortcuts.json'))
+        need(len(journals) <= 1024, 'Too many settings journals; settings preserved.')
+        for path in journals:
+            need(path.stat().st_size <= 4 * 1024**2, 'Settings journal is too large; settings preserved.')
+            doc = _json(path)
+            need(doc.get('schema') == 'texturequest-reshade-shortcuts-v1' and
+                 doc.get('phase') in ('prepared', 'complete') and isinstance(doc.get('files'), list),
+                 'Unknown settings journal; settings preserved: ' + str(path))
+            if doc['phase'] == 'prepared':
+                targets = [core._plain(row['path']) for row in doc['files']]
+                need(not any(p.is_relative_to(game) for p in targets),
+                     'An interrupted ReShade settings reset needs recovery. Original settings and backups are preserved: ' + str(path))
+
+    def _repair_shortcuts(self, game):
+        """Caller owns operation locks. Keep settings-only backups and a journal."""
+        from contextlib import ExitStack
+        from texturequest_direct import FileCustody
+        from texturequest_custody import DirectoryCustody
+        self._assert_shortcuts_settled(game)
+        ini = core._plain(game / 'ReShade.ini', game)
+        if not ini.exists(): return dict(changed=0, paths=[])
+        before = ini.read_bytes()
+        plan = [(ini, before, quiet_reshade(before))]
+        for path in _preset_paths(before, game):
+            need(str(path).casefold() != str(ini).casefold(), 'ReShade preset cannot be its configuration file.')
+            raw = path.read_bytes()
+            plan.append((path, raw, sanitize_reshade_preset(raw)))
+        plan = [(p, a, b) for p, a, b in plan if a != b]
+        if not plan: return dict(changed=0, paths=[])
+        history = core._plain(self.state_dir / 'reshade-settings-history', self.state_dir)
+        history.mkdir(exist_ok=True)
+        journal = history / (uuid.uuid4().hex + '-shortcuts.json')
+        doc = dict(schema='texturequest-reshade-shortcuts-v1', phase='prepared', files=[])
+        with ExitStack() as stack:
+            retained = {}
+            for path, raw, after in plan:
+                stack.enter_context(DirectoryCustody(path.parent))
+                held = stack.enter_context(FileCustody(path))
+                retained[str(path)] = held
+                held.checked(dict(name=path.name, bytes=len(raw), sha256=_sha(raw)))
+                backup = history / (_sha(raw) + '.ini')
+                if not backup.exists():
+                    with backup.open('xb') as stream:
+                        stream.write(raw); stream.flush(); os.fsync(stream.fileno())
+                need(backup.read_bytes() == raw, 'ReShade settings backup changed; originals preserved.')
+                doc['files'].append(dict(path=str(path), before_sha256=_sha(raw), after_sha256=_sha(after), backup=str(backup)))
+            core._atomic(journal, doc)
+            for path, raw, after in plan:
+                ensure_closed()
+                retained[str(path)].checked(dict(name=path.name, bytes=len(raw), sha256=_sha(raw)))
+                temp = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
+                try:
+                    with temp.open('xb') as stream:
+                        stream.write(after); stream.flush(); os.fsync(stream.fileno())
+                    with DirectoryCustody(path.parent) as directories, FileCustody(temp) as output:
+                        output.checked(dict(name=temp.name, bytes=len(after), sha256=_sha(after)))
+                        # Keep the exact original handle through its move. A
+                        # concurrent writer cannot be overwritten by our commit.
+                        original = retained[str(path)]
+                        saved = path.with_name('.' + path.name + '.tq-old-' + uuid.uuid4().hex)
+                        row = next(x for x in doc['files'] if x['path'] == str(path))
+                        row['original_stash'] = str(saved); core._atomic(journal, doc)
+                        original.rename_new(saved, directories)
+                        try:
+                            output.rename_new(path, directories)
+                        except Exception:
+                            if not path.exists(): original.rename_new(path, directories)
+                            raise
+                        original.remove()
+                finally: temp.unlink(missing_ok=True)
+                next(x for x in doc['files'] if x['path'] == str(path))['committed'] = True
+                core._atomic(journal, doc)
+        doc['phase'] = 'complete'; core._atomic(journal, doc)
+        return dict(changed=len(plan), paths=[str(p) for p, _, _ in plan], receipt=str(journal))
+
+    def repair_shortcuts(self, game, progress=None):
+        game = core._plain(core.validate_game(game).parent)
+        ensure_closed()
+        with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
+            result = self._repair_shortcuts(game)
+        result['message'] = 'ReShade shortcuts reset. Home opens ReShade; your TextureQuest shortcut is unchanged. Restart EQ2.'
+        if progress: progress(result['message'])
+        return result
+
+    def _addon_ini(self, game, map_path):
+        lines = ['[TextureQuest]', 'Map=' + str(map_path), 'Downloads=' + str(self.state_dir / 'dds' / 'objects'),
+                 'Shortcut=' + str(self.base / 'shortcut.txt'), 'GamePaks=' + str(game / 'paks'), '']
+        return '\r\n'.join(lines).encode('utf-8')
+
+    def status(self, game):
+        runtime = self._runtime()
+        result = dict(installed=False, running=False, active_sessions=0, available=runtime is not None,
+                      dual_load=False, shortcut=normalize(), message='Graphics hook runtime is not included.',
+                      installed_app_version=None, installed_newer_app=False, refresh_required=False)
+        if not str(game).strip():
+            return result
+        record = self._record(game)
+        if record and record['phase'] != 'uninstalled':
+            stamp = record.get('app_version')
+            if 'app_version' in record:
+                version_number(stamp)
+            current_version = version_number(APP_VERSION)
+            newer = stamp is not None and version_number(stamp) > current_version
+            refresh = not newer and (stamp is None or version_number(stamp) < current_version)
+            binding = normalize(record.get('shortcut'))
+            missing = [Path(x['path']).name for x in record['files'] if not Path(x['path']).is_file()]
+            refresh = refresh or (not newer and (record['phase'] != 'installed' or bool(missing)))
+            message = ('Interrupted graphics installation. Close EQ2 and Uninstall before retrying.' if record['phase'] != 'installed' else
+                       'Hook file missing (' + ', '.join(missing) + '). Close EQ2, then Uninstall and Install to repair.' if missing else
+                       'A newer launcher installed this hook. Update TextureQuest before reinstalling it.' if newer else
+                       'This launcher needs to refresh your graphics hook and ReShade settings. Close EQ2, then Finish upgrade.' if refresh else
+                       'Old PAK-reading hook. Close EQ2, then Uninstall and Install to use DDS files.' if record.get('payload') != 'loose-dds' else
+                       'Graphics hook installed. ' + label(binding) + ' switches Original/Upscaled.')
+            return dict(result, installed=True, active_sessions=self._games_open(game), available=True, shortcut=binding, message=message,
+                        installed_app_version=stamp, installed_newer_app=newer, refresh_required=refresh)
+        if self._proxy_170(game):
+            return dict(result, installed=True, active_sessions=self._games_open(game), available=True,
+                        refresh_required=True,
+                        message='TextureQuest 1.7.0 graphics hook. Close EQ2 and Uninstall here, then Install the add-on.')
+        legacy = self._legacy(game)
+        if legacy:
+            sessions = legacy.get('sessions', [])
+            count = sum(bool(_alive(x, x['exe'])) for x in sessions)
+            watcher = legacy.get('watcher')
+            running = bool(watcher and _alive(watcher, Path(legacy['runtime_dir']) / 'TextureQuestGraphics.exe'))
+            if legacy['phase'] != 'uninstalled' or running or count:
+                return dict(result, installed=legacy['phase'] != 'uninstalled', running=running, active_sessions=count,
+                            available=True, refresh_required=True,
+                            message='Old injected graphics hook. Close EQ2 and Uninstall here, then Install the add-on.')
+        if runtime:
+            result['message'] = 'Upscaled textures through a ReShade add-on. ' + label() + ' switches Original/Upscaled. Close EQ2 to install.'
+        return result
+
+    def refresh_needed(self, game):
+        """Owned hooks are refreshed once per newer launcher, even for equal DLLs."""
+        return self.status(game)['refresh_required']
+
+    def _all_games(self):
+        found = {}
+        for folder in [self.records, self.proxy_records, self.base / 'registrations']:
+            if not folder.exists():
+                continue
+            for p in folder.glob('*.json'):
+                game = _json(p)['game']
+                found[str(core._plain(game)).casefold()] = game
+        return list(found.values())
+
+    def cache_in_use(self):
+        return any(any(self.status(g)[k] for k in ['installed', 'running', 'active_sessions']) for g in self._all_games())
+
+    def _addon_installed(self, game):
+        record = self._record(game)
+        return bool(record and record['phase'] != 'uninstalled')
+
+    def legacy_in_use(self):
+        """Whether a 1.7.0 or injected hook is installed or running; those depend on app and cache files."""
+        return any(any(self.status(g)[k] for k in ['installed', 'running', 'active_sessions'])
+                   for g in self._all_games() if not self._addon_installed(g))
+
+    def downloads_in_use(self):
+        """Whether the downloaded archives are in use: EQ2 is running with the add-on, or an older hook is installed."""
+        return self.legacy_in_use() or any(self.status(g)['active_sessions'] for g in self._all_games() if self._addon_installed(g))
+
+    def _activate_prepared(self, game, prepared):
+        """Caller holds operation/helper locks. Old maps and DDS objects remain usable."""
+        DDSStore(self.state_dir).verify(prepared)
+        ensure_closed()
+        need(str(core._plain(prepared['game'])).casefold() == str(core._plain(game)).casefold(),
+             'These textures were matched to a different game folder. Verify the download again.')
+        raw = core._plain(prepared['map']['path'], self.state_dir).read_bytes()
+        self.base.mkdir(parents=True, exist_ok=True)
+        temporary = self.base / ('map-' + uuid.uuid4().hex + '.tmp')
+        try:
+            with temporary.open('xb') as stream:
+                stream.write(raw); stream.flush(); os.fsync(stream.fileno())
+            os.replace(temporary, self.base / 'texturequest-map.bin')
+        finally:
+            temporary.unlink(missing_ok=True)
+        return self.base / 'texturequest-map.bin'
+
+    def activate_prepared(self, game, prepared):
+        """An installed DDS add-on picks up a verified update on its next launch."""
+        record = self._record(game)
+        if not record or record['phase'] != 'installed' or record.get('payload') != 'loose-dds':
+            return
+        ensure_closed()
+        with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
+            ensure_closed()
+            self._activate_prepared(game, prepared)
+
+    def installed_game(self):
+        games = [g for g in self._all_games() if self.status(g)['installed']]
+        need(len(games) <= 1, 'Multiple graphics installations; choose a game folder explicitly.')
+        return games[0] if games else None
+
+    def _exclusive_mode(self, game):
+        need(not LoaderManager(self.state_dir).cache_in_use(), 'Uninstall the old Memory hook and close its sessions first.')
+        legacy = self._legacy(game)
+        need(not legacy or (legacy['phase'] == 'uninstalled' and not self.status(game)['running'] and
+             not self.status(game)['active_sessions']), 'Uninstall the old injected graphics hook first.')
+
+    def _proxy_170_path(self, game):
+        return self.proxy_records / (self._key(game) + '.json')
+
+    def _proxy_170(self, game):
+        """The 1.7.0 graphics proxy record (d3d11.dll + TextureQuest.ini) unless absent or uninstalled."""
+        path = self._proxy_170_path(game)
+        if not path.exists():
+            return None
+        doc = _json(path)
+        need(doc.get('schema') == 'texturequest-graphics-proxy-installation-v1' and
+             doc.get('record_sha256') == core._digest({k: v for k, v in doc.items() if k != 'record_sha256'}),
+             'Graphics record changed; preserve it for recovery.')
+        need(type(doc.get('files')) is list and len(doc['files']) == 2 and
+             {str(core._plain(x['path'])).casefold() for x in doc['files']} ==
+             {str(core._plain(game) / n).casefold() for n in ['d3d11.dll', 'TextureQuest.ini']}, 'Proxy file scope changed.')
+        return None if doc.get('phase') == 'uninstalled' else doc
+
+    def _uninstall_proxy_170(self, game):
+        """Remove a 1.7.0 graphics proxy install through its own record; return the changed files it kept."""
+        doc = self._proxy_170(game)
+        if not doc:
+            return []
+        kept = []
+        for row in sorted(doc['files'], key=lambda x: 0 if x['path'].lower().endswith('.dll') else 1):
+            p = core._plain(row['path'])
+            if not p.exists():
+                continue
+            if _sha(p.read_bytes()) != row['sha256']:
+                kept.append(p.name)
+                continue
+            ensure_closed()
+            p.unlink()
+        doc['phase'] = 'uninstalled'
+        doc['kept'] = kept
+        doc['record_sha256'] = core._digest({k: v for k, v in doc.items() if k != 'record_sha256'})
+        core._atomic(self._proxy_170_path(game), doc)
+        return kept
+
+    def install(self, game, prepared, *, dual_load=False, progress=None, shortcut=None):
+        need(dual_load is False, 'Dual-load is not supported.')
+        report = progress or (lambda _: None)
+        binding = normalize(shortcut)
+        game = core._plain(core.validate_game(game).parent)
+        runtime = self._runtime()
+        need(runtime, 'Graphics runtime missing.')
+        ensure_closed()
+        with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
+            self._assert_shortcuts_settled(game)
+            self._exclusive_mode(game)
+            old = self._record(game)
+            need(not old or old['phase'] == 'uninstalled', 'Uninstall Graphics hook before installing again.')
+            standard = [name for name in PROXY_NAMES if classify(game / name) == 'standard']
+            if standard:
+                raise ValueError('ReShade ' + standard[0] + ' is the standard build, which cannot load add-ons. '
+                                 'Install the ReShade add-on build (reshade.me, "with full add-on support") over it, then Install again. '
+                                 'Your ReShade was left unchanged.')
+            self._uninstall_proxy_170(game)
+            kinds = {name: classify(game / name) for name in PROXY_NAMES}
+            foreign = [name for name, kind in kinds.items() if kind == 'foreign']
+            need(not foreign, 'An unknown graphics proxy is installed: ' + ', '.join(foreign) + '. Remove it first; it was left unchanged.')
+            report('Verifying loose DDS files and texture map.')
+            map_path = self._activate_prepared(game, prepared)
+            self._write_key(binding)
+            writes, owned = [], False
+            if all(kind == 'none' for kind in kinds.values()):
+                owned = True
+                writes.append((game / 'dxgi.dll', (self.runtime_dir / runtime['reshade']).read_bytes()))
+            if not (game / 'ReShade.ini').exists():
+                writes.append((game / 'ReShade.ini', DEFAULT_RESHADE_INI))
+            folder = self._addon_folder(game)
+            writes.append((folder / 'TextureQuest.addon64', (self.runtime_dir / runtime['addon']).read_bytes()))
+            writes.append((folder / 'TextureQuest.ini', self._addon_ini(game, map_path)))
+            for path, _ in writes:
+                need(not path.exists(), path.name + ' already exists. It was left unchanged.')
+            self._repair_shortcuts(game)
+            files = [dict(path=str(p), bytes=len(d), sha256=_sha(d)) for p, d in writes]
+            doc = dict(schema=RECORD_SCHEMA, phase='installing', id=uuid.uuid4().hex, game=str(game), files=files,
+                       reshade_owned=owned, shortcut=binding, map=str(map_path), payload='loose-dds',
+                       app_version=APP_VERSION,
+                       runtime_descriptor_sha256=_sha((self.runtime_dir / 'RUNTIME.json').read_bytes()))
+            self._save(game, doc)
+            for path, data in writes:
+                ensure_closed()
+                tmp = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
+                try:
+                    with tmp.open('xb') as f:
+                        f.write(data)
+                        f.flush()
+                        os.fsync(f.fileno())
+                    # os.rename refuses an existing target on Windows, so a new file never overwrites.
+                    os.rename(tmp, path)
+                finally:
+                    tmp.unlink(missing_ok=True)
+            doc['phase'] = 'installed'
+            self._save(game, doc)
+        report('Graphics hook installed. ' + label(binding) + ' switches quality.')
+        return self.status(game)
+
+    def _uninstall_legacy(self, game, record):
+        need(record['stop_event']=='Local\\TQWatch-'+record['installation_id'] and
+             record.get('startup_name')=='TextureQuestGraphics-'+self._key(game),'Legacy watcher ownership changed.')
+        with core._lock(self.base/'record.lock'):
+            fresh=self._legacy(game);need(fresh==record,'Legacy graphics record changed.')
+            _remove_run(record['startup_name'],record['startup_command'])
+            watcher=record.get('watcher')
+            if watcher and _alive(watcher,Path(record['runtime_dir'])/'TextureQuestGraphics.exe'):_signal_stop(record['stop_event'])
+            history=core._plain(Path(record['home'])/'record-history');history.mkdir(exist_ok=True)
+            exclusive(history/(uuid.uuid4().hex+'.json'),record)
+            record['phase']='uninstalled';record['watch_state']='stopped'
+            record['record_sha256']=core._digest({k:v for k,v in record.items() if k!='record_sha256'})
+            core._atomic(self._legacy_path(game),record)
+        end=time.monotonic()+10
+        while watcher and _alive(watcher,Path(record['runtime_dir'])/'TextureQuestGraphics.exe'):
+            need(time.monotonic()<end,'Legacy watcher stop not confirmed. Preserve its files.');time.sleep(.05)
+
+    def uninstall(self, game, progress=None, *, expected_record=...):
+        game = core._plain(core.validate_game(game).parent)
+        ensure_closed()
+        kept = []
+        with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
+            doc = self._record(game)
+            if expected_record is not ...:
+                need(doc == expected_record, 'Graphics installation record changed. The installed hook was kept.')
+            if not doc or doc['phase'] == 'uninstalled':
+                if self._proxy_170(game):
+                    kept = self._uninstall_proxy_170(game)
+                    message = 'Graphics hook removed.' + (' Changed files kept: ' + ', '.join(kept) + '.' if kept else '')
+                    if progress:
+                        progress(message)
+                    return dict(self.status(game), message=message, kept=kept)
+                legacy = self._legacy(game)
+                need(legacy and legacy['phase'] != 'uninstalled', 'No installed graphics hook.')
+                self._uninstall_legacy(game, legacy)
+                if progress:
+                    progress('Old graphics hook removed.')
+                return self.status(game)
+            for row in doc['files']:
+                p = core._plain(row['path'])
+                if not p.exists():
+                    continue
+                if p.name.casefold() in PROXY_NAMES and not doc['reshade_owned']:
+                    continue
+                if _sha(p.read_bytes()) != row['sha256']:
+                    kept.append(p.name)
+                    continue
+                ensure_closed()
+                p.unlink()
+            doc['phase'] = 'uninstalled'
+            doc['kept'] = kept
+            self._save(game, doc)
+        message = 'Graphics hook removed.' + (' Changed files kept: ' + ', '.join(kept) + '.' if kept else '')
+        if progress:
+            progress(message)
+        return dict(self.status(game), message=message, kept=kept)
+
+    def set_shortcut(self, game, shortcut, progress=None):
+        binding = normalize(shortcut)
+        game = core._plain(game)
+        with core._lock(self.state_dir / 'operation.lock'):
+            doc = self._record(game)
+            need(doc and doc['phase'] == 'installed', 'Install Graphics hook before saving its shortcut.')
+            self._write_key(binding)
+            doc['shortcut'] = binding
+            self._save(game, doc)
+        if progress:
+            progress('Shortcut saved: ' + label(binding) + '. Active only while EQ2 is focused.')
+        return self.status(game)
+>>>>>>> f5c2b1acb681a665f17e68562524919619bc603c

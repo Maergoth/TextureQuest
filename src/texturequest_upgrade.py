@@ -88,20 +88,38 @@ class Upgrade:
                              'Validate Game Assets to restore original PAKs. Close EQ2 and its launcher, '
                              'then click Finish upgrade here. Your custom textures and downloads are kept.')
 
-    def before(self, game, report=lambda _: None):
+    def snapshot(self, game):
+        """Retain the current hook and old preparation before preparing an update."""
+        with core._lock(self.state / 'operation.lock'), core._lock(self.state / 'sideload/helper-owner.lock'):
+            path = self.receipt(game)
+            pointer = self.state / 'dds-prepared.json'
+            return dict(graphics=self.graphics._record(game),
+                        migration=core._load(path) if path.exists() else None,
+                        previous_dds=core._load(pointer) if pointer.exists() else None)
+
+    def before(self, game, report=lambda _: None, *, snapshot=None, pause=None):
         ensure_closed()
+        check_pause(pause)
         if self.graphics.status(game).get('installed_newer_app') is True:
             raise ValueError('A newer TextureQuest launcher installed this hook. Update the app before reinstalling it.')
         path = self.receipt(game)
+        if snapshot is not None:
+            migration = core._load(path) if path.exists() else None
+            if migration != snapshot['migration'] or self.graphics._record(game) != snapshot['graphics']:
+                raise ValueError('Graphics installation or upgrade record changed. The installed hook was kept.')
         path.parent.mkdir(parents=True, exist_ok=True)
         prior = core._load(path).get('previous_dds') if path.exists() else None
         pointer = self.state / 'dds-prepared.json'
-        if pointer.exists():
+        if snapshot is not None:
+            value = snapshot['previous_dds']
+            if value and value.get('distribution') != 'generated-channels-only': prior = value
+        elif pointer.exists():
             value = core._load(pointer)
             if value.get('distribution') != 'generated-channels-only': prior = value
         core._save(path, dict(schema=SCHEMA, game=str(core._plain(game)), version=VERSION,
                              status='preparing', previous_dds=prior, created_at=core._now()))
         self._stock(game)
+        check_pause(pause)
         if self.loader:
             status = self.loader.status(game)
             if status['installed'] or status['running']:
@@ -115,7 +133,8 @@ class Upgrade:
         status = self.graphics.status(game)
         if status['installed'] or status['running']:
             report('Replacing the old graphics hook…')
-            result = self.graphics.uninstall(game, progress=report)
+            options = {} if snapshot is None else dict(expected_record=snapshot['graphics'])
+            result = self.graphics.uninstall(game, progress=report, **options)
             if any(name.casefold() != 'reshade.ini' for name in result.get('kept', [])):
                 raise ValueError('Changed hook files were preserved. Remove the conflicting files listed in the install status, then click Finish upgrade.')
 

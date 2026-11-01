@@ -230,6 +230,7 @@ class TextureQuestApp:
         from texturequest_upgrade import Upgrade
         self.upgrade = Upgrade(self.state_dir, self.graphics_manager, self.loader_manager)
         self.upgrade_auto_attempted = False
+        self.post_update_setup = False
         try:
             from texturequest_build_pin import MANIFEST_SHA256
         except ImportError:
@@ -741,18 +742,18 @@ class TextureQuestApp:
                 return False
             if not messagebox.askyesno("Update TextureQuest",
                     "Uninstall the active hook before replacing this app. "
-                    "Continue? Your downloads are kept; existing game archives stay unchanged. "
-                    "Install Graphics hook after the update.", parent=self.root):
+                    "Continue? Your downloads and game archives are kept. "
+                    "The updated app will prepare and refresh the hook automatically.", parent=self.root):
                 return False
         app_dir = Path(sys.executable).resolve().parent
         def work():
+            from texturequest_self_update import stage_update, launch_updater
+            request = stage_update(dict(app), app_dir=app_dir, data_dir=self.state_dir,
+                current_version=self.app_version, report=lambda value: self.events.put(("app-update-progress", dict(value))))
             if remove_loader:
                 update_manager.uninstall(game)
             if self.cache_in_use("legacy_in_use"):
                 raise RuntimeError("The hook is using these app files. Uninstall it and close EQ2 before updating.")
-            from texturequest_self_update import stage_update, launch_updater
-            request = stage_update(dict(app), app_dir=app_dir, data_dir=self.state_dir,
-                current_version=self.app_version, report=lambda value: self.events.put(("app-update-progress", dict(value))))
             ready = launch_updater(request)
             if (type(ready) is not dict or ready.get("status") != "helper_ready"
                     or ready.get("request_path") != request.get("request_path") or ready.get("nonce") != request.get("nonce")):
@@ -775,7 +776,8 @@ class TextureQuestApp:
         self.overall_label.configure(text="")
         if kind in ("download", "update", "install", "app-update"):
             self.progress.configure(mode="determinate", value=0, maximum=100)
-            caption = "App update" if kind == "app-update" else "Overall install" if kind == "install" else "Overall download"
+            caption = ("App update" if kind == "app-update" else "Overall install" if kind == "install"
+                       else "Texture setup" if kind == "update" else "Overall download")
             self.overall_label.configure(text=caption + ": preparing…")
         if kind in ("download", "update"):
             self.pause.clear()
@@ -1035,6 +1037,10 @@ class TextureQuestApp:
     def _download_latest(self, base_zip=None, auto_install=False, upgrading=False):
         if self.busy:
             return
+        offered = self.update_check.get('installer', {})
+        if offered.get('status') == 'verified' and offered.get('update_available') is True:
+            self.set_message('Update TextureQuest first with Get app update. Your hook and saved textures are kept.')
+            return False
         game = self.game.get().strip()
         if not game:
             self.set_message("Choose your game folder first so the texture map can match its stock files.")
@@ -1043,13 +1049,9 @@ class TextureQuestApp:
         binding = dict(self.shortcut)
         selection = self.selected_components()
         def setup():
-            if (auto_install or upgrading) and self.graphics_status(game).get('installed_newer_app'):
-                raise ValueError('This hook belongs to a newer TextureQuest app. It was left unchanged.')
-            migrate = upgrading or self.upgrade.needed(game)
-            if migrate:
-                self.upgrade.before(game, self.report)
-            source = fetch_dds_source(pause=self.pause.is_set, minimum=minimum)
+            from texturequest_setup import prepare_graphics
             choices = core._json(resource('shared-texture-choices.json').read_bytes())
+<<<<<<< HEAD
             prepared = self.dds_store.prepare(source, game, choices, pause=self.pause.is_set,
                 progress=self.report, overall=self.report_overall, in_use=self.downloads_in_use)
             self.graphics_manager.activate_prepared(game, prepared)
@@ -1063,12 +1065,18 @@ class TextureQuestApp:
                 if not current.get('installed'):
                     self.graphics_manager.install(game, prepared, progress=self.report, shortcut=binding, components=selection)
                     self.upgrade.complete(game, prepared, self.report, pause=self.pause.is_set)
+=======
+            source, prepared = prepare_graphics(game, fetch_dds_source, choices, self.dds_store,
+                self.graphics_manager, self.upgrade, minimum=minimum, binding=binding,
+                in_use=self.downloads_in_use, auto_install=auto_install, upgrading=upgrading,
+                report=self.report, overall=self.report_overall, pause=self.pause.is_set)
+>>>>>>> f5c2b1acb681a665f17e68562524919619bc603c
             self.dds_source = source
             return self.release, prepared, {}, None
         def work():
             with core._lock(self.state_dir / 'upgrade.lock'):
                 return setup()
-        self.begin("update", "Downloading custom channels and building local textures…", work)
+        self.begin("update", "Checking saved textures and preparing the replacement. Your hook stays installed…", work)
 
     def request_pause(self):
         if self.busy in ("download", "update"):
@@ -1124,7 +1132,9 @@ class TextureQuestApp:
                     # Commit/final preparation may still fail after the last byte.
                     percent = min(100 * done / max(total, 1), 99.9)
                     self.progress.configure(mode="determinate", value=percent)
-                    if message in ('Building local textures', 'Verified cached textures'):
+                    if message in ('Checking the texture release', 'Verifying replacement textures'):
+                        caption = message + ' · installed hook kept until ready'
+                    elif message in ('Building local textures', 'Verified cached textures'):
                         caption = f"Local setup: {percent:.1f}% · {completed:,}/{files:,} textures"
                     elif message == 'Checking saved textures':
                         caption = f"Checking saved cache: {completed:,}/{files:,} · downloading differences as found"
@@ -1189,15 +1199,17 @@ class TextureQuestApp:
                     failures = [channel["message"] for channel in (value["pack"], value["installer"]) if channel.get("status") == "unavailable"]
                     self.set_message(" ".join(dict.fromkeys(failures)) if failures else
                                      "Version checks complete. Use Get app update to update and restart; texture downloads are prepared here.", error=bool(failures))
-                    if self.release_checked and self.game.get().strip():
-                        if self.upgrade_pending() and not self.upgrade_auto_attempted:
-                            self.upgrade_auto_attempted = True
-                            self._download_latest(auto_install=True, upgrading=True)
-                            continue
-                        if self.initial_pack:
-                            initial, self.initial_pack = self.initial_pack, None
-                            self.prepare_zip(initial)
-                    elif self.release_checked and self.initial_pack:
+                    offered = value.get('installer', {})
+                    if offered.get('status') == 'verified' and offered.get('update_available') is True:
+                        self.set_message('App update available. Use Get app update first. Your hook and saved textures are kept.')
+                    elif (getattr(self, 'post_update_setup', False) and self.release_checked
+                          and offered.get('status') == 'verified' and self.game.get().strip()):
+                        # Only a validated app-update startup arms this one-shot
+                        # continuation. Ordinary version checks never arm it.
+                        self.post_update_setup = False
+                        self._download_latest(auto_install=True, upgrading=True)
+                        continue
+                    if self.release_checked and self.initial_pack:
                         initial, self.initial_pack = self.initial_pack, None
                         self.prepare_zip(initial)
                 elif kind in ("verify", "recover"):
@@ -1263,6 +1275,7 @@ def finish_app_update_startup(app, request, nonce, *, failed=False, smoke_test=F
                 data_dir=app.state_dir, version=app.app_version)
             app.set_message("App updated to " + app.app_version + ". Your saved textures and settings were kept.")
             if not smoke_test:
+                app.post_update_setup = True
                 app.root.after(200, app.check_updates)
     except Exception as error:
         app.set_message("The app update could not be confirmed: " + str(error), error=True)

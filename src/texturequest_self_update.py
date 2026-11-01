@@ -586,13 +586,34 @@ def stage_downloaded_update(installer_result, archive, *, app_dir, data_dir, cur
 def stage_update(installer_result, *, app_dir, data_dir, current_version, report=None, opener=None):
     """Refresh official release identity, download with bounds, then stage it."""
     opener = opener or urlopen
-    app, _ = _layout(app_dir, data_dir)
+    app, data = _layout(app_dir, data_dir)
     selected = _installer(installer_result, current_version)
     metadata = versions._metadata(opener, None)
     explicit = versions._version_asset(metadata, opener, None)
-    fresh = _installer(versions._installer(metadata, explicit), current_version)
+    fresh_value = versions._installer(metadata, explicit)
+    # A refresh may select one genuinely newer official release, never silently
+    # accept changed bytes or a different envelope for the same target version.
+    fresh = _installer(fresh_value, '0.0.0')
     if selected != fresh:
-        raise AppUpdateError("The published app update changed. Check for updates again before installing.")
+        fields = [key for key in selected if selected[key] != fresh[key]]
+        newer = latest.version_number(fresh['version']) > latest.version_number(selected['version'])
+        history = _plain(data / 'app-update-checks')
+        history.mkdir(parents=True, exist_ok=True)
+        if sum(1 for _ in history.glob('*.json')) >= 1024:
+            raise AppUpdateError('Too many app-update check records. Existing files were preserved.')
+        record = _plain(history / (uuid.uuid4().hex + '.json'))
+        _write(record, dict(schema='texturequest-app-update-identity-change-v1',
+            selected=selected, fresh=fresh, differing_fields=fields,
+            decision='newer-official-target' if newer else 'refused',
+            reason='newer-version' if newer else 'target-downgrade' if
+                latest.version_number(fresh['version']) < latest.version_number(selected['version']) else 'same-version-identity-change'))
+        if not newer:
+            raise AppUpdateError('The published app update identity changed (' + ', '.join(fields) +
+                '; offered ' + selected['version'] + ', latest ' + fresh['version'] + '). '
+                'The update was refused; saved files and the installed hook are kept. Details: ' + str(record))
+        _progress(report, 'refresh', 'A newer verified app is available: ' + fresh['version'] +
+                  ' (previously offered ' + selected['version'] + '). Updating to ' + fresh['version'] + '.')
+    fresh = _installer(fresh, current_version)
     download = _plain(app.parent / (".TextureQuest-download-" + uuid.uuid4().hex + ".zip"))
     downloaded = None
     try:

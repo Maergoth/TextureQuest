@@ -169,14 +169,17 @@ class ResponsiveVersionUI(GraphicsOnlyUI):
         self.assertFalse(self.ui.release_checked)
         self.assertNotIn('verified', self.ui.download_label.cget('text'))
 
-    def test_verified_check_keeps_existing_automatic_hook_upgrade_path(self):
+    def test_verified_check_continues_only_ack_armed_hook_upgrade(self):
+        # A passive check cannot arm setup; a validated successful app-update
+        # startup is the one-shot authority retained for automatic refresh.
+        self.ui.post_update_setup = True
         self.ui.events.put(('done', 'check', self.result()))
         with patch.object(self.ui, 'upgrade_pending', return_value=True), \
              patch.object(self.ui, '_download_latest') as upgrade, \
              patch.object(self.ui, 'verify_installation', side_effect=AssertionError('automatic verify')):
             self.ui.poll()
         upgrade.assert_called_once_with(auto_install=True, upgrading=True)
-        self.assertTrue(self.ui.upgrade_auto_attempted)
+        self.assertFalse(self.ui.post_update_setup)
 
     def test_malformed_texture_descriptor_preserves_successful_app_result(self):
         expected = self.result()

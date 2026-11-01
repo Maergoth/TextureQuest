@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 TextureQuest 1.10.0 preview — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
@@ -34,3 +35,37 @@ Each new app version reinstalls its owned hook and reapplies ReShade defaults.
 
 Includes third-party notices. Graphics hooks are not officially approved;
 account-policy risk is unknown. The unfinished generation batch is not included.
+=======
+TextureQuest 1.9.5 — Windows x64
+
+1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
+2. Close EQ2. Extract this app outside the game folder; keep data beside the EXE.
+3. Choose your game folder, then Install graphics hook. Setup is automatic.
+4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
+
+Numpad * switches Original/Upscaled. Use Shortcut to change it.
+Home opens ReShade. Its other configurable shortcuts are disabled. Settings →
+Reset ReShade shortcuts reapplies this while keeping your TextureQuest shortcut.
+
+About 17.7 GB downloads: our generated/corrected channels and lookup metadata.
+The app builds about 27.8 GB of local textures using your own game files for
+protected original channels, DDS headers and tails. Those parts are not downloaded.
+No game PAK writes, manual mapping, extra tools or background watcher. Keep data.
+Verified cached work is reused; interrupted downloads resume safely.
+Version checks do not scan your textures. Updates reuse unchanged files and
+start required downloads while the remaining files are compared.
+
+The hook uses stock full-add-on ReShade. Existing compatible ReShade is reused;
+otherwise official ReShade is added as dxgi.dll. Unknown proxies stay untouched.
+Close EQ2 before installing, uninstalling or activating updates. Uninstall removes
+only owned, unchanged hook files and keeps the local texture cache.
+
+After patches, unchanged assets still match. Verify / Update textures refreshes
+the map; changed or unavailable sources stay original with a coverage report.
+Get app update downloads, verifies, replaces and restarts the app, preserving data.
+After the app restarts, setup verifies the replacement before refreshing its hook.
+Checking for updates leaves your hook and saved textures unchanged.
+
+Includes third-party notices. Graphics hooks are not officially approved;
+account-policy risk is unknown. The unfinished generation batch is not included.
+>>>>>>> f5c2b1acb681a665f17e68562524919619bc603c
