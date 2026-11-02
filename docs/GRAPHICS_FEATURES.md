@@ -39,8 +39,8 @@ other custom values are retained. Feature checkbox choices are preserved.
 **Rebuild lamp lighting (experimental)** changes the game's lamp falloff and can
 darken rooms. It is off by default; shadows still work with native lamp lighting.
 Emissive lighting is experimental. Some effects are not yet supported; the new
-particle paths still need in-game validation. With no eligible sources detected,
-the toggle adds no lighting.
+particle paths still need in-game validation. Very small particles can be missed.
+With no eligible sources detected, the toggle adds no lighting.
 Its status distinguishes
 no detected emitters, no active draws and observed light draws; checking it does
 not prove that the current scene has eligible emitters.
