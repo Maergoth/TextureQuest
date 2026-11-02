@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.13.5 — private graphics preview
+
+- Keep native lighting direction when the sun-shadow pass reports no active sun.
+- Ease the sun-direction correction when its source disappears or returns, replacing the abrupt timeout.
+- Retain the private 1.13.4 emission/cache work, saved settings and normal launcher update flow.
+- Local preview; the reported screen-exit transition still needs an in-game check.
+
 ## 1.13.4 — private graphics preview
 
 - Combine supported static and painted emissive surfaces with captured spell-particle lighting under one bounded light budget.

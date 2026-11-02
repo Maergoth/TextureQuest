@@ -50,6 +50,8 @@ supported spell particles under one light budget. The particle path remains
 experimental: short-lived or changing particle batches can be missed. Private
 1.13.4 corrects sample-expiry and pending-readback timing gaps reported as flicker;
 the combined result still needs an in-game comparison.
+Private 1.13.5 also keeps the native lighting direction when the captured sun is
+inactive and eases the sun-direction correction in and out when its source changes.
 This is an unpublished local test. Frame generation includes a pacing/GUI-sharing
 correction that improved an isolated comparison; EQ2 performance and smoothness
 still need testing. [Details](docs/GRAPHICS_FEATURES.md).
