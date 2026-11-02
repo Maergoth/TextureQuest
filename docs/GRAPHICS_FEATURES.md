@@ -12,7 +12,7 @@ AO/contact implementation.
 | --- | --- |
 | Point-light shadows | Adds shadows while preserving native lamp lighting by default |
 | Character shadows | Moving-character shadows from supported point and window lights |
-| Emissive lights | Light estimated from recognized glowing meshes |
+| Emissive lights | Lights nearby surfaces from supported stationary glowing objects |
 | Sun-shadow softness | Softens native sun shadows; zero retains the game filter |
 | Ambient occlusion | Darkens nearby occlusion in ambient world lighting |
 | Anisotropic filtering | 16x filtering on eligible world samplers when enabled |
@@ -27,13 +27,16 @@ shaders remain native. It does not replace EQ2's directional shadow system.
 
 The main panel has feature checkboxes and shadowed lights **Min (10), Med (50),
 Max (all supported; currently 256)**. Detailed controls and diagnostics are under
-**Advanced**. Defaults are shadow strength **1**, softness **0.05**, AO radius
+**Advanced**. Defaults are shadow strength **1**, softness **0.15**, AO radius
 **0.35** and strength **1.25**. The first update backs up prior numeric values;
-later Advanced edits are kept. Feature checkbox choices are preserved.
+later Advanced edits are kept. The former 0.05 softness default moves to 0.15;
+other custom values are retained. Feature checkbox choices are preserved.
 
 **Rebuild lamp lighting (experimental)** changes the game's lamp falloff and can
 darken rooms. It is off by default; shadows still work with native lamp lighting.
-Emissive lighting only affects recognized glowing meshes. Its status distinguishes
+Emissive lighting is experimental. Character and particle glows are not supported
+yet. With no eligible sources detected, the toggle adds no lighting.
+Its status distinguishes
 no detected emitters, no active draws and observed light draws; checking it does
 not prove that the current scene has eligible emitters.
 
