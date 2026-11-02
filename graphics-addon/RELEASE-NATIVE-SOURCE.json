@@ -1,0 +1,48 @@
+{
+  "revision": "main004/controller003",
+  "author_handoff": {
+    "bytes": 4354,
+    "sha256": "10f280ad546f8e67d1cb0d1804dc52398ea73a0f43a12dc23fb9c8b2b17b58a0"
+  },
+  "controller_handoff": {
+    "bytes": 3182,
+    "sha256": "8bd73b91d7aa7a4dddb0178836a06ca013456f7398d89759e60dd1f00b81d264"
+  },
+  "native_release_asset": {
+    "bytes": 483328,
+    "sha256": "8b5864316030491f4e78e00a361db44c86dcf94a7a966c6694f74fadc02e9c19"
+  },
+  "already_in_app_source": [
+    {
+      "name": "addon.cpp",
+      "bytes": 49520,
+      "sha256": "8c81c3cf925873556872e9f779d8ba2fd40ee22af6037062a8706149d4557c1f"
+    },
+    {
+      "name": "reflex_primary.hpp",
+      "bytes": 2813,
+      "sha256": "9528276369d81d3bc70d8ef44cb7bf95e948f858db0ea77857d4c257a4059215"
+    },
+    {
+      "name": "reflex_driver.hpp",
+      "bytes": 4577,
+      "sha256": "f473b1e01b16f567d22a0cd435ba335e9e8608c32a6e01ddd9acff42bb7486d2"
+    },
+    {
+      "name": "reflex_policy.hpp",
+      "bytes": 8151,
+      "sha256": "a7a4dc59a807901b435fc4c406274213a51d1a9bad15f90be67c4b22c1a4cbc7"
+    },
+    {
+      "name": "nvapi_reflex_types.hpp",
+      "bytes": 2880,
+      "sha256": "f5d877d9784b6b3777cae03ce7b82ec70c53d5fc8520db4425d889e6bf2a66ab"
+    },
+    {
+      "name": "NVAPI-NOTICE.txt",
+      "bytes": 1776,
+      "sha256": "7d9407ec8bc45bc178edf8d49f21ca7dcc32c1136cabc231bd3c138bc7739ce6"
+    }
+  ],
+  "nvapi": "Loads the installed System32 NVAPI dynamically; no nvapi64.dll is distributed. Successful initialization/module reference deliberately remains process-resident; owned mode is neutralized while the game device is valid. Active driver mode and latency improvement are not established by a source check."
+}

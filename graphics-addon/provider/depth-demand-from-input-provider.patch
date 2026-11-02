@@ -1,0 +1,541 @@
+--- 940e/examples\09-depth\generic_depth_addon.cpp
++++ demand/examples\09-depth\generic_depth_addon.cpp
+@@ -14,6 +14,10 @@
+ #include <cstring> // std::strcmp
+ #include <algorithm> // std::find_if, std::remove, std::sort
+ #include <Unknwn.h>
++#include <intrin.h>
++#include "../../source/runtime.hpp"
++#include "../../source/texturequest_depth_demand_v1.hpp"
++#include "../../source/texturequest_depth_demand_policy.hpp"
+ 
+ using namespace reshade::api;
+ 
+@@ -99,6 +103,8 @@
+ 
+ struct __declspec(uuid("43319e83-387c-448e-881c-7e68fc2e52c4")) state_tracking
+ {
++	tq_depth_policy::Gate *gate = nullptr;
++	uint64_t stats_epoch = 0;
+ 	const bool is_queue;
+ 	viewport current_viewport = {};
+ 	resource current_depth_stencil = { 0 };
+@@ -106,10 +112,18 @@
+ 	bool first_draw_since_bind = true;
+ 	draw_stats best_copy_stats;
+ 
+-	explicit state_tracking(bool is_queue) : is_queue(is_queue)
++	explicit state_tracking(bool is_queue, tq_depth_policy::Gate *gate = nullptr) : gate(gate), is_queue(is_queue)
+ 	{
+ 		// Reserve some space upfront to avoid rehashing during command recording
+ 		stats_per_used_depth_stencil.reserve(32);
++	}
++
++	void sync_epoch()
++	{
++		if (gate && stats_epoch != gate->epoch.load(std::memory_order_acquire)) {
++			stats_per_used_depth_stencil.clear(); best_copy_stats = {};
++			stats_epoch = gate->epoch.load(std::memory_order_acquire);
++		}
+ 	}
+ 
+ 	void reset()
+@@ -129,6 +143,9 @@
+ 	{
+ 		// Executing a command list in a different command list inherits state
+ 		current_depth_stencil = source.current_depth_stencil;
++
++		sync_epoch();
++		if (source.gate && source.stats_epoch != source.gate->epoch.load(std::memory_order_acquire)) return;
+ 
+ 		if (source.best_copy_stats.vertices >= best_copy_stats.vertices)
+ 			best_copy_stats = source.best_copy_stats;
+@@ -157,6 +174,11 @@
+ 
+ struct __declspec(uuid("7c6363c7-f94e-437a-9160-141782c44a98")) generic_depth_data
+ {
++	std::atomic<uint64_t> ready_epoch { 0 };
++	uint64_t binding_epoch = 0;
++	std::vector<bool> effect_pairs;
++	unsigned int active_pairs = 0;
++
+ 	// The depth-stencil resource that is currently selected as being the main depth target
+ 	resource selected_depth_stencil = { 0 };
+ 
+@@ -207,6 +229,7 @@
+ 
+ struct __declspec(uuid("e006e162-33ac-4b9f-b10f-0e15335c7bdb")) generic_depth_device_data
+ {
++	tq_depth_policy::Gate gate;
+ 	uint64_t frame_index = 0;
+ 
+ 	// List of queues created for this device
+@@ -330,6 +353,103 @@
+ 		}
+ 	}
+ };
++
++
++// This registry is changed only by genuine add-on/runtime lifecycle callbacks.
++// No names or foreign module assumptions are used; unknown modules demand depth.
++struct tq_depth_runtime {
++ generic_depth_device_data *device;
++ generic_depth_data *data;
++ uint32_t technique_reasons = tq_depth_v1::Loading;
++ std::unordered_map<void *, bool> manual;
++};
++static std::mutex s_demand_mutex;
++static std::unordered_map<void *, int> s_depth_modules;
++static std::unordered_map<effect_runtime *, tq_depth_runtime> s_depth_runtimes;
++static bool tq_depth_caller(void *module, const void *caller)
++{
++ HMODULE owner = nullptr;
++ return module && GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
++  reinterpret_cast<LPCWSTR>(caller), &owner) && owner == module;
++}
++void tq_depth_addon_registered(void *module)
++{
++ const std::lock_guard<std::mutex> lock(s_demand_mutex);
++ s_depth_modules.emplace(module, -1);
++}
++void tq_depth_addon_unregistered(void *module)
++{
++ const std::lock_guard<std::mutex> lock(s_demand_mutex);
++ s_depth_modules.erase(module);
++ for (auto &[runtime, entry] : s_depth_runtimes) entry.manual.erase(module);
++}
++extern "C" __declspec(dllexport) uint32_t WINAPI TextureQuestRegisterDepthParticipantV1(void *module, uint32_t mode)
++{
++ if (mode > 1 || !tq_depth_caller(module, _ReturnAddress())) return 0;
++ const std::lock_guard<std::mutex> lock(s_demand_mutex);
++ const auto it = s_depth_modules.find(module);
++ if (it == s_depth_modules.end()) return 0;
++ it->second = static_cast<int>(mode);
++ return 1;
++}
++extern "C" __declspec(dllexport) uint32_t WINAPI TextureQuestUnregisterDepthParticipantV1(void *module)
++{
++ if (!tq_depth_caller(module, _ReturnAddress())) return 0;
++ const std::lock_guard<std::mutex> lock(s_demand_mutex);
++ const auto it = s_depth_modules.find(module);
++ if (it == s_depth_modules.end()) return 0;
++ it->second = -1; // Remains conservative until normal ReShade unregister.
++ for (auto &[runtime, entry] : s_depth_runtimes) entry.manual.erase(module);
++ return 1;
++}
++extern "C" __declspec(dllexport) uint32_t WINAPI TextureQuestSetManualDepthDemandV1(void *module, void *runtime, uint32_t required)
++{
++ if (required > 1 || !tq_depth_caller(module, _ReturnAddress())) return 0;
++ const std::lock_guard<std::mutex> lock(s_demand_mutex);
++ const auto owner = s_depth_modules.find(module);
++ const auto it = s_depth_runtimes.find(static_cast<effect_runtime *>(runtime));
++ if (owner == s_depth_modules.end() || owner->second != 1 || it == s_depth_runtimes.end()) return 0;
++ it->second.manual[module] = required != 0;
++ return 1;
++}
++extern "C" __declspec(dllexport) uint32_t WINAPI TextureQuestGetDepthStatusV1(void *module, void *runtime, tq_depth_v1::Status *status, uint32_t bytes)
++{
++ if (bytes != sizeof(tq_depth_v1::Status) || !status || status->Size != sizeof(*status) || status->Version != 1 || !tq_depth_caller(module, _ReturnAddress())) return 0;
++ const std::lock_guard<std::mutex> lock(s_demand_mutex);
++ const auto owner = s_depth_modules.find(module);
++ const auto it = s_depth_runtimes.find(static_cast<effect_runtime *>(runtime));
++ if (owner == s_depth_modules.end() || owner->second < 0 || it == s_depth_runtimes.end()) return 0;
++ const auto &gate = it->second.device->gate;
++ tq_depth_v1::Status result;
++ result.DeviceEpoch = gate.epoch.load(std::memory_order_acquire);
++ result.RuntimeReadyEpoch = it->second.data->ready_epoch.load(std::memory_order_acquire);
++ result.Reasons = gate.reasons.load(std::memory_order_acquire);
++ if (gate.Active()) result.Flags |= tq_depth_v1::Tracking;
++ if (gate.Ready(result.RuntimeReadyEpoch)) result.Flags |= tq_depth_v1::Ready;
++ else if (gate.Active()) result.Flags |= tq_depth_v1::Warming;
++ *status = result;
++ return 1;
++}
++static uint32_t tq_depth_reasons(generic_depth_device_data *device)
++{
++ const std::lock_guard<std::mutex> lock(s_demand_mutex);
++ uint32_t result = 0;
++ for (const auto &[module, mode] : s_depth_modules) if (mode < 0) result |= tq_depth_v1::UnknownParticipant;
++ for (const auto &[runtime, entry] : s_depth_runtimes) if (entry.device == device) {
++  result |= entry.technique_reasons;
++  for (const auto &[module, required] : entry.manual) if (required) result |= tq_depth_v1::ManualDemand;
++ }
++ return result;
++}
++static void tq_depth_refresh_reason(effect_runtime *runtime)
++{
++ // Only the runtime's own callback reads its parsed technique metadata.
++ const uint32_t reasons = static_cast<reshade::runtime *>(runtime)->texturequest_depth_demand_reasons();
++ const std::lock_guard<std::mutex> lock(s_demand_mutex);
++ const auto it = s_depth_runtimes.find(runtime);
++ if (it != s_depth_runtimes.end()) it->second.technique_reasons = reasons;
++}
++static bool tq_depth_tracking(const state_tracking &state) { return !state.gate || state.gate->Active(); }
+ 
+ static bool check_depth_format(format format)
+ {
+@@ -375,7 +495,7 @@
+ 
+ static void on_clear_depth_impl(command_list *cmd_list, state_tracking &state, resource depth_stencil, clear_op op)
+ {
+-	if (depth_stencil == 0)
++	if (!tq_depth_tracking(state) || depth_stencil == 0)
+ 		return;
+ 
+ 	device *const device = cmd_list->get_device();
+@@ -389,6 +509,7 @@
+ 	if (state.is_queue)
+ 		lock.lock();
+ 
++	state.sync_epoch();
+ 	depth_stencil_frame_stats &stats = state.stats_per_used_depth_stencil[depth_stencil];
+ 
+ 	// Ignore clears when there was no meaningful workload (e.g. at the start of a frame)
+@@ -477,13 +598,16 @@
+ {
+ 	const auto &data = *runtime->get_private_data<generic_depth_data>();
+ 
+-	runtime->update_texture_bindings("DEPTH", data.selected_shader_resource, data.selected_shader_resource);
+-
+-	runtime->enumerate_uniform_variables(nullptr, [&data](effect_runtime *runtime, effect_uniform_variable variable) {
++	const auto *device_data = runtime->get_device()->get_private_data<generic_depth_device_data>();
++	const bool ready = data.selected_shader_resource != 0 && device_data->gate.Ready(data.ready_epoch.load(std::memory_order_acquire));
++	const resource_view view = ready ? data.selected_shader_resource : resource_view { 0 };
++	runtime->update_texture_bindings("DEPTH", view, view);
++
++	runtime->enumerate_uniform_variables(nullptr, [ready](effect_runtime *runtime, effect_uniform_variable variable) {
+ 		char source[32];
+ 		if (runtime->get_annotation_string_from_uniform_variable(variable, "source", source) &&
+ 			std::strcmp(source, "bufready_depth") == 0)
+-			runtime->set_uniform_value_bool(variable, data.selected_shader_resource != 0);
++			runtime->set_uniform_value_bool(variable, ready);
+ 	});
+ }
+ 
+@@ -516,7 +640,7 @@
+ 
+ static void on_init_command_list(command_list *cmd_list)
+ {
+-	cmd_list->create_private_data<state_tracking>(false);
++	cmd_list->create_private_data<state_tracking>(false, &cmd_list->get_device()->get_private_data<generic_depth_device_data>()->gate);
+ }
+ static void on_destroy_command_list(command_list *cmd_list)
+ {
+@@ -525,7 +649,7 @@
+ 
+ static void on_init_command_queue(command_queue *cmd_queue)
+ {
+-	cmd_queue->create_private_data<state_tracking>(true);
++	cmd_queue->create_private_data<state_tracking>(true, &cmd_queue->get_device()->get_private_data<generic_depth_device_data>()->gate);
+ 
+ 	if ((cmd_queue->get_type() & command_queue_type::graphics) == 0)
+ 		return;
+@@ -553,9 +677,12 @@
+ static void on_init_effect_runtime(effect_runtime *runtime)
+ {
+ 	runtime->create_private_data<generic_depth_data>();
++	const std::lock_guard<std::mutex> lock(s_demand_mutex);
++	s_depth_runtimes.emplace(runtime, tq_depth_runtime { runtime->get_device()->get_private_data<generic_depth_device_data>(), runtime->get_private_data<generic_depth_data>(), tq_depth_v1::Loading, {} });
+ }
+ static void on_destroy_effect_runtime(effect_runtime *runtime)
+ {
++	{ const std::lock_guard<std::mutex> lock(s_demand_mutex); s_depth_runtimes.erase(runtime); }
+ 	const auto &data = *runtime->get_private_data<generic_depth_data>();
+ 
+ 	if (data.selected_shader_resource != 0)
+@@ -698,7 +825,7 @@
+ static bool on_draw(command_list *cmd_list, uint32_t vertices, uint32_t instances, uint32_t, uint32_t)
+ {
+ 	auto &state = *cmd_list->get_private_data<state_tracking>();
+-	if (state.current_depth_stencil == 0)
++	if (!tq_depth_tracking(state) || state.current_depth_stencil == 0)
+ 		return false; // This is a draw call with no depth-stencil bound
+ 
+ 	// Check if this draw call likely represets a fullscreen rectangle (two triangles), which would clear the depth-stencil
+@@ -715,6 +842,7 @@
+ 	if (state.is_queue)
+ 		lock.lock();
+ 
++	state.sync_epoch();
+ 	state.first_draw_since_bind = false;
+ 
+ 	depth_stencil_frame_stats &stats = state.stats_per_used_depth_stencil[state.current_depth_stencil];
+@@ -739,7 +867,7 @@
+ 		return false;
+ 
+ 	auto &state = *cmd_list->get_private_data<state_tracking>();
+-	if (state.current_depth_stencil == 0)
++	if (!tq_depth_tracking(state) || state.current_depth_stencil == 0)
+ 		return false; // This is a draw call with no depth-stencil bound
+ 
+ 	// If this is queue state (happens if this is a immediate command list), need to protect access to it, since another thread may be in a present call, which can reset it
+@@ -747,6 +875,7 @@
+ 	if (state.is_queue)
+ 		lock.lock();
+ 
++	state.sync_epoch();
+ 	depth_stencil_frame_stats &stats = state.stats_per_used_depth_stencil[state.current_depth_stencil];
+ 	stats.total.drawcalls += draw_count;
+ 	stats.total.drawcalls_indirect += draw_count;
+@@ -787,6 +916,7 @@
+ }
+ static bool on_clear_depth_stencil(command_list *cmd_list, resource_view dsv, const float *depth, const uint8_t *, uint32_t, const rect *)
+ {
++	if (!tq_depth_tracking(*cmd_list->get_private_data<state_tracking>())) return false;
+ 	// Ignore clears that do not affect the depth buffer (stencil clears)
+ 	if (dsv != 0 && depth != nullptr)
+ 	{
+@@ -804,6 +934,7 @@
+ 			if (state.is_queue)
+ 				lock.lock();
+ 
++			state.sync_epoch();
+ 			state.stats_per_used_depth_stencil[depth_stencil].reversed_clear_value = true;
+ 		}
+ 	}
+@@ -840,6 +971,7 @@
+ 
+ 	auto &target_state = *queue->get_private_data<state_tracking>();
+ 	const auto &source_state = *cmd_list->get_private_data<state_tracking>();
++	if (!tq_depth_tracking(target_state)) { target_state.current_depth_stencil = source_state.current_depth_stencil; return; }
+ 	assert(target_state.is_queue && !source_state.is_queue);
+ 
+ 	// Need to protect access to the queue state, since another thread may be in a present call, which can reset this state
+@@ -851,6 +983,12 @@
+ {
+ 	auto &target_state = *cmd_list->get_private_data<state_tracking>();
+ 	const auto &source_state = *secondary_cmd_list->get_private_data<state_tracking>();
++	if (!tq_depth_tracking(target_state)) {
++		if (target_state.current_depth_stencil != 0 && source_state.current_depth_stencil == 0 && source_state.stats_per_used_depth_stencil.empty())
++			target_state.current_viewport = source_state.current_viewport;
++		else target_state.current_depth_stencil = source_state.current_depth_stencil;
++		return;
++	}
+ 
+ 	// If this is a secondary command list that was recorded without a depth-stencil binding, but is now executed using a depth-stencil binding, handle it as if an indirect draw call was performed to ensure the depth-stencil is tracked
+ 	if (target_state.current_depth_stencil != 0 && source_state.current_depth_stencil == 0 && source_state.stats_per_used_depth_stencil.empty())
+@@ -874,8 +1012,20 @@
+ {
+ 	device *const device = swapchain->get_device();
+ 	generic_depth_device_data *const device_data = device->get_private_data<generic_depth_device_data>();
++	const bool changed = device_data->gate.Step(tq_depth_reasons(device_data));
+ 
+ 	const std::unique_lock<std::shared_mutex> lock(s_mutex);
++
++	if (changed || !device_data->gate.Active())
++	{
++		for (command_queue *queue : device_data->queues) queue->get_private_data<state_tracking>()->reset_on_present();
++		if (changed) for (auto &[resource, info] : device_data->depth_stencil_resources) { info.last_frame_stats = {}; info.last_used_in_frame = info.first_used_in_frame = std::numeric_limits<uint64_t>::max(); }
++		device_data->frame_index++; // Delayed lifetime reclamation must continue while idle.
++		for (auto it = device_data->depth_stencil_backups.begin(); it != device_data->depth_stencil_backups.end();) {
++			if (it->references == 0 && device_data->frame_index >= it->destroy_after_frame) { device->destroy_resource(it->backup_texture); it = device_data->depth_stencil_backups.erase(it); } else ++it;
++		}
++		return;
++	}
+ 
+ 	state_tracking queue_state(true);
+ 	// Merge state from all graphics queues
+@@ -896,6 +1046,7 @@
+ 		return;
+ 
+ 	device_data->frame_index++;
++	device_data->gate.fresh.store(true, std::memory_order_release); // A full tracked frame, never the waking partial frame.
+ 
+ 	for (const auto &[depth_stencil, frame_stats] : queue_state.stats_per_used_depth_stencil)
+ 	{
+@@ -932,6 +1083,29 @@
+ 	}
+ }
+ 
++
++static void tq_depth_invalidate(effect_runtime *runtime)
++{
++ auto &data = *runtime->get_private_data<generic_depth_data>();
++ auto *device_data = runtime->get_device()->get_private_data<generic_depth_device_data>();
++ if (data.active_pairs != 0) return;
++ const uint64_t epoch = device_data->gate.epoch.load(std::memory_order_acquire);
++ if (data.binding_epoch == epoch) return; // Invalidate once per epoch, including idle.
++ data.ready_epoch.store(0, std::memory_order_release);
++ if (data.selected_shader_resource != 0) {
++  runtime->get_device()->destroy_resource_view(data.selected_shader_resource);
++  device_data->untrack_depth_stencil(runtime->get_device(), data.selected_depth_stencil);
++ }
++ data.selected_depth_stencil = { 0 }; data.selected_shader_resource = { 0 }; data.using_backup_texture = false;
++ data.binding_epoch = epoch;
++ update_effect_runtime(runtime);
++}
++static void tq_depth_runtime_present(effect_runtime *runtime)
++{
++ tq_depth_refresh_reason(runtime);
++ tq_depth_invalidate(runtime);
++}
++
+ static void on_begin_render_effects(effect_runtime *runtime, command_list *cmd_list, resource_view, resource_view)
+ {
+ 	device *const device = runtime->get_device();
+@@ -941,6 +1115,13 @@
+ 		return;
+ 
+ 	auto &data = *runtime->get_private_data<generic_depth_data>();
++	tq_depth_refresh_reason(runtime);
++	tq_depth_invalidate(runtime);
++	if (data.active_pairs != 0) { data.effect_pairs.push_back(false); return; } // Retain the outer pair and its exact barrier target.
++	const bool participate = device_data->gate.Active() && device_data->gate.fresh.load(std::memory_order_acquire);
++	data.effect_pairs.push_back(participate);
++	if (!participate) { data.ready_epoch.store(0, std::memory_order_release); return; }
++	++data.active_pairs;
+ 
+ 	resource selected_depth_stencil = { 0 };
+ 	const depth_stencil_resource *selected_depth_stencil_info = nullptr;
+@@ -1122,6 +1303,7 @@
+ 		}
+ 	} while (0);
+ 
++	data.ready_epoch.store(data.selected_shader_resource != 0 ? device_data->gate.epoch.load(std::memory_order_acquire) : 0, std::memory_order_release);
+ 	if (prev_shader_resource != data.selected_shader_resource)
+ 	{
+ 		update_effect_runtime(runtime);
+@@ -1131,7 +1313,10 @@
+ }
+ static void on_finish_render_effects(effect_runtime *runtime, command_list *cmd_list, resource_view, resource_view)
+ {
+-	const auto &data = *runtime->get_private_data<generic_depth_data>();
++	auto &data = *runtime->get_private_data<generic_depth_data>();
++	if (data.effect_pairs.empty()) return;
++	const bool participate = data.effect_pairs.back(); data.effect_pairs.pop_back();
++	if (!participate) return;
+ 
+ 	if (data.selected_shader_resource != 0)
+ 	{
+@@ -1145,6 +1330,8 @@
+ 			cmd_list->barrier(data.selected_depth_stencil, resource_usage::shader_resource, resource_usage::depth_stencil | resource_usage::shader_resource);
+ 		}
+ 	}
++	--data.active_pairs;
++	tq_depth_invalidate(runtime);
+ }
+ 
+ static const char *const format_to_string(format format)
+@@ -1177,6 +1364,8 @@
+ 
+ static void draw_settings_overlay(effect_runtime *runtime)
+ {
++	const auto *demand = runtime->get_device()->get_private_data<generic_depth_device_data>();
++	ImGui::Text("Depth tracking: %s | demand reasons: 0x%X | epoch: %llu", demand->gate.Active() ? (demand->gate.fresh.load() ? "active" : "warming") : "idle", demand->gate.reasons.load(), static_cast<unsigned long long>(demand->gate.epoch.load()));
+ 	bool force_reset = false;
+ 
+ 	const char *const draw_stats_heuristic_items[] = {
+@@ -1403,6 +1592,7 @@
+ 			device_data->untrack_depth_stencil(device, data.selected_depth_stencil);
+ 		}
+ 
++		data.ready_epoch.store(0, std::memory_order_release);
+ 		data.using_backup_texture = false;
+ 		data.selected_depth_stencil = { 0 };
+ 		data.selected_shader_resource = { 0 };
+@@ -1442,6 +1632,7 @@
+ 	reshade::register_event<reshade::addon_event::execute_secondary_command_list>(on_execute_secondary);
+ 
+ 	reshade::register_event<reshade::addon_event::present>(on_present);
++	reshade::register_event<reshade::addon_event::reshade_present>(tq_depth_runtime_present);
+ 
+ 	reshade::register_event<reshade::addon_event::reshade_begin_effects>(on_begin_render_effects);
+ 	reshade::register_event<reshade::addon_event::reshade_finish_effects>(on_finish_render_effects);
+@@ -1477,6 +1668,7 @@
+ 	reshade::unregister_event<reshade::addon_event::execute_secondary_command_list>(on_execute_secondary);
+ 
+ 	reshade::unregister_event<reshade::addon_event::present>(on_present);
++	reshade::unregister_event<reshade::addon_event::reshade_present>(tq_depth_runtime_present);
+ 
+ 	reshade::unregister_event<reshade::addon_event::reshade_begin_effects>(on_begin_render_effects);
+ 	reshade::unregister_event<reshade::addon_event::reshade_finish_effects>(on_finish_render_effects);
+--- 940e/res\version.h
++++ demand/res\version.h
+@@ -1,10 +1,10 @@
+ #pragma once
+ 
+-#define VERSION_FULL 6.8.0.2
++#define VERSION_FULL 6.8.0.5
+ #define VERSION_MAJOR 6
+ #define VERSION_MINOR 8
+ #define VERSION_REVISION 0
+-#define VERSION_BUILD 2
++#define VERSION_BUILD 5
+ 
+-#define VERSION_STRING_FILE "6.8.0.2"
++#define VERSION_STRING_FILE "6.8.0.5"
+ #define VERSION_STRING_PRODUCT "6.8.0 UNOFFICIAL"
+--- 940e/source\addon_manager.cpp
++++ demand/source\addon_manager.cpp
+@@ -13,6 +13,8 @@
+ #include <Windows.h>
+ 
+ extern void register_addon_depth();
++extern void tq_depth_addon_registered(void *module);
++extern void tq_depth_addon_unregistered(void *module);
+ extern void register_addon_effect_runtime_sync();
+ extern void unregister_addon_depth();
+ extern void unregister_addon_effect_runtime_sync();
+@@ -519,6 +521,7 @@
+ 	reshade::log::message(reshade::log::level::info, "Registered add-on \"%s\" v%hu.%hu.%hu.%hu using ReShade API version %u.", info.name.c_str(), info.version.number.major, info.version.number.minor, info.version.number.build, info.version.number.revision, api_version);
+ 
+ 	reshade::addon_loaded_info.push_back(std::move(info));
++	tq_depth_addon_registered(module);
+ 
+ 	return true;
+ }
+@@ -530,6 +533,8 @@
+ 	reshade::addon_info *const info = reshade::find_addon(module);
+ 	if (info == nullptr)
+ 		return;
++
++	tq_depth_addon_unregistered(module);
+ 
+ 	// Unregister all event callbacks registered by this add-on
+ 	while (!info->event_callbacks.empty())
+--- 940e/source\runtime.hpp
++++ demand/source\runtime.hpp
+@@ -59,6 +59,7 @@
+ 		/// <summary>
+ 		/// Gets a boolean indicating whether effects are being loaded.
+ 		/// </summary>
++		uint32_t texturequest_depth_demand_reasons() const; // Private, nonvirtual: no SDK ABI change.
+ 		bool is_loading() const { return _reload_remaining_effects != std::numeric_limits<size_t>::max() || !_reload_create_queue.empty(); }
+ 
+ 		void render_effects(api::command_list *cmd_list, api::resource_view rtv, api::resource_view rtv_srgb) final;
+--- 940e/source\runtime_api.cpp
++++ demand/source\runtime_api.cpp
+@@ -8,6 +8,7 @@
+ #include "ini_file.hpp"
+ #include "addon_manager.hpp"
+ #include "input.hpp"
++#include "texturequest_depth_demand_policy.hpp"
+ #include <algorithm> // std::all_of, std::find, std::find_if, std::for_each, std::remove_if
+ 
+ extern bool resolve_path(std::filesystem::path &path, std::error_code &ec, const std::filesystem::path &base = g_reshade_base_path);
+@@ -1465,3 +1466,25 @@
+ 			_reload_required_effects.emplace_back(effect_index, static_cast<size_t>(0u));
+ 	}
+ }
++
++// Inspect actual enabled pass bindings, rather than an unused DEPTH declaration.
++uint32_t reshade::runtime::texturequest_depth_demand_reasons() const
++{
++ if (is_loading()) return 8;
++ for (const technique &tech : _techniques)
++ {
++  if (!tech.enabled) continue;
++  if (tech.effect_index >= _effects.size()) return 8;
++  const effect &effect = _effects[tech.effect_index];
++  if (!_effects_enabled && !effect.addon) continue;
++  if (tech.permutations.empty() || effect.permutations.empty()) return 8;
++  // Any compiled permutation may be chosen for the runtime's output format.
++  for (size_t i = 0; i < tech.permutations.size(); ++i)
++  {
++   if (i >= effect.permutations.size()) return 8;
++   if (tq_depth_policy::PassesNeedDepth(tech.permutations[i].passes,
++       effect.permutations[i].module.samplers, _textures)) return 1;
++  }
++ }
++ return 0;
++}

@@ -1,0 +1,27 @@
+TextureQuest1.13.5 experimental graphics release.
+The project owner confirmed Sichii's redistribution permission on November2.
+Earlier PRIVATE notices describe retained test history, not this release scope.
+Third-party components retain their respective licences and notices.
+Reflex: device-local NVIDIA NVAPI low-latency request. New defaults enable it
+on supported hardware; saved choices win. No Boost,
+frame cap, explicit Sleep, input/simulation markers, driver profile or DLL proxy.
+It is a partial driver-mode integration, not a measured latency/FPS improvement.
+System32 driver API is resolved on demand; unsupported devices stay unchanged.
+Successful API initialization/module stay resident until process exit because
+ReShade unload callbacks precede native device destruction. Off neutralizes our
+device request and stops polling; no balanced successful-Unload claim is made.
+Original removes TextureQuest's accepted request; external enabled mode is not
+taken over. The API cannot reconstruct every hidden foreign request parameter.
+
+Renderer014 combines compatible upstream3752 window, lamp, loading-scene and
+sun-filtering fixes with TextureQuest's owned controls and native-state guards.
+Sun direction requires current native cascade-resource/caster evidence; unknown
+sources stay native, with bounded continuity instead of the old hard timeout.
+Particle emission uses native material/alpha output in per-triangle atlas tiles
+and one complete frame packet, accumulated into bounded absolute-world cells.
+This removes screen-coverage energy normalization and transient batch identity.
+Supported native fire animation and saved in-game bloom choices are preserved.
+Only exact reviewed014 and ROOT-closed NEW014 GPU evidence are admitted.
+Own-fixture GPU success does not certify full EQ2 coverage, visual stability,
+offscreen culled particle lifetime or performance. Keep exact closure limits.
+Prior upstream/adapter notices and licences remain included without alteration.

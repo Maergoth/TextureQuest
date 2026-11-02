@@ -1,0 +1,17 @@
+PRIVATE LOCAL TEST ONLY. No public distribution grant is implied.
+Reflex: device-local NVIDIA NVAPI low-latency request, default off. No Boost,
+frame cap, explicit Sleep, input/simulation markers, driver profile or DLL proxy.
+It is a partial driver-mode integration, not a measured latency/FPS improvement.
+System32 driver API is resolved on demand; unsupported devices stay unchanged.
+Successful API initialization/module stay resident until process exit because
+ReShade unload callbacks precede native device destruction. Off neutralizes our
+device request and stops polling; no balanced successful-Unload claim is made.
+Original removes TextureQuest's accepted request; external enabled mode is not
+taken over. The API cannot reconstruct every hidden foreign request parameter.
+
+Renderer010 adds exactly the two native billboard shader pairs observed in the
+user's November2 spell capture. It uses native VS positions and native PS emitted
+colour/alpha, preserving native particles, existing state/camera/budget checks
+and bounded nonblocking readback. Tiny particles can still be missed. Broader
+spell support, actual EQ2 illumination and performance need human validation.
+Prior upstream/adapter notices and licences remain included without alteration.

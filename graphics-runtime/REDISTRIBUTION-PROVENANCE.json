@@ -1,0 +1,33 @@
+{
+  "sichii": {
+    "repository": "https://github.com/Sichii/Eq2GraphicsAddonRS",
+    "commit": "3752e0b97a87c5def22c9f8d6cabfd369d5817cb",
+    "permission": "Maintainer explicitly confirmed permission in project chat on2026-11-02, author present in voice; no further confirmation required.",
+    "license": "Permission record; no invented upstream open-source license"
+  },
+  "nvidia": [
+    {
+      "name": "nvngx_dlss.dll",
+      "sha256": "d00b5b0ab29c3ca101b70c3a5ecb3a01b7ef33766a3383a28a18623083e6123e",
+      "bytes": 58956912,
+      "source": "https://github.com/NVIDIA/DLSS/blob/9981c6350dc58c0ce21f024fd65e31e851c31689/lib/Windows_x86_64/rel/nvngx_dlss.dll",
+      "license": "NVIDIA/DLSS LICENSE.txt at the same commit; bundled NVIDIA-RTX-SDK-LICENSE.txt"
+    },
+    {
+      "name": "nvngx_dlssg.dll",
+      "sha256": "8d59d49b36410dd6b62fef2503a5871d347415bd85d943fa0848563a95dd50c7",
+      "bytes": 7506544,
+      "source": "https://github.com/NVIDIA/DLSS/blob/9981c6350dc58c0ce21f024fd65e31e851c31689/lib/Windows_x86_64/rel/nvngx_dlssg.dll",
+      "license": "NVIDIA/DLSS LICENSE.txt at the same commit; bundled NVIDIA-RTX-SDK-LICENSE.txt"
+    },
+    {
+      "name": "nvngx_dlssnr.dll",
+      "sha256": "e16bcf15e16e13f527491cdf7845b2fe6521a738d8f7c9c721866a8496e1fc8e",
+      "bytes": 165840496,
+      "source": "https://github.com/RankFTW/rhi-repo/releases/download/dlssnr-310.8.0/nvngx_dlssnr_310.8.0.zip",
+      "zip_sha256": "388c0a7912e15ec911b9c9e11a692142b11fe387ddf2b637d8c358138fffb3ac",
+      "license_status": "The exact NR payload originates from the RHI download receipt, not the retained NVIDIA SDK file tree. Specific applicability of the bundled RTX-SDK license to this NR payload has not been established in this staging task; no prohibition is inferred."
+    }
+  ],
+  "separate_terms": "AIO Apache-2.0 and Feeder MIT do not relicense NVIDIA payloads. RTX-SDK section1(c) includes object-code distribution rights subject to its requirements; private labels in prior test notices are not a blanket NVIDIA redistribution ban."
+}

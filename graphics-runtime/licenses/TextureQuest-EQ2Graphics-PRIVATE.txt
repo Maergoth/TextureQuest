@@ -1,0 +1,34 @@
+PRIVATE LOCAL TEST ONLY; NOT A PUBLIC REDISTRIBUTION GRANT.
+EQ2 Graphics by Sichii: https://github.com/Sichii/Eq2GraphicsAddonRS
+Source basis4a656a9492584c10ab38f30391b7e99538475f87, with upstream fixes
+through1116b1f5ece249567857001800495f015ebe36d0.
+No top-level license was supplied by that repository. Obtain permission before
+distributing this renderer publicly. Dependency notices remain separately included.
+
+TextureQuest private adapter: managed default-off ABI, deferred master transitions
+after frame cleanup, original sampler descriptor retention/restoration, D3D11
+device ownership guards, and the upstream controls embedded in TextureQuest Home.
+Compact controls and a one-time backed-up numeric preset migration were added.
+AF uses16x; native lamp lighting is the default, with rebuilt lighting Advanced.
+Character softness defaults to0.15. One version2 migration moves the former
+0.05 default to0.15, backing it up and retaining other custom values andv1history.
+The preserving path leaves native lamp shaders and fade coordinates unchanged.
+Feature choices and later Advanced edits are retained. No game PAKs are modified.
+Particle-emissive admission and nearby-light appearance are experimental and
+require the actual game test; unsupported sources remain native. Very small
+particles may be missed by the bounded radiance measurement.
+Upstream offscreen lamps and smooth indoor transitions are included.
+Projected window lights retain their own direction; native lamp rebuilding stays
+off by default. Native lamps exclude their proven bounded sibling fixture submeshes
+from their shadow maps; nearby unrelated objects remain shadow casters.
+
+Renderer009 adds an aggregate selected-world-feature gate. Point shadows, AO
+and the visible Sun lighting umbrella control world light/depth processing;
+AF/text filtering do not wake scene work. All world choices off bypass hot scene
+callbacks before device/native queries. One boundary cleanup clears old scene
+state; re-enable rediscovers fresh targets/camera while retaining preferences.
+Sun lighting off also gates saved direction/indoor/softness settings. Explicit
+frame capture can temporarily request diagnostic tracking without enabling effects.
+Filtering changes restore already-bound sampler substitutions.
+
+Compilation and CPU review are not proof of EQ2 visuals or performance.

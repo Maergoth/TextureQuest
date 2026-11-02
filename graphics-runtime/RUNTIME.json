@@ -1,5 +1,5 @@
 {
-  "schema": "texturequest-graphics-runtime-v6",
+  "schema": "texturequest-graphics-runtime-v8",
   "addon": "TextureQuest.addon64",
   "reshade": "ReShade64.dll",
   "reshade_version": "6.8.0.2-private",
@@ -8,13 +8,13 @@
   "files": [
     {
       "name": "TextureQuest.addon64",
-      "bytes": 367616,
-      "sha256": "f3b8f41851e20fec04d720fd8c0afcaf1b7a9f42ce594342bbafdd996e824978"
+      "bytes": 483328,
+      "sha256": "8b5864316030491f4e78e00a361db44c86dcf94a7a966c6694f74fadc02e9c19"
     },
     {
       "name": "ReShade64.dll",
-      "bytes": 5391360,
-      "sha256": "940e972aeb576477afd7a2f7e5a0d65f716721e4c034d0d875d89203a55a56f1"
+      "bytes": 5410816,
+      "sha256": "78ef670bd7baf3688f8570294cf793050f9fd8f2751fa7b3086c93ae5eb14fd1"
     },
     {
       "name": "licenses/ReShade-d3d12.txt",
@@ -45,11 +45,6 @@
       "name": "licenses/xxHash.txt",
       "bytes": 1389,
       "sha256": "6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a"
-    },
-    {
-      "name": "effects/TQEffects.fx",
-      "bytes": 24467,
-      "sha256": "653f511c837d4ba50fcc10f90ffe5859e44e28880c16c42a1e385b30a12d79a5"
     },
     {
       "name": "licenses/ReShade-LICENSE.md.txt",
@@ -105,19 +100,149 @@
       "name": "licenses/ReShade-deps-jxl_simple_lossless-LICENSE.txt",
       "bytes": 1508,
       "sha256": "8405932022a556380c2d8c272eff154a923feb197233f348ce5f7334fb0a5ede"
+    },
+    {
+      "name": "licenses/DLSS5-AIO-Apache-2.0.txt",
+      "bytes": 11558,
+      "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6"
+    },
+    {
+      "name": "licenses/DLSS5-AIO-NOTICE.txt",
+      "bytes": 170,
+      "sha256": "f590ff9fde20abe5de87804f5dd8797f3f61a96eabe9c88bf3e724fc32fabee3"
+    },
+    {
+      "name": "licenses/DLSS5-AIO-THIRD-PARTY-NOTICES.md",
+      "bytes": 2431,
+      "sha256": "c3bcbb186d4b6a2b9c32aeea8f1d9c0d8a82b273d6b727e04b6d9fb5cee010e7"
+    },
+    {
+      "name": "licenses/DLSS5-Feeder-dependency-MIT.txt",
+      "bytes": 1187,
+      "sha256": "6562d5a5e3d7534711e34f4b34335f23f067acc839ae5274c1250bf5f4654b8b"
+    },
+    {
+      "name": "licenses/NVIDIA-RTX-SDK-LICENSE.txt",
+      "bytes": 26727,
+      "sha256": "3027f23ca5a46dd9cb8183fbd522983a86f64d7daac5982912bf9f214671f294"
+    },
+    {
+      "name": "licenses/NVIDIA-Optical-Flow-interface-notices.txt",
+      "bytes": 2392,
+      "sha256": "21c84029337706ee3b8ff814b7e24fef78ffff91460dd85672bb7c39d1019a8d"
+    },
+    {
+      "name": "licenses/TextureQuest-AIO-MODIFICATIONS.txt",
+      "bytes": 1624,
+      "sha256": "f862d5ce54d83d3e2ad9241603d41b4689ce8bd424c4ccf87b7591ddcbb332a4"
+    },
+    {
+      "name": "licenses/Vulkan-Headers-LICENSE.md",
+      "bytes": 514,
+      "sha256": "a2d4407962c909f84807774cbfe9fad05a1ebe972472c08ed5ad43d482afd288"
+    },
+    {
+      "name": "licenses/Vulkan-Headers-Apache-2.0.txt",
+      "bytes": 11560,
+      "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+    },
+    {
+      "name": "licenses/Vulkan-Headers-MIT.txt",
+      "bytes": 1093,
+      "sha256": "051daae2dae99c2b0fc9d8363cf704b9456ae0e3c89589ac755d506a0b2c10c3"
+    },
+    {
+      "name": "licenses/TextureQuest-EQ2Graphics-PRIVATE.txt",
+      "bytes": 2384,
+      "sha256": "84022878aeaa63ddd8e7cdc3004e8d41616aaa3e330c6e6fdcfdeb3e7c2f9e2d"
+    },
+    {
+      "name": "licenses/TextureQuest-GENERIC-DEPTH-DEMAND.txt",
+      "bytes": 885,
+      "sha256": "0e66c2cd7d49d500f0936a922f641e83be0d9f7665ad0a98f2735d9fab95cd71"
+    },
+    {
+      "name": "licenses/TextureQuest-1133-PRIVATE.txt",
+      "bytes": 1275,
+      "sha256": "48b95c2270eea667943880b74414e9acc10bfcacaab757c8240eb6b539c25f80"
+    },
+    {
+      "name": "licenses/NVAPI-NOTICE.txt",
+      "bytes": 1776,
+      "sha256": "7d9407ec8bc45bc178edf8d49f21ca7dcc32c1136cabc231bd3c138bc7739ce6"
+    },
+    {
+      "name": "licenses/TextureQuest-1134-PRIVATE.txt",
+      "bytes": 1257,
+      "sha256": "2326880c6f773909cada596075f7018a85fa15976e3f537e44e4d2fa99be18f5"
+    },
+    {
+      "name": "licenses/TextureQuest-1135-EXPERIMENTAL.txt",
+      "bytes": 2012,
+      "sha256": "ee327da12cac04866ed19bdbe63ea66b8ba84eae1de4d9ebf4bf6559d9c6f3ff"
     }
   ],
-  "effects": {
-    "schema": "texturequest-effects-runtime-v2",
-    "shader": "effects/TQEffects.fx",
-    "effect_name": "TQEffects.fx",
-    "techniques": [
-      "TQAmbientOcclusion",
-      "TQContactShadows",
-      "TQIndirectLighting",
-      "TQBloom",
-      "TQAntiAliasing",
-      "TQDepthDiagnostic"
+  "dlss": {
+    "schema": "texturequest-dlss-runtime-v1",
+    "id": "aio-09301f5-managed-latest-capture-private-v7",
+    "private": true,
+    "api": "d3d11",
+    "files": [
+      {
+        "role": "nr",
+        "name": "dlss/nvngx_dlssnr.dll",
+        "bytes": 165840496,
+        "sha256": "e16bcf15e16e13f527491cdf7845b2fe6521a738d8f7c9c721866a8496e1fc8e"
+      },
+      {
+        "role": "sr",
+        "name": "dlss/nvngx_dlss.dll",
+        "bytes": 58956912,
+        "sha256": "d00b5b0ab29c3ca101b70c3a5ecb3a01b7ef33766a3383a28a18623083e6123e"
+      },
+      {
+        "role": "fg",
+        "name": "dlss/nvngx_dlssg.dll",
+        "bytes": 7506544,
+        "sha256": "8d59d49b36410dd6b62fef2503a5871d347415bd85d943fa0848563a95dd50c7"
+      },
+      {
+        "role": "aio",
+        "name": "dlss/standalone-dlssnr.addon64",
+        "bytes": 317952,
+        "sha256": "e7efa95ad7c6b492a483b836ea7b7337d5ba3b86430727291c78b9a0cf317894"
+      },
+      {
+        "role": "bridge",
+        "name": "dlss/nvngx.dll",
+        "bytes": 9216,
+        "sha256": "1bcf9b46e0fd0eca027b8827e91db828820ab18d48d992be72bdd34c0efdb8c6"
+      },
+      {
+        "role": "feed_shader",
+        "name": "dlss/shaders/DLSS5_AIO_Feed.fx",
+        "bytes": 4118,
+        "sha256": "0710e17eeafa1933af18489bfb7d7a1d71bd6204d65d337474f835749fd6de58"
+      },
+      {
+        "role": "reshade_include",
+        "name": "dlss/shaders/ReShade.fxh",
+        "bytes": 4250,
+        "sha256": "6dabfbbaf968c3871905d2ea17f96572ff7b1cec01310b5d0e5252b66b30174f"
+      }
+    ]
+  },
+  "renderer": {
+    "schema": "texturequest-world-renderer-v1",
+    "id": "sichii-4a656a9-texturequest-master-v1",
+    "private": true,
+    "api": "d3d11",
+    "files": [
+      {
+        "name": "renderer/EQ2Graphics.addon64",
+        "bytes": 975360,
+        "sha256": "92df3b0d7e365161c09e9a7528e601abfb7f0c72e763499d5056d9f0b395edb6"
+      }
     ]
   }
 }

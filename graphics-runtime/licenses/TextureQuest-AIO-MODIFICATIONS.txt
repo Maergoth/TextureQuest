@@ -1,0 +1,24 @@
+TextureQuest private AIO build based on DLSS5 ReShade AIO
+source09301f5528e619e8b9ec17c257d167e2985f53b0.
+
+Managed default-off master, independent controls, drained reconfiguration,
+indexed multi-frame generation and physical-client sizing. Actual ReShade FX
+are captured before the native GUI, which is composited above accepted output.
+Home does not pause processing. Extra AIO hotkeys and game input/window/DPI
+virtualization remain disabled. NR/SR capture follows completion independently.
+
+V7 keeps the V5 pacing/flow/GUI changes and admits one pending capture ahead
+of active consumers in the existing three-slot window. Free-only claims,
+newest-ready selection and completed retirement preserve resource custody.
+It does not increase slot count, overwrite pending consumers or weaken fences.
+The message-only V8 delta blocks SC_KEYMENU on the owned menu-less output window.
+It does not change frame capture, processing, pacing, game input or providers.
+The retained V7 GPU measurements are ancestor evidence, not a new V8 measurement.
+The high-cadence comparison and exact artifact pins are retained separately.
+V9 retains the V8 owned-window F10/SC_KEYMENU fix and V7 capture ABI, adding only
+explicit private GenericDepth participation/manual leases and fresh-guide checks.
+Foreign enabled depth techniques, actual manual consumers and unknown addons
+conservatively retain provider tracking. Waking depth requires a fresh tracked
+epoch; stale depth must not be treated as ready. No V9/EQ2 FPS gain is claimed.
+
+Unpublished private test. NVIDIA runtimes have their own licenses, not Apache2.

@@ -1,0 +1,11 @@
+PRIVATE PROVIDER CHANGE: demand-gated GenericDepth tracking.
+Known TextureQuest/world-renderer clients declare no manual GenericDepth use.
+Enabled foreign techniques with depth dependencies, explicit AIO manual consumers,
+unknown external addons and loading/unknown states conservatively keep it active.
+Idle callbacks skip depth statistics/copies; lifecycle cleanup remains registered.
+After a wake, fresh tracked-frame/epoch evidence is required before depth is ready.
+This is not global effects disablement and does not rewrite user ReShade settings.
+Renderer009 independently gates its native light/depth work when world choices
+are off. Textures, filtering, controls, FPS, lifecycle and hook machinery remain.
+No actual idle FPS measurement or zero-overhead claim accompanies this package.
+Existing upstream/dependency licenses remain in their separate original files.

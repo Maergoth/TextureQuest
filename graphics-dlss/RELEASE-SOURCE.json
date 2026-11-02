@@ -1,0 +1,183 @@
+{
+  "revision": "TextureQuest AIOV9",
+  "upstream": "https://github.com/kibblerz/DLSS5-Reshade-AIO",
+  "upstream_commit": "09301f5528e619e8b9ec17c257d167e2985f53b0",
+  "source_manifest": {
+    "bytes": 19841,
+    "sha256": "6a02fbf81fffedc970039ecc185783782628c185a18cdb4ca361bc9493515188"
+  },
+  "author_handoff": {
+    "bytes": 2941,
+    "sha256": "810962ec7a07d891268eacd0e6c16c633f4df2ab58bd40622e231f3eab3d09af"
+  },
+  "native_release_asset": {
+    "bytes": 317952,
+    "sha256": "e7efa95ad7c6b492a483b836ea7b7337d5ba3b86430727291c78b9a0cf317894"
+  },
+  "dependencies": [
+    {
+      "repository": "https://github.com/NVIDIA/DLSS",
+      "commit": "9981c6350dc58c0ce21f024fd65e31e851c31689",
+      "used": "include headers"
+    },
+    {
+      "repository": "https://github.com/jlrouzies-fr/DLSS5-Feeder",
+      "commit": "16cb1946a8331751b0f89a728b797d895ecdfba1",
+      "used": "tracked external/reshade, external/imgui and external/minhook"
+    },
+    {
+      "repository": "https://github.com/KhronosGroup/Vulkan-Headers",
+      "commit": "9fbc2a782ee3f8a4db64e7d991e23da75e893f44",
+      "used": "include headers"
+    }
+  ],
+  "files": [
+    {
+      "name": "addon/include/aio-menu-schema.hpp",
+      "bytes": 11353,
+      "sha256": "9d9d123141c3274ebd57d9d352890ddccbb98278cc770206cd101e0e59edb2ba"
+    },
+    {
+      "name": "addon/include/nvof-motion-provider.hpp",
+      "bytes": 6787,
+      "sha256": "fb77c37c731246e8e8120bb52ecf4d3591180b093d90c8b58b56eeffeda7975d"
+    },
+    {
+      "name": "addon/include/nvOpticalFlowCommon.h",
+      "bytes": 33652,
+      "sha256": "c3f19286365976f164d1779a977a6d12120d3885dbaf95507458ac47ef268124"
+    },
+    {
+      "name": "addon/include/nvOpticalFlowD3D12.h",
+      "bytes": 19090,
+      "sha256": "e956ec261cfcab6e45a119d915617b5e686a6b15b48eabc7296146ee638b884b"
+    },
+    {
+      "name": "addon/include/texturequest_aio_api.h",
+      "bytes": 3640,
+      "sha256": "a892d0a0f53dc612a8c9aaa4d635e974412561f2f2d2718568cc0a8cf03cb85c"
+    },
+    {
+      "name": "addon/include/texturequest_aio_controls.hpp",
+      "bytes": 2685,
+      "sha256": "b1243f804f573ccfc15b9a5ad2e5e0e7ada1bfa4e8807ffe72280941a70ae9bf"
+    },
+    {
+      "name": "addon/include/texturequest_aio_gate.hpp",
+      "bytes": 2089,
+      "sha256": "0ea9d3b2b22528442797ad2dea7f9e4e5076af5d14773e5edc4a4a3f9eb99e47"
+    },
+    {
+      "name": "addon/include/texturequest_aio_menu.hpp",
+      "bytes": 7837,
+      "sha256": "43302f9c5812fe04a092dced2c86bbd327717ddc6458d9f7059aad73ec6caf72"
+    },
+    {
+      "name": "addon/include/texturequest_aio_overlay.hpp",
+      "bytes": 13904,
+      "sha256": "14b53c452b07c02ea4d39b9138129433a1bb0ed49d644b624fa73b2e15bf6888"
+    },
+    {
+      "name": "addon/include/texturequest_capture_policy.hpp",
+      "bytes": 713,
+      "sha256": "da127a38d1df61ffb7bb847daeb75777ac662b91e4b0cd685adf06f91392f006"
+    },
+    {
+      "name": "addon/include/texturequest_capture_ring.hpp",
+      "bytes": 4990,
+      "sha256": "15f75bf25fe618d319f8a6db702ae520bb9e15e11ea5d1c4677daa12d40c224a"
+    },
+    {
+      "name": "addon/include/texturequest_dispatch_overlap.hpp",
+      "bytes": 968,
+      "sha256": "d5b2999fda4b31eac2f8bcea79d927c763380a37ab3f0b44de66c9370b395e3c"
+    },
+    {
+      "name": "addon/include/texturequest_mfg.hpp",
+      "bytes": 2856,
+      "sha256": "c9a054eaa528d6d8515d7bc62a8f761f710e4d3ce90df8cd2d5eca4d869444c8"
+    },
+    {
+      "name": "addon/include/texturequest_overlay_ring.hpp",
+      "bytes": 2319,
+      "sha256": "e1a007445be2f6fc36586d91f46589546ab7d5f10dbeaceb3ae13e0500c20a03"
+    },
+    {
+      "name": "addon/include/texturequest_packet_cadence.hpp",
+      "bytes": 2811,
+      "sha256": "4f1fbfefc43d3263bae84e0b2533e5e9deb754cc4fdbe4b2384c90f0ec92723f"
+    },
+    {
+      "name": "addon/shaders/DLSS5_AIO_Feed.fx",
+      "bytes": 4118,
+      "sha256": "0710e17eeafa1933af18489bfb7d7a1d71bd6204d65d337474f835749fd6de58"
+    },
+    {
+      "name": "addon/shaders/ReShade.fxh",
+      "bytes": 4250,
+      "sha256": "6dabfbbaf968c3871905d2ea17f96572ff7b1cec01310b5d0e5252b66b30174f"
+    },
+    {
+      "name": "addon/shaders/StandaloneBoundary.fx",
+      "bytes": 1104,
+      "sha256": "e261760a83f1bdd407dda106ed61b7a7165acaf56915b7993216348dadb3d824"
+    },
+    {
+      "name": "addon/src/nr-standalone.cpp",
+      "bytes": 710207,
+      "sha256": "e6aa4f8b11759bb7f8f78719de259948ea82de0539509d6e022c02e111d576fe"
+    },
+    {
+      "name": "addon/src/nvngx-bridge.cpp",
+      "bytes": 3276,
+      "sha256": "4c0e16633063ad875f0630189bb67a90d6aef49a1a7799407ed89b489883fc31"
+    },
+    {
+      "name": "addon/src/nvof-motion-provider.cpp",
+      "bytes": 57491,
+      "sha256": "cbd0d1ada712e827120d385efe44d3150c673a2ea4dc2f61fac13250ea7c1715"
+    },
+    {
+      "name": "addon/src/performance-telemetry.h",
+      "bytes": 3502,
+      "sha256": "ae85e7a50c75f09b6c775b7c24871c522ed1fdeac463f26afcb21133d2837180"
+    },
+    {
+      "name": "addon/src/texturequest_fg_menu_candidate001.cpp",
+      "bytes": 680742,
+      "sha256": "7b1faa0cfd1dd4a198873d867a0133234997e4d97d47d101f0f8e251499de9d0"
+    },
+    {
+      "name": "external/DLSS5-Feeder/LICENSE",
+      "bytes": 1187,
+      "sha256": "6562d5a5e3d7534711e34f4b34335f23f067acc839ae5274c1250bf5f4654b8b"
+    },
+    {
+      "name": "external/DLSS5-Feeder/src/feed_vk.h",
+      "bytes": 15380,
+      "sha256": "7cfe5390b717a5bbd13b554d5561027baaec353c4e82ca70d5b561fce5080ffb"
+    },
+    {
+      "name": "external/DLSS5-Feeder/src/feed_vk_hook.h",
+      "bytes": 10448,
+      "sha256": "dc187578e141be2def098efea663d9d7e710020fa13072fadbfc9aa05b16fa7e"
+    },
+    {
+      "name": "addon/include/texturequest_depth_demand_v1.hpp",
+      "bytes": 1152,
+      "sha256": "62f314817eead16bd21205a3ab1c8f93f3758a1e683500758637bcacdb3a4dc3"
+    },
+    {
+      "name": "addon/include/texturequest_depth_client_v1.hpp",
+      "bytes": 1873,
+      "sha256": "e01ca7b2d82653ec7e4122510d2655fc2e4efbad35670c7b813e5d632ce8bc5f"
+    }
+  ],
+  "compile_targets": [
+    "addon/src/nr-standalone.cpp",
+    "addon/src/nvof-motion-provider.cpp"
+  ],
+  "historical_not_compiled": [
+    "addon/src/texturequest_fg_menu_candidate001.cpp"
+  ]
+}

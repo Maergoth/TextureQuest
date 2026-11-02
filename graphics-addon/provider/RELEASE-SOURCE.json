@@ -1,0 +1,26 @@
+{
+  "author_handoff": {
+    "bytes": 2941,
+    "sha256": "810962ec7a07d891268eacd0e6c16c633f4df2ab58bd40622e231f3eab3d09af"
+  },
+  "native_release_asset": {
+    "bytes": 5410816,
+    "sha256": "78ef670bd7baf3688f8570294cf793050f9fd8f2751fa7b3086c93ae5eb14fd1"
+  },
+  "source_version": "6.8.0.5 UNOFFICIAL",
+  "descriptor_compatibility_label": "6.8.0.2-private",
+  "overlay": [
+    ".gitmodules",
+    "LICENSE.md",
+    "deps/glad/glad/files/__init__.py",
+    "examples/09-depth/generic_depth_addon.cpp",
+    "res/version.h",
+    "source/addon_manager.cpp",
+    "source/input_windows.cpp",
+    "source/runtime.hpp",
+    "source/runtime_api.cpp",
+    "source/texturequest_depth_demand_policy.hpp",
+    "source/texturequest_depth_demand_v1.hpp"
+  ],
+  "note": "Overlay contains complete final files, not merely the demand delta. The demand patch is historical incremental evidence against the prior input provider, not a standalone upstream patch."
+}

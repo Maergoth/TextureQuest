@@ -1,0 +1,225 @@
+{
+  "revision": "TextureQuest renderer014",
+  "upstream": "https://github.com/Sichii/Eq2GraphicsAddonRS",
+  "upstream_commit": "3752e0b97a87c5def22c9f8d6cabfd369d5817cb",
+  "author_handoff": {
+    "bytes": 4267,
+    "sha256": "817bf17556b1555fcd126b014990a1874d16e1672ca8bafc4e3b5e3141b70255"
+  },
+  "source_manifest": {
+    "bytes": 11707,
+    "sha256": "15b489ba027ca3a98a30aada47d6a292d073df68577affe578f04be48702b465"
+  },
+  "native_release_asset": {
+    "bytes": 975360,
+    "sha256": "92df3b0d7e365161c09e9a7528e601abfb7f0c72e763499d5056d9f0b395edb6"
+  },
+  "files": [
+    {
+      "name": ".gitignore",
+      "bytes": 8222,
+      "sha256": "745ff2a511c9385bdb034a1628a9c309ea87786d4efb7ed93f98095d0777a9d3"
+    },
+    {
+      "name": "addon.cpp",
+      "bytes": 15190,
+      "sha256": "04441cfdf26c36da643678edb950bbf892751feb0fdd65360472967b233bad19"
+    },
+    {
+      "name": "build.cmd",
+      "bytes": 646,
+      "sha256": "3e3609dd063d02ff3e9764e068758bb81a0eb40faac7560d9a8e45b798e3e9b4"
+    },
+    {
+      "name": "capture.hpp",
+      "bytes": 41557,
+      "sha256": "f6e09b34b85d4e3bb4c8c39d82fdbd5d08bb724f283c1f0c7414fca9e4dff1ac"
+    },
+    {
+      "name": "deps/imgui/imconfig.h",
+      "bytes": 12289,
+      "sha256": "fb8e32b9af9aa7dad5ec5c5bc862537f5624cb39a814e6d3b36b4629a50b6599"
+    },
+    {
+      "name": "deps/imgui/imgui.h",
+      "bytes": 454459,
+      "sha256": "2ca314d19c7e1ea85687a9c1e37079e0cc823939a551b3e6b2453ff0af9fbf13"
+    },
+    {
+      "name": "deps/imgui/LICENSE.txt",
+      "bytes": 1104,
+      "sha256": "55e058cc5899e6077a819ad1005d6d1f4528f65ae100795c9692f9fa6525a8ce"
+    },
+    {
+      "name": "deps/reshade/include/reshade.hpp",
+      "bytes": 19843,
+      "sha256": "d86932721cb77e47b996da6bf3861b1a938a1bc843be04d1e0c5dd09133b7f43"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api.hpp",
+      "bytes": 58876,
+      "sha256": "db19051ef285a7a1a3721f2711de973be8805d4ca39a38fbadade7fd22100a17"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_device.hpp",
+      "bytes": 89369,
+      "sha256": "8492cb9a4352ab9a25140828226a411be36c480c23d53d0fcc806a0515076212"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_format.hpp",
+      "bytes": 18738,
+      "sha256": "d5fcdf598a9adbd18db6ccd0d15133d08c4dfa4909ec8335f76edaf735ae39cf"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_pipeline.hpp",
+      "bytes": 50915,
+      "sha256": "2c592013e46e72c62119c0652786ac21c6536a29a1bad30973a6069d1d7f7351"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_resource.hpp",
+      "bytes": 29552,
+      "sha256": "cae6d40cbd37e314e5ce5fc2cd22e77d7042892284212972bd986ffabb96363e"
+    },
+    {
+      "name": "deps/reshade/include/reshade_events.hpp",
+      "bytes": 126479,
+      "sha256": "5b1f8b8144589712584cc8f2e8b6cf7c2aff05fc1c570b7867cfa1ee841296b7"
+    },
+    {
+      "name": "deps/reshade/include/reshade_overlay.hpp",
+      "bytes": 96000,
+      "sha256": "771f0cdde2dacd21cfe04664e1aaaddae43114a1abb51bb63af5645a88c217a6"
+    },
+    {
+      "name": "deps/reshade/LICENSE.md",
+      "bytes": 1490,
+      "sha256": "d2bb5eb908e9aa7ac2f7f4cf6441d62e1f6ac1256cf22bb5289516c9f30e5f0a"
+    },
+    {
+      "name": "depth_demand_v1.hpp",
+      "bytes": 1152,
+      "sha256": "62f314817eead16bd21205a3ab1c8f93f3758a1e683500758637bcacdb3a4dc3"
+    },
+    {
+      "name": "emission_policy.hpp",
+      "bytes": 2597,
+      "sha256": "9d72a77432994b01b88ff77dffd0b791430604293becab5a7ce7aad0dea42de8"
+    },
+    {
+      "name": "glow.hpp",
+      "bytes": 100124,
+      "sha256": "d7352d8cd5bd4d0789e4db290b38382054997a7f9d0b80fbf13a049a0bc2c6d4"
+    },
+    {
+      "name": "lamp_holder_policy.hpp",
+      "bytes": 2804,
+      "sha256": "13feaf4b64f1a066c0b90f5bf10489be6acca3d9d5fe9f98264c482fe1bc2e8f"
+    },
+    {
+      "name": "light_buffer.hpp",
+      "bytes": 156137,
+      "sha256": "c63dbf77d8e281f41c44a3213d4f152702f0532718479e15bb89bb5a35d2db20"
+    },
+    {
+      "name": "offscreen_lamp_policy.hpp",
+      "bytes": 237,
+      "sha256": "2360225259461cf1ba4bdb3af0efc1a5117f210a374e98aface546f1144fa6dc"
+    },
+    {
+      "name": "owned_sun_constants.hpp",
+      "bytes": 2951,
+      "sha256": "9fc1e1718c4056b5189a8170a2b0d6fcfdecb47a9111752e5d66bf350e6c886f"
+    },
+    {
+      "name": "particle_emission.hpp",
+      "bytes": 30573,
+      "sha256": "607c83e77295379ca9b43c3cfebde11a8caf38c361bed10f6fff68b3944fde87"
+    },
+    {
+      "name": "particle_emission_policy.hpp",
+      "bytes": 3363,
+      "sha256": "673071bd509518154372d26cd1a2f7d599d0ee4302169d840467392c0066a782"
+    },
+    {
+      "name": "particle_field_policy.hpp",
+      "bytes": 7027,
+      "sha256": "a2fb13ebc045ff5faf3c3697e785bc9945ebbf12e394dbb9c655a6506ea81fce"
+    },
+    {
+      "name": "projected_shadow_admission.hpp",
+      "bytes": 891,
+      "sha256": "6334770538b3ca0e39347e2ce90764201ccc86e3b6776a9900e136621463b723"
+    },
+    {
+      "name": "projected_shadow_policy.hpp",
+      "bytes": 2671,
+      "sha256": "9b9b49e4795001419010d24a2105a9ff5d2b4c3be2e787f3fa1c5bb84921d7be"
+    },
+    {
+      "name": "projected_shadows.hpp",
+      "bytes": 12660,
+      "sha256": "f30b0ca586dce31a2fc7787a055649eac4f91daa0dd46500ed67c676079df383"
+    },
+    {
+      "name": "README.md",
+      "bytes": 5876,
+      "sha256": "71888d97da6a7fbe821cfe6fa797d79ce9d6f5495f35b4af677fd8e9e8eb88e9"
+    },
+    {
+      "name": "shadow_maps.hpp",
+      "bytes": 122470,
+      "sha256": "08d87b4bcd1fdb7090e016c07b74bc0a60bd9bd5e8c14020085d19f0adef8233"
+    },
+    {
+      "name": "shadows.hpp",
+      "bytes": 180572,
+      "sha256": "1a21090a33184a76499496b846ebfda68a910ea514d78f7dcd8e638cf73b85dc"
+    },
+    {
+      "name": "sun_direction_policy.hpp",
+      "bytes": 4388,
+      "sha256": "28fc0c2912a715c9f7fd040fb94e600b7e56c64e7f557f36e7b14dfbed6cc193"
+    },
+    {
+      "name": "sun_softness_settings.hpp",
+      "bytes": 1953,
+      "sha256": "58938d52f9bed5fa121b786e64dfa0390c95e666ad81f71c4a1fcf48c549fe51"
+    },
+    {
+      "name": "sun_source_policy.hpp",
+      "bytes": 1164,
+      "sha256": "70be4793b63cbe820be3dec3f14ce60f15f4774741c8adf77173d0f6e7304cc4"
+    },
+    {
+      "name": "sun_state_policy.hpp",
+      "bytes": 1941,
+      "sha256": "2d3e87a19b430e8431bd88efe2d18ff0a127698938f962b8724d17f1fdf5f740"
+    },
+    {
+      "name": "texturequest_world_guard.hpp",
+      "bytes": 1242,
+      "sha256": "47ca552980908f82c5045808836284fdb3b57ca4cab558240e29d1128752abcf"
+    },
+    {
+      "name": "texturequest_world_master.hpp",
+      "bytes": 1130,
+      "sha256": "857b787275ac2e424ddee0eecd516669a179996f9d1ca886f5be416b6ea066b8"
+    },
+    {
+      "name": "texturequest_world_presets.hpp",
+      "bytes": 2460,
+      "sha256": "2d201fa2c16526ef1a020fa2955ced82e1a323e542891a3a48d784fa782f672c"
+    },
+    {
+      "name": "TODO.md",
+      "bytes": 4849,
+      "sha256": "10a5f09995184292dda7f035b4413fa13ac087ce16fee80a1cb1ad5f2e483897"
+    },
+    {
+      "name": "world_work_policy.hpp",
+      "bytes": 2170,
+      "sha256": "4ce509e2e04953c9fff475862ee9b7b85069e8f5c7211f0ba25dc870771b783b"
+    }
+  ],
+  "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate."
+}
