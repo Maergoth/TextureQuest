@@ -78,6 +78,8 @@ accepted Presents do not establish EQ2 performance, monitor scanout or smoothnes
 Home does not pause selected processing. Original bypasses it, allowing submitted
 work to drain. Model allocations may remain in memory. Extra AIO hotkeys and game
 window/input virtualization are disabled.
+The private output window ignores Windows menu activation, including F10.
+EQ2's own F10 UI toggle is unchanged.
 
 **Show FPS** reports rendered Game frames and accepted compositor Output frames,
 including generated frames. Output is not measured monitor scanout.
