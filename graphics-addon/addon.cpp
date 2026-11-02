@@ -17,6 +17,7 @@
 #include "aio_controller.hpp"
 #include "fps_counter.hpp"
 #include "world_graphics_controller.hpp"
+#include "depth_demand_v1.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -897,11 +898,25 @@ void Stop() {
 extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE reshade_module) {
     if (!reshade::register_addon(addon_module, reshade_module))
         return false;
+    // Ordinary enabled effect techniques are tracked by the provider itself.
+    // This add-on never manually renders a GenericDepth effect technique.
+    if (reshade_module) {
+        const auto participate = reinterpret_cast<tq_depth_v1::Register>(
+            GetProcAddress(reshade_module, tq_depth_v1::RegisterExport));
+        if (participate)
+            participate(addon_module, tq_depth_v1::NoManualDepth);
+    }
     Start(addon_module);
     return true;
 }
 
 extern "C" __declspec(dllexport) void AddonUninit(HMODULE addon_module, HMODULE reshade_module) {
     Stop();
+    if (reshade_module) {
+        const auto leave = reinterpret_cast<tq_depth_v1::Unregister>(
+            GetProcAddress(reshade_module, tq_depth_v1::UnregisterExport));
+        if (leave)
+            leave(addon_module);
+    }
     reshade::unregister_addon(addon_module, reshade_module);
 }
