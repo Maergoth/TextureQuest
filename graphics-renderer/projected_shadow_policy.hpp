@@ -50,12 +50,8 @@ struct Slots
     }
     void Invalidate() { for (auto &value : values) value.valid = false; }
 };
-inline bool Extent(float range, float &extent)
-{
-    if (!std::isfinite(range) || range <= 0) return false;
-    extent = std::clamp(range, 12.0f, 48.0f);
-    return true;
-}
+// the half-width of the square around the camera each map covers
+constexpr float Extent = 48;
 inline bool MakeRows(Direction d, float x, float y, float z, float extent, DirectX::XMFLOAT4X4 &rows)
 {
     using namespace DirectX;

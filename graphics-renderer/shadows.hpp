@@ -69,9 +69,20 @@ static const std::regex SUN_DIRECTION_PATTERN(R"(dp3 r\d\.\w, r\d\.xyzx, cb0\[13
 constexpr const char *SHADOW_SHADER = R"(
 cbuffer cb : register(b0) { float4 c[1024]; };
 cbuffer sb : register(b1) { float4 s[11]; };
-cbuffer LightTable : register(b2) { float4 Lights[MAX_LIGHTS]; float4 Params; float4 Softness; float4 Moving[MAX_LIGHTS]; };
+cbuffer LightTable : register(b2)
+{
+    float4 Lights[MAX_LIGHTS];
+    float4 Params;
+    // x how far a shadow's soft edge spreads per world unit from its caster, as for the sun
+    float4 Softness;
+    float4 Moving[MAX_LIGHTS];
+    // x the far plane of each slot's maps, its light's shadow radius
+    float4 FarPlanes[MAX_LIGHTS];
+};
 // this frame's camera offset; w is 0 until one is known
 cbuffer Camera : register(b3) { float4 CameraOffset; };
+// the slot of the draw's light map, or -1 when its light has none
+cbuffer DrawSlot : register(b6) { float4 Slot; };
 TextureCubeArray<float> Maps : register(t15);
 TextureCubeArray<float> MovingMaps : register(t12);
 SamplerComparisonState Compare : register(s15);
@@ -95,14 +106,18 @@ float DeviceDepth(float along, float nearPlane, float farPlane)
     return farPlane / (farPlane - nearPlane) - farPlane * nearPlane / ((farPlane - nearPlane) * along);
 }
 
-// contact-hardening soft shadow: finds the average distance to whatever blocks the light, then widens the sampled area
-// by how far the pixel is behind it
+// the sun shadow's soft-edge limits, in world units: how far behind a caster the search for it reaches, and the widest edge
+static const float SEARCH_DISTANCE = 20;
+static const float MAX_SOFT_UNITS = 1;
+
+// contact-hardening soft shadow, on the sun's scale: finds the average distance to whatever blocks the light, then
+// filters over a disc at the pixel that widens by Softness.x per world unit the pixel is behind it
 float SoftShadow(TextureCubeArray<float> maps, float3 toPixel, float slot, float along, float nearPlane, float farPlane,
     float2 pixel)
 {
-    float lightSize = Softness.x;
+    float spread = Softness.x;
     float3 direction = normalize(toPixel);
-    if (lightSize <= 0)
+    if (spread <= 0)
         return maps.SampleCmpLevelZero(Compare, float4(direction, slot), DeviceDepth(along, nearPlane, farPlane));
 
     float3 up = abs(direction.y) < 0.99 ? float3(0, 1, 0) : float3(1, 0, 0);
@@ -111,7 +126,8 @@ float SoftShadow(TextureCubeArray<float> maps, float3 toPixel, float slot, float
     float angle = 6.2831853 * frac(52.9829189 * frac(dot(pixel, float2(0.06711056, 0.00583715))));
     float2x2 rotation = float2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
-    float searchRadius = min(lightSize * 2 / along, 0.2);
+    // radii are world units at the pixel, turned into offsets of the direction to it
+    float searchRadius = min(spread * SEARCH_DISTANCE, MAX_SOFT_UNITS) / along;
     float blockerSum = 0;
     float blockerCount = 0;
     [unroll]
@@ -130,7 +146,7 @@ float SoftShadow(TextureCubeArray<float> maps, float3 toPixel, float slot, float
         return 1;
 
     float blockerDistance = blockerSum / blockerCount;
-    float penumbra = clamp(lightSize * (along - blockerDistance) / (blockerDistance * along), 0.0015, 0.15);
+    float penumbra = max(min(spread * (along - blockerDistance), MAX_SOFT_UNITS) / along, 0.0015);
     float reference = DeviceDepth(along, nearPlane, farPlane);
     float lit = 0;
     [unroll]
@@ -155,7 +171,7 @@ float FindLitIn(TextureCubeArray<float> maps, float3 worldPosition, float3 norma
     float2 pixel)
 {
     float nearPlane = Params.x;
-    float farPlane = Params.y;
+    float farPlane = FarPlanes[(int)slot].x;
     // move the pixel off its surface by about one texel of the coarser map, more where the light grazes the surface, so
     // ground lit from low down does not shadow itself
     float3 toLight = lightPosition - worldPosition;
@@ -207,24 +223,15 @@ Interpolants vs_main(float3 vertex : POSITION)
     precise float2 shifted = mad(offset, float2(w, -1), float2(x, y));
     o.position = float4(s[10].x > 0.5 ? shifted : float2(x, y), z, w);
     o.worldPosition = float3(dot(p, c[7]), dot(p, c[8]), dot(p, c[9])) - CameraOffset.xyz;
-    float3 light = c[13].xyz - CameraOffset.xyz;
-    float nearest = LIGHT_MATCH_DISTANCE;
-    o.slot = -1;
-    o.lightPosition = float4(light, CameraOffset.w);
-    for (int n = 0; n < MAX_LIGHTS; ++n)
-        if (Lights[n].w >= 0 && distance(Lights[n].xyz, light) < nearest)
-        {
-            nearest = distance(Lights[n].xyz, light);
-            o.slot = Lights[n].w;
-            o.lightPosition.xyz = Lights[n].xyz;
-        }
+    o.slot = Slot.x;
+    o.lightPosition = float4(Slot.x >= 0 ? Lights[(int)Slot.x].xyz : float3(0, 0, 0), CameraOffset.w);
     return o;
 }
 
 float4 ps_main(Interpolants i) : SV_Target
 {
-    // colours: magenta where the camera offset is missing, blue where the light has no map, grey beyond the shadow
-    // range, red in shadow and green lit
+    // colours: magenta where the camera offset is missing, blue where the light has no map, red in shadow and green lit;
+    // pixels beyond the light's shadow radius, which the light does not reach, keep what an earlier light painted
     bool showColours = Params.w > 0;
     float3 normal = FindSurfaceNormal(i.worldPosition);
     if (i.lightPosition.w < 0.5)
@@ -234,9 +241,8 @@ float4 ps_main(Interpolants i) : SV_Target
     if (slot < 0)
         return showColours ? float4(0, 0, 1, 1) : float4(0, 0, 0, 1);
 
-    float3 axes = abs(i.worldPosition - i.lightPosition.xyz);
-    if (max(axes.x, max(axes.y, axes.z)) >= Params.y)
-        return showColours ? float4(0.5, 0.5, 0.5, 1) : float4(0, 0, 0, 1);
+    if (distance(i.worldPosition, i.lightPosition.xyz) >= FarPlanes[(int)slot].x)
+        discard;
 
     float lit = FindLit(i.worldPosition, normal, i.lightPosition.xyz, slot, i.position.xy);
     if (showColours)
@@ -291,8 +297,6 @@ SamplerState StageSampler1 : register(s1);
 SamplerState StageSampler2 : register(s2);
 SamplerState StageSampler3 : register(s3);
 cbuffer View : register(b4) { float4 InverseViewProjection[4]; float4 Viewport; float4 DepthRange; };
-// the slot of the draw's light map, or -1 when its light has none
-cbuffer DrawSlot : register(b6) { float4 Slot; };
 
 // the game's lamp vertex shaders all write this layout
 struct GameInterpolants
@@ -1015,19 +1019,9 @@ constexpr size_t LAMP_SHADER_COUNT = std::size(LAMP_SHADERS);
 
 enum class LightPass { None, Alpha, SinglePass };
 
-static std::mutex Lock;
-static std::unordered_set<uint64_t> AdditiveBlends, SourceAlphaBlends, PointLightShaders, StaticLightShaders;
-// Captured directional/projected VS with admitted POSITION/world/clip layout, not the unknown skinned variant.
-static std::unordered_set<uint64_t> ProjectedLightShaders;
-// blends by source alpha over the target, as see-through surfaces are drawn
-static std::unordered_set<uint64_t> AlphaBlends;
-static std::unordered_set<uint64_t> SunVertexShaders, SunPixelShaders, SunDirectionShaders;
-
 static std::atomic<bool> Enabled = true;
 // draws lamps whose pixel shader has a replacement with that replacement, which applies the shadow in the same draw
 static std::atomic<bool> OwnLampShaders = false;
-// the game's pixel shaders that have a replacement, with the index of their replacement in LAMP_SHADERS
-static std::unordered_map<uint64_t, size_t> ReplacedShaders;
 static pipeline LampPixelShaders[LAMP_SHADER_COUNT];
 
 
@@ -1063,8 +1057,6 @@ constexpr UINT MAX_KEPT_CONSTANTS = 256;
 constexpr int MAX_CULLED_LAMPS = 8;
 // how far past its origin a moving mesh is taken to reach
 constexpr float MESH_RADIUS = 2.0f;
-// the game's fade covers a cylinder of a lamp's reach in radius and half height, whose rim is this many reaches away
-constexpr float FADE_EXTENT = 1.41421356f;
 // the fade power of the fade texture most lamps use, for a lamp whose own texture is not known or cannot be read
 constexpr float COMMON_FADE_POWER = 1.05f;
 // a lamp stays remembered while the camera is within its reach and this much more
@@ -1147,7 +1139,7 @@ static std::vector<FrameLamp> FrameLamps;
 // this frame's moving mesh copies, by mesh and the eighth-of-a-unit cell of their origin
 static std::unordered_map<uint64_t, KeptDraw> KeptDraws;
 // One-frame material replay has independent admission; Own lamp shaders is not required.
-static void KeepMaterialDraw(ID3D11DeviceContext *,const shadowmaps::DrawCall &,bool,size_t=0);
+static void KeepMaterialDraw(shadowmaps::BoundDraw &,bool,size_t=0);
 static void DrawMaterialNormals(ID3D11DeviceContext *);
 static ID3D11ShaderResourceView *MaterialNormalsView();
 static void ResetMaterialNormals();
@@ -1156,8 +1148,15 @@ static void WriteMaterialState(FILE *);
 // moving meshes with a lamp pass this frame that could not be told apart from the mesh's other copies or whose lamp could
 // not be read; they get no lamps added, since one could be added on top of the game's own
 static std::unordered_set<uint64_t> UnsureMeshes;
-// the game's vertex shaders that added_vs repeats, with their index in REPEATED_VERTEX_SHADERS
-static std::unordered_map<uint64_t, int> RepeatedShaders;
+// the remembered lamps with a known reach, gathered from shadowmaps::Lights once a frame for KeepBaseDraw
+struct RememberedLamp
+{
+    DirectX::XMFLOAT3 Position;
+    float Reach;
+};
+static std::vector<RememberedLamp> RememberedLamps;
+// the frame RememberedLamps were gathered on, or 0 when they are gathered again on their next use
+static uint64_t RememberedFrame = 0;
 // read-only copies of the game's depth-stencil states, which test as the game's do without writing depth or stencil,
 // keyed by the game's state, which each holds so its address is not reused
 static std::unordered_map<ID3D11DepthStencilState *,
@@ -1231,51 +1230,38 @@ static void OnInitPipeline(device *, pipeline_layout, uint32_t count, const pipe
             const uint64_t hash = capture::HashCode(desc.code, desc.code_size);
             particle_emission::RememberShader(hash,handle.handle,true);
             if (projected_shadow_policy::AdmittedVertex(hash))
-            {
-                std::lock_guard guard(Lock);
-                ProjectedLightShaders.insert(handle.handle);
-            }
+                capture::AddClass(handle.handle, capture::CLASS_PROJECTED_LIGHT);
             for (size_t index = 0; index < std::size(REPEATED_VERTEX_SHADERS); ++index)
                 if (REPEATED_VERTEX_SHADERS[index].Hash == hash)
                 {
-                    std::lock_guard guard(Lock);
-                    RepeatedShaders[handle.handle] = static_cast<int>(index);
+                    std::lock_guard guard(capture::ClassLock);
+                    capture::Classes[handle.handle].Repeated = static_cast<int>(index);
                 }
             const std::string listing = Disassemble(desc);
             // lamp shaders pass the lamp's colour the same way, with its position where the sun's direction would be
             if (!sun_state_policy::KnownProjected(hash) && std::regex_search(listing, SUN_COLOUR_PATTERN) && !std::regex_search(listing, POINT_LIGHT_PATTERN))
-            {
-                std::lock_guard guard(Lock);
-                SunVertexShaders.insert(handle.handle);
-                if (std::regex_search(listing, SUN_DIRECTION_PATTERN))
-                    SunDirectionShaders.insert(handle.handle);
-            }
+                capture::AddClass(handle.handle, capture::CLASS_SUN_VERTEX
+                    | (std::regex_search(listing, SUN_DIRECTION_PATTERN) ? capture::CLASS_SUN_DIRECTION : 0));
             if (!std::regex_search(listing, POINT_LIGHT_PATTERN))
                 continue;
 
             const bool isStatic = std::regex_search(listing, WORLD_ROWS_PATTERN)
                 && !std::regex_search(listing, INDEXED_CONSTANTS_PATTERN);
-            std::lock_guard guard(Lock);
-            PointLightShaders.insert(handle.handle);
-            if (isStatic)
-                StaticLightShaders.insert(handle.handle);
+            capture::AddClass(handle.handle, capture::CLASS_POINT_LIGHT | (isStatic ? capture::CLASS_STATIC_LIGHT : 0));
         }
         else if (subobjects[i].type == pipeline_subobject_type::pixel_shader)
         {
             const auto &desc = *static_cast<const shader_desc *>(subobjects[i].data);
             glow::ClassifyPixelShader(desc.code, desc.code_size, handle.handle);
             if (std::regex_search(Disassemble(desc), AMBIENT_PATTERN))
-            {
-                std::lock_guard guard(Lock);
-                SunPixelShaders.insert(handle.handle);
-            }
+                capture::AddClass(handle.handle, capture::CLASS_SUN_PIXEL);
             const uint64_t hash = capture::HashCode(desc.code, desc.code_size);
             particle_emission::RememberShader(hash,handle.handle,false);
             for (size_t index = 0; index < LAMP_SHADER_COUNT; ++index)
                 if (LAMP_SHADERS[index].Hash == hash)
                 {
-                    std::lock_guard guard(Lock);
-                    ReplacedShaders[handle.handle] = index;
+                    std::lock_guard guard(capture::ClassLock);
+                    capture::Classes[handle.handle].LampShader = static_cast<int>(index);
                 }
         }
         else if (subobjects[i].type == pipeline_subobject_type::blend_state)
@@ -1283,35 +1269,19 @@ static void OnInitPipeline(device *, pipeline_layout, uint32_t count, const pipe
             const auto &desc = *static_cast<const blend_desc *>(subobjects[i].data);
             if (desc.blend_enable[0] && desc.source_color_blend_factor[0] == blend_factor::source_alpha
                 && desc.dest_color_blend_factor[0] == blend_factor::one_minus_source_alpha)
-            {
-                std::lock_guard guard(Lock);
-                AlphaBlends.insert(handle.handle);
-            }
+                capture::AddClass(handle.handle, capture::CLASS_ALPHA_BLEND);
             if (!desc.blend_enable[0] || desc.dest_color_blend_factor[0] != blend_factor::one)
                 continue;
 
-            std::lock_guard guard(Lock);
-            AdditiveBlends.insert(handle.handle);
-            if (desc.source_color_blend_factor[0] == blend_factor::source_alpha)
-                SourceAlphaBlends.insert(handle.handle);
+            capture::AddClass(handle.handle, capture::CLASS_ADDITIVE_BLEND
+                | (desc.source_color_blend_factor[0] == blend_factor::source_alpha ? capture::CLASS_SOURCE_ALPHA_BLEND : 0));
         }
     }
 }
 
+// capture::OnDestroyPipeline forgets the pipeline's class
 static void OnDestroyPipeline(device *, pipeline handle)
 {
-    std::lock_guard guard(Lock);
-    AdditiveBlends.erase(handle.handle);
-    SourceAlphaBlends.erase(handle.handle);
-    AlphaBlends.erase(handle.handle);
-    PointLightShaders.erase(handle.handle);
-    ProjectedLightShaders.erase(handle.handle);
-    StaticLightShaders.erase(handle.handle);
-    SunVertexShaders.erase(handle.handle);
-    SunPixelShaders.erase(handle.handle);
-    SunDirectionShaders.erase(handle.handle);
-    ReplacedShaders.erase(handle.handle);
-    RepeatedShaders.erase(handle.handle);
     glow::ForgetPixelShader(handle.handle);
     particle_emission::ForgetShader(handle.handle);
 }
@@ -1328,7 +1298,12 @@ static void OnDestroyDevice(device *dev)
     ResetMaterialNormals();
     projected_shadows::Reset();
     particle_emission::Reset();
-    { std::lock_guard guard(Lock); ProjectedLightShaders.clear(); }
+    {
+        std::lock_guard guard(capture::ClassLock);
+        for (auto &[handle, found] : capture::Classes)
+            found.Bits &= ~capture::CLASS_PROJECTED_LIGHT;
+        capture::VertexClass.Bits &= ~capture::CLASS_PROJECTED_LIGHT;
+    }
     DestroyPipeline(dev, ShadowVertexShader);
     DestroyPipeline(dev, ShadowPixelShader);
     DestroyPipeline(dev, WindowPixelShader);
@@ -1362,6 +1337,7 @@ static void OnDestroyDevice(device *dev)
     AddedMarkFrame=UINT64_MAX;CulledLamps.clear();
     FrameLamps.clear();
     KeptDraws.clear();
+    RememberedFrame = 0;
     UnsureMeshes.clear();
     glow::Reset();
     shadowmaps::Reset();
@@ -1379,8 +1355,6 @@ static ComPtr<ID3DBlob> CompileShader(const ShaderEntry &shader)
 {
     char lightCount[8];
     sprintf_s(lightCount, "%d", shadowmaps::MAX_LIGHTS);
-    char matchDistance[16];
-    sprintf_s(matchDistance, "%g", shadowmaps::LIGHT_MATCH_DISTANCE);
     char movingFaceSize[16];
     sprintf_s(movingFaceSize, "%u", shadowmaps::MOVING_FACE_SIZE);
     char middleStart[8], farStart[8], middleFaceSize[16], farFaceSize[16];
@@ -1393,10 +1367,10 @@ static ComPtr<ID3DBlob> CompileShader(const ShaderEntry &shader)
     char culledLamps[8];
     sprintf_s(culledLamps, "%d", MAX_CULLED_LAMPS);
     static_assert(shadowmaps::SIZE_COUNT == 3);
-    const D3D_SHADER_MACRO macros[] = { { "MAX_LIGHTS", lightCount }, { "LIGHT_MATCH_DISTANCE", matchDistance },
-        { "MOVING_FACE_SIZE", movingFaceSize }, { "MIDDLE_START", middleStart }, { "FAR_START", farStart },
-        { "MIDDLE_FACE_SIZE", middleFaceSize }, { "FAR_FACE_SIZE", farFaceSize },
-        { "LIGHT_REACH", lightReach }, { "MAX_CULLED_LAMPS", culledLamps }, { nullptr, nullptr } };
+    const D3D_SHADER_MACRO macros[] = { { "MAX_LIGHTS", lightCount }, { "MOVING_FACE_SIZE", movingFaceSize },
+        { "MIDDLE_START", middleStart }, { "FAR_START", farStart }, { "MIDDLE_FACE_SIZE", middleFaceSize },
+        { "FAR_FACE_SIZE", farFaceSize }, { "LIGHT_REACH", lightReach }, { "MAX_CULLED_LAMPS", culledLamps },
+        { nullptr, nullptr } };
 
     ComPtr<ID3DBlob> code, errors;
     if (SUCCEEDED(D3DCompile(SHADOW_SHADER, strlen(SHADOW_SHADER), "shadows", macros, nullptr, shader.Entry, shader.Target,
@@ -1549,14 +1523,13 @@ static bool CreateObjects(device *dev)
 
 static LightPass GetLightPass(bool &isStatic)
 {
-    std::lock_guard guard(Lock);
-    if (!PointLightShaders.contains(capture::VertexShader))
+    if ((capture::VertexClass.Bits & capture::CLASS_POINT_LIGHT) == 0)
         return LightPass::None;
 
-    isStatic = StaticLightShaders.contains(capture::VertexShader);
-    if (SourceAlphaBlends.contains(capture::BlendState))
+    isStatic = (capture::VertexClass.Bits & capture::CLASS_STATIC_LIGHT) != 0;
+    if ((capture::BlendClass.Bits & capture::CLASS_SOURCE_ALPHA_BLEND) != 0)
         return LightPass::SinglePass;
-    if (!AdditiveBlends.contains(capture::BlendState))
+    if ((capture::BlendClass.Bits & capture::CLASS_ADDITIVE_BLEND) == 0)
         return LightPass::Alpha;
     return LightPass::None;
 }
@@ -1613,9 +1586,9 @@ static void DrawShadow(command_list *cmd, const shadowmaps::DrawCall &call, cons
 
     ComPtr<ID3D11ShaderResourceView> previousMap, previousMovingMap;
     ComPtr<ID3D11SamplerState> previousSampler, previousPointSampler;
-    ComPtr<ID3D11Buffer> previousTable, previousVertexTable, previousOffset;
+    ComPtr<ID3D11Buffer> previousTable, previousVertexTable, previousOffset, previousSlot;
     UINT previousFirst = 0, previousCount = 0, previousOffsetFirst = 0, previousOffsetCount = 0;
-    UINT previousVertexFirst = 0, previousVertexCount = 0;
+    UINT previousVertexFirst = 0, previousVertexCount = 0, previousSlotFirst = 0, previousSlotCount = 0;
     ctx->PSGetShaderResources(MAP_SLOT, 1, &previousMap);
     ctx->PSGetShaderResources(MOVING_MAP_SLOT, 1, &previousMovingMap);
     ctx->PSGetSamplers(MAP_SLOT, 1, &previousSampler);
@@ -1623,6 +1596,7 @@ static void DrawShadow(command_list *cmd, const shadowmaps::DrawCall &call, cons
     ctx->PSGetConstantBuffers1(TABLE_SLOT, 1, &previousTable, &previousFirst, &previousCount);
     ctx->VSGetConstantBuffers1(TABLE_SLOT, 1, &previousVertexTable, &previousVertexFirst, &previousVertexCount);
     ctx->VSGetConstantBuffers1(CAMERA_OFFSET_SLOT, 1, &previousOffset, &previousOffsetFirst, &previousOffsetCount);
+    ctx->VSGetConstantBuffers1(DRAW_SLOT_SLOT, 1, &previousSlot, &previousSlotFirst, &previousSlotCount);
     ComPtr<ID3D11ShaderResourceView> previousWindowMap;
     ComPtr<ID3D11Buffer> previousWindow;
     UINT previousWindowFirst = 0, previousWindowCount = 0;
@@ -1649,6 +1623,11 @@ static void DrawShadow(command_list *cmd, const shadowmaps::DrawCall &call, cons
     ctx->VSSetConstantBuffers(TABLE_SLOT, 1, &table);
     ID3D11Buffer *offset = shadowmaps::CameraOffsetBuffer.Get();
     ctx->VSSetConstantBuffers(CAMERA_OFFSET_SLOT, 1, &offset);
+    // the slot's block of the slot buffer, or its last block for no slot
+    ID3D11Buffer *slotBuffer = shadowmaps::SlotBuffer.Get();
+    const UINT slotFirst = static_cast<UINT>(slot >= 0 ? slot : shadowmaps::MAX_LIGHTS) * 16;
+    const UINT slotCount = 16;
+    ctx->VSSetConstantBuffers1(DRAW_SLOT_SLOT, 1, &slotBuffer, &slotFirst, &slotCount);
     cmd->bind_pipeline(pipeline_stage::vertex_shader, ShadowVertexShader);
     cmd->bind_pipeline(pipeline_stage::pixel_shader, window ? WindowPixelShader : ShadowPixelShader);
     cmd->bind_pipeline(pipeline_stage::output_merger, shadowmaps::ShowColours ? PaintBlend : MultiplyAlphaBlend);
@@ -1687,6 +1666,11 @@ static void DrawShadow(command_list *cmd, const shadowmaps::DrawCall &call, cons
         ctx->VSSetConstantBuffers1(CAMERA_OFFSET_SLOT, 1, &oldOffset, &previousOffsetFirst, &previousOffsetCount);
     else
         ctx->VSSetConstantBuffers(CAMERA_OFFSET_SLOT, 1, &oldOffset);
+    ID3D11Buffer *oldSlot = previousSlot.Get();
+    if (previousSlotCount)
+        ctx->VSSetConstantBuffers1(DRAW_SLOT_SLOT, 1, &oldSlot, &previousSlotFirst, &previousSlotCount);
+    else
+        ctx->VSSetConstantBuffers(DRAW_SLOT_SLOT, 1, &oldSlot);
     cmd->bind_pipeline(pipeline_stage::vertex_shader, { capture::VertexShader });
     cmd->bind_pipeline(pipeline_stage::pixel_shader, { capture::PixelShader });
     blend.Restore(ctx);
@@ -1751,12 +1735,10 @@ static void DrawWithLampShader(command_list *cmd, const shadowmaps::DrawCall &ca
 
 static bool FindLampShader(size_t &index)
 {
-    std::lock_guard guard(Lock);
-    auto replaced = ReplacedShaders.find(capture::PixelShader);
-    if (replaced == ReplacedShaders.end())
+    if (capture::PixelClass.LampShader < 0)
         return false;
 
-    index = replaced->second;
+    index = static_cast<size_t>(capture::PixelClass.LampShader);
     return true;
 }
 
@@ -1838,7 +1820,9 @@ static float FindLampReach(const std::vector<DirectX::XMFLOAT4> &constants)
 {
     using namespace DirectX;
     XMMATRIX inverse;
-    if (constants.size() < FADE_ROW_END || !FindInverseWorld(constants, inverse))
+    // colour passes bind fewer rows than FADE_ROW_END, so a draw needs only one pair of fade rows
+    const size_t rowEnd = std::min(constants.size(), FADE_ROW_END);
+    if (rowEnd < FIRST_FADE_ROW + 2 || !FindInverseWorld(constants, inverse))
         return 0;
 
     const XMVECTOR light = XMVector3TransformCoord(XMLoadFloat4(&constants[13]), inverse);
@@ -1851,7 +1835,7 @@ static float FindLampReach(const std::vector<DirectX::XMFLOAT4> &constants)
             XMVector3TransformNormal(XMVectorSet(projection.x, projection.y, projection.z, 0), inverseTranspose)));
     };
     float reach = 0;
-    for (size_t row = FIRST_FADE_ROW; row + 1 < FADE_ROW_END; ++row)
+    for (size_t row = FIRST_FADE_ROW; row + 1 < rowEnd; ++row)
     {
         const float slope = findSlope(constants[row]);
         if (slope > 0 && std::abs(findSlope(constants[row + 1]) - slope) <= 0.01f * slope)
@@ -1935,7 +1919,12 @@ static size_t NoteLamp(ID3D11DeviceContext1 *ctx, const DirectX::XMFLOAT4 (&rows
     // the world rows, the light's position and the fade rows
     std::vector<DirectX::XMFLOAT4> constants;
     if (FrameLamps[index].Reach <= 0 && CopyConstants(ctx, false, 0, constants, 7, FADE_ROW_END))
-        FrameLamps[index].Reach = FindLampReach(constants) * stretch;
+    {
+        const float reach = FindLampReach(constants);
+        if (reach <= 0)
+            ++shadowmaps::NoReachLampsThisSecond;
+        FrameLamps[index].Reach = reach * stretch;
+    }
     return index;
 }
 
@@ -1950,11 +1939,7 @@ static bool KeepDraw(ID3D11DeviceContext1 *ctx, const shadowmaps::DrawCall &call
 
     kept.Call = call;
     ctx->VSGetShader(&kept.VertexShader, nullptr, nullptr);
-    {
-        std::lock_guard guard(Lock);
-        auto repeated = RepeatedShaders.find(capture::VertexShader);
-        kept.Repeated = repeated == RepeatedShaders.end() ? -1 : repeated->second;
-    }
+    kept.Repeated = capture::VertexClass.Repeated;
     ctx->IAGetInputLayout(&kept.Layout);
     ctx->IAGetPrimitiveTopology(&kept.Topology);
     ID3D11Buffer *vertexBuffers[KEPT_VERTEX_SLOTS] = {};
@@ -1976,17 +1961,6 @@ static bool KeepDraw(ID3D11DeviceContext1 *ctx, const shadowmaps::DrawCall &call
     return true;
 }
 
-// the mesh a draw draws, keyed as Record keys it
-static shadowmaps::Geometry FindDrawnMesh(ID3D11DeviceContext *ctx, const shadowmaps::DrawCall &call)
-{
-    shadowmaps::Geometry mesh = {};
-    ctx->IAGetVertexBuffers(0, 1, &mesh.VertexBuffer, &mesh.Stride, &mesh.VertexOffset);
-    ctx->IAGetIndexBuffer(&mesh.IndexBuffer, &mesh.IndexFormat, &mesh.IndexOffset);
-    mesh.Call = call;
-    mesh.Key = shadowmaps::HashMesh(mesh);
-    return mesh;
-}
-
 // whether a mesh moves: one seen moving, or one whose vertices the game wrote this frame, as it does to pose characters.
 // Scenery in a dynamic vertex buffer the game filled once stays as the game lights it.
 static bool IsMoving(const shadowmaps::Geometry &mesh)
@@ -1999,7 +1973,7 @@ static bool IsMoving(const shadowmaps::Geometry &mesh)
         mesh.VertexBuffer->GetDesc(&desc);
     auto written = shadowmaps::BufferWrites.find(reinterpret_cast<uint64_t>(mesh.VertexBuffer.Get()));
     return desc.Usage == D3D11_USAGE_DYNAMIC && written != shadowmaps::BufferWrites.end()
-        && written->second == shadowmaps::FrameNumber;
+        && written->second.Frame == shadowmaps::FrameNumber;
 }
 
 // a moving mesh copy's key: its mesh and the eighth-of-a-unit cell of its camera-relative origin
@@ -2009,24 +1983,27 @@ static uint64_t FindCopyKey(uint64_t mesh, const DirectX::XMFLOAT4 (&rows)[shado
         std::llround(rows[6].w * 8.0));
 }
 
-// notes a lamp pass into the light buffer, with its rows when they could be read: its lamp, and for a moving mesh that
-// the game drew it for that lamp. The mesh's first single-pass lamp pass whose pixel shader has a replacement is kept, in
-// place of a kept base light draw, and a diffuse one in place of a highlight one. A moving mesh whose lamp pass cannot
-// be told apart from its other copies, or whose lamp cannot be read, is noted as unsure.
-static void NoteLampDraw(ID3D11DeviceContext *ctx, const shadowmaps::DrawCall &call,
-    const DirectX::XMFLOAT4 (*rows)[shadowmaps::ROW_COUNT], bool singlePass)
+// notes a lamp pass into the light buffer, with its rows when they could be read: its lamp, and, while lamps are added to
+// moving meshes, for a moving mesh that the game drew it for that lamp. The mesh's first single-pass lamp pass whose pixel
+// shader has a replacement is kept, in place of a kept base light draw, and a diffuse one in place of a highlight one. A
+// moving mesh whose lamp pass cannot be told apart from its other copies, or whose lamp cannot be read, is noted as unsure.
+static void NoteLampDraw(shadowmaps::BoundDraw &bound, const DirectX::XMFLOAT4 (*rows)[shadowmaps::ROW_COUNT],
+    bool singlePass)
 {
     ComPtr<ID3D11DeviceContext1> ctx1;
     if (rows && singlePass && IsLightBufferDraw(*rows))
     {
         size_t material=0;
-        if (FindLampShader(material) && material<SINGLE_PASS_SHADERS) KeepMaterialDraw(ctx,call,false,material);
+        if (FindLampShader(material) && material<SINGLE_PASS_SHADERS) KeepMaterialDraw(bound,false,material);
     }
-    if (!IsAddingLamps() || !lightbuffer::LightBuffer || lightbuffer::CurrentTarget != lightbuffer::LightBuffer.Get())
+    if (!lightbuffer::LightBuffer || lightbuffer::CurrentTarget != lightbuffer::LightBuffer.Get())
         return;
 
-    const shadowmaps::Geometry mesh = FindDrawnMesh(ctx, call);
-    const bool moving = IsMoving(mesh);
+    auto *ctx = bound.Context;
+    const shadowmaps::DrawCall &call = bound.Call;
+    const shadowmaps::Geometry &mesh = bound.GetMesh();
+    const bool adding = IsAddingLamps();
+    const bool moving = adding && IsMoving(mesh);
     if (!rows || !IsLightBufferDraw(*rows) || call.Instances != 1 || FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))
     {
         if (moving)
@@ -2036,7 +2013,8 @@ static void NoteLampDraw(ID3D11DeviceContext *ctx, const shadowmaps::DrawCall &c
 
     size_t lampShader = 0;
     const bool replaced = FindLampShader(lampShader);
-    const size_t lamp = NoteLamp(ctx1.Get(), *rows, 1, replaced ? LAMP_SHADERS[lampShader].FadeStage : -1);
+    // the fade is only measured for the lamps added to moving meshes
+    const size_t lamp = NoteLamp(ctx1.Get(), *rows, 1, adding && replaced ? LAMP_SHADERS[lampShader].FadeStage : -1);
     if (!moving)
         return;
     KeptDraw &kept = KeptDraws[FindCopyKey(mesh.Key, *rows)];
@@ -2056,13 +2034,15 @@ static void NoteLampDraw(ID3D11DeviceContext *ctx, const shadowmaps::DrawCall &c
 }
 
 // notes a two-pass lamp's colour pass into the light buffer, with its rows, drawn with the lamp shader at lampShader,
-// which carries its lamp's fade rows and textures and so its reach and fade
+// which carries its lamp's fade rows and textures and so its reach and fade; replaced when the pass is drawn with the
+// replacement, which fades over LIGHT_REACH times the reach
 static void NoteColourPass(ID3D11DeviceContext *ctx, const DirectX::XMFLOAT4 (&rows)[shadowmaps::ROW_COUNT],
-    size_t lampShader)
+    size_t lampShader, bool replaced)
 {
     ComPtr<ID3D11DeviceContext1> ctx1;
-    if (IsAddingLamps() && IsLightBufferDraw(rows) && SUCCEEDED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))
-        NoteLamp(ctx1.Get(), rows, shadowmaps::LIGHT_REACH, LAMP_SHADERS[lampShader].FadeStage);
+    if (tq_world::Work.Point() && IsLightBufferDraw(rows) && SUCCEEDED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))
+        NoteLamp(ctx1.Get(), rows, replaced ? shadowmaps::LIGHT_REACH : 1,
+            IsAddingLamps() ? LAMP_SHADERS[lampShader].FadeStage : -1);
 }
 
 // whether a lamp remembered from earlier frames is still on: with a known reach, drawn by the game or with the camera
@@ -2101,52 +2081,60 @@ static bool IsSphereInView(const DirectX::XMFLOAT3 &centre, float radius)
 // no lamp this frame
 // ponytail: lamp passes are matched to their mesh only for vertex shaders that read world rows directly, as every lamp
 // vertex shader seen so far does; the lamps of a mesh drawn with a skinned one would be added again from here
-static void KeepBaseDraw(ID3D11DeviceContext *ctx, const shadowmaps::DrawCall &call,
-    const DirectX::XMFLOAT4 (&rows)[shadowmaps::ROW_COUNT])
+static void KeepBaseDraw(shadowmaps::BoundDraw &bound, const DirectX::XMFLOAT4 (&rows)[shadowmaps::ROW_COUNT])
 {
     ComPtr<ID3D11DeviceContext1> ctx1;
+    const shadowmaps::DrawCall &call = bound.Call;
     if (!IsAddingLamps() || call.Instances != 1)
         return;
-    const shadowmaps::Geometry mesh = FindDrawnMesh(ctx, call);
-    if (!IsMoving(mesh) || FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))
-        return;
+    const shadowmaps::Geometry &mesh = bound.GetMesh();
     const uint64_t key = FindCopyKey(mesh.Key, rows);
-    if (KeptDraws.contains(key))
+    if (KeptDraws.contains(key) || !IsMoving(mesh))
         return;
 
+    if (RememberedFrame != shadowmaps::FrameNumber)
+    {
+        RememberedLamps.clear();
+        for (const auto &[lightKey, light] : shadowmaps::Lights)
+            if (IsRemembered(light))
+                RememberedLamps.push_back({ light.Position, light.Reach });
+        RememberedFrame = shadowmaps::FrameNumber;
+    }
     const DirectX::XMFLOAT3 origin = { rows[4].w - shadowmaps::CurrentOffset.x, rows[5].w - shadowmaps::CurrentOffset.y,
         rows[6].w - shadowmaps::CurrentOffset.z };
-    const bool reached = std::any_of(shadowmaps::Lights.begin(), shadowmaps::Lights.end(), [&origin](const auto &entry) {
-        const shadowmaps::Light &light = entry.second;
-        return IsRemembered(light)
-            && shadowmaps::Distance(light.Position, origin) < light.Reach * FADE_EXTENT + MESH_RADIUS;
+    const bool reached = std::any_of(RememberedLamps.begin(), RememberedLamps.end(), [&origin](const RememberedLamp &lamp) {
+        return shadowmaps::Distance(lamp.Position, origin) < lamp.Reach * shadowmaps::FADE_EXTENT + MESH_RADIUS;
     });
     KeptDraw draw;
-    if (!reached || !KeepDraw(ctx1.Get(), call, draw))
+    if (!reached || FAILED(bound.Context->QueryInterface(IID_PPV_ARGS(&ctx1))) || !KeepDraw(ctx1.Get(), call, draw))
         return;
     draw.Base = true;
     draw.Mesh = mesh.Key;
     KeptDraws.emplace(key, std::move(draw));
 }
 
-// draws a two-pass lamp's colour pass, which carries the lamp's fade, with the replacement for its pixel shader. A
-// directional light, such as the light through a stained-glass window, has its direction in c13 with w 0; its passes
-// use the lamp pixel shaders too, and are left to the game.
-static bool DrawColourPass(command_list *cmd, const shadowmaps::DrawCall &call)
+// draws a two-pass lamp's colour pass, which carries the lamp's fade, with the replacement for its pixel shader while
+// own lamp shaders are on and shadow colours off, and notes its lamp either way. A directional light, such as the light
+// through a stained-glass window, has its direction in c13 with w 0; its passes use the lamp pixel shaders too, and are
+// left to the game.
+static bool DrawColourPass(command_list *cmd, shadowmaps::BoundDraw &bound)
 {
     size_t lampShader = 0;
-    auto *ctx = reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native());
-    DirectX::XMFLOAT4 rows[shadowmaps::ROW_COUNT];
-    if (!Enabled || !OwnLampShaders || shadowmaps::ShowColours || CreateFailed || !FindLampShader(lampShader)
-        || lampShader < FIRST_COLOUR_PASS_SHADER || !shadowmaps::ReadDrawRows(ctx, rows)
-        || rows[13 - shadowmaps::FIRST_ROW].w == 0)
+    auto *ctx = bound.Context;
+    const shadowmaps::DrawCall &call = bound.Call;
+    const auto &rows = bound.Rows;
+    if (!Enabled || CreateFailed || !FindLampShader(lampShader) || lampShader < FIRST_COLOUR_PASS_SHADER
+        || !bound.ReadRows() || rows[13 - shadowmaps::FIRST_ROW].w == 0)
+        return false;
+    const bool replaced = OwnLampShaders && !shadowmaps::ShowColours;
+    NoteColourPass(ctx, rows, lampShader, replaced);
+    if (!replaced)
         return false;
     if (!CreateObjects(cmd->get_device()))
     {
         CreateFailed = true;
         return false;
     }
-    NoteColourPass(ctx, rows, lampShader);
 
     cmd->bind_pipeline(pipeline_stage::pixel_shader, LampPixelShaders[lampShader]);
     Issue(cmd, call);
@@ -2160,22 +2148,20 @@ static bool DrawColourPass(command_list *cmd, const shadowmaps::DrawCall &call)
 // pass, and true returned. The colour pass of a two-pass light has the shadow multiply the alpha its first pass left,
 // and the game then draws it. Over characters the game draws both straight onto the screen's image rather than into the
 // light buffer. With shadow colours on, the shadow is painted in colours instead.
-static bool DrawWindowShadow(command_list *cmd, const shadowmaps::DrawCall &call)
+static bool DrawWindowShadow(command_list *cmd, shadowmaps::BoundDraw &bound)
 {
     using namespace DirectX;
     size_t lampShader = 0;
-    bool singlePass = false;
-    {
-        std::lock_guard guard(Lock);
-        if(!ProjectedLightShaders.contains(capture::VertexShader))return false; // Exact captured VS layout; unknown/skinned stays native.
-        singlePass = SourceAlphaBlends.contains(capture::BlendState);
-    }
-    auto *ctx = reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native());
+    // Exact captured VS layout; unknown/skinned stays native.
+    if((capture::VertexClass.Bits&capture::CLASS_PROJECTED_LIGHT)==0)return false;
+    const bool singlePass = (capture::BlendClass.Bits & capture::CLASS_SOURCE_ALPHA_BLEND) != 0;
+    auto *ctx = bound.Context;
+    const shadowmaps::DrawCall &call = bound.Call;
     ComPtr<ID3D11DeviceContext1> ctx1;
-    XMFLOAT4 rows[shadowmaps::ROW_COUNT];
+    const auto &rows = bound.Rows;
     if (!Enabled || CreateFailed || !shadowmaps::DrawState || !shadowmaps::CameraFound
         ||call.Instances!=1||!call.Count||!FindLampShader(lampShader)
-        || LAMP_SHADERS[lampShader].FadeStage < 0 || !shadowmaps::ReadDrawRows(ctx, rows)
+        || LAMP_SHADERS[lampShader].FadeStage < 0 || !bound.ReadRows()
         || rows[13 - shadowmaps::FIRST_ROW].w != 0 || FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))
         return false;
 
@@ -2193,10 +2179,10 @@ static bool DrawWindowShadow(command_list *cmd, const shadowmaps::DrawCall &call
     projected_shadow_policy::Direction nativeDirection;
     const auto &light=rows[13-shadowmaps::FIRST_ROW];
     if(!projected_shadow_policy::Normalize(light.x,light.y,light.z,light.w,nativeDirection))return skip("native directional row invalid");
-    ComPtr<ID3D11BlendState> nativeBlend;ComPtr<ID3D11DepthStencilState> nativeDepth;
-    UINT nativeMask=0;ctx->OMGetBlendState(&nativeBlend,nullptr,&nativeMask);ctx->OMGetDepthStencilState(&nativeDepth,nullptr);
+    UINT nativeMask=0;const D3D11_BLEND_DESC *nativeBlend=bound.GetBlend(&nativeMask);
+    const D3D11_DEPTH_STENCIL_DESC *nativeDepth=bound.GetDepth();
     D3D11_BLEND_DESC bd{};D3D11_DEPTH_STENCIL_DESC dd{};
-    if(nativeBlend)nativeBlend->GetDesc(&bd);if(nativeDepth)nativeDepth->GetDesc(&dd);
+    if(nativeBlend)bd=*nativeBlend;if(nativeDepth)dd=*nativeDepth;
     const auto keep=[](const D3D11_DEPTH_STENCILOP_DESC &f){return f.StencilFailOp==D3D11_STENCIL_OP_KEEP
         &&f.StencilDepthFailOp==D3D11_STENCIL_OP_KEEP&&f.StencilPassOp==D3D11_STENCIL_OP_KEEP;};
     const bool readOnly=dd.DepthEnable&&dd.DepthWriteMask==D3D11_DEPTH_WRITE_MASK_ZERO
@@ -2277,7 +2263,7 @@ static bool DrawWindowShadow(command_list *cmd, const shadowmaps::DrawCall &call
 
 // records an opaque mesh drawn into the light buffer's base light with the frame's camera, so objects seen outside any
 // lamp's light still cast once out of view
-static void RecordBaseDraw(command_list *cmd, const shadowmaps::DrawCall &call)
+static void RecordBaseDraw(shadowmaps::BoundDraw &bound)
 {
     if (!Enabled || CreateFailed || !shadowmaps::CubeViews[0] || !lightbuffer::LightBuffer
         || lightbuffer::CurrentTarget != lightbuffer::LightBuffer.Get())
@@ -2285,12 +2271,9 @@ static void RecordBaseDraw(command_list *cmd, const shadowmaps::DrawCall &call)
 
     // a frame capture notes why a base light draw is not recorded
     const bool logging = capture::State == capture::Phase::Capturing && capture::Log;
-    auto *ctx = reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native());
-    ComPtr<ID3D11BlendState> blend;
-    ctx->OMGetBlendState(&blend, nullptr, nullptr);
     D3D11_BLEND_DESC blendDesc = {};
-    if (blend)
-        blend->GetDesc(&blendDesc);
+    if (const D3D11_BLEND_DESC *blend = bound.GetBlend())
+        blendDesc = *blend;
     // blending one, zero writes the draw's colour as is, like no blending
     const D3D11_RENDER_TARGET_BLEND_DESC &target = blendDesc.RenderTarget[0];
     if (target.BlendEnable && (target.SrcBlend != D3D11_BLEND_ONE || target.DestBlend != D3D11_BLEND_ZERO))
@@ -2299,8 +2282,7 @@ static void RecordBaseDraw(command_list *cmd, const shadowmaps::DrawCall &call)
             fprintf(capture::Log, "  base draw not recorded: blended\n");
         return;
     }
-    const auto opaqueMesh=FindDrawnMesh(ctx,call);
-    shadowmaps::NoteBaseMesh(opaqueMesh);
+    shadowmaps::NoteBaseMesh(bound.GetMesh());
     if (!lightbuffer::WorldToClipKnown)
     {
         if (logging)
@@ -2308,9 +2290,8 @@ static void RecordBaseDraw(command_list *cmd, const shadowmaps::DrawCall &call)
         return;
     }
 
-    DirectX::XMFLOAT4 rows[shadowmaps::ROW_COUNT];
     DirectX::XMMATRIX worldToClip;
-    if (!shadowmaps::ReadDrawRows(ctx, rows) || !shadowmaps::FindWorldToClip(rows, worldToClip))
+    if (!bound.ReadRows() || !shadowmaps::FindWorldToClip(bound.Rows, worldToClip))
     {
         if (logging)
             fprintf(capture::Log, "  base draw not recorded: constants not read\n");
@@ -2322,86 +2303,81 @@ static void RecordBaseDraw(command_list *cmd, const shadowmaps::DrawCall &call)
             fprintf(capture::Log, "  base draw not recorded: another camera\n");
         return;
     }
-    shadowmaps::Record(ctx, call, rows, false);
-    KeepMaterialDraw(ctx,call,true);
-    KeepBaseDraw(ctx, call, rows);
+    shadowmaps::Record(bound, bound.Rows, false);
+    KeepMaterialDraw(bound,true);
+    KeepBaseDraw(bound, bound.Rows);
 }
 
 // Cache-only see-through classification after native lighting, never a draw suppression.
-static void NoteBlendedDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall &call)
+static void NoteBlendedDraw(shadowmaps::BoundDraw &bound)
 {
     if(!Enabled||!lightbuffer::Processed)return;
-    ComPtr<ID3D11BlendState> blend;ctx->OMGetBlendState(&blend,nullptr,nullptr);
-    if(!blend)return;D3D11_BLEND_DESC b{};blend->GetDesc(&b);const auto &a=b.RenderTarget[0];
-    if(b.AlphaToCoverageEnable||!a.BlendEnable||a.SrcBlend!=D3D11_BLEND_SRC_ALPHA
+    const D3D11_BLEND_DESC *b=bound.GetBlend();
+    if(!b)return;const auto &a=b->RenderTarget[0];
+    if(b->AlphaToCoverageEnable||!a.BlendEnable||a.SrcBlend!=D3D11_BLEND_SRC_ALPHA
         ||a.DestBlend!=D3D11_BLEND_INV_SRC_ALPHA||a.BlendOp!=D3D11_BLEND_OP_ADD)return;
-    ComPtr<ID3D11DepthStencilState> state;ctx->OMGetDepthStencilState(&state,nullptr);
-    if(!state)return;D3D11_DEPTH_STENCIL_DESC d{};state->GetDesc(&d);
-    if(!d.DepthEnable||d.DepthFunc==D3D11_COMPARISON_ALWAYS)return;
-    shadowmaps::Geometry mesh;ctx->IAGetVertexBuffers(0,1,&mesh.VertexBuffer,&mesh.Stride,&mesh.VertexOffset);
-    ctx->IAGetIndexBuffer(&mesh.IndexBuffer,&mesh.IndexFormat,&mesh.IndexOffset);mesh.Call=call;
-    mesh.Key=shadowmaps::HashMesh(mesh);shadowmaps::NoteBlendedMesh(mesh);
+    const D3D11_DEPTH_STENCIL_DESC *d=bound.GetDepth();
+    if(!d)return;
+    if(!d->DepthEnable||d->DepthFunc==D3D11_COMPARISON_ALWAYS)return;
+    shadowmaps::NoteBlendedMesh(bound.GetMesh());
 }
 
 // reads the sun and ambient colours from a sun-lit base light draw into the light buffer, with point light shadows
 // on or off, so what a sun shadow takes off does not depend on them
-static bool ReadSunDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall &call,bool point,bool projected)
+static bool ReadSunDraw(shadowmaps::BoundDraw &bound,bool point,bool projected)
 {
     if(!tq_world::Work.Sun())return false;
     sun_state_policy::BasePass input{};
     input.master=tq_world::Work.Sun();input.point=point;input.projected=projected;
     input.target=lightbuffer::LightBuffer&&lightbuffer::CurrentTarget==lightbuffer::LightBuffer.Get()
-        &&lightbuffer::WorldToClipKnown;input.singleInstance=call.Instances==1;
-    {
-        std::lock_guard guard(Lock);
-        input.sunVertex=SunVertexShaders.contains(capture::VertexShader);
-        input.ambientPixel=SunPixelShaders.contains(capture::PixelShader);
-    }
+        &&lightbuffer::WorldToClipKnown;input.singleInstance=bound.Call.Instances==1;
+    input.sunVertex=(capture::VertexClass.Bits&capture::CLASS_SUN_VERTEX)!=0;
+    input.ambientPixel=(capture::PixelClass.Bits&capture::CLASS_SUN_PIXEL)!=0;
     if(!input.master||!input.target||input.point||input.projected||!input.sunVertex||!input.ambientPixel||!input.singleInstance)return false;
     D3D11_TEXTURE2D_DESC target{};lightbuffer::LightBuffer->GetDesc(&target);
-    D3D11_VIEWPORT viewport{};UINT count=1;ctx->RSGetViewports(&count,&viewport);
+    UINT count=0;const D3D11_VIEWPORT &viewport=bound.GetViewport(count);
     input.fullViewport=count==1&&viewport.TopLeftX==0&&viewport.TopLeftY==0&&viewport.Width==target.Width
         &&viewport.Height==target.Height&&viewport.MinDepth==0&&viewport.MaxDepth==1;
-    ComPtr<ID3D11BlendState> blend;UINT mask=0;ctx->OMGetBlendState(&blend,nullptr,&mask);
-    D3D11_BLEND_DESC desc{};desc.RenderTarget[0].RenderTargetWriteMask=15;if(blend)blend->GetDesc(&desc);
+    UINT mask=0;const D3D11_BLEND_DESC *blend=bound.GetBlend(&mask);
+    D3D11_BLEND_DESC desc{};desc.RenderTarget[0].RenderTargetWriteMask=15;if(blend)desc=*blend;
     const auto &rgb=desc.RenderTarget[0];
     input.opaque=!desc.AlphaToCoverageEnable&&!desc.IndependentBlendEnable&&mask==0xffffffffu&&(rgb.RenderTargetWriteMask&7)==7
         &&(!rgb.BlendEnable||(rgb.SrcBlend==D3D11_BLEND_ONE&&rgb.DestBlend==D3D11_BLEND_ZERO&&rgb.BlendOp==D3D11_BLEND_OP_ADD));
     if(!input.fullViewport||!input.opaque)return false;
-    DirectX::XMFLOAT4 rows[shadowmaps::ROW_COUNT];DirectX::XMMATRIX worldToClip;
-    if(!shadowmaps::ReadDrawRows(ctx,rows))return false;
+    DirectX::XMMATRIX worldToClip;
+    if(!bound.ReadRows())return false;
+    const auto &rows=bound.Rows;
     input.finiteRows=true;
     for(const auto &row:rows)input.finiteRows=input.finiteRows&&std::isfinite(row.x)&&std::isfinite(row.y)&&std::isfinite(row.z)&&std::isfinite(row.w);
     input.sameCamera=input.finiteRows&&shadowmaps::FindWorldToClip(rows,worldToClip)
         &&lightbuffer::IsSameCamera(worldToClip,lightbuffer::WorldToClip);
     if(!sun_state_policy::Admitted(input))return false;
-    if(!lightbuffer::SunKnown)lightbuffer::ReadSun(ctx,rows);
+    if(!lightbuffer::SunKnown)lightbuffer::ReadSun(bound.Context,rows);
     return true;
 }
 
-static bool HandleDraw(command_list *cmd, const shadowmaps::DrawCall &call)
+static bool HandleDraw(command_list *cmd, shadowmaps::BoundDraw &bound)
 {
+    const shadowmaps::DrawCall &call = bound.Call;
     if(!tq_world::Work.Point()&&!tq_world::Work.Sun())
     {
         // AO still needs the pre-lamp colour. Do nothing until that one copy
         // is pending; an AO-only frame does not classify or replay lamp draws.
         if(!tq_world::Work.AO()||!lightbuffer::IsCopyPending())return false;
-        bool lamp=false;
-        {std::lock_guard guard(Lock);lamp=PointLightShaders.contains(capture::VertexShader);}
-        if(lamp&&!lightbuffer::IsPartialView(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native())))
+        const bool lamp=(capture::VertexClass.Bits&capture::CLASS_POINT_LIGHT)!=0;
+        if(lamp&&!lightbuffer::IsPartialView(bound))
             lightbuffer::CopyBaseLight(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()));
         return false;
     }
-    if (lightbuffer::IsPartialView(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native())))
+    if (lightbuffer::IsPartialView(bound))
         return false;
     if (tq_world::Work.Point())
         shadowmaps::ReadCamera(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()));
-    bool isLamp = false, isProjected = false;
-    {
-        std::lock_guard guard(Lock);
-        isLamp = PointLightShaders.contains(capture::VertexShader);
-        isProjected = ProjectedLightShaders.contains(capture::VertexShader) && ReplacedShaders.contains(capture::PixelShader);
-    }
+    const bool isLamp = (capture::VertexClass.Bits & capture::CLASS_POINT_LIGHT) != 0;
+    const bool isProjected = (capture::VertexClass.Bits & capture::CLASS_PROJECTED_LIGHT) != 0
+        && capture::PixelClass.LampShader >= 0;
+    if (isLamp && tq_world::Work.Point() && Enabled)
+        lightbuffer::StartLampTimer(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()));
     // The native affine window path below owns projector shadows; no legacy851 replay.
     if (isLamp && tq_world::Work.Point() && OwnLampShaders)
         shadowmaps::StretchLight(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()));
@@ -2410,56 +2386,45 @@ static bool HandleDraw(command_list *cmd, const shadowmaps::DrawCall &call)
     const LightPass pass = GetLightPass(isStatic);
     if ((tq_world::Work.AO() || tq_world::Work.Sun()) && lightbuffer::IsCopyPending())
     {
-        bool lamp = false;
-        {
-            std::lock_guard guard(Lock);
-            lamp = PointLightShaders.contains(capture::VertexShader);
-        }
-        if (lamp)
+        if (isLamp)
             lightbuffer::CopyBaseLight(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()));
     }
     if (pass == LightPass::None)
     {
-        if (tq_world::Work.Point()) particle_emission::Observe(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()),call,
-            capture::VertexShader,capture::PixelShader);
-        if(tq_world::Work.Point())NoteBlendedDraw(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()),call);
-        if (tq_world::Work.Point() && glow::HandleColourDraw(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()), call,
-                capture::PixelShader))
+        if (tq_world::Work.Point()) particle_emission::Observe(bound,capture::VertexShader,capture::PixelShader);
+        if(tq_world::Work.Point())NoteBlendedDraw(bound);
+        if (tq_world::Work.Point() && glow::HandleColourDraw(bound, capture::PixelShader))
             return true;
 
         auto *nativeContext=reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native());
-        const bool sunBase=ReadSunDraw(nativeContext,call,isLamp,isProjected);
-        bool sunDirection = false;
-        {
-            std::lock_guard guard(Lock);
-            // the same vertex shaders add a window's directional light over the base light, which keeps its own
-            // direction and colour
-            sunDirection = SunDirectionShaders.contains(capture::VertexShader)
-                && !SourceAlphaBlends.contains(capture::BlendState);
-        }
+        const bool sunBase=ReadSunDraw(bound,isLamp,isProjected);
+        // the same vertex shaders add a window's directional light over the base light, which keeps its own
+        // direction and colour
+        const bool sunDirection = (capture::VertexClass.Bits & capture::CLASS_SUN_DIRECTION) != 0
+            && (capture::BlendClass.Bits & capture::CLASS_SOURCE_ALPHA_BLEND) == 0;
         if (sunDirection&&sunBase&&(lightbuffer::SunDirectionFix||lightbuffer::SmoothIndoorTransition))
         {
             lightbuffer::ScopedSunConstants transaction;
             if(transaction.Begin(nativeContext,false,14))
             {
             auto *ctx = reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native());
+            // the owned copy of the vertex constants is bound now, and is what the rows are read from until it ends
+            bound.ForgetRows();
             lightbuffer::ReplaceSunDirection(ctx);
-            shadowmaps::Geometry mesh;
-            ctx->IAGetVertexBuffers(0, 1, &mesh.VertexBuffer, &mesh.Stride, &mesh.VertexOffset);
-            ctx->IAGetIndexBuffer(&mesh.IndexBuffer, &mesh.IndexFormat, &mesh.IndexOffset);
-            mesh.Call = call;
-            lightbuffer::EaseSunColour(ctx, shadowmaps::HashMesh(mesh));
-            RecordBaseDraw(cmd,call);
+            lightbuffer::EaseSunColour(ctx, bound.GetMesh().Key);
+            RecordBaseDraw(bound);
             // This native draw is consumed here so the private CB stays bound
             // through submission; only binding state is restored afterward.
-            lightbuffer::CountCasterDraw();lightbuffer::OnAnyDraw(cmd);
-            Issue(cmd,call);return true;
+            lightbuffer::OnAnyDraw(bound);
+            Issue(cmd,call);
+            bound.ForgetRows();
+            return true;
             }
         }
-        RecordBaseDraw(cmd, call);
-        if (tq_world::Work.Point() && !isLamp && DrawWindowShadow(cmd, call))
+        RecordBaseDraw(bound);
+        if (tq_world::Work.Point() && !isLamp && DrawWindowShadow(cmd, bound))
             return true;
-        return !isLamp && DrawColourPass(cmd, call);
+        return !isLamp && DrawColourPass(cmd, bound);
     }
 
     capture::SnapshotBeforeLights(cmd);
@@ -2473,18 +2438,17 @@ static bool HandleDraw(command_list *cmd, const shadowmaps::DrawCall &call)
     }
 
     auto *ctx = reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native());
-    DirectX::XMFLOAT4 rows[shadowmaps::ROW_COUNT];
-    const bool rowsRead = shadowmaps::ReadDrawRows(ctx, rows);
-    NoteLampDraw(ctx, call, rowsRead ? &rows : nullptr, pass == LightPass::SinglePass);
+    const bool rowsRead = bound.ReadRows();
+    const auto &rows = bound.Rows;
+    NoteLampDraw(bound, rowsRead ? &rows : nullptr, pass == LightPass::SinglePass);
     if (!rowsRead)
         return false;
     if (isStatic)
-        shadowmaps::Record(ctx, call, rows, true);
+        shadowmaps::Record(bound, rows, true);
     // the light position is row c13 and its colour row c11
     const int slot = shadowmaps::FindShadowSlot(rows[13 - shadowmaps::FIRST_ROW], rows[11 - shadowmaps::FIRST_ROW]);
-    D3D11_VIEWPORT viewport = {};
-    UINT viewportCount = 1;
-    ctx->RSGetViewports(&viewportCount, &viewport);
+    UINT viewportCount = 0;
+    const D3D11_VIEWPORT &viewport = bound.GetViewport(viewportCount);
     size_t lampShader = 0;
     // a light with no map is drawn with the replacement too, for its fade
     if (OwnLampShaders && !shadowmaps::ShowColours && viewportCount && FindLampShader(lampShader))
@@ -2499,7 +2463,9 @@ static bool HandleDraw(command_list *cmd, const shadowmaps::DrawCall &call)
 
     D3D11_RECT rect = {};
     bool full = true;
-    if (viewportCount && !shadowmaps::FindShadowRect(rows, viewport, rect, full))
+    // shadow colours are not limited to the shadow rectangle, so a draw whose light has no map or no camera offset still
+    // shows
+    if (viewportCount && !shadowmaps::ShowColours && !shadowmaps::FindShadowRect(rows, slot, viewport, rect, full))
         return false;
     const D3D11_RECT *scissor = full ? nullptr : &rect;
 
@@ -2523,16 +2489,29 @@ static bool HandleDraw(command_list *cmd, const shadowmaps::DrawCall &call)
     return true;
 }
 
-static bool OnDraw(command_list *cmd, uint32_t vertices, uint32_t instances, uint32_t firstVertex, uint32_t firstInstance)
+// a game draw's handlers, sharing its bound state: this file's, then the light buffer's
+static bool HandleBoth(command_list *cmd, const shadowmaps::DrawCall &call)
 {
     const shadowmaps::CpuScope scope(shadowmaps::DrawCpu);
-    return HandleDraw(cmd, { false, vertices, instances, firstVertex, 0, firstInstance });
+    shadowmaps::BoundDraw bound{ reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()), call };
+    const bool handled = HandleDraw(cmd, bound);
+    const bool lit = lightbuffer::HandleDraw(cmd, bound);
+    return handled || lit;
+}
+
+// a frame capture writes each draw as the game bound it, before the handlers below draw anything
+static bool OnDraw(command_list *cmd, uint32_t vertices, uint32_t instances, uint32_t firstVertex, uint32_t firstInstance)
+{
+    if (capture::State == capture::Phase::Capturing)
+        capture::OnDraw(cmd, vertices, instances, firstVertex, firstInstance);
+    return HandleBoth(cmd, { false, vertices, instances, firstVertex, 0, firstInstance });
 }
 
 static bool OnDrawIndexed(command_list *cmd, uint32_t indices, uint32_t instances, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
 {
-    const shadowmaps::CpuScope scope(shadowmaps::DrawCpu);
-    return HandleDraw(cmd, { true, indices, instances, firstIndex, vertexOffset, firstInstance });
+    if (capture::State == capture::Phase::Capturing)
+        capture::OnDrawIndexed(cmd, indices, instances, firstIndex, vertexOffset, firstInstance);
+    return HandleBoth(cmd, { true, indices, instances, firstIndex, vertexOffset, firstInstance });
 }
 
 // a frame capture writes the shaders and states this code has sorted, and its settings, to shader-state.txt
@@ -2546,22 +2525,29 @@ static void WriteState()
         OwnLampShaders.load() ? 1 : 0, CreateFailed ? 1 : 0);
     particle_emission::WriteState(file);
     WriteMaterialState(file);
-    const auto writeSet = [file](const char *name, const std::unordered_set<uint64_t> &set) {
-        fprintf(file, "\n--- %s: %zu\n", name, set.size());
-        for (uint64_t value : set)
-            fprintf(file, "%016llx\n", static_cast<unsigned long long>(value));
-    };
-    writeSet("additive blends", AdditiveBlends);
-    writeSet("source alpha blends", SourceAlphaBlends);
-    writeSet("alpha blends", AlphaBlends);
-    writeSet("point light shaders", PointLightShaders);
-    writeSet("static light shaders", StaticLightShaders);
-    writeSet("sun vertex shaders", SunVertexShaders);
-    writeSet("sun pixel shaders", SunPixelShaders);
-    writeSet("sun direction shaders", SunDirectionShaders);
-    fprintf(file, "\n--- replaced shaders: pipeline, replacement\n");
-    for (const auto &[shader, replacement] : ReplacedShaders)
-        fprintf(file, "%016llx %zu\n", static_cast<unsigned long long>(shader), replacement);
+    {
+        std::lock_guard guard(capture::ClassLock);
+        const auto writeSet = [file](const char *name, uint32_t bit) {
+            const size_t count = std::count_if(capture::Classes.begin(), capture::Classes.end(),
+                [bit](const auto &entry) { return (entry.second.Bits & bit) != 0; });
+            fprintf(file, "\n--- %s: %zu\n", name, count);
+            for (const auto &[handle, found] : capture::Classes)
+                if ((found.Bits & bit) != 0)
+                    fprintf(file, "%016llx\n", static_cast<unsigned long long>(handle));
+        };
+        writeSet("additive blends", capture::CLASS_ADDITIVE_BLEND);
+        writeSet("source alpha blends", capture::CLASS_SOURCE_ALPHA_BLEND);
+        writeSet("alpha blends", capture::CLASS_ALPHA_BLEND);
+        writeSet("point light shaders", capture::CLASS_POINT_LIGHT);
+        writeSet("static light shaders", capture::CLASS_STATIC_LIGHT);
+        writeSet("sun vertex shaders", capture::CLASS_SUN_VERTEX);
+        writeSet("sun pixel shaders", capture::CLASS_SUN_PIXEL);
+        writeSet("sun direction shaders", capture::CLASS_SUN_DIRECTION);
+        fprintf(file, "\n--- replaced shaders: pipeline, replacement\n");
+        for (const auto &[handle, found] : capture::Classes)
+            if (found.LampShader >= 0)
+                fprintf(file, "%016llx %d\n", static_cast<unsigned long long>(handle), found.LampShader);
+    }
     fprintf(file, "\n--- lamp replacement pipelines\n");
     for (size_t n = 0; n < LAMP_SHADER_COUNT; ++n)
         fprintf(file, "%zu %016llx\n", n, static_cast<unsigned long long>(LampPixelShaders[n].handle));
@@ -2581,6 +2567,7 @@ static void OnPresent(command_queue *queue, swapchain *chain, const rect *, cons
     if(!tq_world::Work.Point())return;
     FrameLamps.clear();
     KeptDraws.clear();
+    RememberedFrame = 0;
     UnsureMeshes.clear();
     if (!Enabled)
     {
@@ -2663,16 +2650,19 @@ static void DrawAddedLamps(ID3D11DeviceContext *ctx)
     FrameLamps.clear();
     UnsureMeshes.clear();
     CulledLamps.clear();
-    ComPtr<ID3D11DeviceContext1> ctx1;
-    if (!IsAddingLamps() || !shadowmaps::OffsetKnown || !shadowmaps::DrawState
-        || FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))
+    // the lights' reach and whether they are remembered change below
+    RememberedFrame = 0;
+    if (!shadowmaps::OffsetKnown)
         return;
 
-    // this frame's lamps give their lights their colour and reach. A light stays remembered while the camera is within its
-    // reach and REMEMBER_MARGIN, and one not drawn while it is in view comes closer to being forgotten.
+    // this frame's lamps give their lights their colour and reach, whether or not lamps are added. A light stays
+    // remembered while the camera is within its reach and REMEMBER_MARGIN, and one not drawn while it is in view comes
+    // closer to being forgotten.
     const XMFLOAT3 &offset = shadowmaps::CurrentOffset;
     const size_t drawnLamps = lamps.size();
     std::unordered_set<uint64_t> drawnLights;
+    // lights given a reach this frame; one several lamps map to, such as a fire's, takes the highest of their reaches
+    std::unordered_set<uint64_t> reachedLights;
     for (const FrameLamp &lamp : lamps)
     {
         auto light = shadowmaps::Lights.find(shadowmaps::FindNearestLight(
@@ -2684,13 +2674,18 @@ static void DrawAddedLamps(ID3D11DeviceContext *ctx)
         drawnLights.insert(light->first);
         light->second.MissedInView = 0;
         light->second.LastInRange = shadowmaps::FrameNumber;
-        if (lamp.Reach <= 0)
+        if (lamp.Reach <= 0
+            || (!reachedLights.insert(light->first).second && lamp.Reach <= light->second.Reach))
             continue;
         light->second.Colour = lamp.Colour;
         light->second.Reach = lamp.Reach;
         if (lamp.FadePower > 0)
             light->second.FadePower = lamp.FadePower;
     }
+    ComPtr<ID3D11DeviceContext1> ctx1;
+    if (!IsAddingLamps() || !shadowmaps::DrawState || FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))
+        return;
+
     std::vector<shadowmaps::Light *> remembered;
     for (auto &[key, light] : shadowmaps::Lights)
     {
@@ -2705,8 +2700,8 @@ static void DrawAddedLamps(ID3D11DeviceContext *ctx)
         if (IsRemembered(light))
             remembered.push_back(&light);
     }
-    // a lamp whose colour flickers leaves several lights at its spot, one per hue; it is added once, as the light seen
-    // last, and not at all when drawn this frame
+    // remembered lights within LIGHT_MATCH_DISTANCE of each other, such as lamps of different hues close together, are
+    // added once, as the light seen last, and not at all when a lamp was drawn within that distance this frame
     std::sort(remembered.begin(), remembered.end(),
         [](const shadowmaps::Light *a, const shadowmaps::Light *b) { return a->LastSeen > b->LastSeen; });
     for (shadowmaps::Light *light : remembered)
@@ -2727,7 +2722,7 @@ static void DrawAddedLamps(ID3D11DeviceContext *ctx)
     // the remembered lamps whose reach is in view are added to the light buffer from its depth as well
     for (size_t n = drawnLamps; n < lamps.size(); ++n)
         if (IsSphereInView({ lamps[n].Position.x - offset.x, lamps[n].Position.y - offset.y, lamps[n].Position.z - offset.z },
-                lamps[n].Reach * FADE_EXTENT))
+                lamps[n].Reach * shadowmaps::FADE_EXTENT))
             CulledLamps.push_back(lamps[n]);
     if (kept.empty())
         return;
@@ -2755,7 +2750,7 @@ static void DrawAddedLamps(ID3D11DeviceContext *ctx)
         {
             const float distance = shadowmaps::Distance(origin,
                 { lamps[n].Position.x, lamps[n].Position.y, lamps[n].Position.z });
-            if (lamps[n].Reach > 0 && distance < lamps[n].Reach * FADE_EXTENT + MESH_RADIUS
+            if (lamps[n].Reach > 0 && distance < lamps[n].Reach * shadowmaps::FADE_EXTENT + MESH_RADIUS
                 && std::find(draw.DrawnFor.begin(), draw.DrawnFor.end(), n) == draw.DrawnFor.end())
                 nearby.push_back({ distance, n });
         }
@@ -3039,7 +3034,7 @@ static void DrawCulledLamps(ID3D11DeviceContext *ctx)
         if (count == MAX_CULLED_LAMPS)
             break;
         if (!glow::FindLightRect(worldToClip, { lamp.Position.x - offset.x, lamp.Position.y - offset.y,
-                lamp.Position.z - offset.z }, lamp.Reach * FADE_EXTENT, desc.Width, desc.Height, rect))
+                lamp.Position.z - offset.z }, lamp.Reach * shadowmaps::FADE_EXTENT, desc.Width, desc.Height, rect))
             continue;
 
         constants.Lamps[count * 3] = { lamp.Position.x, lamp.Position.y, lamp.Position.z, lamp.Reach };
@@ -3162,7 +3157,7 @@ static void DrawSettings()
         ImGui::EndCombo();
     }
     if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Max uses all %d renderer-supported shadow maps. Range and eligible lights still apply.", shadowmaps::MAX_LIGHTS);
+        ImGui::SetTooltip("Max uses all %d renderer-supported shadow maps. Eligible lights still apply.", shadowmaps::MAX_LIGHTS);
     bool moving = shadowmaps::MovingShadows;
     if (ImGui::Checkbox("Character shadows", &moving))
     {
@@ -3228,6 +3223,9 @@ static void DrawSettings()
     ImGui::EndDisabled();
 }
 
+// the softness sliders show 0 to 10, this many steps per real-sun multiple
+constexpr float SOFTNESS_SLIDER_STEPS = 2.5f;
+
 static void DrawAdvancedSettings()
 {
     bool enabled = Enabled;
@@ -3248,24 +3246,13 @@ static void DrawAdvancedSettings()
     }
 
 
-    // Display 1-10 while keeping the existing native/config units unchanged.
-    const float nativeSoftness = shadowmaps::LightSize;
-    float softness = std::clamp(nativeSoftness * 10.0f, 1.0f, 10.0f);
-    if (ImGui::SliderFloat("Shadow softness", &softness, 1.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+    float softness = shadowmaps::PointSoftness * SOFTNESS_SLIDER_STEPS;
+    if (ImGui::SliderFloat("Shadow softness", &softness, 0.0f, sun_softness_settings::Maximum * SOFTNESS_SLIDER_STEPS,
+            "%.1f", ImGuiSliderFlags_AlwaysClamp))
     {
-        const float selectedSoftness = softness / 10.0f;
-        shadowmaps::LightSize = selectedSoftness;
-        reshade::set_config_value(nullptr, CONFIG_SECTION, "ShadowSoftness", selectedSoftness);
-    }
-    if (nativeSoftness < 0.1f || nativeSoftness > 1.0f)
-        ImGui::TextDisabled("Legacy value retained until adjusted.");
-
-    float range = shadowmaps::Range;
-    if (ImGui::SliderFloat("Shadow range", &range, 5.0f, 200.0f, "%.0f", ImGuiSliderFlags_AlwaysClamp))
-    {
-        shadowmaps::Range = range;
-        shadowmaps::RebuildAll();
-        reshade::set_config_value(nullptr, CONFIG_SECTION, "ShadowRange", range);
+        softness /= SOFTNESS_SLIDER_STEPS;
+        shadowmaps::PointSoftness = softness;
+        reshade::set_config_value(nullptr, CONFIG_SECTION, "PointShadowSoftness", softness);
     }
 
     ImGui::SeparatorText("Emissive lights");
@@ -3301,25 +3288,18 @@ static void DrawAdvancedSettings()
     ImGui::SeparatorText("Sun shadows");
     ImGui::BeginDisabled(!lightbuffer::SunEnabled);
     const float nativeSunSoftness = lightbuffer::SunSoftness;
-    float sunSoftness = nativeSunSoftness;
-    if (nativeSunSoftness <= 0)
-    {
-        sunSoftness = sun_softness_settings::Default;
-        reshade::get_config_value(nullptr, CONFIG_SECTION, "TextureQuestSunSoftnessPreferenceRealSun", sunSoftness);
-    }
-    if (!std::isfinite(sunSoftness)) sunSoftness = sun_softness_settings::Default;
-    sunSoftness = std::clamp(sunSoftness, 1.0f, 10.0f);
-    // The checkbox owns Off. Opening Advanced must not clamp a saved value.
+    float sunSoftness = nativeSunSoftness * SOFTNESS_SLIDER_STEPS;
+    // the checkbox above turns sun softening off; the slider sets how soft it is while on
     ImGui::BeginDisabled(nativeSunSoftness <= 0);
-    if (ImGui::SliderFloat("Sun shadow softness", &sunSoftness, 1.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+    if (ImGui::SliderFloat("Sun shadow softness", &sunSoftness, 0.0f, sun_softness_settings::Maximum * SOFTNESS_SLIDER_STEPS,
+            "%.1f", ImGuiSliderFlags_AlwaysClamp))
     {
+        sunSoftness /= SOFTNESS_SLIDER_STEPS;
         lightbuffer::SunSoftness = sunSoftness;
         reshade::set_config_value(nullptr, CONFIG_SECTION, "SunSoftness", sunSoftness);
-        reshade::set_config_value(nullptr, CONFIG_SECTION, "TextureQuestSunSoftnessPreferenceRealSun", sunSoftness);
+        if (sunSoftness > 0) reshade::set_config_value(nullptr, CONFIG_SECTION, "TextureQuestSunSoftnessPreferenceRealSun", sunSoftness);
     }
     ImGui::EndDisabled();
-    if (nativeSunSoftness > 0 && (nativeSunSoftness < 1.0f || nativeSunSoftness > 10.0f))
-        ImGui::TextDisabled("Legacy value retained until adjusted.");
     int sunMode = static_cast<int>(lightbuffer::SunShadowMode.load());
     if (ImGui::Combo("Sun shadows", &sunMode, "Full\0Split\0Darker ambient\0"))
     {
@@ -3393,8 +3373,7 @@ static void DrawDebugSettings()
     if (ImGui::Checkbox("Show shadow colours", &showColours))
         shadowmaps::ShowColours = showColours;
     if (showColours)
-        ImGui::TextUnformatted("red: in shadow, green: lit, blue: light has no map, grey: beyond range, magenta: no "
-            "camera offset");
+        ImGui::TextUnformatted("red: in shadow, green: lit, blue: light has no map, magenta: no camera offset");
     ImGui::BeginDisabled(!lightbuffer::OcclusionEnabled);
     bool showOcclusion = lightbuffer::ShowOcclusion;
     if (ImGui::Checkbox("Show occlusion", &showOcclusion))
@@ -3411,7 +3390,8 @@ static void DrawDebugSettings()
     ImGui::Text("per frame: %d extra lighting draws, %d lamp shader draws, %d character map draws; %zu meshes marked "
         "moving", shadowmaps::ExtraDrawsLastSecond / frames, shadowmaps::LampShaderDrawsLastSecond / frames,
         shadowmaps::MovingDrawsLastSecond / frames, shadowmaps::MovingMeshes.size());
-    ImGui::Text("%d maps drawn in the last second", shadowmaps::MapsDrawnLastSecond);
+    ImGui::Text("%d maps drawn in the last second, %d static caster draws, %d lamp draws with no reach",
+        shadowmaps::MapsDrawnLastSecond, shadowmaps::StaticCasterDrawsLastSecond, shadowmaps::NoReachLampsLastSecond);
     ImGui::Text("%zu window maps, %d drawn in the last second", shadowmaps::Windows.size(),
         shadowmaps::WindowMapsDrawnLastSecond);
     ImGui::Text("%d new objects in the last second, camera at %.1f %.1f %.1f", shadowmaps::CastersAddedLastSecond,
@@ -3441,28 +3421,32 @@ static void DrawDebugSettings()
         particle_emission::Measured,particle_emission::Active,particle_emission::Pending);
     ImGui::Text("Particle rejects: state %u, bounds/color %u, IO/cap %u",particle_emission::RejectedState,
         particle_emission::RejectedBounds,particle_emission::RejectedIO);
-    ImGui::Text("GPU time: ambient occlusion %.2f ms, sun shadow passes %.2f ms, emissive lights %.2f ms",
-        lightbuffer::OcclusionTimer.Milliseconds, lightbuffer::SunTimer.Milliseconds, lightbuffer::GlowTimer.Milliseconds);
     ImGui::Text("GPU time:");
     ImGui::Text("  ambient occlusion %.2f ms", lightbuffer::OcclusionTimer.Milliseconds);
     ImGui::Text("  sun shadow passes %.2f ms", lightbuffer::SunTimer.Milliseconds);
     ImGui::Text("  emissive lights %.2f ms", lightbuffer::GlowTimer.Milliseconds);
     ImGui::Text("  surface saturation %.2f ms", lightbuffer::SurfaceTimer.Milliseconds);
+    ImGui::Text("  lamps %.2f ms", lightbuffer::LampTimer.Milliseconds);
+    ImGui::Text("  lamp and window shadow maps %.2f ms", shadowmaps::MapTimer.Milliseconds);
     bool cpuProfiling=shadowmaps::CpuProfileEnabled;
     if(ImGui::Checkbox("CPU profiling (diagnostic)",&cpuProfiling))shadowmaps::CpuProfileEnabled=cpuProfiling;
     if(!cpuProfiling){ImGui::TextDisabled("CPU profiling off: no per-event clock reads.");return;}
     const double frameMilliseconds = shadowmaps::CpuSecondMilliseconds / std::max(shadowmaps::CpuFramesLastSecond, 1);
     double total = 0;
     for (const shadowmaps::CpuTimer *timer : shadowmaps::CPU_TIMERS)
-        if (timer != &shadowmaps::ShaderSortCpu)
+        if (timer != &shadowmaps::ShaderSortCpu && timer != &shadowmaps::StaticMapCpu
+            && timer != &shadowmaps::MovingMapCpu)
             total += shadowmaps::GetCpuMilliseconds(*timer);
     ImGui::Text("CPU time on the game's render thread, per frame (frame time %.2f ms):", frameMilliseconds);
     ImGui::Text("  total %.2f ms (%.0f%% of the frame)", total, frameMilliseconds > 0 ? 100 * total / frameMilliseconds : 0);
     ImGui::Text("  game draws %.2f ms", shadowmaps::GetCpuMilliseconds(shadowmaps::DrawCpu));
     ImGui::Text("  light buffer passes %.2f ms", shadowmaps::GetCpuMilliseconds(shadowmaps::LightBufferCpu));
-    ImGui::Text("  lamp shadow maps %.2f ms", shadowmaps::GetCpuMilliseconds(shadowmaps::MapCpu));
+    ImGui::Text("  lamp and window shadow maps %.2f ms (static maps %.2f ms, moving and window maps %.2f ms)",
+        shadowmaps::GetCpuMilliseconds(shadowmaps::MapCpu), shadowmaps::GetCpuMilliseconds(shadowmaps::StaticMapCpu),
+        shadowmaps::GetCpuMilliseconds(shadowmaps::MovingMapCpu));
     ImGui::Text("  emissive lights %.2f ms", shadowmaps::GetCpuMilliseconds(shadowmaps::GlowCpu));
-    ImGui::Text("  buffer writes and samplers %.2f ms", shadowmaps::GetCpuMilliseconds(shadowmaps::BindCpu));
+    ImGui::Text("  pipeline binds, buffer writes and samplers %.2f ms",
+        shadowmaps::GetCpuMilliseconds(shadowmaps::BindCpu));
     ImGui::Text("  end of frame %.2f ms", shadowmaps::GetCpuMilliseconds(shadowmaps::PresentCpu));
     ImGui::Text("  shader sorting %.2f ms in the last second", shadowmaps::ShaderSortCpu.LastSecond / 1e6);
 }
@@ -3489,13 +3473,10 @@ static void LoadSettings()
     reshade::get_config_value(nullptr, CONFIG_SECTION, "CharacterShadows", movingShadows);
     shadowmaps::MovingShadows = movingShadows;
 
-    float softness = shadowmaps::LightSize;
-    reshade::get_config_value(nullptr, CONFIG_SECTION, "ShadowSoftness", softness);
-    shadowmaps::LightSize = softness;
-
-    float range = shadowmaps::Range;
-    reshade::get_config_value(nullptr, CONFIG_SECTION, "ShadowRange", range);
-    shadowmaps::Range = range;
+    // the older ShadowSoftness key held a light size in world units, on a different scale, so it is not read
+    float softness = shadowmaps::PointSoftness;
+    reshade::get_config_value(nullptr, CONFIG_SECTION, "PointShadowSoftness", softness);
+    shadowmaps::PointSoftness = sun_softness_settings::Clean(softness);
 
     bool sunLighting=lightbuffer::SunEnabled;
     const bool explicitSun=reshade::get_config_value(nullptr,CONFIG_SECTION,"SunLighting",sunLighting);
@@ -3572,14 +3553,15 @@ static void LoadSettings()
 
     int anisotropy = 16;
     reshade::get_config_value(nullptr, CONFIG_SECTION, "Anisotropy", anisotropy);
-    tq_world::PresetValues presets{shadowmaps::Strength.load(), shadowmaps::LightSize.load(),
+    float presetSoftness = 0.15f;
+    reshade::get_config_value(nullptr, CONFIG_SECTION, "ShadowSoftness", presetSoftness);
+    tq_world::PresetValues presets{shadowmaps::Strength.load(), presetSoftness,
         lightbuffer::OcclusionRadius.load(), lightbuffer::OcclusionStrength.load(),
         shadowmaps::LightLimit.load(), anisotropy};
     tq_world::MigratePresets(
         [](const char* key, auto& value) { return reshade::get_config_value(nullptr, CONFIG_SECTION, key, value); },
         [](const char* key, auto value) { reshade::set_config_value(nullptr, CONFIG_SECTION, key, value); }, presets);
     shadowmaps::Strength = presets.ShadowStrength;
-    shadowmaps::LightSize = presets.ShadowSoftness;
     lightbuffer::OcclusionRadius = presets.AORadius;
     lightbuffer::OcclusionStrength = presets.AOStrength;
     shadowmaps::LightLimit = presets.ShadowedLights;
@@ -3600,9 +3582,9 @@ static void SuspendPointScene()
     projected_shadows::Reset();
     particle_emission::Reset(true);
     glow::Reset();shadowmaps::Reset();
-    shadowmaps::BufferWrites.clear();shadowmaps::BufferWriteFrames.clear();shadowmaps::NewlyRefilled.clear();
+    shadowmaps::BufferWrites.clear();shadowmaps::NewlyRefilled.clear();
     shadowmaps::LastCameraKnown=false;
-    FrameLamps.clear();KeptDraws.clear();UnsureMeshes.clear();CulledLamps.clear();
+    FrameLamps.clear();KeptDraws.clear();UnsureMeshes.clear();CulledLamps.clear();RememberedFrame=0;
     AddedMarkTexture.Reset();AddedMarkTarget.Reset();AddedMarkView.Reset();AddedMarkFrame=UINT64_MAX;
     ReadOnlyDepthStates.clear();
 }
@@ -3615,16 +3597,25 @@ static void CommitWorldWork(std::uint32_t mask)
     if(transition.TrackingChanged()&&!mask)capture::ClearBindings();
 }
 
+// notes the bound pipelines and their classes, timed with the other bind work; capture.hpp comes before the CPU timers,
+// so it is timed here
+static void OnBindPipeline(command_list *cmd, pipeline_stage stages, pipeline handle)
+{
+    const shadowmaps::CpuScope scope(shadowmaps::BindCpu);
+    capture::OnBindPipeline(cmd, stages, handle);
+}
+
 static void Register()
 {
     LoadSettings();
     lightbuffer::DrawExtraLights = &DrawAddedLights;
     shadowmaps::DrawAdditionalMoving = nullptr; // Native affine maps are drawn by DrawWindowMaps.
-    shadowmaps::SceneEpochChanged=[](){particle_emission::InvalidateScene();glow::Reset();lightbuffer::ResetSunHistory();};
+    shadowmaps::SceneEpochChanged=[](){particle_emission::InvalidateScene();glow::Reset(true);lightbuffer::ResetSunHistory();};
     reshade::register_event<reshade::addon_event::init_pipeline>(&tq_world::Guard<&OnInitPipeline>::Call);
     reshade::register_event<reshade::addon_event::destroy_pipeline>(&tq_world::Guard<&OnDestroyPipeline>::Call);
     reshade::register_event<reshade::addon_event::init_device>(&tq_world::Guard<&OnInitDevice>::Call);
     reshade::register_event<reshade::addon_event::destroy_device>(&tq_world::Guard<&OnDestroyDevice>::Call);
+    reshade::register_event<reshade::addon_event::bind_pipeline>(&tq_world::WorkGuard<&OnBindPipeline>::Call);
     reshade::register_event<reshade::addon_event::draw>(&tq_world::WorkGuard<&OnDraw>::Call);
     reshade::register_event<reshade::addon_event::draw_indexed>(&tq_world::WorkGuard<&OnDrawIndexed>::Call);
     reshade::register_event<reshade::addon_event::present>(&tq_world::Guard<&OnPresent>::Call);

@@ -54,11 +54,12 @@ static bool MaterialUniform(const std::vector<DirectX::XMFLOAT4>&rows)
     }
     return true;
 }
-static void KeepMaterialDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall&call,bool base,size_t shader)
+static void KeepMaterialDraw(shadowmaps::BoundDraw &bound,bool base,size_t shader)
 {
+    auto *ctx=bound.Context;const shadowmaps::DrawCall &call=bound.Call;
     if(!MaterialActive()||!lightbuffer::LightBuffer||lightbuffer::CurrentTarget!=lightbuffer::LightBuffer.Get()||call.Instances!=1||call.FirstInstance)return;
     MaterialCounts.frame=shadowmaps::FrameNumber;
-    {std::lock_guard guard(Lock);if(!RepeatedShaders.contains(capture::VertexShader)){++MaterialCounts.unsupported;return;}}
+    if(capture::VertexClass.Repeated<0){++MaterialCounts.unsupported;return;}
     if(MaterialDraws.size()>=MATERIAL_DRAW_LIMIT){++MaterialCounts.capacity;return;}
     ComPtr<ID3D11DeviceContext1> ctx1;if(FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))return;
     ComPtr<ID3D11GeometryShader> geometryStage;ComPtr<ID3D11HullShader> hull;ComPtr<ID3D11DomainShader> domain;
@@ -102,7 +103,7 @@ static void KeepMaterialDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall
     DirectX::XMFLOAT4 rows[shadowmaps::ROW_COUNT];
     std::copy_n(draw.Constants[0].begin()+shadowmaps::FIRST_ROW,shadowmaps::ROW_COUNT,rows);
     if(!IsLightBufferDraw(rows)){++MaterialCounts.camera;return;}
-    const auto geometry=FindDrawnMesh(ctx,call);draw.Mesh=geometry.Key;
+    const auto &geometry=bound.GetMesh();draw.Mesh=geometry.Key;
     const uint64_t key=FindCopyKey(geometry.Key,rows);
     if(auto old=MaterialDraws.find(key);old!=MaterialDraws.end()&&(!old->second.draw.Base||base))return;
     const auto remember=[&](ID3D11Buffer*buffer)

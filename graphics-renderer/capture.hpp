@@ -57,9 +57,57 @@ static uint32_t VertexStride;
 static buffer_range VertexConstants[MAX_CONSTANT_BUFFERS], PixelConstants[MAX_CONSTANT_BUFFERS];
 static resource_view PixelResources[MAX_SHADER_RESOURCES];
 
+// what the game's shaders and blend states were sorted into when they were made, as CLASS_ bits
+
+constexpr uint32_t CLASS_POINT_LIGHT = 1 << 0;
+// a lamp vertex shader that reads the world rows directly
+constexpr uint32_t CLASS_STATIC_LIGHT = 1 << 1;
+constexpr uint32_t CLASS_PROJECTED_LIGHT = 1 << 2;
+constexpr uint32_t CLASS_SUN_VERTEX = 1 << 3;
+constexpr uint32_t CLASS_SUN_DIRECTION = 1 << 4;
+constexpr uint32_t CLASS_SUN_PIXEL = 1 << 5;
+// a pixel shader the light buffer's sun shadow passes draw with
+constexpr uint32_t CLASS_SUN_PASS = 1 << 6;
+constexpr uint32_t CLASS_ADDITIVE_BLEND = 1 << 7;
+constexpr uint32_t CLASS_SOURCE_ALPHA_BLEND = 1 << 8;
+constexpr uint32_t CLASS_ALPHA_BLEND = 1 << 9;
+
+struct PipelineClass
+{
+    uint32_t Bits = 0;
+    // the pixel shader's replacement in shadows::LAMP_SHADERS, or -1
+    int LampShader = -1;
+    // the vertex shader's index in shadows::REPEATED_VERTEX_SHADERS, or -1
+    int Repeated = -1;
+    // a sun pass's image copy slot, valid only with CLASS_SUN_PASS
+    uint32_t SunImageSlot = 0;
+    // a sun pass's replacement in lightbuffer::SUN_SHADERS, or -1
+    int SunReplacement = -1;
+};
+
+// classified pipelines by handle; init_pipeline and destroy_pipeline can run on any thread, so every access holds
+// ClassLock. Draws read the bound pipelines' classes from VertexClass, PixelClass and BlendClass, looked up on bind.
+static std::mutex ClassLock;
+static std::unordered_map<uint64_t, PipelineClass> Classes;
+static PipelineClass VertexClass, PixelClass, BlendClass;
+
+static void AddClass(uint64_t handle, uint32_t bits)
+{
+    std::lock_guard guard(ClassLock);
+    Classes[handle].Bits |= bits;
+}
+
+// the caller holds ClassLock
+static PipelineClass FindClass(uint64_t handle)
+{
+    auto found = Classes.find(handle);
+    return found == Classes.end() ? PipelineClass {} : found->second;
+}
+
 static void ClearBindings()
 {
     VertexShader=PixelShader=BlendState=DepthState=0;
+    VertexClass=PixelClass=BlendClass={};
     RenderTargetCount=0;DepthTarget={};VertexBuffer={};IndexBuffer={};
     VertexOffset=IndexOffset=0;VertexStride=0;
     std::fill(std::begin(RenderTargets),std::end(RenderTargets),resource_view{});
@@ -82,6 +130,10 @@ static void RefreshBindings(ID3D11DeviceContext *ctx)
     ctx->OMGetBlendState(&blend,nullptr,nullptr);ctx->OMGetDepthStencilState(&depth,nullptr);
     VertexShader=reinterpret_cast<uintptr_t>(vs.Get());PixelShader=reinterpret_cast<uintptr_t>(ps.Get());
     BlendState=reinterpret_cast<uintptr_t>(blend.Get());DepthState=reinterpret_cast<uintptr_t>(depth.Get());
+    {
+        std::lock_guard guard(ClassLock);
+        VertexClass=FindClass(VertexShader);PixelClass=FindClass(PixelShader);BlendClass=FindClass(BlendState);
+    }
     Microsoft::WRL::ComPtr<ID3D11Buffer>vb,ib;UINT stride=0,vertexOffset=0,indexOffset=0;DXGI_FORMAT format{};
     ctx->IAGetVertexBuffers(0,1,&vb,&stride,&vertexOffset);ctx->IAGetIndexBuffer(&ib,&format,&indexOffset);
     VertexBuffer={reinterpret_cast<uintptr_t>(vb.Get())};VertexStride=stride;VertexOffset=vertexOffset;
@@ -182,9 +234,13 @@ static void OnInitPipeline(device *, pipeline_layout, uint32_t count, const pipe
 
 static void OnDestroyPipeline(device *, pipeline handle)
 {
-    std::lock_guard guard(Lock);
-    Shaders.erase(handle.handle);
-    States.erase(handle.handle);
+    {
+        std::lock_guard guard(Lock);
+        Shaders.erase(handle.handle);
+        States.erase(handle.handle);
+    }
+    std::lock_guard guard(ClassLock);
+    Classes.erase(handle.handle);
 }
 
 static int GetResourceId(uint64_t handle)
@@ -755,6 +811,17 @@ static void OnBindPipeline(command_list *, pipeline_stage stages, pipeline handl
         BlendState = handle.handle;
     if ((stages & pipeline_stage::depth_stencil) != 0)
         DepthState = handle.handle;
+    if ((stages & (pipeline_stage::vertex_shader | pipeline_stage::pixel_shader | pipeline_stage::output_merger)) == 0)
+        return;
+
+    std::lock_guard guard(ClassLock);
+    const PipelineClass found = FindClass(handle.handle);
+    if ((stages & pipeline_stage::vertex_shader) != 0)
+        VertexClass = found;
+    if ((stages & pipeline_stage::pixel_shader) != 0)
+        PixelClass = found;
+    if ((stages & pipeline_stage::output_merger) != 0)
+        BlendClass = found;
 }
 
 static void OnBindRenderTargets(command_list *cmd, uint32_t count, const resource_view *rtvs, resource_view dsv)
@@ -908,6 +975,26 @@ static void WriteShaderLayout(FILE *file, const Shader &shader)
     reflection->Release();
 }
 
+// the hooks that only write a capture, registered from present while one runs; shadows::OnDraw and OnDrawIndexed call
+// OnDraw and OnDrawIndexed ahead of their own work instead, which a hook registered now would follow
+static void RegisterCaptureHooks()
+{
+    reshade::register_event<reshade::addon_event::map_buffer_region>(&tq_world::WorkGuard<&OnMapBuffer>::Call);
+    reshade::register_event<reshade::addon_event::update_buffer_region>(&tq_world::WorkGuard<&OnUpdateBuffer>::Call);
+    reshade::register_event<reshade::addon_event::draw_or_dispatch_indirect>(&tq_world::WorkGuard<&OnDrawIndirect>::Call);
+    reshade::register_event<reshade::addon_event::clear_render_target_view>(&tq_world::WorkGuard<&OnClearRenderTarget>::Call);
+    reshade::register_event<reshade::addon_event::clear_depth_stencil_view>(&tq_world::WorkGuard<&OnClearDepth>::Call);
+}
+
+static void UnregisterCaptureHooks()
+{
+    reshade::unregister_event<reshade::addon_event::map_buffer_region>(&tq_world::WorkGuard<&OnMapBuffer>::Call);
+    reshade::unregister_event<reshade::addon_event::update_buffer_region>(&tq_world::WorkGuard<&OnUpdateBuffer>::Call);
+    reshade::unregister_event<reshade::addon_event::draw_or_dispatch_indirect>(&tq_world::WorkGuard<&OnDrawIndirect>::Call);
+    reshade::unregister_event<reshade::addon_event::clear_render_target_view>(&tq_world::WorkGuard<&OnClearRenderTarget>::Call);
+    reshade::unregister_event<reshade::addon_event::clear_depth_stencil_view>(&tq_world::WorkGuard<&OnClearDepth>::Call);
+}
+
 static void Begin()
 {
     wchar_t exe[MAX_PATH];
@@ -937,6 +1024,7 @@ static void Begin()
     PendingTarget = 0;
     Probes.clear();
     State = Phase::Capturing;
+    RegisterCaptureHooks();
 }
 
 static void End(command_queue *queue)
@@ -950,6 +1038,7 @@ static void End(command_queue *queue)
     auto *ctx = reinterpret_cast<ID3D11DeviceContext *>(queue->get_immediate_command_list()->get_native());
     ProbeCentre(ctx, DrawIndex + 1);
     State = Phase::Idle;
+    UnregisterCaptureHooks();
     fclose(Log);
     Log = nullptr;
 
@@ -1023,18 +1112,10 @@ static void Register()
 {
     reshade::register_event<reshade::addon_event::init_pipeline>(&tq_world::Guard<&OnInitPipeline>::Call);
     reshade::register_event<reshade::addon_event::destroy_pipeline>(&tq_world::Guard<&OnDestroyPipeline>::Call);
-    reshade::register_event<reshade::addon_event::bind_pipeline>(&tq_world::WorkGuard<&OnBindPipeline>::Call);
     reshade::register_event<reshade::addon_event::bind_render_targets_and_depth_stencil>(&tq_world::WorkGuard<&OnBindRenderTargets>::Call);
     reshade::register_event<reshade::addon_event::push_descriptors>(&tq_world::WorkGuard<&OnPushDescriptors>::Call);
     reshade::register_event<reshade::addon_event::bind_vertex_buffers>(&tq_world::WorkGuard<&OnBindVertexBuffers>::Call);
     reshade::register_event<reshade::addon_event::bind_index_buffer>(&tq_world::WorkGuard<&OnBindIndexBuffer>::Call);
-    reshade::register_event<reshade::addon_event::map_buffer_region>(&tq_world::WorkGuard<&OnMapBuffer>::Call);
-    reshade::register_event<reshade::addon_event::update_buffer_region>(&tq_world::WorkGuard<&OnUpdateBuffer>::Call);
-    reshade::register_event<reshade::addon_event::draw>(&tq_world::WorkGuard<&OnDraw>::Call);
-    reshade::register_event<reshade::addon_event::draw_indexed>(&tq_world::WorkGuard<&OnDrawIndexed>::Call);
-    reshade::register_event<reshade::addon_event::draw_or_dispatch_indirect>(&tq_world::WorkGuard<&OnDrawIndirect>::Call);
-    reshade::register_event<reshade::addon_event::clear_render_target_view>(&tq_world::WorkGuard<&OnClearRenderTarget>::Call);
-    reshade::register_event<reshade::addon_event::clear_depth_stencil_view>(&tq_world::WorkGuard<&OnClearDepth>::Call);
     reshade::register_event<reshade::addon_event::present>(&tq_world::Guard<&OnPresent>::Call);
 }
 }
