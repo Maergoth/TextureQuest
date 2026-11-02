@@ -1,0 +1,22 @@
+TextureQuest 1.13.6 experimental graphics fix attempts.
+The project owner confirmed Sichii's redistribution permission on November 2.
+All earlier third-party licenses and notices remain included byte for byte.
+Earlier PRIVATE notices describe retained history. Runtime profile IDs and
+private fields remain compatibility tokens, not publication restrictions.
+
+This release attempts verified DDS replacement-cache reuse, restores the world
+surface color path for saturation, tightens supported normal/material routing,
+and refines Sun softening and the shared emissive-light budget. AIO's two absent
+FrameGeneration defaults are off; existing saved settings retain precedence.
+
+The exact final native handoffs, distinct reviews, compiled-source joins and
+ROOT GPU closure are recorded with package verification. Controlled tests use
+synthetic inputs and captured native shaders; they do not prove full-game
+coverage, visual stability, shadow alignment, performance or latency benefit.
+Keep the exact ROOT closure limitations with release metadata. Tenri/Sichii's
+real-game review remains follow-up work. This release is authorized for public
+publication before local installation; no local game result is claimed.
+
+Reflex remains partial device-local driver-mode integration. No Boost, frame
+cap, explicit Sleep, engine input/simulation markers or driver-profile changes.
+Unsupported devices stay unchanged; no measured latency improvement is claimed.

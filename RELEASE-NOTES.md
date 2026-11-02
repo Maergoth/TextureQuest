@@ -25,3 +25,15 @@ for the exact behavior and remaining visual issues.
 Thanks to Sichii for EQ2 Graphics and permission to include it. Third-party
 components retain their respective licences and notices; runtime profile IDs
 and retained private labels remain compatibility/history tokens.
+
+Controlled-test qualifications retained with this release:
+
+- Controlled source/component GPU evidence only; no1.13.6 local game installation, appearance or FPS approval.
+- Material/normal path is limited to128 current-frame known-profile draws; unsupported records retain depth-normal fallback and enabled atlas/replay has unmeasured cost.
+- Sun border/sentinel controlled cases pass; actual outdoor box removal and moving sun-direction flicker remain unconfirmed, and direction-history additions are diagnostic only.
+- Particle finite-domain poisoning is corrected; visible square causes, emitter discovery, camera/distance/occlusion continuity and flicker remain in-world follow-up.
+- The prior combined test exited124 after three successful budget markers; partial component evidence is preserved, never reported as an overall pass or replayed.
+- DDS cache ownership is16objects/64MiB; active handoff references may retain evicted bytes. Cache hits are verified session bytes, not current-disk verification. Physical symlink creation was denied, separately injected reparse rejection was tested.
+- Frame generation/upscaling/Reflex performance and latency remain unmeasured; FG startup default is off, explicit saved choices win.
+
+Published before local installation under the current user direction. No 1.13.6 local game result is claimed.
