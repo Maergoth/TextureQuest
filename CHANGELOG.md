@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.13.4 — private graphics preview
+
+- Combine supported static and painted emissive surfaces with captured spell-particle lighting under one bounded light budget.
+- Correct particle sample-expiry and pending-readback timing gaps; fade disappearing sources briefly instead of dropping them immediately.
+- Apply compatible upstream transparent/small-caster cache fixes. Preserve the existing private window-shadow path and saved settings.
+- Experimental local candidate; complete particle coverage, visual stability and performance remain in-game checks.
+
 ## 1.8.0
 
 - Graphics hook is now an add-on for stock ReShade; no modified ReShade or private texture cache.

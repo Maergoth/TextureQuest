@@ -45,6 +45,11 @@ they supply inputs this renderer needs. Native game INIs are unchanged.
 Keep GPU shadows enabled. A game cap near 60 FPS can help frame-generation pacing.
 Point-light shadows preserve native lamp lighting by default. Rebuilt lamp
 lighting is an Advanced experiment because it changes brightness and falloff.
+Emissive lights combines supported static glow, painted glowing surfaces and
+supported spell particles under one light budget. The particle path remains
+experimental: short-lived or changing particle batches can be missed. Private
+1.13.4 corrects sample-expiry and pending-readback timing gaps reported as flicker;
+the combined result still needs an in-game comparison.
 This is an unpublished local test. Frame generation includes a pacing/GUI-sharing
 correction that improved an isolated comparison; EQ2 performance and smoothness
 still need testing. [Details](docs/GRAPHICS_FEATURES.md).
