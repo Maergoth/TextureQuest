@@ -67,7 +67,8 @@ constexpr float SURFACE_OFFSET = 0.25f;
 // loses little
 constexpr float MIN_REDUCED_SCALE = 2;
 // the most glow lights drawn in a frame, all in one pass; LIGHT_SHADER's light array holds this many
-constexpr int MAX_GLOW_LIGHTS = 64;
+constexpr int MAX_GLOW_LIGHTS = static_cast<int>(emission_policy::GlowLimit);
+static_assert(MAX_GLOW_LIGHTS == shadowmaps::MAX_LIGHTS);
 // how many shadow ranges from the camera a glowing cell still gets a light, the same distance objects are kept
 constexpr float SEEN_RANGES = 4;
 // frames an emitter keeps its shown lights while a newly picked set's maps are drawn
@@ -115,7 +116,7 @@ cbuffer GlowLights : register(b1)
     // xyz the face size of each map size, w the moving-object maps' face size
     float4 FaceSizes;
     // MAX_GLOW_LIGHTS
-    GlowLight Lights[64];
+    GlowLight Lights[256];
 };
 // this frame's camera offset
 cbuffer Camera : register(b3) { float4 CameraOffset; };
@@ -128,6 +129,8 @@ TextureCubeArray<float> MovingMaps : register(t4);
 Texture2D<float4> ReducedLight : register(t5);
 // xyz the normal of the surface ReducedLight was found on, w the painted glow mask, at reduced resolution
 Texture2D<float4> ReducedSurface : register(t6);
+// Optional current-camera native material/vertex normals, RGB encoded 0..1 and coverage in alpha.
+Texture2D<float4> MaterialNormals : register(t7);
 SamplerComparisonState Compare : register(s0);
 
 static const float2 POISSON[16] = {
@@ -270,6 +273,13 @@ bool FindSurface(float2 pixel, out float3 world, out float3 normal, out float ca
         return false;
 
     normal = normalize(normal);
+    if (Reduced.y>0.5)
+    {
+        float4 stored=MaterialNormals.Load(int3(pixel,0));
+        float3 material=stored.xyz*2-1;
+        if (stored.w>0.5 && all(isfinite(material)) && dot(material,material)>1e-6)
+            normal=normalize(material);
+    }
     // the camera sits at the origin of camera-relative positions, and the surface faces it
     if (dot(normal, offsetPosition) > 0)
         normal = -normal;
@@ -537,6 +547,8 @@ struct LightConstants
     XMFLOAT4 Counts, FaceSizes;
     GlowLightConstants Lights[MAX_GLOW_LIGHTS];
 };
+static_assert(sizeof(LightConstants) == 32 + 64 * emission_policy::GlowLimit);
+static_assert(sizeof(LightConstants) <= D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16);
 
 // a cell in the cut through the emitters' cells that become this frame's lights
 struct Candidate
@@ -551,6 +563,8 @@ struct Candidate
 };
 
 static std::atomic<bool> Enabled = true;
+static std::atomic<int> LightLimit = emission_policy::DefaultGlowLimit;
+static std::atomic<int> ParticleLightLimit = emission_policy::DefaultParticleLimit;
 static std::atomic<float> Strength = 1.0f;
 // the share of the game's painted glow kept where glow lights reach
 static std::atomic<float> PaintedKept = 0.5f;
@@ -1348,7 +1362,8 @@ static void PickLights(unsigned particleDemand)
     for (const auto &[key, light] : shadowmaps::Lights)
         if (!light.Glow && (light.LastSeen + shadowmaps::RECENT_FRAMES >= shadowmaps::FrameNumber || light.LastAdded==shadowmaps::FrameNumber))
             ++lamps;
-    const auto budget=emission_policy::Split(shadowmaps::LightLimit.load(),static_cast<unsigned>(lamps),particleDemand);
+    const auto budget=emission_policy::Split(shadowmaps::LightLimit.load(),static_cast<unsigned>(lamps),particleDemand,
+        LightLimit.load(),ParticleLightLimit.load());
     ParticleSlots=budget.particles;
     const std::vector<Candidate> candidates = FindCut(static_cast<int>(budget.surfaces));
     unsigned heldLeft=emission_policy::Held(budget.surfaces,static_cast<unsigned>(candidates.size()));
@@ -1479,7 +1494,7 @@ static bool CreateScreenTexture(ID3D11Device *dev, UINT width, UINT height, DXGI
 }
 
 // adds the glow lights with drawn maps to the light buffer, once the game's lamps are in it, and marks where they reach
-static void DrawLights(ID3D11DeviceContext *ctx)
+static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materialNormals=nullptr)
 {
     LightsDrawnThisFrame = 0;
     ComPtr<ID3D11DeviceContext1> ctx1;
@@ -1506,7 +1521,8 @@ static void DrawLights(ID3D11DeviceContext *ctx)
     D3D11_RECT area = { LONG_MAX, LONG_MAX, LONG_MIN, LONG_MIN };
     int count = 0;
     const bool logging = capture::State == capture::Phase::Capturing && capture::Log;
-    for (int slot = 0; slot < shadowmaps::MAX_LIGHTS && count < MAX_GLOW_LIGHTS; ++slot)
+    const int drawLimit=static_cast<int>(emission_policy::ClampGlowLimit(LightLimit.load()));
+    for (int slot = 0; slot < shadowmaps::MAX_LIGHTS && count < drawLimit; ++slot)
     {
         auto it = shadowmaps::Lights.find(shadowmaps::SlotLights[slot]);
         D3D11_RECT rect;
@@ -1552,7 +1568,7 @@ static void DrawLights(ID3D11DeviceContext *ctx)
     FrameConstants frame;
     XMStoreFloat4x4(&frame.InverseRows, XMMatrixInverse(nullptr, lightbuffer::WorldToClip));
     frame.Size = { static_cast<float>(desc.Width), static_cast<float>(desc.Height), 1.0f / desc.Width, 1.0f / desc.Height };
-    frame.Reduced = { scale, 0, 0, 0 };
+    frame.Reduced = { scale, materialNormals?1.0f:0.0f, 0, 0 };
 
     ComPtr<ID3DDeviceContextState> previous;
     ctx1->SwapDeviceContextState(shadowmaps::DrawState.Get(), &previous);
@@ -1569,7 +1585,7 @@ static void DrawLights(ID3D11DeviceContext *ctx)
     ctx1->PSSetSamplers(0, 1, &sampler);
     ID3D11ShaderResourceView *views[] = { lightbuffer::DepthCopyView.Get(), shadowmaps::CubeViews[0].Get(),
         shadowmaps::CubeViews[1].Get(), shadowmaps::CubeViews[2].Get(), shadowmaps::MovingView.Get(),
-        ReducedLightView.Get(), ReducedSurfaceView.Get() };
+        ReducedLightView.Get(), ReducedSurfaceView.Get(), materialNormals };
     lightbuffer::StartTimer(ctx1.Get(), lightbuffer::GlowTimer);
     // texels outside the lights' rectangle are left unlit
     ctx1->ClearRenderTargetView(ReducedLightTarget.Get(), clear);
@@ -1585,7 +1601,7 @@ static void DrawLights(ID3D11DeviceContext *ctx)
     ctx1->RSSetScissorRects(1, &reducedArea);
     ctx1->OMSetBlendState(nullptr, nullptr, 0xffffffff);
     ctx1->PSSetShader(ReducedLightShader.Get(), nullptr, 0);
-    ctx1->PSSetShaderResources(0, 5, views);
+    ctx1->PSSetShaderResources(0, 8, views);
     ctx1->Draw(3, 0);
     ctx1->PSSetShader(UpsampleShader.Get(), nullptr, 0);
     ID3D11RenderTargetView *targets[] = { lightbuffer::LightBufferTarget.Get(), MaskTarget.Get() };
@@ -1594,13 +1610,13 @@ static void DrawLights(ID3D11DeviceContext *ctx)
     ctx1->RSSetViewports(1, &viewport);
     ctx1->RSSetScissorRects(1, &area);
     ctx1->OMSetBlendState(LightBlend.Get(), nullptr, 0xffffffff);
-    ctx1->PSSetShaderResources(0, 7, views);
+    ctx1->PSSetShaderResources(0, 8, views);
     ctx1->Draw(3, 0);
     lightbuffer::StopTimer(ctx1.Get(), lightbuffer::GlowTimer);
     LightsDrawnThisFrame = count;
 
-    ID3D11ShaderResourceView *noViews[7] = {};
-    ctx1->PSSetShaderResources(0, 7, noViews);
+    ID3D11ShaderResourceView *noViews[8] = {};
+    ctx1->PSSetShaderResources(0, 8, noViews);
     ctx1->IASetInputLayout(nullptr);
     ctx1->SwapDeviceContextState(previous.Get(), nullptr);
 }
@@ -1957,6 +1973,9 @@ static void WriteState()
     const auto ago = [](uint64_t frame) { return static_cast<long long>(shadowmaps::FrameNumber - frame); };
     fprintf(file, "enabled %d, strength %.3f, painted kept %.3f, painted light %.3f, create failed %d\n",
         Enabled.load() ? 1 : 0, Strength.load(), PaintedKept.load(), PaintedLight.load(), CreateFailed ? 1 : 0);
+    fprintf(file, "emissive light limit %u, particle light limit %u, global shadowed light limit %d, particle slots %u\n",
+        emission_policy::ClampGlowLimit(LightLimit.load()), emission_policy::ClampParticleLimit(ParticleLightLimit.load()),
+        shadowmaps::LightLimit.load(), ParticleSlots);
     fprintf(file, "lights drawn this frame %d, last frame %d, cells picked last frame %d, painted skipped last second %d, "
         "this second %d, measured this frame %d, mask frame %lld ago\n", LightsDrawnThisFrame, LightsDrawnLastFrame,
         CellsPickedLastFrame, PaintedSkippedLastSecond, PaintedSkippedThisSecond, MeasuredThisFrame ? 1 : 0,

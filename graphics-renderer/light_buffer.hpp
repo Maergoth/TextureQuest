@@ -598,6 +598,18 @@ float2 FindSoftTap(int n, int count, float angle)
 // contact-hardening soft shadow, as for lamps: finds the average depth of whatever blocks the sun around the position,
 // then filters over a disc that widens with the distance from it, each tap a bilinear 2x2 compare. Both radii are in
 // world units, at least a texel
+// Gather order is bottom left, bottom right, top right, top left. Outside the known map
+// is unavailable shadow data, so it cannot create a blocker through native border/clamp addressing.
+float4 FindSoftFootprintValidity(float2 position)
+{
+    float2 corner = floor(position * MapSize.x - 0.5);
+    bool left = corner.x >= 0 && corner.x < MapSize.x;
+    bool right = corner.x + 1 >= 0 && corner.x + 1 < MapSize.x;
+    bool top = corner.y >= 0 && corner.y < MapSize.x;
+    bool bottom = corner.y + 1 >= 0 && corner.y + 1 < MapSize.x;
+    return float4(left && bottom, right && bottom, right && top, left && top);
+}
+
 float FindSoftShadow(float2 position, float depth, float bias, int cascade, float2 pixel)
 {
     // the game's filter is centred one texel right and down of the position
@@ -614,8 +626,11 @@ float FindSoftShadow(float2 position, float depth, float bias, int cascade, floa
     [loop]
     for (int n = 0; n < searchTaps; ++n)
     {
-        float4 mapDepth = ShadowMap.Gather(ShadowMapSampler, centre + FindSoftTap(n, searchTaps, angle) * searchRadius);
-        float4 blocks = mapDepth + bias < depth;
+        float2 tap = centre + FindSoftTap(n, searchTaps, angle) * searchRadius;
+        float4 valid = FindSoftFootprintValidity(tap);
+        float4 mapDepth = ShadowMap.Gather(ShadowMapSampler, tap);
+        mapDepth = valid > 0 ? mapDepth : 0;
+        float4 blocks = (mapDepth + bias < depth) * valid;
         blockerSum += dot(mapDepth, blocks);
         blockerCount += dot(blocks, 1);
     }
@@ -634,7 +649,8 @@ float FindSoftShadow(float2 position, float depth, float bias, int cascade, floa
     for (int m = 0; m < taps; ++m)
     {
         float2 tap = centre + FindSoftTap(m, taps, angle) * radius;
-        float4 shadowed = ShadowMap.Gather(ShadowMapSampler, tap) + bias < depth;
+        float4 shadowed = (ShadowMap.Gather(ShadowMapSampler, tap) + bias < depth)
+            * FindSoftFootprintValidity(tap);
         float2 weight = frac(tap * MapSize.x - 0.5);
         // Gather returns the 2x2 block as bottom left, bottom right, top right, top left
         sum += lerp(lerp(shadowed.w, shadowed.z, weight.x), lerp(shadowed.x, shadowed.y, weight.x), weight.y);
@@ -766,6 +782,9 @@ float FindUpsampledShadow(float2 pixel, float depth)
     {
         int2 offset = int2(n & 1, n >> 1);
         float2 texel = HalfShadow.Load(int3(clamp(corner + offset, 0, int2(width, height) - 1), 0)).xy;
+        // Coverage skips use depth -1. They are not surfaces and cannot win the nearest-depth fallback.
+        if (!all(isfinite(texel)) || texel.y < 0)
+            continue;
         float2 bilinear = offset == 1 ? fraction : 1 - fraction;
         float difference = abs(depth - texel.y);
         float weight = bilinear.x * bilinear.y * exp(-difference / max(0.02 * depth, 0.0001));
@@ -1270,6 +1289,11 @@ struct FrameHistory
     int LightBufferSet, LightBufferReleased, Scenes, Finishes, Applications, CasterDraws, FullMaps, KeptPasses;
     bool Drawn, SunKnown, WorldToClipKnown;
     float SunShadowShare;
+    uint64_t DirectionEvidenceFrame = 0, DirectionEpoch = 0;
+    float DirectionWeight = 0, DirectionActivity = 0;
+    XMFLOAT3 CorrectedDirection = {};
+    unsigned DirectionAttempts = 0, DirectionApplied = 0;
+    bool DirectionActive = false;
 };
 constexpr size_t HISTORY_FRAMES = 600;
 static FrameHistory History[HISTORY_FRAMES];
@@ -2066,6 +2090,17 @@ static void WriteState()
             frame.Scenes, frame.Finishes, frame.Applications, frame.SunKnown ? 1 : 0, frame.WorldToClipKnown ? 1 : 0,
             frame.CasterDraws, frame.FullMaps, frame.KeptPasses, frame.SunShadowShare);
     }
+    fprintf(file, "\n--- last %zu sun correction frames: frame, weight, active, native activity, evidence frame, epoch, direction xyz, attempts, applied\n",
+        std::min(HistoryCount, HISTORY_FRAMES));
+    for (size_t n = HistoryCount > HISTORY_FRAMES ? HistoryCount - HISTORY_FRAMES : 0; n < HistoryCount; ++n)
+    {
+        const FrameHistory &frame = History[n % HISTORY_FRAMES];
+        fprintf(file, "%llu %.6f %d %.6f %llu %llu %.6f %.6f %.6f %u %u\n",
+            static_cast<unsigned long long>(frame.Frame), frame.DirectionWeight, frame.DirectionActive ? 1 : 0,
+            frame.DirectionActivity, static_cast<unsigned long long>(frame.DirectionEvidenceFrame),
+            static_cast<unsigned long long>(frame.DirectionEpoch), frame.CorrectedDirection.x,
+            frame.CorrectedDirection.y, frame.CorrectedDirection.z, frame.DirectionAttempts, frame.DirectionApplied);
+    }
     fprintf(file, "\n--- sun shadow shaders: pixel shader, image slot, replacement\n");
     for (const auto &[shader, pass] : SunShaders)
         fprintf(file, "%016llx %u %d\n", static_cast<unsigned long long>(shader), pass.ImageSlot, pass.Replacement);
@@ -2093,6 +2128,11 @@ static void FinishLightBuffer(ID3D11DeviceContext *ctx)
     // with no lamps the light is copied here, so the sun shadow can still be held to the share from before the lamps
     if (tq_world::Work.Sun() && !BaseCopied)
         CopyBaseLight(ctx);
+
+    // Surface colour uses the native depth only to exclude the sky. It does
+    // not request point-light probes, AO resources or a reconstructed camera.
+    if (tq_world::Work.Surface() && !DepthCopied)
+        CopyDepth(ctx);
 
     // Only point-light maps or an explicit diagnostic need the probe depth here.
     if (!tq_world::Work.Point() && capture::State != capture::Phase::Capturing)
@@ -2321,6 +2361,7 @@ static void EaseSunColour(ID3D11DeviceContext *ctx, uint64_t meshKey)
 // direction. The row is written in the draw's own window of the game's dynamic buffer, as each draw has its own.
 static void ReplaceSunDirection(ID3D11DeviceContext *ctx)
 {
+    ++ThisFrame.DirectionAttempts;
     if (!SunDirectionFix || !LightBuffer || CurrentTarget != LightBuffer.Get() || !WorldToClipKnown || DirectionCorrection.weight<=0)
         return;
 
@@ -2346,6 +2387,7 @@ static void ReplaceSunDirection(ID3D11DeviceContext *ctx)
     if(!DirectionCorrection.Apply({native.x,native.y,native.z},native.w,blended))
     {ctx->Unmap(constants.Get(),0);return;}
     const XMFLOAT4 direction{blended.x,blended.y,blended.z,native.w};
+    ++ThisFrame.DirectionApplied;
     std::memcpy(static_cast<uint8_t *>(mapped.pData) + start, &direction, sizeof(direction));
     ctx->Unmap(constants.Get(), 0);
     if (capture::State == capture::Phase::Capturing && capture::Log)
@@ -3005,6 +3047,7 @@ static bool DrawSunPass(command_list *cmd, uint32_t vertices, uint32_t instances
 // and before anything transparent
 static void DrawSurfaceColour(ID3D11DeviceContext *ctx)
 {
+    if (!tq_world::Work.Surface()) return;
     const float saturation = SurfaceSaturation;
     if (saturation <= 0 || !Processed || SurfaceDone || !LightBuffer || !LightBufferView || !DepthCopied || CreateFailed
         || CurrentTarget == LightBuffer.Get())
@@ -3131,7 +3174,8 @@ static void OnAnyDraw(command_list *cmd)
         shadowmaps::CurrentFrame.BaseRecords = 0;
     }
     LightBufferDrawn = true;
-    if (!WorldToClipKnown)
+    if (!WorldToClipKnown && (tq_world::Work.Point() || tq_world::Work.AO() || tq_world::Work.Sun()
+            || (tq_world::Work.Mask() & tq_world::CaptureWork) != 0))
         ReadWorldToClip(ctx);
 }
 
@@ -3275,6 +3319,12 @@ static void OnPresent(command_queue *, swapchain *chain, const rect *, const rec
         ThisFrame.FullMaps += IsFull(map) ? 1 : 0;
     }
     ThisFrame.SunShadowShare = SunShadowShare;
+    ThisFrame.DirectionEvidenceFrame = DirectionCorrection.evidenceFrame;
+    ThisFrame.DirectionEpoch = DirectionCorrection.epoch;
+    ThisFrame.DirectionWeight = static_cast<float>(DirectionCorrection.weight);
+    ThisFrame.DirectionActivity = static_cast<float>(DirectionCorrection.nativeActivity);
+    ThisFrame.DirectionActive = DirectionCorrection.active;
+    ThisFrame.CorrectedDirection = {DirectionCorrection.direction.x, DirectionCorrection.direction.y, DirectionCorrection.direction.z};
     History[HistoryCount++ % HISTORY_FRAMES] = ThisFrame;
     ThisFrame = {};
     FrameTargets.clear();

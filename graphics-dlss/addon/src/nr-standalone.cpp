@@ -686,7 +686,7 @@ static bool g_nr_enabled = true;
 static unsigned int g_nr_pass_count = 1;
 static bool g_nr_second_pass_failed = false;
 static bool g_nr_third_pass_failed = false;
-static bool g_framegen_enabled = true;
+static bool g_framegen_enabled = false;
 static bool g_framegen_failed = false;
 static std::atomic<bool> g_feature_recreate_requested{false};
 static bool g_need_history_reset = true;
@@ -13642,7 +13642,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
         g_nr_second_pass_failed = false;
         g_nr_third_pass_failed = false;
         read_setting("AsyncComputePipeline", "1", value, sizeof(value)); g_async_compute_requested = strcmp(value, "0") != 0;
-        read_setting("FrameGeneration", "1", value, sizeof(value)); g_framegen_enabled = strcmp(value, "0") != 0;
+        read_setting("FrameGeneration", "0", value, sizeof(value)); g_framegen_enabled = strcmp(value, "0") != 0;
         read_setting("CompositeReshade", "1", value, sizeof(value)); g_composite_reshade_output = strcmp(value, "0") != 0;
         read_setting("ShowProxyFps", "1", value, sizeof(value)); g_show_proxy_fps = strcmp(value, "0") != 0;
         read_setting("AdaptivePressureGovernor", "1", value, sizeof(value)); g_adaptive_governor_enabled = strcmp(value, "0") != 0;

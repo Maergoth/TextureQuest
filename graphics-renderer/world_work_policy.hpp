@@ -4,9 +4,9 @@
 
 namespace tq_world {
 // Effective next-frame dependencies. Sampler-only choices are deliberately absent.
-enum WorldFeature : std::uint32_t { PointWork=1, AOWork=2, SunWork=4, CaptureWork=8 };
-constexpr std::uint32_t EffectWork=PointWork|AOWork|SunWork;
-struct WorldSelection { bool point=false, ao=false, sun=false; };
+enum WorldFeature : std::uint32_t { PointWork=1, AOWork=2, SunWork=4, CaptureWork=8, SurfaceWork=16 };
+constexpr std::uint32_t EffectWork=PointWork|AOWork|SunWork|SurfaceWork;
+struct WorldSelection { bool point=false, ao=false, sun=false, surface=false; };
 struct SunSelectionInput {
     bool explicitSun=false, sun=true;
     bool savedPoint=false, point=true, savedAO=false, ao=true;
@@ -21,7 +21,8 @@ constexpr bool InitialSunSelection(SunSelectionInput input)noexcept {
     return !oldOff;
 }
 constexpr std::uint32_t WorldMask(WorldSelection selected,bool master,bool capture) noexcept {
-    return (master?((selected.point?PointWork:0u)|(selected.ao?AOWork:0u)|(selected.sun?SunWork:0u)):0u)
+    return (master?((selected.point?PointWork:0u)|(selected.ao?AOWork:0u)|(selected.sun?SunWork:0u)
+        |(selected.surface?SurfaceWork:0u)):0u)
         |(capture?CaptureWork:0u);
 }
 struct WorldTransition {
@@ -38,6 +39,7 @@ public:
     bool Point()const noexcept{return (Mask()&PointWork)!=0;}
     bool AO()const noexcept{return (Mask()&AOWork)!=0;}
     bool Sun()const noexcept{return (Mask()&SunWork)!=0;}
+    bool Surface()const noexcept{return (Mask()&SurfaceWork)!=0;}
     WorldTransition Commit(std::uint32_t mask)noexcept{
         return {mask_.exchange(mask,std::memory_order_acq_rel),mask};
     }

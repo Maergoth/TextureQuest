@@ -882,6 +882,24 @@ AddedOutput lamps_added(AddedInterpolants i)
     return output;
 }
 
+// The normal texture is the material at stage0/mesh UV. Stage1 is the
+// native light-vector lookup in these exact single-pass profiles.
+float4 material_normal(AddedInterpolants i) : SV_Target
+{
+    TestClipPlane(i.clip);
+    float3 normal=i.normal;
+    if (AddedHeader.w>0.5)
+    {
+        float4 bump=SampleStage(Stage0,CubeStage0,StageSampler0,i.texcoord,s[1].x<0.5);
+        float3 tangentNormal=Expand(WeightLightVector(bump.xyz));
+        normal=tangentNormal.x*i.tangent+tangentNormal.y*i.normal+tangentNormal.z*i.bitangent;
+    }
+    float lengthSquared=dot(normal,normal);
+    if (!all(isfinite(normal)) || lengthSquared<1e-12) discard;
+    normal=FaceCamera(normal*rsqrt(lengthSquared),i.relative);
+    return float4(normal*.5+.5,1);
+}
+
 // the added lamps on a mesh drawn with its own vertex shader, whose outputs tell nothing of the surface: by the surface's
 // normal at the pixel's position, from its screen position and depth
 AddedOutput lamps_screen(GameInterpolants i)
@@ -1128,6 +1146,13 @@ struct KeptDraw
 static std::vector<FrameLamp> FrameLamps;
 // this frame's moving mesh copies, by mesh and the eighth-of-a-unit cell of their origin
 static std::unordered_map<uint64_t, KeptDraw> KeptDraws;
+// One-frame material replay has independent admission; Own lamp shaders is not required.
+static void KeepMaterialDraw(ID3D11DeviceContext *,const shadowmaps::DrawCall &,bool,size_t=0);
+static void DrawMaterialNormals(ID3D11DeviceContext *);
+static ID3D11ShaderResourceView *MaterialNormalsView();
+static void ResetMaterialNormals();
+static void BeginMaterialFrame();
+static void WriteMaterialState(FILE *);
 // moving meshes with a lamp pass this frame that could not be told apart from the mesh's other copies or whose lamp could
 // not be read; they get no lamps added, since one could be added on top of the game's own
 static std::unordered_set<uint64_t> UnsureMeshes;
@@ -1300,6 +1325,7 @@ static void DestroyPipeline(device *dev, pipeline &handle)
 
 static void OnDestroyDevice(device *dev)
 {
+    ResetMaterialNormals();
     projected_shadows::Reset();
     particle_emission::Reset();
     { std::lock_guard guard(Lock); ProjectedLightShaders.clear(); }
@@ -1397,11 +1423,12 @@ static std::vector<ShaderEntry> ListShaders()
     shaders.push_back({ "culled_vs", "vs_5_0" });
     shaders.push_back({ "lamps_culled", "ps_5_0" });
     shaders.push_back({ "window_main", "ps_5_0" });
+    shaders.push_back({ "material_normal", "ps_5_0" });
     return shaders;
 }
 
 // compiling every shader takes a moment, so it starts when the device is created and runs off the render thread
-static std::future<std::vector<ComPtr<ID3DBlob>>> CompiledShaders;
+static std::shared_future<std::vector<ComPtr<ID3DBlob>>> CompiledShaders;
 
 static void OnInitDevice(device *)
 {
@@ -1413,7 +1440,7 @@ static void OnInitDevice(device *)
         for (const ShaderEntry &shader : ListShaders())
             compiled.push_back(CompileShader(shader));
         return compiled;
-    });
+    }).share();
 }
 
 static bool CreateShader(device *dev, ID3DBlob *code, pipeline_subobject_type type, pipeline &out)
@@ -1990,6 +2017,11 @@ static void NoteLampDraw(ID3D11DeviceContext *ctx, const shadowmaps::DrawCall &c
     const DirectX::XMFLOAT4 (*rows)[shadowmaps::ROW_COUNT], bool singlePass)
 {
     ComPtr<ID3D11DeviceContext1> ctx1;
+    if (rows && singlePass && IsLightBufferDraw(*rows))
+    {
+        size_t material=0;
+        if (FindLampShader(material) && material<SINGLE_PASS_SHADERS) KeepMaterialDraw(ctx,call,false,material);
+    }
     if (!IsAddingLamps() || !lightbuffer::LightBuffer || lightbuffer::CurrentTarget != lightbuffer::LightBuffer.Get())
         return;
 
@@ -2291,6 +2323,7 @@ static void RecordBaseDraw(command_list *cmd, const shadowmaps::DrawCall &call)
         return;
     }
     shadowmaps::Record(ctx, call, rows, false);
+    KeepMaterialDraw(ctx,call,true);
     KeepBaseDraw(ctx, call, rows);
 }
 
@@ -2511,6 +2544,8 @@ static void WriteState()
 
     fprintf(file, "point light shadows %d, own lamp shaders %d, create failed %d\n", Enabled.load() ? 1 : 0,
         OwnLampShaders.load() ? 1 : 0, CreateFailed ? 1 : 0);
+    particle_emission::WriteState(file);
+    WriteMaterialState(file);
     const auto writeSet = [file](const char *name, const std::unordered_set<uint64_t> &set) {
         fprintf(file, "\n--- %s: %zu\n", name, set.size());
         for (uint64_t value : set)
@@ -2538,6 +2573,7 @@ static void OnPresent(command_queue *queue, swapchain *chain, const rect *, cons
     shadowmaps::EndCpuFrame();
     if (capture::State == capture::Phase::Capturing)
         WriteState();
+    BeginMaterialFrame();
     if(!tq_world::Work.Tracking())return;
     const resource_desc screen = queue->get_device()->get_resource_desc(chain->get_current_back_buffer());
     shadowmaps::ScreenWidth = screen.texture.width;
@@ -2608,6 +2644,8 @@ static UINT RoundConstants(size_t count)
 {
     return static_cast<UINT>((count + 15) / 16 * 16);
 }
+
+#include "material_normal_replay.hpp"
 
 // draws each kept moving mesh copy once more, adding every lamp that reaches its origin and that the game did not draw
 // it for: this frame's lamps, then lamps remembered from earlier frames whose own place may be off screen. A copy whose vertex shader added_vs repeats is lit by the normal map of its kept lamp pass in
@@ -3087,13 +3125,17 @@ static void DrawAddedLights(ID3D11DeviceContext *ctx)
     if (!tq_world::Work.Point() || !Enabled)
         return;
 
+    DrawMaterialNormals(ctx);
     DrawAddedLamps(ctx);
     DrawCulledLamps(ctx);
     // a frame capture saves the light buffer with the added lamps, which its after-lights snapshot, taken before them,
     // leaves out
     if (capture::State == capture::Phase::Capturing && capture::Log && lightbuffer::LightBuffer)
         capture::AddSnapshot(ctx, lightbuffer::LightBuffer.Get(), "after-added-lamps");
-    glow::DrawLights(ctx);
+    glow::DrawLights(ctx,MaterialNormalsView());
+    // Keep the earlier lamp snapshot and also capture the emissive consumer.
+    if (capture::State == capture::Phase::Capturing && capture::Log && lightbuffer::LightBuffer)
+        capture::AddSnapshot(ctx, lightbuffer::LightBuffer.Get(), "after-emissive-lights");
 }
 
 static void DrawSettings()
@@ -3206,12 +3248,17 @@ static void DrawAdvancedSettings()
     }
 
 
-    float softness = shadowmaps::LightSize;
-    if (ImGui::SliderFloat("Shadow softness", &softness, 0.0f, 2.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+    // Display 1-10 while keeping the existing native/config units unchanged.
+    const float nativeSoftness = shadowmaps::LightSize;
+    float softness = std::clamp(nativeSoftness * 10.0f, 1.0f, 10.0f);
+    if (ImGui::SliderFloat("Shadow softness", &softness, 1.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp))
     {
-        shadowmaps::LightSize = softness;
-        reshade::set_config_value(nullptr, CONFIG_SECTION, "ShadowSoftness", softness);
+        const float selectedSoftness = softness / 10.0f;
+        shadowmaps::LightSize = selectedSoftness;
+        reshade::set_config_value(nullptr, CONFIG_SECTION, "ShadowSoftness", selectedSoftness);
     }
+    if (nativeSoftness < 0.1f || nativeSoftness > 1.0f)
+        ImGui::TextDisabled("Legacy value retained until adjusted.");
 
     float range = shadowmaps::Range;
     if (ImGui::SliderFloat("Shadow range", &range, 5.0f, 200.0f, "%.0f", ImGuiSliderFlags_AlwaysClamp))
@@ -3224,6 +3271,14 @@ static void DrawAdvancedSettings()
     ImGui::SeparatorText("Emissive lights");
     bool glowLights = glow::Enabled;
     ImGui::BeginDisabled(!glowLights);
+    int emissiveLimit=glow::LightLimit;
+    if(ImGui::SliderInt("Emissive light limit",&emissiveLimit,1,glow::MAX_GLOW_LIGHTS,"%d",ImGuiSliderFlags_AlwaysClamp))
+    {glow::LightLimit=emissiveLimit;reshade::set_config_value(nullptr,CONFIG_SECTION,"EmissiveLightLimit",emissiveLimit);}
+    if(ImGui::IsItemHovered())ImGui::SetTooltip("Shares the Shadowed lights pool with native lamps, which take priority. Higher limits cost CPU/GPU time and do not guarantee emitter coverage.");
+    int particleLimit=glow::ParticleLightLimit;
+    if(ImGui::SliderInt("Particle light limit",&particleLimit,1,int(emission_policy::ParticleLimit),"%d",ImGuiSliderFlags_AlwaysClamp))
+    {glow::ParticleLightLimit=particleLimit;reshade::set_config_value(nullptr,CONFIG_SECTION,"ParticleLightLimit",particleLimit);}
+    if(ImGui::IsItemHovered())ImGui::SetTooltip("Maximum particle lights within the emissive and Shadowed lights limits. Higher values cost CPU/GPU time; unsupported or hidden particle sources may still be absent.");
     float glowStrength = glow::Strength;
     if (ImGui::SliderFloat("Emissive light strength", &glowStrength, 0.0f, 32.0f, "%.2f",
             ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic))
@@ -3245,13 +3300,26 @@ static void DrawAdvancedSettings()
 
     ImGui::SeparatorText("Sun shadows");
     ImGui::BeginDisabled(!lightbuffer::SunEnabled);
-    float sunSoftness = lightbuffer::SunSoftness;
-    if (ImGui::SliderFloat("Sun softness (real-Sun multiples)", &sunSoftness, 0.0f, sun_softness_settings::Maximum, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+    const float nativeSunSoftness = lightbuffer::SunSoftness;
+    float sunSoftness = nativeSunSoftness;
+    if (nativeSunSoftness <= 0)
+    {
+        sunSoftness = sun_softness_settings::Default;
+        reshade::get_config_value(nullptr, CONFIG_SECTION, "TextureQuestSunSoftnessPreferenceRealSun", sunSoftness);
+    }
+    if (!std::isfinite(sunSoftness)) sunSoftness = sun_softness_settings::Default;
+    sunSoftness = std::clamp(sunSoftness, 1.0f, 10.0f);
+    // The checkbox owns Off. Opening Advanced must not clamp a saved value.
+    ImGui::BeginDisabled(nativeSunSoftness <= 0);
+    if (ImGui::SliderFloat("Sun shadow softness", &sunSoftness, 1.0f, 10.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp))
     {
         lightbuffer::SunSoftness = sunSoftness;
         reshade::set_config_value(nullptr, CONFIG_SECTION, "SunSoftness", sunSoftness);
-        if (sunSoftness > 0) reshade::set_config_value(nullptr, CONFIG_SECTION, "TextureQuestSunSoftnessPreferenceRealSun", sunSoftness);
+        reshade::set_config_value(nullptr, CONFIG_SECTION, "TextureQuestSunSoftnessPreferenceRealSun", sunSoftness);
     }
+    ImGui::EndDisabled();
+    if (nativeSunSoftness > 0 && (nativeSunSoftness < 1.0f || nativeSunSoftness > 10.0f))
+        ImGui::TextDisabled("Legacy value retained until adjusted.");
     int sunMode = static_cast<int>(lightbuffer::SunShadowMode.load());
     if (ImGui::Combo("Sun shadows", &sunMode, "Full\0Split\0Darker ambient\0"))
     {
@@ -3299,6 +3367,15 @@ static void DrawAdvancedSettings()
     ImGui::EndDisabled();
 
     ImGui::SeparatorText("Colour");
+    float surfaceSaturation = lightbuffer::SurfaceSaturation * 100;
+    if (ImGui::SliderFloat("Surface colour saturation", &surfaceSaturation, 0.0f, 100.0f, "%.0f%%",
+            ImGuiSliderFlags_AlwaysClamp))
+    {
+        lightbuffer::SurfaceSaturation = surfaceSaturation / 100;
+        reshade::set_config_value(nullptr, CONFIG_SECTION, "SurfaceSaturation", surfaceSaturation);
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Boosts dull opaque material colours while retaining their lighting. 0%% disables the effect.");
 }
 
 // the settings for finding problems: counts, timings and views of what the add-on computes
@@ -3462,13 +3539,23 @@ static void LoadSettings()
     reshade::get_config_value(nullptr, CONFIG_SECTION, "OcclusionStrength", occlusionStrength);
     lightbuffer::OcclusionStrength = occlusionStrength;
 
-    lightbuffer::SurfaceSaturation = 0; // Optional upstream appearance feature is not part of this update.
+    float surfaceSaturation = 0;
+    reshade::get_config_value(nullptr, CONFIG_SECTION, "SurfaceSaturation", surfaceSaturation);
+    lightbuffer::SurfaceSaturation = std::isfinite(surfaceSaturation)
+        ? std::clamp(surfaceSaturation, 0.0f, 100.0f) / 100 : 0;
 
     bool glowLights = glow::Enabled;
     // settings saved before the rename are read first, so they carry over
     reshade::get_config_value(nullptr, CONFIG_SECTION, "GlowLights", glowLights);
     reshade::get_config_value(nullptr, CONFIG_SECTION, "EmissiveLights", glowLights);
     glow::Enabled = glowLights;
+
+    int emissiveLimit=emission_policy::DefaultGlowLimit;
+    reshade::get_config_value(nullptr,CONFIG_SECTION,"EmissiveLightLimit",emissiveLimit);
+    glow::LightLimit=static_cast<int>(emission_policy::ClampGlowLimit(emissiveLimit));
+    int particleLimit=emission_policy::DefaultParticleLimit;
+    reshade::get_config_value(nullptr,CONFIG_SECTION,"ParticleLightLimit",particleLimit);
+    glow::ParticleLightLimit=static_cast<int>(emission_policy::ClampParticleLimit(particleLimit));
 
     float glowStrength = glow::Strength;
     reshade::get_config_value(nullptr, CONFIG_SECTION, "GlowLightStrength", glowStrength);
@@ -3502,7 +3589,8 @@ static void LoadSettings()
 
 static tq_world::WorldSelection SelectedWorldFeatures()
 {
-    return {Enabled.load(),lightbuffer::OcclusionEnabled.load(),lightbuffer::SunEnabled.load()};
+    return {Enabled.load(),lightbuffer::OcclusionEnabled.load(),lightbuffer::SunEnabled.load(),
+        lightbuffer::SurfaceSaturation.load() > 0};
 }
 
 // Frame-boundary retirement, not per-frame work. Keep shader classifications:
@@ -3540,9 +3628,15 @@ static void Register()
     reshade::register_event<reshade::addon_event::draw>(&tq_world::WorkGuard<&OnDraw>::Call);
     reshade::register_event<reshade::addon_event::draw_indexed>(&tq_world::WorkGuard<&OnDrawIndexed>::Call);
     reshade::register_event<reshade::addon_event::present>(&tq_world::Guard<&OnPresent>::Call);
-    reshade::register_event<reshade::addon_event::map_buffer_region>(&tq_world::WorkGuard<&shadowmaps::OnMapBuffer,true>::Call);
-    reshade::register_event<reshade::addon_event::update_buffer_region>(&tq_world::WorkGuard<&shadowmaps::OnUpdateBuffer,true>::Call);
-    reshade::register_event<reshade::addon_event::destroy_resource>(&tq_world::Guard<&shadowmaps::OnDestroyResource>::Call);
+    reshade::register_event<reshade::addon_event::map_buffer_region>(&tq_world::WorkGuard<&OnMaterialMapBuffer,true>::Call);
+    reshade::register_event<reshade::addon_event::update_buffer_region>(&tq_world::WorkGuard<&OnMaterialUpdateBuffer,true>::Call);
+    reshade::register_event<reshade::addon_event::destroy_resource>(&tq_world::Guard<&OnMaterialDestroyResource>::Call);
+    reshade::register_event<reshade::addon_event::copy_resource>(&tq_world::WorkGuard<&OnMaterialCopy,true>::Call);
+    reshade::register_event<reshade::addon_event::copy_buffer_region>(&tq_world::WorkGuard<&OnMaterialCopyBuffer,true>::Call);
+    reshade::register_event<reshade::addon_event::update_texture_region>(&tq_world::WorkGuard<&OnMaterialUpdateTexture,true>::Call);
+    reshade::register_event<reshade::addon_event::update_texture_region_command>(&tq_world::WorkGuard<&OnMaterialUpdateTextureCommand,true>::Call);
+    reshade::register_event<reshade::addon_event::copy_texture_region>(&tq_world::WorkGuard<&OnMaterialCopyTexture,true>::Call);
+    reshade::register_event<reshade::addon_event::resolve_texture_region>(&tq_world::WorkGuard<&OnMaterialResolveTexture,true>::Call);
     lightbuffer::Register();
 }
 }

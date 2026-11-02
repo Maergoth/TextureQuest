@@ -1,13 +1,48 @@
 # Building the TextureQuest add-on
 
-Requires Visual Studio 2022 Build Tools with the C++ workload. Run `graphics-addon\build.cmd`; output goes to `graphics-addon\out\`.
+The 1.13.6 main005 image was built with the existing VS18 x64 toolchain, MSVC
+14.50.35717, from an isolated frozen copy. Its exact 486400-byte native image is
+SHA256 `09254adae712b942c215914cea30319aae54101445ef230676a795c31f786851`.
+`RELEASE-NATIVE-SOURCE.json` records the actual local translation units and
+headers from that build's `/showIncludes` log. Documentation, metadata and
+uncompiled selfchecks are excluded from that compiled-input roster.
 
-- `TextureQuest.addon64` — copy to `graphics-runtime\` and regenerate `graphics-runtime\RUNTIME.json` (file hashes).
-- `selfcheck.exe <fixture dir> [map.bin downloads-dir]` — map, VPK and layout checks. Create the fixture with `python tests\fixtures\make_addon_fixture.py graphics-addon\out\fixture`.
-- Append `<loose-map.bin> <objects-dir>` after the two legacy optional arguments to check loose DDS loading, SHA-256 rejection and path bounds. The runtime uses only `TQMAP002` DDS replacements; legacy checks remain for stock-reader coverage.
+For a separate rebuild, use an x64 developer prompt and an isolated output
+directory. The release command used `/Brepro /std:c++20 /O2 /MT /EHsc /W4
+/permissive- /DNDEBUG /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /showIncludes`,
+the include directories `deps/reshade/include`, `deps/xxhash`,
+`deps/libdeflate`, `deps/imgui`, and these translation units:
 
-Windows BCrypt verifies full DDS checksums. Matching remains XXH3-128, and creation/toggle callbacks retain the PR #1 design. See [the DDS contract](../docs/LOOSE_DDS.md).
+- addon.cpp
+- deps/libdeflate/lib/deflate_decompress.c
+- deps/libdeflate/lib/zlib_decompress.c
+- deps/libdeflate/lib/adler32.c
+- deps/libdeflate/lib/utils.c
+- deps/libdeflate/lib/x86/cpu_features.c
 
-Vendored, unmodified: ReShade 6.8.0 add-on headers (BSD-3-Clause), xxHash 0.8.3 (BSD-2-Clause), libdeflate 1.24 (MIT). Licences are next to each dependency under `deps\`. xxHash and libdeflate licences are also shipped under `graphics-runtime\licenses\`; ReShade's licence is shown on its About page.
+Link a DLL with `user32.lib bcrypt.lib`. Generic `build.cmd` also builds the
+retained selfchecks; those executables are not part of the published add-on.
+A rebuild is a new candidate and must not silently replace the exact release
+image or reuse its review/runtime pins.
 
-`graphics-runtime\ReShade64.dll` is the official ReShade 6.8.0 add-on build, unmodified, taken from `ReShade_Setup_6.8.0_Addon.exe`.
+`DDSReader` keeps immutable session bytes only after full Windows BCrypt SHA256
+admission. A per-reader mutex serializes misses; the LRU owns at most 16 entries
+and 64 MiB. Each read still checks dimensions, mips and pixel bounds. A thread's
+returned bytes remain pinned until its next Read even across eviction; those
+active pins can temporarily exceed the cache-owned limit. Eviction or a new
+reader rechecks disk identity, size and SHA. No disk cache or worker is added.
+
+The dedicated native CPU/filesystem fixture passed 185 checks with 47 actual
+instrumented Reader SHA calls. Physical symlink creation was denied by Windows
+1314 and is explicitly skipped; the separate injected reparse-attribute branch
+passed. These are correctness checks, with no measured EQ2 FPS/load-time claim.
+
+Runtime lookup remains XXH3-128 and the loose map remains TQMAP002. See
+[the DDS contract](../docs/LOOSE_DDS.md). ReShade add-on headers, xxHash and
+libdeflate retain their respective dependency licenses under `deps/`.
+
+The release's separate ReShade provider is the retained custom depth-demand
+build, not an unmodified official installer DLL. Its unchanged 5410816-byte
+image is SHA256 `78ef670bd7baf3688f8570294cf793050f9fd8f2751fa7b3086c93ae5eb14fd1`;
+provider source/build provenance is under `provider/`. Native payloads are
+release assets; `graphics-runtime/RUNTIME.json` selects their exact bytes.

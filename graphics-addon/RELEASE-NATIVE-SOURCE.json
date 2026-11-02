@@ -1,27 +1,202 @@
 {
-  "revision": "main004/controller003",
+  "revision": "main005 DDS verified session cache / controller003 retained",
   "author_handoff": {
-    "bytes": 4354,
-    "sha256": "10f280ad546f8e67d1cb0d1804dc52398ea73a0f43a12dc23fb9c8b2b17b58a0"
+    "bytes": 4410,
+    "sha256": "241ed59b02cd64cea5a93ff95008666efc9ce5423d2a44016f564f1b763e1daf"
   },
-  "controller_handoff": {
-    "bytes": 3182,
-    "sha256": "8bd73b91d7aa7a4dddb0178836a06ca013456f7398d89759e60dd1f00b81d264"
+  "source_manifest": {
+    "bytes": 27127,
+    "sha256": "bf90f3bb5126d1ad5178c0eef2be71a0921db1b512ff7452ce738e0b2bd5aa55"
   },
   "native_release_asset": {
-    "bytes": 483328,
-    "sha256": "8b5864316030491f4e78e00a361db44c86dcf94a7a966c6694f74fadc02e9c19"
+    "bytes": 486400,
+    "sha256": "09254adae712b942c215914cea30319aae54101445ef230676a795c31f786851"
   },
-  "already_in_app_source": [
+  "actual_compiled_files": [
     {
       "name": "addon.cpp",
       "bytes": 49520,
       "sha256": "8c81c3cf925873556872e9f779d8ba2fd40ee22af6037062a8706149d4557c1f"
     },
     {
-      "name": "reflex_primary.hpp",
-      "bytes": 2813,
-      "sha256": "9528276369d81d3bc70d8ef44cb7bf95e948f858db0ea77857d4c257a4059215"
+      "name": "aio_controller.hpp",
+      "bytes": 3231,
+      "sha256": "c0c9ea8a3b41891bfd3d9b3ed36ba237cd8acd292e8bcbcf54d4faee512c274c"
+    },
+    {
+      "name": "config.hpp",
+      "bytes": 5194,
+      "sha256": "b72a2330d8a5843bcbd393cd33f1d363c8bb2fb89fdbbebb9fe8b34f34938d0f"
+    },
+    {
+      "name": "dds_reader.hpp",
+      "bytes": 5030,
+      "sha256": "93d202aa9f8ae96aa69962fca0620773f9c8b1f71eef43a862fedff7d5e6b4da"
+    },
+    {
+      "name": "deps/imgui/imconfig.h",
+      "bytes": 12289,
+      "sha256": "fb8e32b9af9aa7dad5ec5c5bc862537f5624cb39a814e6d3b36b4629a50b6599"
+    },
+    {
+      "name": "deps/imgui/imgui.h",
+      "bytes": 454459,
+      "sha256": "2ca314d19c7e1ea85687a9c1e37079e0cc823939a551b3e6b2453ff0af9fbf13"
+    },
+    {
+      "name": "deps/libdeflate/common_defs.h",
+      "bytes": 22563,
+      "sha256": "e8703768ba784f12e0563010a72594b0b933afd3591f94b7181bd19a707ed6b8"
+    },
+    {
+      "name": "deps/libdeflate/lib/adler32.c",
+      "bytes": 5295,
+      "sha256": "c9f74c5195ceede1fcd34ea9d8afa50dfcf1bb6ebb4881e3c4baf75852a13dfd"
+    },
+    {
+      "name": "deps/libdeflate/lib/cpu_features_common.h",
+      "bytes": 2881,
+      "sha256": "d5c0bbbebbd530e7b670763de6dee6fe5d9d8efbe162e61011445ab6bc8c2126"
+    },
+    {
+      "name": "deps/libdeflate/lib/decompress_template.h",
+      "bytes": 25825,
+      "sha256": "213e04d4f43a008cdc5eee6de6b451c2b21f9b4e6328da6a8bac5990468bdecd"
+    },
+    {
+      "name": "deps/libdeflate/lib/deflate_constants.h",
+      "bytes": 1803,
+      "sha256": "1b4c2ff83f20e0c40bde9538342fadbc3f167a58151b3f806b27af1dfa859ecd"
+    },
+    {
+      "name": "deps/libdeflate/lib/deflate_decompress.c",
+      "bytes": 50505,
+      "sha256": "65b5d6b256b558a719b101a4f5966948fdab744d9da541447606978459b58750"
+    },
+    {
+      "name": "deps/libdeflate/lib/lib_common.h",
+      "bytes": 3730,
+      "sha256": "68f7b8ffb8817c4c5a13b2da8901d8fba0fad1a1b7710c425008ee4b87fee5a0"
+    },
+    {
+      "name": "deps/libdeflate/lib/utils.c",
+      "bytes": 3566,
+      "sha256": "a44869b770b11cc61ff05b0e41ded4cfffa15bb9d3d401e20c9592a861208458"
+    },
+    {
+      "name": "deps/libdeflate/lib/x86/adler32_impl.h",
+      "bytes": 5062,
+      "sha256": "a58bfae04a85c4b10df9306333e0400474ab03b1623daffcc1c842dcdc8f3ba5"
+    },
+    {
+      "name": "deps/libdeflate/lib/x86/adler32_template.h",
+      "bytes": 18042,
+      "sha256": "ddb3044ca776924614c5b7dee9261de3320b1d65bc32a5d6c9c36b3fd24963c5"
+    },
+    {
+      "name": "deps/libdeflate/lib/x86/cpu_features.c",
+      "bytes": 6584,
+      "sha256": "7ba7e4872b961b1b4ab455c47235586fdde89f399a4e710159f63cf38f3e1720"
+    },
+    {
+      "name": "deps/libdeflate/lib/x86/cpu_features.h",
+      "bytes": 5875,
+      "sha256": "93ed737b24f6ca5c7a6e21074670bb0826e8fcf96594d09119178adacb5ddaaf"
+    },
+    {
+      "name": "deps/libdeflate/lib/x86/decompress_impl.h",
+      "bytes": 2247,
+      "sha256": "e069fcf1b888373d7594ab07ba878b6d95b5c16389a7b5aa6f1b504d9a3f030c"
+    },
+    {
+      "name": "deps/libdeflate/lib/zlib_constants.h",
+      "bytes": 509,
+      "sha256": "432f156686170e04e87e5ba82ddee4a47ab69c4632af789ec640cd97ea926a67"
+    },
+    {
+      "name": "deps/libdeflate/lib/zlib_decompress.c",
+      "bytes": 3242,
+      "sha256": "311d1e33216d27c61d8f3418d078c54537eae30606fc07c2d7b9cbcdd4780aff"
+    },
+    {
+      "name": "deps/libdeflate/libdeflate.h",
+      "bytes": 17509,
+      "sha256": "c4897260a3c4dbb5d2d89e77965b2a8f01628f0ff5627d4c5ab9747080adea89"
+    },
+    {
+      "name": "deps/reshade/include/reshade.hpp",
+      "bytes": 19843,
+      "sha256": "d86932721cb77e47b996da6bf3861b1a938a1bc843be04d1e0c5dd09133b7f43"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api.hpp",
+      "bytes": 58876,
+      "sha256": "db19051ef285a7a1a3721f2711de973be8805d4ca39a38fbadade7fd22100a17"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_device.hpp",
+      "bytes": 89369,
+      "sha256": "8492cb9a4352ab9a25140828226a411be36c480c23d53d0fcc806a0515076212"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_format.hpp",
+      "bytes": 18738,
+      "sha256": "d5fcdf598a9adbd18db6ccd0d15133d08c4dfa4909ec8335f76edaf735ae39cf"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_pipeline.hpp",
+      "bytes": 50915,
+      "sha256": "2c592013e46e72c62119c0652786ac21c6536a29a1bad30973a6069d1d7f7351"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_resource.hpp",
+      "bytes": 29552,
+      "sha256": "cae6d40cbd37e314e5ce5fc2cd22e77d7042892284212972bd986ffabb96363e"
+    },
+    {
+      "name": "deps/reshade/include/reshade_events.hpp",
+      "bytes": 126479,
+      "sha256": "5b1f8b8144589712584cc8f2e8b6cf7c2aff05fc1c570b7867cfa1ee841296b7"
+    },
+    {
+      "name": "deps/reshade/include/reshade_overlay.hpp",
+      "bytes": 96000,
+      "sha256": "771f0cdde2dacd21cfe04664e1aaaddae43114a1abb51bb63af5645a88c217a6"
+    },
+    {
+      "name": "deps/xxhash/xxhash.h",
+      "bytes": 275557,
+      "sha256": "da96ca610ee67a648aeaf7ef409c4fd0cd71c3421eb9865b407f002af31917b8"
+    },
+    {
+      "name": "depth_demand_v1.hpp",
+      "bytes": 1152,
+      "sha256": "62f314817eead16bd21205a3ab1c8f93f3758a1e683500758637bcacdb3a4dc3"
+    },
+    {
+      "name": "dlss_controller.hpp",
+      "bytes": 7925,
+      "sha256": "6cc66ca89a26fd08eeb112db9102ad6c825eaf454a5fb7a4a5609e84aa7da24d"
+    },
+    {
+      "name": "effects_controller.hpp",
+      "bytes": 9708,
+      "sha256": "c946a2014cda57e3484e60203e176a5b8ff03da0354605f750e957328d95ef7e"
+    },
+    {
+      "name": "fps_counter.hpp",
+      "bytes": 2545,
+      "sha256": "ae04479e2d20df394fd1eaed8299a8385a86faa727870c26869b2b058e627d77"
+    },
+    {
+      "name": "layout.hpp",
+      "bytes": 1983,
+      "sha256": "710b520939b840fabc8019e74b6a771f370288534d7f758b8746df418ff18f84"
+    },
+    {
+      "name": "nvapi_reflex_types.hpp",
+      "bytes": 2880,
+      "sha256": "f5d877d9784b6b3777cae03ce7b82ec70c53d5fc8520db4425d889e6bf2a66ab"
     },
     {
       "name": "reflex_driver.hpp",
@@ -34,15 +209,346 @@
       "sha256": "a7a4dc59a807901b435fc4c406274213a51d1a9bad15f90be67c4b22c1a4cbc7"
     },
     {
+      "name": "reflex_primary.hpp",
+      "bytes": 2813,
+      "sha256": "9528276369d81d3bc70d8ef44cb7bf95e948f858db0ea77857d4c257a4059215"
+    },
+    {
+      "name": "renderer_binding_probe.hpp",
+      "bytes": 13453,
+      "sha256": "504e803bf0a7bc65afbb5c31a17e170b99ed67927a8cd19778466e14e28c8470"
+    },
+    {
+      "name": "shortcut.hpp",
+      "bytes": 3371,
+      "sha256": "808cf183f136c5826a32631251116bf9127f53ad6f19752149086f3fcb1591da"
+    },
+    {
+      "name": "stock_copies.hpp",
+      "bytes": 1702,
+      "sha256": "2a83374832d8566e10091582e28e4dba23340cf02bf7d3ea3c9c197084d6d951"
+    },
+    {
+      "name": "stock_paks.hpp",
+      "bytes": 5461,
+      "sha256": "24897839fa717e15a8f0b9e8f4726cec7c6b70959fffd1f1ba957f7c96a3f510"
+    },
+    {
+      "name": "texture_map.hpp",
+      "bytes": 7687,
+      "sha256": "0cd97abf790f16fd715cf1b53effa2e9b98083b155fc23d75ea6b3fa8a538b5e"
+    },
+    {
+      "name": "texturequest_aio_api.h",
+      "bytes": 3640,
+      "sha256": "a892d0a0f53dc612a8c9aaa4d635e974412561f2f2d2718568cc0a8cf03cb85c"
+    },
+    {
+      "name": "world_graphics_api.hpp",
+      "bytes": 765,
+      "sha256": "6929d814bee45a1796dc935cb037441ea975a8371611d6c72bd58e2e90f2220a"
+    },
+    {
+      "name": "world_graphics_controller.hpp",
+      "bytes": 1473,
+      "sha256": "d9dc177d882ec59b0406625f91ce7a31c95fc7c0b88de308d90caae21111b78d"
+    }
+  ],
+  "already_in_app_source": [
+    {
+      "name": "addon.cpp",
+      "bytes": 49520,
+      "sha256": "8c81c3cf925873556872e9f779d8ba2fd40ee22af6037062a8706149d4557c1f"
+    },
+    {
+      "name": "aio_controller.hpp",
+      "bytes": 3231,
+      "sha256": "c0c9ea8a3b41891bfd3d9b3ed36ba237cd8acd292e8bcbcf54d4faee512c274c"
+    },
+    {
+      "name": "config.hpp",
+      "bytes": 5194,
+      "sha256": "b72a2330d8a5843bcbd393cd33f1d363c8bb2fb89fdbbebb9fe8b34f34938d0f"
+    },
+    {
+      "name": "dds_reader.hpp",
+      "bytes": 5030,
+      "sha256": "93d202aa9f8ae96aa69962fca0620773f9c8b1f71eef43a862fedff7d5e6b4da"
+    },
+    {
+      "name": "deps/imgui/imconfig.h",
+      "bytes": 12289,
+      "sha256": "fb8e32b9af9aa7dad5ec5c5bc862537f5624cb39a814e6d3b36b4629a50b6599"
+    },
+    {
+      "name": "deps/imgui/imgui.h",
+      "bytes": 454459,
+      "sha256": "2ca314d19c7e1ea85687a9c1e37079e0cc823939a551b3e6b2453ff0af9fbf13"
+    },
+    {
+      "name": "deps/libdeflate/common_defs.h",
+      "bytes": 22563,
+      "sha256": "e8703768ba784f12e0563010a72594b0b933afd3591f94b7181bd19a707ed6b8"
+    },
+    {
+      "name": "deps/libdeflate/lib/adler32.c",
+      "bytes": 5295,
+      "sha256": "c9f74c5195ceede1fcd34ea9d8afa50dfcf1bb6ebb4881e3c4baf75852a13dfd"
+    },
+    {
+      "name": "deps/libdeflate/lib/cpu_features_common.h",
+      "bytes": 2881,
+      "sha256": "d5c0bbbebbd530e7b670763de6dee6fe5d9d8efbe162e61011445ab6bc8c2126"
+    },
+    {
+      "name": "deps/libdeflate/lib/decompress_template.h",
+      "bytes": 25825,
+      "sha256": "213e04d4f43a008cdc5eee6de6b451c2b21f9b4e6328da6a8bac5990468bdecd"
+    },
+    {
+      "name": "deps/libdeflate/lib/deflate_constants.h",
+      "bytes": 1803,
+      "sha256": "1b4c2ff83f20e0c40bde9538342fadbc3f167a58151b3f806b27af1dfa859ecd"
+    },
+    {
+      "name": "deps/libdeflate/lib/deflate_decompress.c",
+      "bytes": 50505,
+      "sha256": "65b5d6b256b558a719b101a4f5966948fdab744d9da541447606978459b58750"
+    },
+    {
+      "name": "deps/libdeflate/lib/lib_common.h",
+      "bytes": 3730,
+      "sha256": "68f7b8ffb8817c4c5a13b2da8901d8fba0fad1a1b7710c425008ee4b87fee5a0"
+    },
+    {
+      "name": "deps/libdeflate/lib/utils.c",
+      "bytes": 3566,
+      "sha256": "a44869b770b11cc61ff05b0e41ded4cfffa15bb9d3d401e20c9592a861208458"
+    },
+    {
+      "name": "deps/libdeflate/lib/x86/adler32_impl.h",
+      "bytes": 5062,
+      "sha256": "a58bfae04a85c4b10df9306333e0400474ab03b1623daffcc1c842dcdc8f3ba5"
+    },
+    {
+      "name": "deps/libdeflate/lib/x86/adler32_template.h",
+      "bytes": 18042,
+      "sha256": "ddb3044ca776924614c5b7dee9261de3320b1d65bc32a5d6c9c36b3fd24963c5"
+    },
+    {
+      "name": "deps/libdeflate/lib/x86/cpu_features.c",
+      "bytes": 6584,
+      "sha256": "7ba7e4872b961b1b4ab455c47235586fdde89f399a4e710159f63cf38f3e1720"
+    },
+    {
+      "name": "deps/libdeflate/lib/x86/cpu_features.h",
+      "bytes": 5875,
+      "sha256": "93ed737b24f6ca5c7a6e21074670bb0826e8fcf96594d09119178adacb5ddaaf"
+    },
+    {
+      "name": "deps/libdeflate/lib/x86/decompress_impl.h",
+      "bytes": 2247,
+      "sha256": "e069fcf1b888373d7594ab07ba878b6d95b5c16389a7b5aa6f1b504d9a3f030c"
+    },
+    {
+      "name": "deps/libdeflate/lib/zlib_constants.h",
+      "bytes": 509,
+      "sha256": "432f156686170e04e87e5ba82ddee4a47ab69c4632af789ec640cd97ea926a67"
+    },
+    {
+      "name": "deps/libdeflate/lib/zlib_decompress.c",
+      "bytes": 3242,
+      "sha256": "311d1e33216d27c61d8f3418d078c54537eae30606fc07c2d7b9cbcdd4780aff"
+    },
+    {
+      "name": "deps/libdeflate/libdeflate.h",
+      "bytes": 17509,
+      "sha256": "c4897260a3c4dbb5d2d89e77965b2a8f01628f0ff5627d4c5ab9747080adea89"
+    },
+    {
+      "name": "deps/reshade/include/reshade.hpp",
+      "bytes": 19843,
+      "sha256": "d86932721cb77e47b996da6bf3861b1a938a1bc843be04d1e0c5dd09133b7f43"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api.hpp",
+      "bytes": 58876,
+      "sha256": "db19051ef285a7a1a3721f2711de973be8805d4ca39a38fbadade7fd22100a17"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_device.hpp",
+      "bytes": 89369,
+      "sha256": "8492cb9a4352ab9a25140828226a411be36c480c23d53d0fcc806a0515076212"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_format.hpp",
+      "bytes": 18738,
+      "sha256": "d5fcdf598a9adbd18db6ccd0d15133d08c4dfa4909ec8335f76edaf735ae39cf"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_pipeline.hpp",
+      "bytes": 50915,
+      "sha256": "2c592013e46e72c62119c0652786ac21c6536a29a1bad30973a6069d1d7f7351"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_resource.hpp",
+      "bytes": 29552,
+      "sha256": "cae6d40cbd37e314e5ce5fc2cd22e77d7042892284212972bd986ffabb96363e"
+    },
+    {
+      "name": "deps/reshade/include/reshade_events.hpp",
+      "bytes": 126479,
+      "sha256": "5b1f8b8144589712584cc8f2e8b6cf7c2aff05fc1c570b7867cfa1ee841296b7"
+    },
+    {
+      "name": "deps/reshade/include/reshade_overlay.hpp",
+      "bytes": 96000,
+      "sha256": "771f0cdde2dacd21cfe04664e1aaaddae43114a1abb51bb63af5645a88c217a6"
+    },
+    {
+      "name": "deps/xxhash/xxhash.h",
+      "bytes": 275557,
+      "sha256": "da96ca610ee67a648aeaf7ef409c4fd0cd71c3421eb9865b407f002af31917b8"
+    },
+    {
+      "name": "depth_demand_v1.hpp",
+      "bytes": 1152,
+      "sha256": "62f314817eead16bd21205a3ab1c8f93f3758a1e683500758637bcacdb3a4dc3"
+    },
+    {
+      "name": "dlss_controller.hpp",
+      "bytes": 7925,
+      "sha256": "6cc66ca89a26fd08eeb112db9102ad6c825eaf454a5fb7a4a5609e84aa7da24d"
+    },
+    {
+      "name": "effects_controller.hpp",
+      "bytes": 9708,
+      "sha256": "c946a2014cda57e3484e60203e176a5b8ff03da0354605f750e957328d95ef7e"
+    },
+    {
+      "name": "fps_counter.hpp",
+      "bytes": 2545,
+      "sha256": "ae04479e2d20df394fd1eaed8299a8385a86faa727870c26869b2b058e627d77"
+    },
+    {
+      "name": "layout.hpp",
+      "bytes": 1983,
+      "sha256": "710b520939b840fabc8019e74b6a771f370288534d7f758b8746df418ff18f84"
+    },
+    {
       "name": "nvapi_reflex_types.hpp",
       "bytes": 2880,
       "sha256": "f5d877d9784b6b3777cae03ce7b82ec70c53d5fc8520db4425d889e6bf2a66ab"
     },
     {
-      "name": "NVAPI-NOTICE.txt",
-      "bytes": 1776,
-      "sha256": "7d9407ec8bc45bc178edf8d49f21ca7dcc32c1136cabc231bd3c138bc7739ce6"
+      "name": "reflex_driver.hpp",
+      "bytes": 4577,
+      "sha256": "f473b1e01b16f567d22a0cd435ba335e9e8608c32a6e01ddd9acff42bb7486d2"
+    },
+    {
+      "name": "reflex_policy.hpp",
+      "bytes": 8151,
+      "sha256": "a7a4dc59a807901b435fc4c406274213a51d1a9bad15f90be67c4b22c1a4cbc7"
+    },
+    {
+      "name": "reflex_primary.hpp",
+      "bytes": 2813,
+      "sha256": "9528276369d81d3bc70d8ef44cb7bf95e948f858db0ea77857d4c257a4059215"
+    },
+    {
+      "name": "renderer_binding_probe.hpp",
+      "bytes": 13453,
+      "sha256": "504e803bf0a7bc65afbb5c31a17e170b99ed67927a8cd19778466e14e28c8470"
+    },
+    {
+      "name": "shortcut.hpp",
+      "bytes": 3371,
+      "sha256": "808cf183f136c5826a32631251116bf9127f53ad6f19752149086f3fcb1591da"
+    },
+    {
+      "name": "stock_copies.hpp",
+      "bytes": 1702,
+      "sha256": "2a83374832d8566e10091582e28e4dba23340cf02bf7d3ea3c9c197084d6d951"
+    },
+    {
+      "name": "stock_paks.hpp",
+      "bytes": 5461,
+      "sha256": "24897839fa717e15a8f0b9e8f4726cec7c6b70959fffd1f1ba957f7c96a3f510"
+    },
+    {
+      "name": "texture_map.hpp",
+      "bytes": 7687,
+      "sha256": "0cd97abf790f16fd715cf1b53effa2e9b98083b155fc23d75ea6b3fa8a538b5e"
+    },
+    {
+      "name": "texturequest_aio_api.h",
+      "bytes": 3640,
+      "sha256": "a892d0a0f53dc612a8c9aaa4d635e974412561f2f2d2718568cc0a8cf03cb85c"
+    },
+    {
+      "name": "world_graphics_api.hpp",
+      "bytes": 765,
+      "sha256": "6929d814bee45a1796dc935cb037441ea975a8371611d6c72bd58e2e90f2220a"
+    },
+    {
+      "name": "world_graphics_controller.hpp",
+      "bytes": 1473,
+      "sha256": "d9dc177d882ec59b0406625f91ce7a31c95fc7c0b88de308d90caae21111b78d"
     }
   ],
+  "compile_targets": [
+    "addon.cpp",
+    "deps/libdeflate/lib/deflate_decompress.c",
+    "deps/libdeflate/lib/zlib_decompress.c",
+    "deps/libdeflate/lib/adler32.c",
+    "deps/libdeflate/lib/utils.c",
+    "deps/libdeflate/lib/x86/cpu_features.c"
+  ],
+  "build": {
+    "exit_code": 0,
+    "exit_code_basis": "ROOT observed the existing completed full build exit 0; this seal does not rerun it",
+    "command": {
+      "bytes": 1249,
+      "sha256": "c2662f9302d55c4fb2845c7f1ac17ad24abfbf830f100967854a36f3efbf0de5"
+    },
+    "log": {
+      "bytes": 71466,
+      "sha256": "63faec44c133aa053db098df420c79b31bb4de3248e8655f736c5e65d461d8ad"
+    },
+    "toolchain": "Existing VS18 x64/MSVC14.50.35717",
+    "actual_showIncludes": true,
+    "compilation_roster": "Six explicit command translation units plus local headers actually recorded by /showIncludes; no documentation or uncompiled selfchecks"
+  },
+  "cache_fixture": {
+    "author_handoff": {
+      "bytes": 3846,
+      "sha256": "7c67b0eee54c460f693c89ac436e4c808707240441f433a8a56cd006aa4c3155"
+    },
+    "checks": 185,
+    "actual_instrumented_Reader_SHA_calls": 47,
+    "symlink_case": "OS denied physical symlink creation with1314; skipped",
+    "reparse_attribute_case": "Separate injected flag on real opened-file metadata; passed"
+  },
+  "cache_policy": {
+    "cache_owned_bytes": 67108864,
+    "entries": 16,
+    "oversize": "Uncached",
+    "immutable": "Previously admitted SHA-verified session bytes survive later disk mutation/deletion until eviction or a new reader",
+    "active_pins": "Thread handoff pins can temporarily retain evicted buffers beyond cache-owned bounds",
+    "admission": "Full SHA256, identity/link/reparse/length checks on disk admission; geometry and overflow-safe pixel range on every read"
+  },
+  "qualification": "Correctness/build evidence only; no EQ2 FPS/load-time result. Distinct ROOT review and package admission are recorded separately.",
+  "previous_release": {
+    "revision": "main004/controller003",
+    "native_release_asset": {
+      "bytes": 483328,
+      "sha256": "8b5864316030491f4e78e00a361db44c86dcf94a7a966c6694f74fadc02e9c19"
+    },
+    "author_handoff": {
+      "bytes": 4354,
+      "sha256": "10f280ad546f8e67d1cb0d1804dc52398ea73a0f43a12dc23fb9c8b2b17b58a0"
+    },
+    "historical_only": true
+  },
   "nvapi": "Loads the installed System32 NVAPI dynamically; no nvapi64.dll is distributed. Successful initialization/module reference deliberately remains process-resident; owned mode is neutralized while the game device is valid. Active driver mode and latency improvement are not established by a source check."
 }

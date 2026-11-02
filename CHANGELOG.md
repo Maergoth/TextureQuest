@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.13.6
+
+- Keep frame generation off when its native setting is missing, as well as in the installer defaults. Preserve explicit saved choices.
+- Give both shadow-softness controls a 1–10 display range while retaining existing native values and appearance until adjusted.
+- Restore the upstream material-colour saturation control, with independent demand tracking and the common Original toggle.
+- Stop finite distant or oversized particle primitives from cancelling nearby emissive sources in the same sample. Retain strict rejection of malformed or incomplete samples.
+- Add Advanced emissive and particle light budgets. Defaults remain 64 and 4; both share the global Shadowed lights pool.
+- Correct sun-filter map-edge sampling and invalid reduced-shadow neighbours. Extend bounded frame-capture diagnostics for the remaining sun-direction flicker.
+- Continue experimental graphics fixes with source and controlled-test limits documented for the maintainer handoff. Texture data remains 1.3.0.
+
 ## 1.13.5
 
 - Measure supported particle materials per triangle and accumulate their light in world space, replacing screen-coverage normalization and transient draw-batch tracking. Preserve animated fire.

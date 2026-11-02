@@ -1,0 +1,983 @@
+{
+  "schema": "texturequest-release-native-provenance-v1",
+  "version": "1.13.6",
+  "built_commit": "674c4a909d035073c5e179202765b2e996414bda",
+  "package_verified": {
+    "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\preview1136-package-001\\VERIFIED.json",
+    "bytes": 50666,
+    "sha256": "30b381aec61006f63debdf4bcfd56ba17ad01d15162f4aee2157c7e47c9f54dd"
+  },
+  "frozen_ui": {
+    "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\preview1136-package-001\\frozen-ui-001\\RESULT.json",
+    "bytes": 2162,
+    "sha256": "a6492897ad567daf91601ce2c1c1bd3748c7c8b554b3d722a367701b790f5910"
+  },
+  "native": {
+    "main": {
+      "handoff": {
+        "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\HANDOFF.json",
+        "bytes": 4410,
+        "sha256": "241ed59b02cd64cea5a93ff95008666efc9ce5423d2a44016f564f1b763e1daf"
+      },
+      "peer": {
+        "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\preview1136-package-001\\MAIN-ROOT-REVIEW.json",
+        "bytes": 19149,
+        "sha256": "5bfc2f6eb70b45ad58c37f475dfa1fc7fb6530c9a6a024f51db6afd8e7b85be7"
+      },
+      "source_documents": [
+        {
+          "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\COMPILED-SOURCE-PINS.json",
+          "bytes": 27127,
+          "sha256": "bf90f3bb5126d1ad5178c0eef2be71a0921db1b512ff7452ce738e0b2bd5aa55"
+        }
+      ],
+      "source_joins": [
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\addon.cpp",
+            "bytes": 49520,
+            "sha256": "8c81c3cf925873556872e9f779d8ba2fd40ee22af6037062a8706149d4557c1f"
+          },
+          "checkout_relative": "graphics-addon/addon.cpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\aio_controller.hpp",
+            "bytes": 3231,
+            "sha256": "c0c9ea8a3b41891bfd3d9b3ed36ba237cd8acd292e8bcbcf54d4faee512c274c"
+          },
+          "checkout_relative": "graphics-addon/aio_controller.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\config.hpp",
+            "bytes": 5194,
+            "sha256": "b72a2330d8a5843bcbd393cd33f1d363c8bb2fb89fdbbebb9fe8b34f34938d0f"
+          },
+          "checkout_relative": "graphics-addon/config.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\dds_reader.hpp",
+            "bytes": 5030,
+            "sha256": "93d202aa9f8ae96aa69962fca0620773f9c8b1f71eef43a862fedff7d5e6b4da"
+          },
+          "checkout_relative": "graphics-addon/dds_reader.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\imgui\\imconfig.h",
+            "bytes": 12289,
+            "sha256": "fb8e32b9af9aa7dad5ec5c5bc862537f5624cb39a814e6d3b36b4629a50b6599"
+          },
+          "checkout_relative": "graphics-addon/deps/imgui/imconfig.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\imgui\\imgui.h",
+            "bytes": 454459,
+            "sha256": "2ca314d19c7e1ea85687a9c1e37079e0cc823939a551b3e6b2453ff0af9fbf13"
+          },
+          "checkout_relative": "graphics-addon/deps/imgui/imgui.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\common_defs.h",
+            "bytes": 22563,
+            "sha256": "e8703768ba784f12e0563010a72594b0b933afd3591f94b7181bd19a707ed6b8"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/common_defs.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\adler32.c",
+            "bytes": 5295,
+            "sha256": "c9f74c5195ceede1fcd34ea9d8afa50dfcf1bb6ebb4881e3c4baf75852a13dfd"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/adler32.c"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\cpu_features_common.h",
+            "bytes": 2881,
+            "sha256": "d5c0bbbebbd530e7b670763de6dee6fe5d9d8efbe162e61011445ab6bc8c2126"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/cpu_features_common.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\decompress_template.h",
+            "bytes": 25825,
+            "sha256": "213e04d4f43a008cdc5eee6de6b451c2b21f9b4e6328da6a8bac5990468bdecd"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/decompress_template.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\deflate_constants.h",
+            "bytes": 1803,
+            "sha256": "1b4c2ff83f20e0c40bde9538342fadbc3f167a58151b3f806b27af1dfa859ecd"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/deflate_constants.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\deflate_decompress.c",
+            "bytes": 50505,
+            "sha256": "65b5d6b256b558a719b101a4f5966948fdab744d9da541447606978459b58750"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/deflate_decompress.c"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\lib_common.h",
+            "bytes": 3730,
+            "sha256": "68f7b8ffb8817c4c5a13b2da8901d8fba0fad1a1b7710c425008ee4b87fee5a0"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/lib_common.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\utils.c",
+            "bytes": 3566,
+            "sha256": "a44869b770b11cc61ff05b0e41ded4cfffa15bb9d3d401e20c9592a861208458"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/utils.c"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\x86\\adler32_impl.h",
+            "bytes": 5062,
+            "sha256": "a58bfae04a85c4b10df9306333e0400474ab03b1623daffcc1c842dcdc8f3ba5"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/x86/adler32_impl.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\x86\\adler32_template.h",
+            "bytes": 18042,
+            "sha256": "ddb3044ca776924614c5b7dee9261de3320b1d65bc32a5d6c9c36b3fd24963c5"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/x86/adler32_template.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\x86\\cpu_features.c",
+            "bytes": 6584,
+            "sha256": "7ba7e4872b961b1b4ab455c47235586fdde89f399a4e710159f63cf38f3e1720"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/x86/cpu_features.c"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\x86\\cpu_features.h",
+            "bytes": 5875,
+            "sha256": "93ed737b24f6ca5c7a6e21074670bb0826e8fcf96594d09119178adacb5ddaaf"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/x86/cpu_features.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\x86\\decompress_impl.h",
+            "bytes": 2247,
+            "sha256": "e069fcf1b888373d7594ab07ba878b6d95b5c16389a7b5aa6f1b504d9a3f030c"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/x86/decompress_impl.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\zlib_constants.h",
+            "bytes": 509,
+            "sha256": "432f156686170e04e87e5ba82ddee4a47ab69c4632af789ec640cd97ea926a67"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/zlib_constants.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\lib\\zlib_decompress.c",
+            "bytes": 3242,
+            "sha256": "311d1e33216d27c61d8f3418d078c54537eae30606fc07c2d7b9cbcdd4780aff"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/lib/zlib_decompress.c"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\libdeflate\\libdeflate.h",
+            "bytes": 17509,
+            "sha256": "c4897260a3c4dbb5d2d89e77965b2a8f01628f0ff5627d4c5ab9747080adea89"
+          },
+          "checkout_relative": "graphics-addon/deps/libdeflate/libdeflate.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\reshade\\include\\reshade.hpp",
+            "bytes": 19843,
+            "sha256": "d86932721cb77e47b996da6bf3861b1a938a1bc843be04d1e0c5dd09133b7f43"
+          },
+          "checkout_relative": "graphics-addon/deps/reshade/include/reshade.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\reshade\\include\\reshade_api.hpp",
+            "bytes": 58876,
+            "sha256": "db19051ef285a7a1a3721f2711de973be8805d4ca39a38fbadade7fd22100a17"
+          },
+          "checkout_relative": "graphics-addon/deps/reshade/include/reshade_api.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\reshade\\include\\reshade_api_device.hpp",
+            "bytes": 89369,
+            "sha256": "8492cb9a4352ab9a25140828226a411be36c480c23d53d0fcc806a0515076212"
+          },
+          "checkout_relative": "graphics-addon/deps/reshade/include/reshade_api_device.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\reshade\\include\\reshade_api_format.hpp",
+            "bytes": 18738,
+            "sha256": "d5fcdf598a9adbd18db6ccd0d15133d08c4dfa4909ec8335f76edaf735ae39cf"
+          },
+          "checkout_relative": "graphics-addon/deps/reshade/include/reshade_api_format.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\reshade\\include\\reshade_api_pipeline.hpp",
+            "bytes": 50915,
+            "sha256": "2c592013e46e72c62119c0652786ac21c6536a29a1bad30973a6069d1d7f7351"
+          },
+          "checkout_relative": "graphics-addon/deps/reshade/include/reshade_api_pipeline.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\reshade\\include\\reshade_api_resource.hpp",
+            "bytes": 29552,
+            "sha256": "cae6d40cbd37e314e5ce5fc2cd22e77d7042892284212972bd986ffabb96363e"
+          },
+          "checkout_relative": "graphics-addon/deps/reshade/include/reshade_api_resource.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\reshade\\include\\reshade_events.hpp",
+            "bytes": 126479,
+            "sha256": "5b1f8b8144589712584cc8f2e8b6cf7c2aff05fc1c570b7867cfa1ee841296b7"
+          },
+          "checkout_relative": "graphics-addon/deps/reshade/include/reshade_events.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\reshade\\include\\reshade_overlay.hpp",
+            "bytes": 96000,
+            "sha256": "771f0cdde2dacd21cfe04664e1aaaddae43114a1abb51bb63af5645a88c217a6"
+          },
+          "checkout_relative": "graphics-addon/deps/reshade/include/reshade_overlay.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\deps\\xxhash\\xxhash.h",
+            "bytes": 275557,
+            "sha256": "da96ca610ee67a648aeaf7ef409c4fd0cd71c3421eb9865b407f002af31917b8"
+          },
+          "checkout_relative": "graphics-addon/deps/xxhash/xxhash.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\depth_demand_v1.hpp",
+            "bytes": 1152,
+            "sha256": "62f314817eead16bd21205a3ab1c8f93f3758a1e683500758637bcacdb3a4dc3"
+          },
+          "checkout_relative": "graphics-addon/depth_demand_v1.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\dlss_controller.hpp",
+            "bytes": 7925,
+            "sha256": "6cc66ca89a26fd08eeb112db9102ad6c825eaf454a5fb7a4a5609e84aa7da24d"
+          },
+          "checkout_relative": "graphics-addon/dlss_controller.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\effects_controller.hpp",
+            "bytes": 9708,
+            "sha256": "c946a2014cda57e3484e60203e176a5b8ff03da0354605f750e957328d95ef7e"
+          },
+          "checkout_relative": "graphics-addon/effects_controller.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\fps_counter.hpp",
+            "bytes": 2545,
+            "sha256": "ae04479e2d20df394fd1eaed8299a8385a86faa727870c26869b2b058e627d77"
+          },
+          "checkout_relative": "graphics-addon/fps_counter.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\layout.hpp",
+            "bytes": 1983,
+            "sha256": "710b520939b840fabc8019e74b6a771f370288534d7f758b8746df418ff18f84"
+          },
+          "checkout_relative": "graphics-addon/layout.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\nvapi_reflex_types.hpp",
+            "bytes": 2880,
+            "sha256": "f5d877d9784b6b3777cae03ce7b82ec70c53d5fc8520db4425d889e6bf2a66ab"
+          },
+          "checkout_relative": "graphics-addon/nvapi_reflex_types.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\reflex_driver.hpp",
+            "bytes": 4577,
+            "sha256": "f473b1e01b16f567d22a0cd435ba335e9e8608c32a6e01ddd9acff42bb7486d2"
+          },
+          "checkout_relative": "graphics-addon/reflex_driver.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\reflex_policy.hpp",
+            "bytes": 8151,
+            "sha256": "a7a4dc59a807901b435fc4c406274213a51d1a9bad15f90be67c4b22c1a4cbc7"
+          },
+          "checkout_relative": "graphics-addon/reflex_policy.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\reflex_primary.hpp",
+            "bytes": 2813,
+            "sha256": "9528276369d81d3bc70d8ef44cb7bf95e948f858db0ea77857d4c257a4059215"
+          },
+          "checkout_relative": "graphics-addon/reflex_primary.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\renderer_binding_probe.hpp",
+            "bytes": 13453,
+            "sha256": "504e803bf0a7bc65afbb5c31a17e170b99ed67927a8cd19778466e14e28c8470"
+          },
+          "checkout_relative": "graphics-addon/renderer_binding_probe.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\shortcut.hpp",
+            "bytes": 3371,
+            "sha256": "808cf183f136c5826a32631251116bf9127f53ad6f19752149086f3fcb1591da"
+          },
+          "checkout_relative": "graphics-addon/shortcut.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\stock_copies.hpp",
+            "bytes": 1702,
+            "sha256": "2a83374832d8566e10091582e28e4dba23340cf02bf7d3ea3c9c197084d6d951"
+          },
+          "checkout_relative": "graphics-addon/stock_copies.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\stock_paks.hpp",
+            "bytes": 5461,
+            "sha256": "24897839fa717e15a8f0b9e8f4726cec7c6b70959fffd1f1ba957f7c96a3f510"
+          },
+          "checkout_relative": "graphics-addon/stock_paks.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\texture_map.hpp",
+            "bytes": 7687,
+            "sha256": "0cd97abf790f16fd715cf1b53effa2e9b98083b155fc23d75ea6b3fa8a538b5e"
+          },
+          "checkout_relative": "graphics-addon/texture_map.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\texturequest_aio_api.h",
+            "bytes": 3640,
+            "sha256": "a892d0a0f53dc612a8c9aaa4d635e974412561f2f2d2718568cc0a8cf03cb85c"
+          },
+          "checkout_relative": "graphics-addon/texturequest_aio_api.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\world_graphics_api.hpp",
+            "bytes": 765,
+            "sha256": "6929d814bee45a1796dc935cb037441ea975a8371611d6c72bd58e2e90f2220a"
+          },
+          "checkout_relative": "graphics-addon/world_graphics_api.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\source\\world_graphics_controller.hpp",
+            "bytes": 1473,
+            "sha256": "d9dc177d882ec59b0406625f91ce7a31c95fc7c0b88de308d90caae21111b78d"
+          },
+          "checkout_relative": "graphics-addon/world_graphics_controller.hpp"
+        }
+      ],
+      "native": {
+        "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\dds-main-005-001\\TextureQuest.addon64",
+        "bytes": 486400,
+        "sha256": "09254adae712b942c215914cea30319aae54101445ef230676a795c31f786851"
+      }
+    },
+    "world": {
+      "handoff": {
+        "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\HANDOFF.json",
+        "bytes": 2183,
+        "sha256": "ac06f5f0df6c0060bf3fd6d7fd71b80158c85b51e2590ecfa9d262126d98e310"
+      },
+      "peer": {
+        "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\preview1136-package-001\\WORLD004-ROOT-REVIEW.json",
+        "bytes": 17900,
+        "sha256": "68f30b2105cb5f39ffc0ccc1d72a0f5e785c8ac6717dc216e64b0908a42901e2"
+      },
+      "source_documents": [
+        {
+          "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\COMPILED-SOURCE-PINS.json",
+          "bytes": 20699,
+          "sha256": "1037c1a98a96f8a508b6bcf42d6cee02493bfc086264ad2bbec9245b903d0b9d"
+        }
+      ],
+      "source_joins": [
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\addon.cpp",
+            "bytes": 15190,
+            "sha256": "04441cfdf26c36da643678edb950bbf892751feb0fdd65360472967b233bad19"
+          },
+          "checkout_relative": "graphics-renderer/addon.cpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\capture.hpp",
+            "bytes": 41983,
+            "sha256": "625fb1966307efa6efe978380fed13b16f9aafa515f581f015d77fd542e03865"
+          },
+          "checkout_relative": "graphics-renderer/capture.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\deps\\imgui\\imconfig.h",
+            "bytes": 12289,
+            "sha256": "fb8e32b9af9aa7dad5ec5c5bc862537f5624cb39a814e6d3b36b4629a50b6599"
+          },
+          "checkout_relative": "graphics-renderer/deps/imgui/imconfig.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\deps\\imgui\\imgui.h",
+            "bytes": 454459,
+            "sha256": "2ca314d19c7e1ea85687a9c1e37079e0cc823939a551b3e6b2453ff0af9fbf13"
+          },
+          "checkout_relative": "graphics-renderer/deps/imgui/imgui.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\deps\\reshade\\include\\reshade.hpp",
+            "bytes": 19843,
+            "sha256": "d86932721cb77e47b996da6bf3861b1a938a1bc843be04d1e0c5dd09133b7f43"
+          },
+          "checkout_relative": "graphics-renderer/deps/reshade/include/reshade.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\deps\\reshade\\include\\reshade_api.hpp",
+            "bytes": 58876,
+            "sha256": "db19051ef285a7a1a3721f2711de973be8805d4ca39a38fbadade7fd22100a17"
+          },
+          "checkout_relative": "graphics-renderer/deps/reshade/include/reshade_api.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\deps\\reshade\\include\\reshade_api_device.hpp",
+            "bytes": 89369,
+            "sha256": "8492cb9a4352ab9a25140828226a411be36c480c23d53d0fcc806a0515076212"
+          },
+          "checkout_relative": "graphics-renderer/deps/reshade/include/reshade_api_device.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\deps\\reshade\\include\\reshade_api_format.hpp",
+            "bytes": 18738,
+            "sha256": "d5fcdf598a9adbd18db6ccd0d15133d08c4dfa4909ec8335f76edaf735ae39cf"
+          },
+          "checkout_relative": "graphics-renderer/deps/reshade/include/reshade_api_format.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\deps\\reshade\\include\\reshade_api_pipeline.hpp",
+            "bytes": 50915,
+            "sha256": "2c592013e46e72c62119c0652786ac21c6536a29a1bad30973a6069d1d7f7351"
+          },
+          "checkout_relative": "graphics-renderer/deps/reshade/include/reshade_api_pipeline.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\deps\\reshade\\include\\reshade_api_resource.hpp",
+            "bytes": 29552,
+            "sha256": "cae6d40cbd37e314e5ce5fc2cd22e77d7042892284212972bd986ffabb96363e"
+          },
+          "checkout_relative": "graphics-renderer/deps/reshade/include/reshade_api_resource.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\deps\\reshade\\include\\reshade_events.hpp",
+            "bytes": 126479,
+            "sha256": "5b1f8b8144589712584cc8f2e8b6cf7c2aff05fc1c570b7867cfa1ee841296b7"
+          },
+          "checkout_relative": "graphics-renderer/deps/reshade/include/reshade_events.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\deps\\reshade\\include\\reshade_overlay.hpp",
+            "bytes": 96000,
+            "sha256": "771f0cdde2dacd21cfe04664e1aaaddae43114a1abb51bb63af5645a88c217a6"
+          },
+          "checkout_relative": "graphics-renderer/deps/reshade/include/reshade_overlay.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\depth_demand_v1.hpp",
+            "bytes": 1152,
+            "sha256": "62f314817eead16bd21205a3ab1c8f93f3758a1e683500758637bcacdb3a4dc3"
+          },
+          "checkout_relative": "graphics-renderer/depth_demand_v1.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\emission_policy.hpp",
+            "bytes": 3054,
+            "sha256": "e1bc901effe4cea70553465f31077a4de52971cfe73eec9ea16018b4d0829ce1"
+          },
+          "checkout_relative": "graphics-renderer/emission_policy.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\glow.hpp",
+            "bytes": 101507,
+            "sha256": "8db136de35e8ea2efaa23fedb424137b10887a3aeb09be7ab349608c45bfbfd0"
+          },
+          "checkout_relative": "graphics-renderer/glow.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\lamp_holder_policy.hpp",
+            "bytes": 2804,
+            "sha256": "13feaf4b64f1a066c0b90f5bf10489be6acca3d9d5fe9f98264c482fe1bc2e8f"
+          },
+          "checkout_relative": "graphics-renderer/lamp_holder_policy.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\light_buffer.hpp",
+            "bytes": 159287,
+            "sha256": "4aeaa596d4756626b77ca1365a3508302ec3494339b84a161db30539822abd3e"
+          },
+          "checkout_relative": "graphics-renderer/light_buffer.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\material_normal_replay.hpp",
+            "bytes": 18423,
+            "sha256": "c268fe37db9da4bbe1c588e0537ff668286e9fd76e9aca3fd272caf5149b1e7d"
+          },
+          "checkout_relative": "graphics-renderer/material_normal_replay.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\offscreen_lamp_policy.hpp",
+            "bytes": 237,
+            "sha256": "2360225259461cf1ba4bdb3af0efc1a5117f210a374e98aface546f1144fa6dc"
+          },
+          "checkout_relative": "graphics-renderer/offscreen_lamp_policy.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\owned_sun_constants.hpp",
+            "bytes": 2951,
+            "sha256": "9fc1e1718c4056b5189a8170a2b0d6fcfdecb47a9111752e5d66bf350e6c886f"
+          },
+          "checkout_relative": "graphics-renderer/owned_sun_constants.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\particle_emission.hpp",
+            "bytes": 33587,
+            "sha256": "d22f82f5eb09b243659573eaf8a50d402b6b09c17d6b5113f8b4aa7ca57eb9b3"
+          },
+          "checkout_relative": "graphics-renderer/particle_emission.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\particle_emission_policy.hpp",
+            "bytes": 3363,
+            "sha256": "673071bd509518154372d26cd1a2f7d599d0ee4302169d840467392c0066a782"
+          },
+          "checkout_relative": "graphics-renderer/particle_emission_policy.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\particle_field_policy.hpp",
+            "bytes": 8059,
+            "sha256": "96c0b76fa88a2f1138667a5657c2448f6b4039f6f7bd7641dfec74d41eb7b76a"
+          },
+          "checkout_relative": "graphics-renderer/particle_field_policy.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\projected_shadow_admission.hpp",
+            "bytes": 891,
+            "sha256": "6334770538b3ca0e39347e2ce90764201ccc86e3b6776a9900e136621463b723"
+          },
+          "checkout_relative": "graphics-renderer/projected_shadow_admission.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\projected_shadow_policy.hpp",
+            "bytes": 2671,
+            "sha256": "9b9b49e4795001419010d24a2105a9ff5d2b4c3be2e787f3fa1c5bb84921d7be"
+          },
+          "checkout_relative": "graphics-renderer/projected_shadow_policy.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\projected_shadows.hpp",
+            "bytes": 12660,
+            "sha256": "f30b0ca586dce31a2fc7787a055649eac4f91daa0dd46500ed67c676079df383"
+          },
+          "checkout_relative": "graphics-renderer/projected_shadows.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\shadow_maps.hpp",
+            "bytes": 122470,
+            "sha256": "08d87b4bcd1fdb7090e016c07b74bc0a60bd9bd5e8c14020085d19f0adef8233"
+          },
+          "checkout_relative": "graphics-renderer/shadow_maps.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\shadows.hpp",
+            "bytes": 186667,
+            "sha256": "76f7fb78be7d652b2971274f392f7b443a7b2a0f7bef94d615fee60467843b38"
+          },
+          "checkout_relative": "graphics-renderer/shadows.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\sun_direction_policy.hpp",
+            "bytes": 4388,
+            "sha256": "28fc0c2912a715c9f7fd040fb94e600b7e56c64e7f557f36e7b14dfbed6cc193"
+          },
+          "checkout_relative": "graphics-renderer/sun_direction_policy.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\sun_softness_settings.hpp",
+            "bytes": 1953,
+            "sha256": "58938d52f9bed5fa121b786e64dfa0390c95e666ad81f71c4a1fcf48c549fe51"
+          },
+          "checkout_relative": "graphics-renderer/sun_softness_settings.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\sun_source_policy.hpp",
+            "bytes": 1164,
+            "sha256": "70be4793b63cbe820be3dec3f14ce60f15f4774741c8adf77173d0f6e7304cc4"
+          },
+          "checkout_relative": "graphics-renderer/sun_source_policy.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\sun_state_policy.hpp",
+            "bytes": 1941,
+            "sha256": "2d3e87a19b430e8431bd88efe2d18ff0a127698938f962b8724d17f1fdf5f740"
+          },
+          "checkout_relative": "graphics-renderer/sun_state_policy.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\texturequest_world_guard.hpp",
+            "bytes": 1242,
+            "sha256": "47ca552980908f82c5045808836284fdb3b57ca4cab558240e29d1128752abcf"
+          },
+          "checkout_relative": "graphics-renderer/texturequest_world_guard.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\texturequest_world_master.hpp",
+            "bytes": 1130,
+            "sha256": "857b787275ac2e424ddee0eecd516669a179996f9d1ca886f5be416b6ea066b8"
+          },
+          "checkout_relative": "graphics-renderer/texturequest_world_master.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\texturequest_world_presets.hpp",
+            "bytes": 2460,
+            "sha256": "2d201fa2c16526ef1a020fa2955ced82e1a323e542891a3a48d784fa782f672c"
+          },
+          "checkout_relative": "graphics-renderer/texturequest_world_presets.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\source\\world_work_policy.hpp",
+            "bytes": 2324,
+            "sha256": "b5151f161280533a3c517e10df9d1ef929f7ad913b965039f68d59efc102cfeb"
+          },
+          "checkout_relative": "graphics-renderer/world_work_policy.hpp"
+        }
+      ],
+      "native": {
+        "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\renderer-017-004\\EQ2Graphics.addon64",
+        "bytes": 1005056,
+        "sha256": "6ed81ea023473c201d94be5c99fe8640b4c6da802031d7deb2bff029ff69d748"
+      }
+    },
+    "aio": {
+      "handoff": {
+        "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\HANDOFF.json",
+        "bytes": 2628,
+        "sha256": "da87f58dbe783b68bc833038b5fd02547385b8f913cd2eb04af199933615c136"
+      },
+      "peer": {
+        "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\preview1136-package-001\\AIO-ROOT-REVIEW.json",
+        "bytes": 11157,
+        "sha256": "b5b12a8158bbb01dbfde614b60fc1b379b45952a791d4f5fac6739a88f5afe76"
+      },
+      "source_documents": [
+        {
+          "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\PREPARED.json",
+          "bytes": 10883,
+          "sha256": "e9a390c9350c58a415bd5b230b91dd541697b4f45ea19c54d0c38b8a7c10fc70"
+        }
+      ],
+      "source_joins": [
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\aio-menu-schema.hpp",
+            "bytes": 11353,
+            "sha256": "9d9d123141c3274ebd57d9d352890ddccbb98278cc770206cd101e0e59edb2ba"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/aio-menu-schema.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\nvof-motion-provider.hpp",
+            "bytes": 6787,
+            "sha256": "fb77c37c731246e8e8120bb52ecf4d3591180b093d90c8b58b56eeffeda7975d"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/nvof-motion-provider.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\nvOpticalFlowCommon.h",
+            "bytes": 33652,
+            "sha256": "c3f19286365976f164d1779a977a6d12120d3885dbaf95507458ac47ef268124"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/nvOpticalFlowCommon.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\nvOpticalFlowD3D12.h",
+            "bytes": 19090,
+            "sha256": "e956ec261cfcab6e45a119d915617b5e686a6b15b48eabc7296146ee638b884b"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/nvOpticalFlowD3D12.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_aio_api.h",
+            "bytes": 3640,
+            "sha256": "a892d0a0f53dc612a8c9aaa4d635e974412561f2f2d2718568cc0a8cf03cb85c"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_aio_api.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_aio_controls.hpp",
+            "bytes": 2685,
+            "sha256": "b1243f804f573ccfc15b9a5ad2e5e0e7ada1bfa4e8807ffe72280941a70ae9bf"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_aio_controls.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_aio_gate.hpp",
+            "bytes": 2089,
+            "sha256": "0ea9d3b2b22528442797ad2dea7f9e4e5076af5d14773e5edc4a4a3f9eb99e47"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_aio_gate.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_aio_menu.hpp",
+            "bytes": 7837,
+            "sha256": "43302f9c5812fe04a092dced2c86bbd327717ddc6458d9f7059aad73ec6caf72"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_aio_menu.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_aio_overlay.hpp",
+            "bytes": 13904,
+            "sha256": "14b53c452b07c02ea4d39b9138129433a1bb0ed49d644b624fa73b2e15bf6888"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_aio_overlay.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_capture_policy.hpp",
+            "bytes": 713,
+            "sha256": "da127a38d1df61ffb7bb847daeb75777ac662b91e4b0cd685adf06f91392f006"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_capture_policy.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_capture_ring.hpp",
+            "bytes": 4990,
+            "sha256": "15f75bf25fe618d319f8a6db702ae520bb9e15e11ea5d1c4677daa12d40c224a"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_capture_ring.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_depth_client_v1.hpp",
+            "bytes": 1873,
+            "sha256": "e01ca7b2d82653ec7e4122510d2655fc2e4efbad35670c7b813e5d632ce8bc5f"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_depth_client_v1.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_depth_demand_v1.hpp",
+            "bytes": 1152,
+            "sha256": "62f314817eead16bd21205a3ab1c8f93f3758a1e683500758637bcacdb3a4dc3"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_depth_demand_v1.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_dispatch_overlap.hpp",
+            "bytes": 968,
+            "sha256": "d5b2999fda4b31eac2f8bcea79d927c763380a37ab3f0b44de66c9370b395e3c"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_dispatch_overlap.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_mfg.hpp",
+            "bytes": 2856,
+            "sha256": "c9a054eaa528d6d8515d7bc62a8f761f710e4d3ce90df8cd2d5eca4d869444c8"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_mfg.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_overlay_ring.hpp",
+            "bytes": 2319,
+            "sha256": "e1a007445be2f6fc36586d91f46589546ab7d5f10dbeaceb3ae13e0500c20a03"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_overlay_ring.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\include\\texturequest_packet_cadence.hpp",
+            "bytes": 2811,
+            "sha256": "4f1fbfefc43d3263bae84e0b2533e5e9deb754cc4fdbe4b2384c90f0ec92723f"
+          },
+          "checkout_relative": "graphics-dlss/addon/include/texturequest_packet_cadence.hpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\shaders\\DLSS5_AIO_Feed.fx",
+            "bytes": 4118,
+            "sha256": "0710e17eeafa1933af18489bfb7d7a1d71bd6204d65d337474f835749fd6de58"
+          },
+          "checkout_relative": "graphics-dlss/addon/shaders/DLSS5_AIO_Feed.fx"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\shaders\\ReShade.fxh",
+            "bytes": 4250,
+            "sha256": "6dabfbbaf968c3871905d2ea17f96572ff7b1cec01310b5d0e5252b66b30174f"
+          },
+          "checkout_relative": "graphics-dlss/addon/shaders/ReShade.fxh"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\shaders\\StandaloneBoundary.fx",
+            "bytes": 1104,
+            "sha256": "e261760a83f1bdd407dda106ed61b7a7165acaf56915b7993216348dadb3d824"
+          },
+          "checkout_relative": "graphics-dlss/addon/shaders/StandaloneBoundary.fx"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\src\\nr-standalone.cpp",
+            "bytes": 710208,
+            "sha256": "354107dbff8ab834b7cea4143d416caf244a8a8816e8501a9c3ed4d3bf8fe189"
+          },
+          "checkout_relative": "graphics-dlss/addon/src/nr-standalone.cpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\src\\nvof-motion-provider.cpp",
+            "bytes": 57491,
+            "sha256": "cbd0d1ada712e827120d385efe44d3150c673a2ea4dc2f61fac13250ea7c1715"
+          },
+          "checkout_relative": "graphics-dlss/addon/src/nvof-motion-provider.cpp"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\addon\\src\\performance-telemetry.h",
+            "bytes": 3502,
+            "sha256": "ae85e7a50c75f09b6c775b7c24871c522ed1fdeac463f26afcb21133d2837180"
+          },
+          "checkout_relative": "graphics-dlss/addon/src/performance-telemetry.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\external\\DLSS5-Feeder\\src\\feed_vk.h",
+            "bytes": 15380,
+            "sha256": "7cfe5390b717a5bbd13b554d5561027baaec353c4e82ca70d5b561fce5080ffb"
+          },
+          "checkout_relative": "graphics-dlss/external/DLSS5-Feeder/src/feed_vk.h"
+        },
+        {
+          "compiled": {
+            "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\source-snapshot\\external\\DLSS5-Feeder\\src\\feed_vk_hook.h",
+            "bytes": 10448,
+            "sha256": "dc187578e141be2def098efea663d9d7e710020fa13072fadbfc9aa05b16fa7e"
+          },
+          "checkout_relative": "graphics-dlss/external/DLSS5-Feeder/src/feed_vk_hook.h"
+        }
+      ],
+      "native": {
+        "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\defaults-saturation-audit-001\\build-001\\standalone-dlssnr.addon64",
+        "bytes": 317952,
+        "sha256": "96771d0ff93e8aa752702df1eac81d9affe80c5f3f1d4cc0237d3212f96d779e"
+      }
+    }
+  },
+  "gpu_closure": {
+    "path": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\preview1136-package-001\\ROOT-GPU-CLOSURE.json",
+    "bytes": 6743,
+    "sha256": "55d830937d5185745c21369452cd5ae286174e27e0af6684ce1f5d24951855f7"
+  },
+  "limitations": [
+    "Controlled source/component GPU evidence only; no1.13.6 local game installation, appearance or FPS approval.",
+    "Material/normal path is limited to128 current-frame known-profile draws; unsupported records retain depth-normal fallback and enabled atlas/replay has unmeasured cost.",
+    "Sun border/sentinel controlled cases pass; actual outdoor box removal and moving sun-direction flicker remain unconfirmed, and direction-history additions are diagnostic only.",
+    "Particle finite-domain poisoning is corrected; visible square causes, emitter discovery, camera/distance/occlusion continuity and flicker remain in-world follow-up.",
+    "The prior combined test exited124 after three successful budget markers; partial component evidence is preserved, never reported as an overall pass or replayed.",
+    "DDS cache ownership is16objects/64MiB; active handoff references may retain evicted bytes. Cache hits are verified session bytes, not current-disk verification. Physical symlink creation was denied, separately injected reparse rejection was tested.",
+    "Frame generation/upscaling/Reflex performance and latency remain unmeasured; FG startup default is off, explicit saved choices win."
+  ],
+  "local_install_required_before_publish": false,
+  "local_game_result_claimed": false
+}
