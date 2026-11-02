@@ -63,7 +63,8 @@ static void KeepMaterialDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall
     ComPtr<ID3D11DeviceContext1> ctx1;if(FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))return;
     ComPtr<ID3D11GeometryShader> geometryStage;ComPtr<ID3D11HullShader> hull;ComPtr<ID3D11DomainShader> domain;
     ctx1->GSGetShader(&geometryStage,nullptr,nullptr);ctx1->HSGetShader(&hull,nullptr,nullptr);ctx1->DSGetShader(&domain,nullptr,nullptr);
-    UINT vertexClasses=0,pixelClasses=0;ctx1->VSGetShader(nullptr,nullptr,&vertexClasses);ctx1->PSGetShader(nullptr,nullptr,&pixelClasses);
+    ComPtr<ID3D11VertexShader> vertexStage;ComPtr<ID3D11PixelShader> pixelStage;
+    UINT vertexClasses=0,pixelClasses=0;ctx1->VSGetShader(&vertexStage,nullptr,&vertexClasses);ctx1->PSGetShader(&pixelStage,nullptr,&pixelClasses);
     if(geometryStage||hull||domain||vertexClasses||pixelClasses){++MaterialCounts.unsupported;return;}
     MaterialDraw candidate;if(!KeepDraw(ctx1.Get(),call,candidate.draw))return;
     auto&draw=candidate.draw;draw.Base=base;draw.LampShader=shader;

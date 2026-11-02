@@ -4,15 +4,15 @@
   "upstream_commit": "3752e0b97a87c5def22c9f8d6cabfd369d5817cb",
   "author_handoff": {
     "bytes": 2183,
-    "sha256": "4288f28ca938cb7e5f7fe3c286dedb9075a82eaabb38df82abe575f89c9c9d21"
+    "sha256": "ac06f5f0df6c0060bf3fd6d7fd71b80158c85b51e2590ecfa9d262126d98e310"
   },
   "source_manifest": {
     "bytes": 20699,
-    "sha256": "c2fffc407fa57c7d6faa6695ebb771d8bb58b2dd35c0c52fd535b85c74439c95"
+    "sha256": "1037c1a98a96f8a508b6bcf42d6cee02493bfc086264ad2bbec9245b903d0b9d"
   },
   "native_release_asset": {
     "bytes": 1005056,
-    "sha256": "f5e6bf98b073d13ed594e006fd2396595aa8dcdc95841a389f31b25487617943"
+    "sha256": "6ed81ea023473c201d94be5c99fe8640b4c6da802031d7deb2bff029ff69d748"
   },
   "files": [
     {
@@ -102,8 +102,8 @@
     },
     {
       "name": "material_normal_replay.hpp",
-      "bytes": 18333,
-      "sha256": "742402a47fa3e46583b93f9d14dbfab7102479e209dfd49c630b4409f35e316e"
+      "bytes": 18423,
+      "sha256": "c268fe37db9da4bbe1c588e0537ff668286e9fd76e9aca3fd272caf5149b1e7d"
     },
     {
       "name": "offscreen_lamp_policy.hpp",
@@ -201,7 +201,7 @@
   ],
   "original_snapshot": {
     "bytes": 7453,
-    "sha256": "d7a44b306e1d21b967860af608f870532d2c946e6c0f68f4c7a0f373974fec49"
+    "sha256": "97b1c34427ac0486291f40eb131c95302b80230b9292e445eebb6f5639abdfc4"
   },
   "snapshot_files": 44,
   "actual_local_compilation_inputs": 36,
@@ -220,11 +220,11 @@
     "actual_showIncludes": true,
     "command": {
       "bytes": 909,
-      "sha256": "cb3f4ac83ccc559ebc438096d481f068f9e2c3c3d18e760294e6b5e08ae899f5"
+      "sha256": "85d12e7cda420344abea24fdb2fe63f830857cc9813ed7fba7cf400eb7869df3"
     },
     "log": {
       "bytes": 54200,
-      "sha256": "cd737db3cde755fb11d6d9c1d41298b61e4e1f701b6cad922116b03450530596"
+      "sha256": "5459d4f6f9cdbecf493b00c17248253270b9277fdb29b325480d28c109538d82"
     }
   },
   "dependency_licenses": {
@@ -242,12 +242,12 @@
   "previous_metadata_record": {
     "revision": "TextureQuest renderer017 / 1.13.6",
     "native_release_asset": {
-      "bytes": 1004544,
-      "sha256": "923074bb236bf067d8f3d765e4722056f20dd5e1053fa5fd8ffabe370b20adde"
+      "bytes": 1005056,
+      "sha256": "f5e6bf98b073d13ed594e006fd2396595aa8dcdc95841a389f31b25487617943"
     },
     "source_manifest": {
       "bytes": 20699,
-      "sha256": "65aed43d9b50afe7b05c903b64c22d96a9869efd9af82c54829c5dfa29e75ad5"
+      "sha256": "c2fffc407fa57c7d6faa6695ebb771d8bb58b2dd35c0c52fd535b85c74439c95"
     },
     "historical_only": true
   }

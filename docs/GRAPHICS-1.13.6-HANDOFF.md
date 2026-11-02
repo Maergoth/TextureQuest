@@ -35,6 +35,16 @@ Reflex remains partial device-local integration with no measured latency benefit
 
 ## Follow-up review
 
+The final material case passed on an independent D3D11 device: interpolated
+vertex normals, a tilted native normal map through retained UV/TBN, depth and
+scissor boundaries, input-write rejection, Original/off gates and native state
+and byte preservation. Setup exposed two corrected faults: a consumed shader
+future and null-output shader-class queries that hung this driver. Compiled
+bytecode is now shared; material setup returns while it is pending, and both
+shader queries retain real output pointers. Earlier timed-out attempts remain
+failed history. The enlarged-budget checks completed before the first timeout;
+that partial run is not an overall pass. Test capture bytecode is not distributed.
+
 Compare stationary/moving views of the same spell or fire; the same material
 with/without its normal path; dark, bright and specular surfaces with saturation
 toggled; and a Sun border through camera and Sun movement. Retain the feature
