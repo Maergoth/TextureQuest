@@ -292,6 +292,7 @@ class TextureQuestApp:
         self.component_effects = tk.BooleanVar(value=False)
         self.component_textures = tk.BooleanVar(value=True)
         self.component_dlss = tk.BooleanVar(value=False)
+        self.component_graphics = tk.BooleanVar(value=False)
         self.game = tk.StringVar(value=str(initial_game or ""))
         self.load_components()
         self.game.trace_add("write", lambda *_: self.game_changed())
@@ -444,8 +445,7 @@ class TextureQuestApp:
         self.component_controls = {}
         for key, caption, variable, hint in [
             ('textures', 'Textures (required)', self.component_textures, 'Our generated textures. The in-game toggle switches them off too.'),
-            ('effects', 'Graphical Effects · lights, shadows and filtering', self.component_effects, 'EQ2 Graphics: point and glow lighting, character shadows, ambient occlusion, anisotropic filtering and smoother text. Adjust each in Home → TextureQuest. Your texture toggle switches everything off/on.'),
-            ('dlss', 'DLSS · Experimental', self.component_dlss, 'Private DLSS test. Requires the verified optional profile. The same texture shortcut turns it off in Original mode.')]:
+            ('effects', 'Graphical Effects (experimental)', self.component_graphics, 'Lighting, shadows, AO, filtering and DLSS on supported hardware. Press Home to open settings, then choose TextureQuest. The texture shortcut switches all selected features off/on.')]:
             row = tk.Frame(component_area, bg=WHITE)
             row.pack(fill='x')
             row.columnconfigure(0, weight=1)
@@ -457,6 +457,9 @@ class TextureQuestApp:
             info = self.label(row, 'ⓘ', size=10, color=GREEN, cursor='question_arrow', takefocus=True)
             info.grid(row=0, column=1, padx=(4, 0))
             HoverInfo(info, hint)
+        self.graphics_settings_note = self.label(component_area, 'Press Home to open settings.',
+            size=9, color=MUTED, wraplength=500, justify='left')
+        self.graphics_settings_note.pack(fill='x', pady=(4, 0))
 
         install_card = self.card(play_area, 0, "3", "Install & play")
         choices = tk.Frame(install_card, bg=WHITE)
@@ -614,31 +617,41 @@ class TextureQuestApp:
         self.component_snapshot, self.component_error = None, ''
         self.component_effects.set(False)
         self.component_dlss.set(False)
+        self.component_graphics.set(False)
         game = self.game.get().strip()
         if not game: return
         try:
             self.component_snapshot = components.load(self.state_dir, game)
             self.component_effects.set(self.component_snapshot['selection']['effects'])
             self.component_dlss.set(self.component_snapshot['selection']['dlss'])
+            self.component_graphics.set(components.graphics_selected(self.component_snapshot['selection']))
         except (OSError, ValueError, KeyError, TypeError) as error:
             self.component_error = 'Saved component choices need attention: ' + str(error)
 
-    def selected_components(self):
+    def selected_components(self, *, apply_graphics=False, capabilities=None):
         value = components.normalize()
         value['effects'] = self.component_effects.get()
         value['dlss'] = self.component_dlss.get()
+        if apply_graphics:
+            status = capabilities if capabilities is not None else self.graphics_status(self.game.get().strip())
+            return components.with_graphics(value, self.component_graphics.get(),
+                effects_available=status.get('effects_available'), dlss_available=status.get('dlss_available'))
         return components.normalize(value)
+
+    def save_components(self, selection):
+        self.component_snapshot = components.save(self.state_dir, self.game.get().strip(), selection,
+                                                   expected_before=self.component_snapshot)
+        self.component_effects.set(selection['effects'])
+        self.component_dlss.set(selection['dlss'])
+        self.component_graphics.set(components.graphics_selected(selection))
+        self.component_error = ''
 
     def components_changed(self):
         game = self.game.get().strip()
         try:
             if self.busy or not game:
                 raise ValueError('Choose a game folder before changing components.')
-            if self.component_dlss.get() and not self.graphics_status(game).get('dlss_available'):
-                raise ValueError('The complete experimental DLSS profile is not available in this app.')
-            self.component_snapshot = components.save(self.state_dir, game, self.selected_components(),
-                                                       expected_before=self.component_snapshot)
-            self.component_error = ''
+            self.save_components(self.selected_components(apply_graphics=True))
             self.set_message('Choice saved. Apply changes with EQ2 closed. The same shortcut toggles all selected features.')
         except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
             self.load_components()
@@ -677,13 +690,11 @@ class TextureQuestApp:
             choice.configure(state="disabled" if self.busy else "normal")
         game = self.game.get().strip()
         graphics = self.graphics_status(game)
-        component_pending = graphics.get('installed') and components.normalize(graphics.get('components')) != self.selected_components()
+        component_pending = graphics.get('installed') and components.normalize(graphics.get('components')) != self.selected_components(apply_graphics=True, capabilities=graphics)
         self.component_controls['textures'].configure(state='disabled')
-        # A missing optional bundle must still let an old saved choice be
-        # switched off. components_changed refuses enabling it without proof.
-        self.component_controls['dlss'].configure(state='normal' if not self.busy and game and
-            (graphics.get('dlss_available') or self.component_dlss.get()) and not self.component_error else 'disabled')
-        self.component_controls['effects'].configure(state='normal' if not self.busy and game and graphics.get('effects_available') and not self.component_error else 'disabled')
+        # Keep old choices switchable even if an optional bundle is unavailable.
+        graphics_choice = graphics.get('effects_available') or graphics.get('dlss_available') or self.component_graphics.get()
+        self.component_controls['effects'].configure(state='normal' if not self.busy and game and graphics_choice and not self.component_error else 'disabled')
         loader = self.loader_status(game)
         legacy = self.loader_in_use(loader)
         if not self.busy and graphics.get('installed'):
@@ -876,21 +887,27 @@ class TextureQuestApp:
         if self.busy or not self.graphics_selected():
             return False
         game = self.game.get().strip()
+        try:
+            selection = self.selected_components(apply_graphics=True)
+            self.save_components(selection)
+        except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
+            self.load_components()
+            self.set_message(str(error), error=True)
+            return False
         if self.upgrade_pending():
-            self._download_latest(auto_install=True, upgrading=True)
+            self._download_latest(auto_install=True, upgrading=True, selection=selection)
             return True
         status = self.graphics_status(game)
         if not game or not status["available"] or status["unknown"]:
             self.set_message(status["message"] if game else "Choose your game folder first.", error=True)
             return False
-        selection = self.selected_components()
         changing = status['installed'] and components.normalize(status.get('components')) != selection
         removing = status["installed"] and not changing
         if changing and status.get('installed_newer_app'):
             self.set_message('This hook belongs to a newer TextureQuest app. Update the app before applying component changes.', error=True)
             return False
         if not removing and (not self.prepared or not self.release_checked):
-            self._download_latest(auto_install=True)
+            self._download_latest(auto_install=True, selection=selection)
             return True
         def work():
             if self.loader_in_use(self.loader_status(game)):
@@ -1045,7 +1062,7 @@ class TextureQuestApp:
         except (OSError, ValueError, KeyError, TypeError):
             return False  # Normal status/install checks explain unknown records.
 
-    def _download_latest(self, base_zip=None, auto_install=False, upgrading=False):
+    def _download_latest(self, base_zip=None, auto_install=False, upgrading=False, selection=None):
         if self.busy:
             return
         offered = self.update_check.get('installer', {})
@@ -1058,7 +1075,9 @@ class TextureQuestApp:
             return
         minimum = (self.prepared or {}).get('texture_version', '1.3.0')
         binding = dict(self.shortcut)
-        selection = self.selected_components()
+        # Automatic updates retain legacy per-capability choices. Only an
+        # explicit Install/Apply action supplies the merged graphics selection.
+        selection = self.selected_components() if selection is None else components.normalize(selection)
         def setup():
             from texturequest_setup import prepare_graphics
             choices = core._json(resource('shared-texture-choices.json').read_bytes())

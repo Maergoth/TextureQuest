@@ -1,7 +1,9 @@
 # Private graphics preview
 
-Select **Graphical Effects**, close EQ2 and click **Apply changes**. Launch
-normally, then open **Home → TextureQuest**. Textures are required; DLSS is optional.
+Select **Graphical Effects (experimental)**, close EQ2 and click **Apply changes**.
+Launch normally. **Press Home to open settings**, then choose **TextureQuest**.
+Textures are required. The graphics checkbox includes lighting, shadows, AO,
+filtering and DLSS on supported hardware; individual feature choices are kept.
 
 The graphics component uses [Sichii's EQ2 Graphics renderer](https://github.com/Sichii/Eq2GraphicsAddonRS),
 with a small private adapter for TextureQuest's master toggle and menu. It works
@@ -12,7 +14,7 @@ AO/contact implementation.
 | --- | --- |
 | Point-light shadows | Adds shadows while preserving native lamp lighting by default |
 | Character shadows | Moving-character shadows from supported point and window lights |
-| Emissive lights | Lights nearby surfaces from supported stationary glowing objects |
+| Emissive lights | Lights nearby surfaces from supported glowing objects and particles |
 | Sun-shadow softness | Softens native sun shadows; zero retains the game filter |
 | Ambient occlusion | Darkens nearby occlusion in ambient world lighting |
 | Anisotropic filtering | 16x filtering on eligible world samplers when enabled |
@@ -34,8 +36,9 @@ other custom values are retained. Feature checkbox choices are preserved.
 
 **Rebuild lamp lighting (experimental)** changes the game's lamp falloff and can
 darken rooms. It is off by default; shadows still work with native lamp lighting.
-Emissive lighting is experimental. Character and particle glows are not supported
-yet. With no eligible sources detected, the toggle adds no lighting.
+Emissive lighting is experimental. Some effects are not yet supported; the new
+particle paths still need in-game validation. With no eligible sources detected,
+the toggle adds no lighting.
 Its status distinguishes
 no detected emitters, no active draws and observed light draws; checking it does
 not prove that the current scene has eligible emitters.

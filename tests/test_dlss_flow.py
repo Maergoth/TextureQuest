@@ -29,67 +29,130 @@ class DLSSFlow(unittest.TestCase):
                            components=components.normalize(), installation_revision='own-record',
                            effects_available=True, dlss_available=True, message='ready')
         ui = types.SimpleNamespace(state_dir=self.root / 'data', game=Variable(str(self.game)), busy=None,
-            component_effects=Variable(False), component_dlss=Variable(False), component_error='', component_snapshot=None,
+            component_effects=Variable(False), component_dlss=Variable(False), component_graphics=Variable(False), component_error='', component_snapshot=None,
             prepared={}, release_checked=True, graphics_status=Mock(side_effect=lambda *_: dict(self.status)),
             graphics_manager=Mock(), loader_status=Mock(return_value={}), loader_in_use=Mock(return_value=False),
             upgrade_pending=Mock(return_value=False), graphics_selected=Mock(return_value=True),
             set_message=Mock(), refresh_controls=Mock(), _download_latest=Mock(), dds_store=Mock(),
             report=Mock(), shortcut={'vk': 106, 'modifiers': 0}, upgrade=Mock())
-        for name in ('selected_components', 'load_components', 'components_changed'):
+        for name in ('selected_components', 'save_components', 'load_components', 'components_changed'):
             setattr(ui, name, types.MethodType(getattr(app.TextureQuestApp, name), ui))
         ui.begin = Mock(side_effect=lambda kind, message, action: action())
         self.ui = ui
 
-    def test_dlss_choice_saves_loads_and_stays_separate_from_installed_capability(self):
+    def test_umbrella_choice_saves_loads_both_available_capabilities(self):
         self.ui.load_components()
-        self.ui.component_dlss.set(True); self.ui.components_changed()
-        self.assertTrue(components.load(self.ui.state_dir, self.game)['selection']['dlss'])
+        self.ui.component_graphics.set(True); self.ui.components_changed()
+        saved = components.load(self.ui.state_dir, self.game)['selection']
+        self.assertTrue(saved['dlss']); self.assertTrue(saved['effects'])
         self.assertFalse(self.status['components']['dlss'])
         self.ui.component_dlss.set(False); self.ui.load_components()
         self.assertTrue(self.ui.component_dlss.get())
+        self.assertTrue(self.ui.component_graphics.get())
         self.ui.game.set(str(self.root / 'other unopened game')); self.ui.load_components()
         self.assertFalse(self.ui.component_dlss.get())
+        self.assertFalse(self.ui.component_graphics.get())
         self.assertFalse(self.game.exists())
 
-    def test_unavailable_choice_refuses_and_restores_saved_preference(self):
+    def test_missing_dlss_does_not_block_world_effects(self):
         self.ui.load_components(); self.status['dlss_available'] = False
-        self.ui.component_dlss.set(True); self.ui.components_changed()
+        self.ui.component_graphics.set(True); self.ui.components_changed()
         self.assertFalse(self.ui.component_dlss.get())
-        self.assertFalse(components.load(self.ui.state_dir, self.game)['selection']['dlss'])
-        self.assertIn('complete experimental DLSS profile', self.ui.set_message.call_args.args[0])
+        saved = components.load(self.ui.state_dir, self.game)['selection']
+        self.assertFalse(saved['dlss']); self.assertTrue(saved['effects'])
+        self.assertNotIn('error', self.ui.set_message.call_args.kwargs)
 
-    def test_checkbox_is_enabled_only_for_verified_profile_when_idle(self):
+    def test_umbrella_available_for_either_bundle_or_saved_missing_choice(self):
         ui = self.ui
         ui.controls, ui.mode_controls = [], []
         for name in ('game_entry', 'shortcut_button', 'install_button', 'menu', 'launch_button', 'version_label',
                      'app_update_label', 'installer_update_button', 'pack_description', 'pack_update_label',
                      'pack_versions_label', 'download_button', 'download_label', 'install_label'):
             setattr(ui, name, Mock())
-        ui.component_controls = {key: Mock() for key in ('textures', 'dlss', 'effects')}
+        ui.component_controls = {key: Mock() for key in ('textures', 'effects')}
         ui.button_state = Mock(); ui.legacy_uninstall_index = 1
         ui.app_version, ui.update_check, ui.dds_source, ui.release = '1.10.3', {}, {}, {}
+        self.status['effects_available'] = False
         with patch.object(app, 'game_executable', return_value=self.game / 'EverQuest2.exe'):
             for available, busy, error, expected in ((True, None, '', 'normal'), (False, None, '', 'disabled'),
                     (True, 'install', '', 'disabled'), (True, None, 'bad saved selection', 'disabled')):
                 self.status['dlss_available'], ui.busy, ui.component_error = available, busy, error
                 app.TextureQuestApp.refresh_controls(ui)
-                self.assertEqual(ui.component_controls['dlss'].configure.call_args.kwargs['state'], expected)
+                self.assertEqual(ui.component_controls['effects'].configure.call_args.kwargs['state'], expected)
                 self.assertEqual(ui.component_controls['textures'].configure.call_args.kwargs['state'], 'disabled')
             ui.busy, ui.component_error = None, ''
-            self.status['dlss_available'] = False; ui.component_dlss.set(True)
+            self.status['dlss_available'] = False; ui.component_graphics.set(True)
             app.TextureQuestApp.refresh_controls(ui)
-            self.assertEqual(ui.component_controls['dlss'].configure.call_args.kwargs['state'], 'normal')
-            ui.component_dlss.set(False); ui.components_changed()
+            self.assertEqual(ui.component_controls['effects'].configure.call_args.kwargs['state'], 'normal')
+            ui.component_graphics.set(False); ui.components_changed()
             self.assertFalse(components.load(ui.state_dir, self.game)['selection']['dlss'])
 
     def test_apply_changes_preflight_refusal_keeps_working_hook(self):
-        self.ui.component_dlss.set(True)
+        self.ui.component_graphics.set(True)
         self.ui.prepared = {'distribution': 'generated-channels-only'}
         self.ui.graphics_manager.preflight_components.side_effect = ValueError('selected dependency changed')
         with self.assertRaisesRegex(ValueError, 'dependency changed'):
             app.TextureQuestApp.manage_graphics(self.ui)
         self.ui.graphics_manager.uninstall.assert_not_called()
         self.ui.graphics_manager.install.assert_not_called()
+
+    def test_loading_each_legacy_selection_keeps_flags_and_record_unchanged(self):
+        for effects, dlss in ((False, False), (True, False), (False, True), (True, True)):
+            with self.subTest(effects=effects, dlss=dlss):
+                game = self.root / f'legacy-{effects}-{dlss}'
+                selection = dict(components.normalize(), effects=effects, dlss=dlss)
+                saved = components.save(self.ui.state_dir, game, selection, expected_before=None)
+                self.ui.game.set(str(game))
+                with patch.object(components, 'save') as save:
+                    self.ui.load_components()
+                    self.assertEqual(self.ui.selected_components(), selection)
+                    self.assertEqual(self.ui.component_graphics.get(), effects or dlss)
+                    save.assert_not_called()
+                self.assertEqual(components.load(self.ui.state_dir, game), saved)
+
+    def test_explicit_apply_expands_legacy_single_bundle_without_checkbox_flip(self):
+        self.ui.prepared = {'distribution': 'generated-channels-only'}
+        self.ui.graphics_manager.uninstall.return_value = {'kept': []}
+        for effects, dlss in ((True, False), (False, True)):
+            with self.subTest(effects=effects, dlss=dlss):
+                game = self.root / f'apply-{effects}-{dlss}'
+                legacy = dict(components.normalize(), effects=effects, dlss=dlss)
+                components.save(self.ui.state_dir, game, legacy, expected_before=None)
+                self.ui.game.set(str(game)); self.ui.load_components()
+                self.status['components'] = legacy
+                self.assertTrue(self.ui.component_graphics.get())
+                self.assertEqual(self.ui.selected_components(), legacy)
+                self.assertTrue(app.TextureQuestApp.manage_graphics(self.ui))
+                expected = dict(components.normalize(), effects=True, dlss=True)
+                self.assertEqual(self.ui.graphics_manager.install.call_args.kwargs['components'], expected)
+                self.assertEqual(components.load(self.ui.state_dir, game)['selection'], expected)
+                self.ui.graphics_manager.preflight_components.assert_called_with(str(game), expected)
+                self.ui.dds_store.verify.assert_called_with(self.ui.prepared, full=True)
+
+    def test_automatic_upgrade_keeps_legacy_flags_without_expanding_bundle(self):
+        self.ui.update_check = {}; self.ui.release = {}
+        self.ui.downloads_in_use = Mock(); self.ui.report_overall = Mock()
+        self.ui.pause = types.SimpleNamespace(is_set=lambda: False)
+        choices = self.root / 'choices.json'; choices.write_text('{}')
+        for effects, dlss in ((True, False), (False, True)):
+            with self.subTest(effects=effects, dlss=dlss):
+                self.ui.load_components()
+                legacy = dict(components.normalize(), effects=effects, dlss=dlss)
+                self.ui.save_components(legacy)
+                before = components.load(self.ui.state_dir, self.game)
+                with patch.object(app, 'resource', return_value=choices), \
+                     patch('texturequest_setup.prepare_graphics', return_value=({}, {'texture_version': '1.3.0'})) as prepare:
+                    app.TextureQuestApp._download_latest(self.ui, auto_install=True, upgrading=True)
+                self.assertEqual(prepare.call_args.kwargs['components'], legacy)
+                self.assertEqual(components.load(self.ui.state_dir, self.game), before)
+
+    def test_unchecking_saved_missing_bundles_keeps_required_textures(self):
+        self.ui.load_components()
+        self.ui.save_components(dict(components.normalize(), effects=True, dlss=True))
+        self.status.update(effects_available=False, dlss_available=False)
+        self.ui.component_graphics.set(False); self.ui.components_changed()
+        self.assertEqual(components.load(self.ui.state_dir, self.game)['selection'], components.normalize())
+        self.assertFalse(self.ui.component_graphics.get())
 
     def setup_flow(self, failure=False):
         order = []

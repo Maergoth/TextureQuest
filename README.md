@@ -13,12 +13,11 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 This private candidate includes the public 1.9.5 updater fixes.
 
 - **Textures (required):** the released texture pack.
-- **Graphical Effects:** EQ2 Graphics point-light shadows, emissive lights, character shadows,
-  soft sun shadows, AO, anisotropic filtering and smoother interface text.
-- **DLSS (Experimental):** separate controls for Frame Generation (2x/3x/4x on supported hardware), Upscaling quality and Neural Rendering presets.
+- **Graphical Effects (experimental):** lighting, shadows, AO, filtering and DLSS.
+  DLSS needs supported hardware. Each feature has its own in-game control.
 
-Choose components, close EQ2, then **Apply changes**. **Home** opens ReShade,
-then use **Home → TextureQuest** for feature toggles and Min/Med/Max shadowed lights.
+Choose components, close EQ2, then **Apply changes**. **Press Home to open settings**,
+then choose **TextureQuest** for feature toggles and Min/Med/Max shadowed lights.
 Further tuning is under **Advanced**. AF uses 16x when enabled.
 Defaults: shadow strength 1, character softness 0.15, AO radius 0.35/strength 1.25.
 Shadowed lights: Min 10, Med 50, Max all supported lights.

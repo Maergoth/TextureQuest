@@ -218,7 +218,7 @@ class ComponentChangePreflight(GraphicsOnlyUI):
         record = self.manager._record(game)
         self.ui.prepared = prepared
         self.ui.release_checked = True
-        self.ui.component_effects.set(True)
+        self.ui.component_graphics.set(True)
         # Only this invented cache object is removed; the working hook stays.
         obj = self.ui.dds_store.object_rows(prepared)[0]
         (self.ui.dds_store.objects / obj['entry']).unlink()

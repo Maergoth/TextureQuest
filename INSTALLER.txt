@@ -5,9 +5,10 @@ TextureQuest 1.13.2 private preview — Windows x64
 3. Select your game folder and components, then Install graphics hook.
 4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
-Textures are required. Graphical Effects adds EQ2 Graphics: point-light shadows,
-emissive lights, character shadows, soft sun shadows, AO, 16x AF and smoother text.
-Home → TextureQuest contains feature checkboxes and Min/Med/Max shadowed lights.
+Textures are required. Graphical Effects (experimental) includes lighting,
+shadows, AO, filtering and DLSS on supported hardware.
+Press Home to open settings, then choose TextureQuest for individual controls.
+This includes feature checkboxes and Min/Med/Max shadowed lights.
 Advanced opens further tweaks. AF uses 16x. Numpad * switches
 textures and graphics Original/Upscaled without changing your choices. Use
 Shortcut to change the key. Apply changes with EQ2 closed.
@@ -23,8 +24,8 @@ Your TextureQuest shortcut controls everything. Extra AIO hotkeys are disabled.
 
 Defaults: shadow strength 1; character softness 0.15; AO radius 0.35/strength 1.25.
 Shadowed lights: Min 10, Med 50, Max all supported lights.
-Emissive lighting is experimental: supported stationary glowing objects only.
-Character and particle glows are not supported yet. No detected sources means no effect.
+Emissive lighting is experimental: supported glowing objects and particles only.
+Some effects are not yet supported. No detected sources means no effect.
 
 Keep native lighting, material shaders and GPU shadows enabled. A game cap near
 60 FPS can help frame-generation pacing. Native game INIs are unchanged. Lamp lighting is

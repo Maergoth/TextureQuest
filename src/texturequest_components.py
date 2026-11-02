@@ -38,6 +38,26 @@ def normalize(value=None):
     return {key: value[key] for key in ("schema", "textures", "dlss", "effects")}
 
 
+def graphics_selected(value):
+    selection = normalize(value)
+    return selection["effects"] or selection["dlss"]
+
+
+def with_graphics(value, enabled, *, effects_available, dlss_available):
+    """Map an explicit umbrella choice to bundled capabilities, not GPU support.
+
+    Loading old preferences never calls this: their separate flags remain intact
+    until the user changes the checkbox or explicitly installs/applies it.
+    Individual in-game feature settings are outside this preference record.
+    """
+    selection = normalize(value)
+    if type(enabled) is not bool:
+        raise ValueError("Graphical Effects must be enabled or disabled.")
+    selection["effects"] = enabled and bool(effects_available)
+    selection["dlss"] = enabled and bool(dlss_available)
+    return selection
+
+
 def _game_identity(game):
     try:
         value = os.fspath(game)
