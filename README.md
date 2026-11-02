@@ -8,7 +8,22 @@ TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim i
 
 AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,694 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
 
-## 1.13.5 graphics update
+## 1.13.6 graphics fixes
+
+This release continues the experimental graphics work with particle-sample isolation,
+sun-filter edge fixes, restored surface-colour saturation and adjustable emissive
+light limits. Both softness sliders display 1–10; existing saved values retain
+their appearance until edited. Frame generation defaults to off.
+
+Advanced includes **Emissive light limit** (1–256, default 64) and **Particle light
+limit** (1–32, default 4). These share the **Shadowed lights** pool with the game's
+lamps. Higher limits can cost performance and do not make unsupported or culled
+emitters observable. **Surface colour saturation** is 0–100%; 0 disables it.
+
+Sun-direction motion flicker and complete particle coverage remain under
+investigation. Controlled GPU tests are not an in-game visual approval.
+
+## Graphics setup
 
 This update includes the 1.9.5 updater fixes and optional experimental graphics.
 

@@ -44,6 +44,12 @@ static ComPtr<ID3D11Resource> FieldScene;
 static bool HasField=false;
 static unsigned Seen=0,Measured=0,Active=0,Pending=0,RejectedBounds=0,RejectedState=0,RejectedIO=0;
 static unsigned CompleteFrames=0,IncompleteFrames=0,OverflowFrames=0,SkippedFrames=0;
+struct DomainStats
+{
+    uint64_t frame=0,epoch=0;unsigned draws=0,triangles=0,included=0,excludedDistance=0,excludedExtent=0,invalid=0;
+    unsigned firstExcluded=UINT32_MAX,firstInvalid=UINT32_MAX;bool inspected=false,published=false;
+};
+static DomainStats LastDomain;
 static std::mutex ShaderLock;
 static std::unordered_map<uint64_t,uint64_t> VertexProfiles,PixelProfiles;
 static void RememberShader(uint64_t hash,uint64_t handle,bool vertex)
@@ -134,6 +140,7 @@ static void Reset(bool keepProfiles=false)
     InvalidateScene();Frame={};State.Reset();Shape.Reset();Reduce.Reset();CloneShared.Reset();Constants.Reset();ReduceConstants.Reset();
     SharedParameters.Reset();SharedRaw.Reset();SharedConstants.Reset();SharedRawView.Reset();Atlas.Reset();AtlasTarget.Reset();AtlasView.Reset();Raster.Reset();NoDepth.Reset();
     Failed=false;ObservedFrame=UINT64_MAX;Pending=RejectedBounds=RejectedState=RejectedIO=0;
+    LastDomain={};
     if(!keepProfiles){std::lock_guard guard(ShaderLock);VertexProfiles.clear();PixelProfiles.clear();}
 }
 static bool Compile(ID3D11Device *dev)
@@ -269,6 +276,8 @@ static void Observe(ID3D11DeviceContext *native,const shadowmaps::DrawCall &call
     if(!blend||!depth)return;
     D3D11_BLEND_DESC b{};D3D11_DEPTH_STENCIL_DESC d{};blend->GetDesc(&b);depth->GetDesc(&d);
     if(!AdditiveSource(b,d,mask))return;
+    if(capture::State==capture::Phase::Capturing&&call.Instances==1&&call.Count<=field::Triangles*3)
+        capture::SaveGlowBuffers(native,capture::DrawIndex,true);
     emission_policy::Samples.NoteParticle(shadowmaps::FrameNumber);if(!BeginFrame(native))return;
     const unsigned base=Frame.ledger.triangles;
     if(!Frame.ledger.Add(call.Count,call.Instances)){++OverflowFrames;return;}
@@ -332,6 +341,8 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
         BOOL complete=FALSE;const auto result=ctx->GetData(Frame.complete.Get(),&complete,sizeof(complete),D3D11_ASYNC_GETDATA_DONOTFLUSH);
         if(result==S_OK&&complete)
         {
+            DomainStats domain;domain.frame=Frame.ledger.frame;domain.epoch=Frame.ledger.epoch;
+            domain.draws=Frame.ledger.draws;domain.triangles=Frame.ledger.triangles;
             bool valid=Frame.ledger.CanPublish(Epoch,std::chrono::duration<double>(std::chrono::steady_clock::now()-Frame.time).count())
                 &&glow::Enabled&&Frame.scene.Get()==lightbuffer::LightBuffer.Get();
             if(valid)for(unsigned i=0;i<Frame.ledger.draws;++i)
@@ -347,9 +358,23 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
             std::vector<field::Cell> candidate;candidate.reserve(field::Triangles*8);
             if(valid)
             {
+                domain.inspected=true;
                 const auto *world=static_cast<const XMFLOAT4*>(positions.pData);const auto *raw=static_cast<const field::Reduction*>(material.pData);
                 for(unsigned t=0;t<Frame.ledger.triangles;++t)
-                {field::Power energy;XMFLOAT3 location;if(!field::Triangle(world+t*3,raw[t],Frame.camera,energy,location)||!field::Splat(candidate,location,energy)){valid=false;break;}}
+                {
+                    field::Power energy;XMFLOAT3 location;field::Exclusion reason;
+                    const auto kind=field::ClassifyTriangle(world+t*3,raw[t],Frame.camera,energy,location,&reason);
+                    if(kind==field::TriangleClass::Invalid)
+                    {++domain.invalid;domain.firstInvalid=t;valid=false;break;}
+                    if(kind==field::TriangleClass::Excluded)
+                    {
+                        if(reason==field::Exclusion::Distance)++domain.excludedDistance;else ++domain.excludedExtent;
+                        if(domain.firstExcluded==UINT32_MAX)domain.firstExcluded=t;
+                        continue;
+                    }
+                    ++domain.included;
+                    if(!field::Splat(candidate,location,energy)){valid=false;break;}
+                }
             }
             if(materialMapped)ctx->Unmap(Frame.reducedRead.Get(),0);if(positionMapped)ctx->Unmap(Frame.read.Get(),0);
             if(valid)
@@ -362,6 +387,7 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
                 std::chrono::duration<double>(std::chrono::steady_clock::now()-Frame.time).count());
             if(valid){HasField=true;FieldTime=std::chrono::steady_clock::now();FieldScene=Frame.scene;++CompleteFrames;}
             else {++IncompleteFrames;++RejectedBounds;}
+            domain.published=valid;LastDomain=domain;
             Frame.busy=false;Frame.scene.Reset();Frame.target.Reset();
         }
         else if(FAILED(result)){++RejectedIO;Frame.ledger.Reject();} // never reuse storage on an unknown completion
@@ -371,14 +397,17 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
 }
 static float Visibility()
 {return HasField?field::Visibility(std::chrono::duration<double>(std::chrono::steady_clock::now()-FieldTime).count()):0;}
-static unsigned ReadyCount(){return glow::Enabled&&Visibility()>0?std::min(unsigned(Cells.size()),field::Lit):0;}
+static unsigned ReadyCount(){return glow::Enabled&&Visibility()>0
+    ?std::min(unsigned(Cells.size()),emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())):0;}
 static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit)
 {
     if(!glow::Enabled){if(HasField||SelectedCount)Hide();return;}
     const float visibility=Visibility();std::array<field::Key,field::Lit> prior{};
     for(unsigned i=0;i<SelectedCount;++i)prior[i]=SelectedCells[i].cell;
-    const auto picks=field::Pick(Cells,prior,SelectedCount,shadowmaps::Camera);auto old=SelectedCells;SelectedCells={};const unsigned oldCount=SelectedCount;SelectedCount=Active=0;
-    for(unsigned i=0;i<std::min(allowance,field::Lit)&&picks[i]!=SIZE_MAX&&visibility>0;++i)
+    const unsigned wanted=std::min({allowance,field::Lit,
+        emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())});
+    const auto picks=field::Pick(Cells,prior,SelectedCount,shadowmaps::Camera,wanted);auto old=SelectedCells;SelectedCells={};const unsigned oldCount=SelectedCount;SelectedCount=Active=0;
+    for(unsigned i=0;i<wanted&&picks[i]!=SIZE_MAX&&visibility>0;++i)
     {
         const auto &cell=Cells[picks[i]];const auto position=field::Position(cell);Selected selected{cell.key,0};
         for(unsigned j=0;j<oldCount;++j)if(old[j].cell==cell.key){selected.light=old[j].light;old[j].light=0;break;}
@@ -398,5 +427,19 @@ static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit)
         SelectedCells[SelectedCount++]=selected;++Active;
     }
     for(auto &s:old)if(s.light)shadowmaps::Lights.erase(s.light);
+}
+// Explicit capture diagnostic only. No per-draw I/O or new runtime polling.
+static void WriteState(FILE *file)
+{
+    if(!file)return;
+    fprintf(file,"particle field epoch %llu, field %d, cells %zu, selected %u, visibility %.3f; packet frame %llu epoch %llu draws %u triangles %u complete %d collecting %d busy %d\n",
+        static_cast<unsigned long long>(Epoch),HasField?1:0,Cells.size(),SelectedCount,Visibility(),
+        static_cast<unsigned long long>(Frame.ledger.frame),static_cast<unsigned long long>(Frame.ledger.epoch),
+        Frame.ledger.draws,Frame.ledger.triangles,Frame.ledger.complete?1:0,Frame.collecting?1:0,Frame.busy?1:0);
+    fprintf(file,"particle last read frame %llu epoch %llu draws %u triangles %u inspected %d included %u excluded far %u large %u invalid %u first excluded %u first invalid %u published %d; totals complete %u incomplete %u overflow %u skipped %u rejected state %u bounds %u IO %u\n",
+        static_cast<unsigned long long>(LastDomain.frame),static_cast<unsigned long long>(LastDomain.epoch),
+        LastDomain.draws,LastDomain.triangles,LastDomain.inspected?1:0,LastDomain.included,LastDomain.excludedDistance,LastDomain.excludedExtent,LastDomain.invalid,
+        LastDomain.firstExcluded,LastDomain.firstInvalid,LastDomain.published?1:0,CompleteFrames,IncompleteFrames,OverflowFrames,SkippedFrames,
+        RejectedState,RejectedBounds,RejectedIO);
 }
 } // namespace particle_emission

@@ -1,5 +1,6 @@
 #pragma once
 #include <DirectXMath.h>
+#include "emission_policy.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -14,7 +15,7 @@
 namespace particle_field_policy
 {
 using DirectX::XMFLOAT3;using DirectX::XMFLOAT4;
-constexpr unsigned Triangles=8192,Draws=64,Tile=8,AtlasWidth=1024,AtlasHeight=512,Samples=28,Lit=4;
+constexpr unsigned Triangles=8192,Draws=64,Tile=8,AtlasWidth=1024,AtlasHeight=512,Samples=28,Lit=emission_policy::ParticleLimit;
 constexpr float CellWidth=2;
 constexpr double CaptureSeconds=.5,HoldSeconds=.20,ExpireSeconds=.70;
 struct Key { int x=0,y=0,z=0; auto operator<=>(const Key&)const=default; };
@@ -27,10 +28,14 @@ inline double Luma(const Power &p){return .2126*p.x+.7152*p.y+.0722*p.z;}
 inline bool Good(const Power &p){return std::isfinite(p.x)&&std::isfinite(p.y)&&std::isfinite(p.z)&&p.x>=0&&p.y>=0&&p.z>=0;}
 inline Power Scale(const Power &p,double w){return {p.x*w,p.y*w,p.z*w};}
 inline void Add(Power &a,const Power &b){a.x+=b.x;a.y+=b.y;a.z+=b.z;}
-inline bool Triangle(const XMFLOAT4 *p,const Reduction &r,const XMFLOAT3 &camera,Power &power,XMFLOAT3 &position)
+enum class TriangleClass { Invalid, Excluded, Included };
+enum class Exclusion { None, Extent, Distance };
+inline TriangleClass ClassifyTriangle(const XMFLOAT4 *p,const Reduction &r,const XMFLOAT3 &camera,
+    Power &power,XMFLOAT3 &position,Exclusion *reason=nullptr)
 {
-    if(!p||!Finite(camera))return false;
-    for(unsigned i=0;i<3;++i)if(!Finite({p[i].x,p[i].y,p[i].z})||p[i].w!=1)return false;
+    if(reason)*reason=Exclusion::None;
+    if(!p||!Finite(camera))return TriangleClass::Invalid;
+    for(unsigned i=0;i<3;++i)if(!Finite({p[i].x,p[i].y,p[i].z})||p[i].w!=1)return TriangleClass::Invalid;
     const double ax=double(p[1].x)-p[0].x,ay=double(p[1].y)-p[0].y,az=double(p[1].z)-p[0].z;
     const double bx=double(p[2].x)-p[0].x,by=double(p[2].y)-p[0].y,bz=double(p[2].z)-p[0].z;
     const double cx=ay*bz-az*by,cy=az*bx-ax*bz,cz=ax*by-ay*bx;
@@ -38,22 +43,31 @@ inline bool Triangle(const XMFLOAT4 *p,const Reduction &r,const XMFLOAT3 &camera
     const Power mean{r.mean.x,r.mean.y,r.mean.z};
     if(!std::isfinite(area)||!Good(mean)||r.mean.w!=0||!std::isfinite(r.moment.x)||!std::isfinite(r.moment.y)
         ||!std::isfinite(r.moment.z)||r.moment.x<0||r.moment.y<0||r.moment.z<0
-        ||r.moment.x+r.moment.y>r.moment.z*1.00001f)return false;
+        ||r.moment.x+r.moment.y>r.moment.z*1.00001f)return TriangleClass::Invalid;
     // Native animated material power is retained. No coverage denominator,
     // per-batch normalization or brightness history is applied.
     power=Scale(mean,area);
     double u=1.0/3,v=1.0/3;
     if(r.moment.z>1e-12){u=r.moment.x/r.moment.z;v=r.moment.y/r.moment.z;}
     position={float(p[0].x+u*ax+v*bx),float(p[0].y+u*ay+v*by),float(p[0].z+u*az+v*bz)};
-    if(!Finite(position)||!Good(power))return false;
+    if(!Finite(position)||!Good(power))return TriangleClass::Invalid;
+    // Finite proven geometry outside this local-light domain contributes zero;
+    // it does not invalidate unrelated near sources in the same native frame.
+    // All malformed geometry/material/provenance checks above remain fatal.
     for(unsigned i=0;i<3;++i)
     {
         const double x=double(p[i].x)-position.x,y=double(p[i].y)-position.y,z=double(p[i].z)-position.z;
-        if(x*x+y*y+z*z>64)return false; // excludes giant/sky primitives, not depth-write-off particles
+        if(x*x+y*y+z*z>64)
+        {power={};if(reason)*reason=Exclusion::Extent;return TriangleClass::Excluded;}
     }
     const double dx=double(position.x)-camera.x,dy=double(position.y)-camera.y,dz=double(position.z)-camera.z;
-    return dx*dx+dy*dy+dz*dz<=96*96;
+    if(dx*dx+dy*dy+dz*dz>96*96)
+    {power={};if(reason)*reason=Exclusion::Distance;return TriangleClass::Excluded;}
+    return TriangleClass::Included;
 }
+// Retain the original strict single-triangle predicate for existing callers.
+inline bool Triangle(const XMFLOAT4 *p,const Reduction &r,const XMFLOAT3 &camera,Power &power,XMFLOAT3 &position)
+{return ClassifyTriangle(p,r,camera,power,position)==TriangleClass::Included;}
 inline bool Splat(std::vector<Cell> &parts,const XMFLOAT3 &p,const Power &power)
 {
     if(!Finite(p)||!Good(power)||parts.size()>Triangles*8-8)return false;
@@ -92,16 +106,16 @@ inline void Collapse(std::vector<Cell> &parts)
 inline XMFLOAT3 Position(const Cell &c)
 {return c.weight>0?XMFLOAT3{float(c.mx/c.weight),float(c.my/c.weight),float(c.mz/c.weight)}:XMFLOAT3{};}
 inline std::array<size_t,Lit> Pick(const std::vector<Cell>&cells,const std::array<Key,Lit>&old,unsigned oldCount,
-    const XMFLOAT3&receiver={})
+    const XMFLOAT3&receiver={},unsigned limit=emission_policy::DefaultParticleLimit)
 {
     std::array<size_t,Lit> chosen;chosen.fill(SIZE_MAX);
     if(!Finite(receiver))return chosen;
-    for(unsigned n=0;n<Lit;++n)
+    for(unsigned n=0;n<std::min(limit,Lit);++n)
     {
         double best=0;
         for(size_t i=0;i<cells.size();++i)
         {
-            if(std::find(chosen.begin(),chosen.end(),i)!=chosen.end())continue;
+            if(std::find(chosen.begin(),chosen.begin()+n,i)!=chosen.begin()+n)continue;
             const auto &c=cells[i];const auto p=Position(c);
             const double dx=double(p.x)-receiver.x,dy=double(p.y)-receiver.y,dz=double(p.z)-receiver.z;
             // Approximate expected receiver contribution using world distance,

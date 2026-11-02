@@ -1,16 +1,39 @@
-# Renderer014 release source
+# Renderer017 release source and build
 
-This directory preserves the 41 exact source inputs for EQ2Graphics.addon64
-92df3b0d7e365161c09e9a7528e601abfb7f0c72e763499d5056d9f0b395edb6.
-The source is the private TextureQuest integration of Sichii's upstream3752e0b9.
-The maintainer confirmed redistribution permission on2026-11-02. This record
-does not assign MIT/Apache terms to Sichii's work. ImGui/ReShade licenses in
-deps retain their own terms.
+The 1.13.6 renderer image is 1004544 bytes, SHA256
+`923074bb236bf067d8f3d765e4722056f20dd5e1053fa5fd8ffabe370b20adde`. RELEASE-SOURCE.json lists the 36 actual
+local compilation inputs: addon.cpp and the headers recorded by the existing
+strict full build's /showIncludes log. The frozen snapshot contains
+44 files; its documentation, release metadata and build wrappers are
+not described as compiled inputs.
 
-Run build.cmd from a Visual Studio C++ developer environment. The release
-build used VS18/v145 x64, /std:c++20 /O2 /MT /EHsc /W4 /WX /permissive-
-/DNDEBUG /DNOMINMAX and the bundled deps/reshade/include +deps/imgui headers.
-The upstream wrapper omits /WX; adding /WX reproduces the release warning
-policy. No game/capture/user-data inputs or runtime DLLs are in this source tree.
-Rebuilding does not imply a byte-identical compiler output. The release asset
-must match RELEASE-SOURCE.json and the separately published runtime descriptor.
+The integration retains Sichii upstream3752e0b9 provenance and the maintainer's
+confirmed redistribution permission. This does not assign MIT/Apache terms
+to Sichii's work. ImGui/ReShade dependency licenses retain their own terms.
+The upstream README remains preserved.
+
+The release build used the existing VS18 x64/MSVC14.50.35717 toolchain and:
+
+```text
+/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes
+/Ideps/reshade/include /Ideps/imgui addon.cpp /LD
+```
+
+The preserved release command uses an isolated output/object/temp directory.
+The generic build.cmd wrapper omits /WX; add it for the release warning policy.
+No rebuild or test was run while sealing this existing exit0 build. Rebuilding
+produces a new candidate; use the exact runtime descriptor/release image pins
+for publication rather than substituting a new binary under old evidence.
+
+017 includes surface-saturation restoration, the material/normal attempt,
+emissive limits1–256/particle limits1–32 with absent defaults64/4 and native-lamp
+priority in the shared Shadowed lights pool, finite particle-primitive exclusion,
+Sun border sampling guards and both softness UI scales1–10. Stored appearance
+is preserved until a softness control is adjusted. Invalid Sun gather lanes
+contribute no shadow and the original tap count remains. Alpha/radial behavior
+is retained from1.13.5 rather than a new correction.
+
+GPU closure is separate. Normal coverage is partial; Sun movement flicker is
+unresolved and histories are diagnostic. No full in-world visual, particle
+coverage or performance result follows from this build. See
+[the collaborator handoff](../docs/GRAPHICS-1.13.6-HANDOFF.md).

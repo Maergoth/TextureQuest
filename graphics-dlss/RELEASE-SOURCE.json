@@ -1,18 +1,22 @@
 {
-  "revision": "TextureQuest AIOV9",
+  "revision": "TextureQuest AIOV9 / 1.13.6 two absent FG defaults off",
   "upstream": "https://github.com/kibblerz/DLSS5-Reshade-AIO",
   "upstream_commit": "09301f5528e619e8b9ec17c257d167e2985f53b0",
   "source_manifest": {
-    "bytes": 19841,
-    "sha256": "6a02fbf81fffedc970039ecc185783782628c185a18cdb4ca361bc9493515188"
+    "bytes": 20122,
+    "sha256": "9479efe2adde36415c46185c26ebdc6526af946a0a1a17c69cc4dacd20a3112e"
   },
   "author_handoff": {
-    "bytes": 2941,
-    "sha256": "810962ec7a07d891268eacd0e6c16c633f4df2ab58bd40622e231f3eab3d09af"
+    "bytes": 2628,
+    "sha256": "da87f58dbe783b68bc833038b5fd02547385b8f913cd2eb04af199933615c136"
+  },
+  "snapshot_manifest": {
+    "bytes": 10883,
+    "sha256": "e9a390c9350c58a415bd5b230b91dd541697b4f45ea19c54d0c38b8a7c10fc70"
   },
   "native_release_asset": {
     "bytes": 317952,
-    "sha256": "e7efa95ad7c6b492a483b836ea7b7337d5ba3b86430727291c78b9a0cf317894"
+    "sha256": "96771d0ff93e8aa752702df1eac81d9affe80c5f3f1d4cc0237d3212f96d779e"
   },
   "dependencies": [
     {
@@ -88,6 +92,16 @@
       "sha256": "15f75bf25fe618d319f8a6db702ae520bb9e15e11ea5d1c4677daa12d40c224a"
     },
     {
+      "name": "addon/include/texturequest_depth_client_v1.hpp",
+      "bytes": 1873,
+      "sha256": "e01ca7b2d82653ec7e4122510d2655fc2e4efbad35670c7b813e5d632ce8bc5f"
+    },
+    {
+      "name": "addon/include/texturequest_depth_demand_v1.hpp",
+      "bytes": 1152,
+      "sha256": "62f314817eead16bd21205a3ab1c8f93f3758a1e683500758637bcacdb3a4dc3"
+    },
+    {
       "name": "addon/include/texturequest_dispatch_overlap.hpp",
       "bytes": 968,
       "sha256": "d5b2999fda4b31eac2f8bcea79d927c763380a37ab3f0b44de66c9370b395e3c"
@@ -124,13 +138,8 @@
     },
     {
       "name": "addon/src/nr-standalone.cpp",
-      "bytes": 710207,
-      "sha256": "e6aa4f8b11759bb7f8f78719de259948ea82de0539509d6e022c02e111d576fe"
-    },
-    {
-      "name": "addon/src/nvngx-bridge.cpp",
-      "bytes": 3276,
-      "sha256": "4c0e16633063ad875f0630189bb67a90d6aef49a1a7799407ed89b489883fc31"
+      "bytes": 710208,
+      "sha256": "354107dbff8ab834b7cea4143d416caf244a8a8816e8501a9c3ed4d3bf8fe189"
     },
     {
       "name": "addon/src/nvof-motion-provider.cpp",
@@ -143,16 +152,6 @@
       "sha256": "ae85e7a50c75f09b6c775b7c24871c522ed1fdeac463f26afcb21133d2837180"
     },
     {
-      "name": "addon/src/texturequest_fg_menu_candidate001.cpp",
-      "bytes": 680742,
-      "sha256": "7b1faa0cfd1dd4a198873d867a0133234997e4d97d47d101f0f8e251499de9d0"
-    },
-    {
-      "name": "external/DLSS5-Feeder/LICENSE",
-      "bytes": 1187,
-      "sha256": "6562d5a5e3d7534711e34f4b34335f23f067acc839ae5274c1250bf5f4654b8b"
-    },
-    {
       "name": "external/DLSS5-Feeder/src/feed_vk.h",
       "bytes": 15380,
       "sha256": "7cfe5390b717a5bbd13b554d5561027baaec353c4e82ca70d5b561fce5080ffb"
@@ -161,16 +160,6 @@
       "name": "external/DLSS5-Feeder/src/feed_vk_hook.h",
       "bytes": 10448,
       "sha256": "dc187578e141be2def098efea663d9d7e710020fa13072fadbfc9aa05b16fa7e"
-    },
-    {
-      "name": "addon/include/texturequest_depth_demand_v1.hpp",
-      "bytes": 1152,
-      "sha256": "62f314817eead16bd21205a3ab1c8f93f3758a1e683500758637bcacdb3a4dc3"
-    },
-    {
-      "name": "addon/include/texturequest_depth_client_v1.hpp",
-      "bytes": 1873,
-      "sha256": "e01ca7b2d82653ec7e4122510d2655fc2e4efbad35670c7b813e5d632ce8bc5f"
     }
   ],
   "compile_targets": [
@@ -179,5 +168,40 @@
   ],
   "historical_not_compiled": [
     "addon/src/texturequest_fg_menu_candidate001.cpp"
-  ]
+  ],
+  "separate_bridge_not_this_native": [
+    "addon/src/nvngx-bridge.cpp"
+  ],
+  "changes": [
+    "Static startup FrameGeneration value is false",
+    "Missing FrameGeneration INI key falls back to0"
+  ],
+  "saved_settings": "Explicit saved0/1 values retain the normal unchanged configuration precedence",
+  "build": {
+    "exit_code": 0,
+    "warnings": 14,
+    "command": {
+      "bytes": 2039,
+      "sha256": "827b69f39ec71b21abfbf7b4f9ba4e5284a85a704aa089456329dabeaa84403a"
+    },
+    "log": {
+      "bytes": 2876,
+      "sha256": "67b7b74bf3764939c9eb8b7df4ff7735616fdbf5ecb20bb567b8670bf2e6de36"
+    },
+    "actual_showIncludes": false,
+    "source_join_qualification": "This existing AIO build did not enable /showIncludes. These are exact snapshot-to-current code/shader/header joins and explicit command targets, not a fabricated actual-include manifest. The exact build script separately records pinned external dependency inputs."
+  },
+  "qualification": "No new GPU/real-game behavior result is claimed for this two-default correction. Other AIO/runtime compatibility IDs and dependency payloads retain their existing roles.",
+  "previous_release": {
+    "revision": "TextureQuest AIOV9",
+    "native_release_asset": {
+      "bytes": 317952,
+      "sha256": "e7efa95ad7c6b492a483b836ea7b7337d5ba3b86430727291c78b9a0cf317894"
+    },
+    "source_manifest": {
+      "bytes": 19841,
+      "sha256": "6a02fbf81fffedc970039ecc185783782628c185a18cdb4ca361bc9493515188"
+    },
+    "historical_only": true
+  }
 }

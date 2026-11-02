@@ -29,9 +29,9 @@ namespace capture
 constexpr uint32_t MAX_RENDER_TARGETS = 8;
 constexpr uint32_t MAX_CONSTANT_BUFFERS = 14;
 constexpr uint32_t MAX_SHADER_RESOURCES = 16;
-// constant rows written per bound constant buffer; the game's per-draw constants fit in the first 64 rows of b0 and in
+// constant rows written per bound constant buffer; the game's per-draw constants fit in the first 96 rows of b0 (including billboard c82) and in
 // the 11 rows of b1
-constexpr UINT MAX_DUMPED_ROWS[2] = { 64, 11 };
+constexpr UINT MAX_DUMPED_ROWS[2] = { 96, 11 };
 
 enum class Phase { Idle, Requested, Capturing };
 
@@ -425,10 +425,10 @@ static bool IsAddingColour(ID3D11DeviceContext *ctx)
 
 // for a draw that adds its colour onto the target, which is how glowing surfaces are drawn, saves its slot 0 vertex
 // buffer and index buffer
-static void SaveGlowBuffers(ID3D11DeviceContext *ctx, uint32_t draw)
+static void SaveGlowBuffers(ID3D11DeviceContext *ctx, uint32_t draw, bool particle = false)
 {
     using Microsoft::WRL::ComPtr;
-    if (!IsAddingColour(ctx))
+    if (!particle && !IsAddingColour(ctx))
         return;
 
     ComPtr<ID3D11Buffer> vertices, indices;
@@ -437,6 +437,13 @@ static void SaveGlowBuffers(ID3D11DeviceContext *ctx, uint32_t draw)
     ctx->IAGetVertexBuffers(0, 1, &vertices, &stride, &offset);
     ctx->IAGetIndexBuffer(&indices, &indexFormat, &indexOffset);
     char name[32];
+    // Exact admitted particle inputs are capture-only and capped at 4 MiB per buffer.
+    if (particle)
+    {
+        D3D11_BUFFER_DESC desc = {};
+        if (vertices) { vertices->GetDesc(&desc); if (desc.ByteWidth > (4u << 20)) vertices.Reset(); }
+        if (indices) { indices->GetDesc(&desc); if (desc.ByteWidth > (4u << 20)) indices.Reset(); }
+    }
     sprintf_s(name, "vb_%u", draw);
     SaveGpuBuffer(ctx, vertices.Get(), name);
     sprintf_s(name, "ib_%u", draw);
