@@ -2,6 +2,7 @@ TextureQuest 1.13.6
 
 - Cache SHA-verified loose DDS session bytes within a 16-object/64 MiB reader cache, avoiding repeated disk reads and full hashes on cache hits.
 - Restore optional world-surface saturation controls and attempt supported material/normal routing. Normal coverage remains partial.
+- Share compiled shader results between lighting and material normals; material setup returns immediately while compilation is pending.
 - Add tunable emissive and particle light limits: 1–256 and 1–32, with absent defaults of 64 and 4. They share the Shadowed lights pool; native lamps take priority.
 - Keep finite remote or oversized particle primitives from invalidating the whole emission packet and suppressing nearby light. Existing alpha and radial behavior is retained.
 - Exclude invalid Sun gather lanes from shadow contribution while retaining the original tap count, treating unavailable samples as unshadowed. Controlled border cases pass; Sun movement/shadow-direction flicker remains unresolved.

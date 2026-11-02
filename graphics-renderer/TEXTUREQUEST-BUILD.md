@@ -1,7 +1,7 @@
 # Renderer017 release source and build
 
-The 1.13.6 renderer image is 1004544 bytes, SHA256
-`923074bb236bf067d8f3d765e4722056f20dd5e1053fa5fd8ffabe370b20adde`. RELEASE-SOURCE.json lists the 36 actual
+The 1.13.6 renderer image is 1005056 bytes, SHA256
+`f5e6bf98b073d13ed594e006fd2396595aa8dcdc95841a389f31b25487617943`. RELEASE-SOURCE.json lists the 36 actual
 local compilation inputs: addon.cpp and the headers recorded by the existing
 strict full build's /showIncludes log. The frozen snapshot contains
 44 files; its documentation, release metadata and build wrappers are

@@ -1428,7 +1428,7 @@ static std::vector<ShaderEntry> ListShaders()
 }
 
 // compiling every shader takes a moment, so it starts when the device is created and runs off the render thread
-static std::future<std::vector<ComPtr<ID3DBlob>>> CompiledShaders;
+static std::shared_future<std::vector<ComPtr<ID3DBlob>>> CompiledShaders;
 
 static void OnInitDevice(device *)
 {
@@ -1440,7 +1440,7 @@ static void OnInitDevice(device *)
         for (const ShaderEntry &shader : ListShaders())
             compiled.push_back(CompileShader(shader));
         return compiled;
-    });
+    }).share();
 }
 
 static bool CreateShader(device *dev, ID3DBlob *code, pipeline_subobject_type type, pipeline &out)

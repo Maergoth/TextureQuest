@@ -4,15 +4,15 @@
   "upstream_commit": "3752e0b97a87c5def22c9f8d6cabfd369d5817cb",
   "author_handoff": {
     "bytes": 2183,
-    "sha256": "82e5b33e7d7dcdb98ed3864c2cec2bfbf2a4ecfc39dc40d71d395b53e611b4d2"
+    "sha256": "4288f28ca938cb7e5f7fe3c286dedb9075a82eaabb38df82abe575f89c9c9d21"
   },
   "source_manifest": {
     "bytes": 20699,
-    "sha256": "65aed43d9b50afe7b05c903b64c22d96a9869efd9af82c54829c5dfa29e75ad5"
+    "sha256": "c2fffc407fa57c7d6faa6695ebb771d8bb58b2dd35c0c52fd535b85c74439c95"
   },
   "native_release_asset": {
-    "bytes": 1004544,
-    "sha256": "923074bb236bf067d8f3d765e4722056f20dd5e1053fa5fd8ffabe370b20adde"
+    "bytes": 1005056,
+    "sha256": "f5e6bf98b073d13ed594e006fd2396595aa8dcdc95841a389f31b25487617943"
   },
   "files": [
     {
@@ -102,8 +102,8 @@
     },
     {
       "name": "material_normal_replay.hpp",
-      "bytes": 18197,
-      "sha256": "f24b5e2a55725178f67d4e3b61e47897ecbb6eb3ffaba3617fbc275cab06a6ef"
+      "bytes": 18333,
+      "sha256": "742402a47fa3e46583b93f9d14dbfab7102479e209dfd49c630b4409f35e316e"
     },
     {
       "name": "offscreen_lamp_policy.hpp",
@@ -152,8 +152,8 @@
     },
     {
       "name": "shadows.hpp",
-      "bytes": 186652,
-      "sha256": "c84884c8a423ffc98a79a1eaacc6800ab6af942bd18c428d5f44bd6c91e954c6"
+      "bytes": 186667,
+      "sha256": "76f7fb78be7d652b2971274f392f7b443a7b2a0f7bef94d615fee60467843b38"
     },
     {
       "name": "sun_direction_policy.hpp",
@@ -201,7 +201,7 @@
   ],
   "original_snapshot": {
     "bytes": 7453,
-    "sha256": "e8fb8aa0daf3d7fb03d69329f70f45fb31a60482383e33f9e87c762cb7113db7"
+    "sha256": "d7a44b306e1d21b967860af608f870532d2c946e6c0f68f4c7a0f373974fec49"
   },
   "snapshot_files": 44,
   "actual_local_compilation_inputs": 36,
@@ -220,11 +220,11 @@
     "actual_showIncludes": true,
     "command": {
       "bytes": 909,
-      "sha256": "080cdf41042bdc42967697b57f605923ae9665ae67b13ce2248420f034434694"
+      "sha256": "cb3f4ac83ccc559ebc438096d481f068f9e2c3c3d18e760294e6b5e08ae899f5"
     },
     "log": {
       "bytes": 54200,
-      "sha256": "929c6b409e19035f4241f3084c2b107c4221d425c7efd2973c3519d4eb6b5554"
+      "sha256": "cd737db3cde755fb11d6d9c1d41298b61e4e1f701b6cad922116b03450530596"
     }
   },
   "dependency_licenses": {
@@ -243,11 +243,11 @@
     "revision": "TextureQuest renderer017 / 1.13.6",
     "native_release_asset": {
       "bytes": 1004544,
-      "sha256": "332b22895d50288e91c2cba94f2cc1b13aee3bd61cb435655a5447912c179b2c"
+      "sha256": "923074bb236bf067d8f3d765e4722056f20dd5e1053fa5fd8ffabe370b20adde"
     },
     "source_manifest": {
       "bytes": 20699,
-      "sha256": "c37f0c9a15e6b79f3ec34dfd9184dea47fd712ae44dc19af539aac7d67a8150a"
+      "sha256": "65aed43d9b50afe7b05c903b64c22d96a9869efd9af82c54829c5dfa29e75ad5"
     },
     "historical_only": true
   }

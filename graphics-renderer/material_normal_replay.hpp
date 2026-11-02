@@ -120,8 +120,9 @@ static void KeepMaterialDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall
 static bool CreateMaterialObjects(ID3D11Device*dev)
 {
     if(MaterialState)return true;
-    if(!CompiledShaders.valid())return false;
+    if(!CompiledShaders.valid()||CompiledShaders.wait_for(std::chrono::seconds(0))!=std::future_status::ready)return false;
     const auto&compiled=CompiledShaders.get();
+    if(compiled.size()<=LAMP_SHADER_COUNT+8)return false;
     const auto vertex=compiled[LAMP_SHADER_COUNT+2];const auto pixel=compiled[LAMP_SHADER_COUNT+8];
     if(!vertex||!pixel)return false;
     if(!AddedVertexShader&&FAILED(dev->CreateVertexShader(vertex->GetBufferPointer(),vertex->GetBufferSize(),nullptr,&AddedVertexShader)))return false;
