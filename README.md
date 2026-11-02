@@ -16,6 +16,9 @@ This private candidate includes the public 1.9.5 updater fixes.
 - **Graphical Effects (experimental):** lighting, shadows, AO, filtering and DLSS.
   DLSS needs supported hardware. Each feature has its own in-game control.
 
+DLSS starts off on new installs; enable it in **Home → TextureQuest**.
+Updates keep your saved choices.
+
 Choose components, close EQ2, then **Apply changes**. **Press Home to open settings**,
 then choose **TextureQuest** for feature toggles and Min/Med/Max shadowed lights.
 Further tuning is under **Advanced**. AF uses 16x when enabled.

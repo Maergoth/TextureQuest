@@ -12,6 +12,7 @@ from texturequest_effects import (
 SCHEMA = 'texturequest-dlss-settings-v1'
 AIO_SCHEMA = 'texturequest-dlss-aio-settings-v1'
 AIO_V2_SCHEMA = 'texturequest-dlss-aio-settings-v2'
+AIO_V3_SCHEMA = 'texturequest-dlss-aio-settings-v3'
 MACRO = 'DLSS5_MV_PROVIDER'
 VALUES = {
     ('GENERAL', 'PreprocessorDefinitions'): None,
@@ -34,12 +35,17 @@ AIO_VALUES = {('Standalone.DLSSNR', key): value for key, value in {
     'EarlyProxyInitialization': '0', 'OpaqueComposition': '0',
     'AdaptivePressureGovernor': '0', 'ShowProxyFps': '0',
 }.items()}
+# Old journals retain their original owned defaults. The merged launcher option
+# only installs current neural capabilities; absent feature choices start off.
+AIO2_VALUES = dict(AIO_VALUES)
+AIO2_VALUES.update({('Standalone.DLSSNR', key): '0'
+                    for key in ('NeuralRendering', 'FrameGeneration', 'ManagedSrEnabled')})
 
 
 def _profile_values(profile):
     if profile == 'feeder': return SCHEMA, VALUES
     if profile == 'aio': return AIO_SCHEMA, AIO_VALUES
-    if profile == 'aio2': return AIO_V2_SCHEMA, AIO_VALUES
+    if profile == 'aio2': return AIO_V3_SCHEMA, AIO2_VALUES
     raise ValueError('Unknown DLSS settings backend.')
 
 
@@ -88,7 +94,7 @@ def prepare_dlss_config(raw, *, profile='feeder'):
         # Existing component choices belong to the user. A launcher refresh
         # supplies absent defaults but never resets their in-game controls.
         if (profile == 'aio2' and before is not None and key[0] == 'Standalone.DLSSNR' and
-                key[1] in ('NeuralRendering', 'FrameGeneration', 'SourceResolutionOverride')):
+                key[1] in ('NeuralRendering', 'FrameGeneration', 'ManagedSrEnabled', 'SourceResolutionOverride')):
             continue
         value = _value(key, before, values)
         after = (_replace_value(before, value, scalar=values[key] is not None) if before is not None
@@ -120,9 +126,10 @@ def prepare_dlss_config(raw, *, profile='feeder'):
 
 def _validate(journal):
     keys = {'schema', 'changes', 'created_sections', 'tail_bridge', 'before_sha256', 'after_sha256', 'record_sha256'}
-    if type(journal) is not dict or set(journal) != keys or journal['schema'] not in (SCHEMA, AIO_SCHEMA, AIO_V2_SCHEMA):
+    if type(journal) is not dict or set(journal) != keys or journal['schema'] not in (SCHEMA, AIO_SCHEMA, AIO_V2_SCHEMA, AIO_V3_SCHEMA):
         raise ValueError('Invalid DLSS settings journal.')
-    values = VALUES if journal['schema'] == SCHEMA else AIO_VALUES
+    values = (VALUES if journal['schema'] == SCHEMA else
+              AIO2_VALUES if journal['schema'] == AIO_V3_SCHEMA else AIO_VALUES)
     body = {key: value for key, value in journal.items() if key != 'record_sha256'}
     if _seal(body) != journal: raise ValueError('DLSS settings journal checksum changed.')
     import re

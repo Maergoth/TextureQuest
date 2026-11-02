@@ -1,0 +1,129 @@
+{
+  "producer_source_sha256": "2706dcab17a65e180e95570d3d80424ed544a1a42631430893eaacf1815a5145",
+  "producer_source_commit": "dcc26dd01516c307c119684de0dc712cc7773569",
+  "raw_hex": "3b207072652d76330d0a5b555345525d0d0a4b6565703d756e6368616e676564",
+  "after_hex": "3b207072652d76330d0a5b555345525d0d0a4b6565703d756e6368616e6765640d0a5b5374616e64616c6f6e652e444c53534e525d0d0a456e61626c65643d310d0a4e657572616c52656e646572696e673d310d0a4672616d6547656e65726174696f6e3d310d0a4e76696469614f70746963616c466c6f774d6f74696f6e3d310d0a4e76696469614f70746963616c466c6f775265736f6c7574696f6e3d300d0a566f72744775696465733d300d0a536f757263655265736f6c7574696f6e4f766572726964653d300d0a4175746f57696e646f7765645669727475616c697a6174696f6e3d300d0a57696e646f7765645669727475616c697a6174696f6e3d300d0a57696e646f7765644c6f676963616c53697a654d657373616765733d300d0a57696e646f776564496e7075745363616c696e673d300d0a447069506879736963616c4f7574707574436f7272656374696f6e3d300d0a446574616368656450726573656e746174696f6e3d300d0a48696465446574616368656453797374656d437572736f723d300d0a4561726c7950726f7879496e697469616c697a6174696f6e3d300d0a4f7061717565436f6d706f736974696f6e3d300d0a41646170746976655072657373757265476f7665726e6f723d300d0a53686f7750726f78794670733d300d0a",
+  "journal": {
+    "schema": "texturequest-dlss-aio-settings-v2",
+    "changes": [
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "Enabled",
+        "before": null,
+        "after": "Enabled=1\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "NeuralRendering",
+        "before": null,
+        "after": "NeuralRendering=1\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "FrameGeneration",
+        "before": null,
+        "after": "FrameGeneration=1\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "NvidiaOpticalFlowMotion",
+        "before": null,
+        "after": "NvidiaOpticalFlowMotion=1\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "NvidiaOpticalFlowResolution",
+        "before": null,
+        "after": "NvidiaOpticalFlowResolution=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "VortGuides",
+        "before": null,
+        "after": "VortGuides=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "SourceResolutionOverride",
+        "before": null,
+        "after": "SourceResolutionOverride=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "AutoWindowedVirtualization",
+        "before": null,
+        "after": "AutoWindowedVirtualization=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "WindowedVirtualization",
+        "before": null,
+        "after": "WindowedVirtualization=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "WindowedLogicalSizeMessages",
+        "before": null,
+        "after": "WindowedLogicalSizeMessages=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "WindowedInputScaling",
+        "before": null,
+        "after": "WindowedInputScaling=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "DpiPhysicalOutputCorrection",
+        "before": null,
+        "after": "DpiPhysicalOutputCorrection=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "DetachedPresentation",
+        "before": null,
+        "after": "DetachedPresentation=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "HideDetachedSystemCursor",
+        "before": null,
+        "after": "HideDetachedSystemCursor=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "EarlyProxyInitialization",
+        "before": null,
+        "after": "EarlyProxyInitialization=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "OpaqueComposition",
+        "before": null,
+        "after": "OpaqueComposition=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "AdaptivePressureGovernor",
+        "before": null,
+        "after": "AdaptivePressureGovernor=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "ShowProxyFps",
+        "before": null,
+        "after": "ShowProxyFps=0\r\n"
+      }
+    ],
+    "created_sections": [
+      "Standalone.DLSSNR"
+    ],
+    "tail_bridge": {
+      "sha256": "faf5a1e59b4a66a9cc409ea28ce6c8507aca17faafbf910ae18050ac314e3376",
+      "newline": "\r\n"
+    },
+    "before_sha256": "f6ff3d667afbb5b6e1e30330489e622a2c0eedd8497c9748e4700c1d9f05dac3",
+    "after_sha256": "dca6b5cc92577e65f9e3bb0a43e627704ed3a3a5ba80378bf67cbffad9b16251",
+    "record_sha256": "bdd25001e9543916e7a321109227906af84225b18aa7ac003a629f3d2619ac4b"
+  }
+}

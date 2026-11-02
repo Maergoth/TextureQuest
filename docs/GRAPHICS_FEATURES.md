@@ -4,6 +4,8 @@ Select **Graphical Effects (experimental)**, close EQ2 and click **Apply changes
 Launch normally. **Press Home to open settings**, then choose **TextureQuest**.
 Textures are required. The graphics checkbox includes lighting, shadows, AO,
 filtering and DLSS on supported hardware; individual feature choices are kept.
+DLSS starts off on new installs. Enable its controls in **Home → TextureQuest**;
+updates preserve your saved NR, upscaling and frame-generation choices.
 
 The graphics component uses [Sichii's EQ2 Graphics renderer](https://github.com/Sichii/Eq2GraphicsAddonRS),
 with a small private adapter for TextureQuest's master toggle and menu. It works
