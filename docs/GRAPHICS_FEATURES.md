@@ -28,6 +28,9 @@ lighting is an approximation, not a full multi-bounce lighting engine.
 The private window-light extension preserves the captured native projection and
 adds character occlusion to that light contribution. Unsupported projected-light
 shaders remain native. It does not replace EQ2's directional shadow system.
+The preview also includes upstream fixes for off-screen lamps and smoother
+indoor lighting transitions. Off-screen lamp rebuilding remains opt-in under
+Advanced; native lamp lighting is still the default.
 
 The main panel has feature checkboxes and shadowed lights **Min (10), Med (50),
 Max (all supported; currently 256)**. Detailed controls and diagnostics are under
@@ -83,6 +86,7 @@ or initialization wait; it is never replaced with a guessed multiplied rate.
 
 This is a private local candidate, not a public release. SDK/CPU tests do not
 establish real EQ2 visuals, compatibility or performance. The renderer's upstream
-sources are pinned at `4a656a9492584c10ab38f30391b7e99538475f87`; its author has
+source basis is `4a656a9492584c10ab38f30391b7e99538475f87`, with fixes through
+`1116b1f5ece249567857001800495f015ebe36d0`; its author has
 not supplied a top-level redistribution license, so it must not be included in
 a public TextureQuest release without permission.
