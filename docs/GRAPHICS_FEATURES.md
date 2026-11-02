@@ -17,7 +17,7 @@ AO/contact implementation.
 | Point-light shadows | Adds shadows while preserving native lamp lighting by default |
 | Character shadows | Moving-character shadows from supported point and window lights |
 | Emissive lights | Lights nearby surfaces from supported glowing objects and particles |
-| Sun-shadow softness | Softens native sun shadows; zero retains the game filter |
+| Sun lighting | Enables sun softness, direction and indoor-transition corrections |
 | Ambient occlusion | Darkens nearby occlusion in ambient world lighting |
 | Anisotropic filtering | 16x filtering on eligible world samplers when enabled |
 | Smooth interface text | Bilinear filtering for interface text; not scene antialiasing |
@@ -52,6 +52,18 @@ not prove that the current scene has eligible emitters.
 off/on. Original preserves each checkbox and strength. Changes apply at a frame
 boundary; work already submitted to the GPU finishes normally. Settings are kept
 in ReShade.ini under `[EQ2Graphics]` and survive reinstall.
+
+Uncheck **Point-light shadows**, **Ambient occlusion** and **Sun lighting** to stop
+the world renderer's light/depth checks, scene copies and rendering work. Character
+and emissive controls are children of Point-light shadows. Filtering, text and
+textures work independently.
+
+The bundled hook also stops depth detection and backup copies when no enabled
+effect or DLSS guide needs them. Other ReShade effects can keep depth active;
+unrecognised add-ons retain it for compatibility. Re-enabling waits for fresh
+depth before using it. An existing third-party ReShade installation is preserved
+and may not support this idle path. Hook callbacks and texture switching still
+have some overhead; this does not promise the same FPS as removing the hook.
 
 Keep native lighting, material shaders and GPU shadows enabled. The renderer
 needs their inputs. This preview changes no native EQ2 INI settings. The existing

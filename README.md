@@ -25,6 +25,9 @@ Further tuning is under **Advanced**. AF uses 16x when enabled.
 Defaults: shadow strength 1, character softness 0.15, AO radius 0.35/strength 1.25.
 Shadowed lights: Min 10, Med 50, Max all supported lights.
 **Numpad \*** switches textures and graphics off/on without changing your choices.
+Uncheck Point-light shadows, Ambient occlusion and Sun lighting to stop the world
+light/depth processing. Unused depth detection also idles with the bundled hook;
+other enabled effects can still require it. Filtering and textures work separately.
 Each DLSS component has an on/off
 checkbox that keeps its preset. Neural Rendering also has **Advanced** model/pass
 controls. These choices can change while playing. Extra AIO hotkeys are disabled.
