@@ -2,10 +2,10 @@
 
 ## 1.13.5 — private graphics preview
 
-- Keep native lighting direction when the sun-shadow pass reports no active sun.
-- Ease the sun-direction correction when its source disappears or returns, replacing the abrupt timeout.
-- Retain the private 1.13.4 emission/cache work, saved settings and normal launcher update flow.
-- Local preview; the reported screen-exit transition still needs an in-game check.
+- Measure supported particle materials per triangle and accumulate their light in world space, replacing screen-coverage normalization and transient draw-batch tracking. Preserve animated fire.
+- Require current native cascade/caster evidence for the sun-direction correction and fade changes instead of using the abrupt timeout.
+- Merge compatible upstream window projection, lamp fade, loading-scene reset and distance-consistent sun filtering fixes.
+- Preserve saved controls, native bloom choices, texture/DLSS/Reflex functionality and the normal launcher update flow. Local preview; visual stability and performance still need an in-game check.
 
 ## 1.13.4 — private graphics preview
 

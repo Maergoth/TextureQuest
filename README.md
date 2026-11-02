@@ -46,12 +46,15 @@ Keep GPU shadows enabled. A game cap near 60 FPS can help frame-generation pacin
 Point-light shadows preserve native lamp lighting by default. Rebuilt lamp
 lighting is an Advanced experiment because it changes brightness and falloff.
 Emissive lights combines supported static glow, painted glowing surfaces and
-supported spell particles under one light budget. The particle path remains
-experimental: short-lived or changing particle batches can be missed. Private
-1.13.4 corrects sample-expiry and pending-readback timing gaps reported as flicker;
-the combined result still needs an in-game comparison.
-Private 1.13.5 also keeps the native lighting direction when the captured sun is
-inactive and eases the sun-direction correction in and out when its source changes.
+supported spell particles under one light budget. Private 1.13.5 measures native
+particle output per triangle and accumulates light in world space, replacing
+screen-coverage normalization and changing draw-batch identities. Native fire
+animation and your in-game bloom choice are preserved. The bounded particle path
+remains experimental; particles the game stops drawing cannot be reconstructed.
+The sun-direction correction now requires current native cascade/caster evidence
+and fades changes instead of using the old abrupt timeout. Compatible upstream
+window projection, lamp-fade and sun-filtering fixes are included. The combined
+result still needs an in-game comparison.
 This is an unpublished local test. Frame generation includes a pacing/GUI-sharing
 correction that improved an isolated comparison; EQ2 performance and smoothness
 still need testing. [Details](docs/GRAPHICS_FEATURES.md).
