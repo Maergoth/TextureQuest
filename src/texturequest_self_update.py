@@ -837,15 +837,23 @@ def apply_update(request_path, nonce, smoke_test=False, *, processes=None):
         deadline = time.monotonic() + ACK_SECONDS
         while time.monotonic() < deadline:
             if (stage / "startup-ack.json").exists():
-                ack = _bound_receipt(stage, "startup-ack.json", pin, nonce)
-                if not _same_process(_valid_process(ack.get("child")), child) or ack.get("version") != value["target_version"]:
-                    raise AppUpdateError("Restarted app acknowledgement identity mismatch")
-                if _bundle(app, value["target_version"]) != value["new_bundle"]:
-                    raise AppUpdateError("New application changed before commit")
-                _guard(value, path, stage)
-                _receipt(stage, "result.json", pin, nonce, status="committed", helper=helper, child=child,
-                         version=value["target_version"], message="Application updated and restarted; portable data was untouched")
-                return 0
+                try:
+                    ack = _bound_receipt(stage, "startup-ack.json", pin, nonce)
+                except OSError as error:
+                    # The child publishes this path before its writer closes.
+                    # Keep the protected read and this same deadline/alive check.
+                    if os.name != "nt" or (getattr(error, "winerror", None) not in (32, 33)
+                                           and error.errno not in (32, 33)):
+                        raise
+                else:
+                    if not _same_process(_valid_process(ack.get("child")), child) or ack.get("version") != value["target_version"]:
+                        raise AppUpdateError("Restarted app acknowledgement identity mismatch")
+                    if _bundle(app, value["target_version"]) != value["new_bundle"]:
+                        raise AppUpdateError("New application changed before commit")
+                    _guard(value, path, stage)
+                    _receipt(stage, "result.json", pin, nonce, status="committed", helper=helper, child=child,
+                             version=value["target_version"], message="Application updated and restarted; portable data was untouched")
+                    return 0
             if not processes.alive(child):
                 raise AppUpdateError("The new app exited before confirming a successful startup")
             time.sleep(0.05)
