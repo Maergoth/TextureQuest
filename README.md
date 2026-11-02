@@ -13,11 +13,14 @@ AI-assisted upscaling adds finer surface detail while keeping the familiar look 
 This private candidate includes the public 1.9.5 updater fixes.
 
 - **Textures (required):** the released texture pack.
-- **Graphical Effects (experimental):** lighting, shadows, AO, filtering and DLSS.
+- **Graphical Effects (experimental):** lighting, shadows, AO, filtering, DLSS and Reflex.
   DLSS needs supported hardware. Each feature has its own in-game control.
 
 DLSS starts off on new installs; enable it in **Home → TextureQuest**.
 Updates keep your saved choices.
+**Reflex driver mode** is a separate, default-off NVIDIA control in the same panel.
+It requests the driver's device low-latency mode without Boost or an extra FPS cap.
+The master shortcut removes TextureQuest's request in Original mode.
 
 Choose components, close EQ2, then **Apply changes**. **Press Home to open settings**,
 then choose **TextureQuest** for feature toggles and Min/Med/Max shadowed lights.

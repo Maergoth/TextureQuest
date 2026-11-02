@@ -18,6 +18,7 @@
 #include "fps_counter.hpp"
 #include "world_graphics_controller.hpp"
 #include "depth_demand_v1.hpp"
+#include "reflex_primary.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -93,6 +94,8 @@ struct State {
     tq::FpsCounter FPS;
     tq::WorldGraphicsController WorldGraphics;
     tq::RendererBindingProbe RendererProbe;
+    tq::reflex::Primary Reflex;
+    std::atomic<bool> ReflexRequested{false}, ReflexPreferenceLoaded{false};
     std::atomic<bool> ShowFPS{true};
     std::mutex EffectsStatusLock;
     uint64_t EffectsStatusSignature = UINT64_MAX;
@@ -333,6 +336,7 @@ void StockWorker() {
 // every stock copy so nothing touches the device after it is gone.
 void OnDestroyDevice(device* dev) {
     if (!GameDevice(dev)) return;
+    Global->Reflex.Destroy(dev);
     {
         std::lock_guard lock(Global->JobLock);
         std::erase_if(Global->Jobs, [dev](const StockJob& job) { return job.Device == dev; });
@@ -399,6 +403,13 @@ void OnPushDescriptors(command_list* cmd, shader_stage stages, pipeline_layout l
 void OnPresent(command_queue* queue, swapchain* surface, const rect*, const rect*, uint32_t, const rect*) {
     if (!queue || !GameDevice(queue->get_device()) || !surface || !surface->get_hwnd()) return;
     const bool original = Global->Original;
+    // Admit the native source before AIO can create an output/proxy runtime.
+    Global->Reflex.Present(queue->get_device(),
+        reinterpret_cast<IUnknown*>(queue->get_device()->get_native()),
+        reinterpret_cast<IDXGISwapChain*>(surface->get_native()),
+        static_cast<HWND>(surface->get_hwnd()), Global->ReflexRequested.load(),
+        !original && (Global->Config.WorldGraphics || Global->Config.Effects || Global->Config.DLSS),
+        GetTickCount64());
     Global->WorldGraphics.Reconcile(Global->Config.WorldGraphics, original);
     Global->AIO.Reconcile(Global->Config.DLSS && Global->Config.DLSSBackend == "aio", original);
     if (original == Global->PushRegistered)
@@ -542,6 +553,11 @@ void OnInitEffectRuntime(effect_runtime* runtime) {
     bool showFPS = true;
     reshade::get_config_value(nullptr, "TextureQuest", "ShowFPS", showFPS);
     Global->ShowFPS = showFPS;
+    if (!Global->ReflexPreferenceLoaded.exchange(true)) {
+        bool reflex = false;
+        reshade::get_config_value(nullptr, "TextureQuest", "ReflexLowLatency", reflex);
+        Global->ReflexRequested = reflex;
+    }
     Global->Effects.Reload(runtime);
     Global->DLSS.Reload(runtime);
 }
@@ -746,6 +762,41 @@ void DrawAioControls(bool original) {
     else if (aio.Controls.Flags & TQAIO_ControlsPending) ImGui::TextDisabled("Applying DLSS changes...");
 }
 
+void DrawReflexControl(bool original) {
+    if (!(Global->Config.WorldGraphics || Global->Config.Effects || Global->Config.DLSS)) return;
+    bool requested = Global->ReflexRequested.load();
+    if (ImGui::Checkbox("Reflex driver mode (experimental)", &requested)) {
+        Global->ReflexRequested = requested;
+        reshade::set_config_value(nullptr, "TextureQuest", "ReflexLowLatency", requested);
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("NVIDIA device low-latency mode. No Boost or extra FPS cap.\n"
+            "Experimental driver mode; full game input/simulation timing is unavailable.\n"
+            "Already enabled external control is left alone.");
+    const auto state = Global->Reflex.Snapshot();
+    using Status = tq::reflex::State;
+    if (state.ReleaseVerificationUnknown)
+        ImGui::TextDisabled("Reflex: request removed; driver status unavailable (%d).", state.Code);
+    else if (state.Why == tq::reflex::Reason::NeutralDriverStillOn)
+        ImGui::TextDisabled("Reflex: request removed; driver still reports on.");
+    else if (state.ModuleCleanupPending)
+        ImGui::TextDisabled("Reflex: driver cleanup pending (%d).", state.CleanupCode);
+    else if (state.Status == Status::Releasing || state.CleanupPending)
+        ImGui::TextDisabled("Reflex: could not remove the request (driver %d).", state.Code);
+    else if (state.Status == Status::External)
+        ImGui::TextDisabled("Reflex: %s.", state.Owned ? "another sleep controller is active" : "enabled externally; left unchanged");
+    else if (state.Status == Status::Unsupported)
+        ImGui::TextDisabled("Reflex: unavailable on this device/driver (%d).", state.Code);
+    else if (state.Status == Status::Error)
+        ImGui::TextDisabled("Reflex: %s (driver %d).", state.Owned ? "request accepted; not verified active" : "driver request failed", state.Code);
+    else if (state.Status == Status::Requested)
+        ImGui::TextDisabled("Reflex: accepted; driver not reporting active.");
+    else if (original && requested)
+        ImGui::TextDisabled("Reflex: off in Original. Your choice is kept.");
+    else
+        ImGui::TextDisabled("Reflex: %s.", state.Status == Status::On ? "on" : requested ? "waiting for game frame" : "off");
+}
+
 void OnTextureQuestOverlay(effect_runtime* runtime) {
     if (!GameRuntime(runtime)) return;
     if (!Global) return;
@@ -764,6 +815,7 @@ void OnTextureQuestOverlay(effect_runtime* runtime) {
         DrawAioControls(original);
         ImGui::Separator();
     }
+    DrawReflexControl(original);
     if (Global->Config.WorldGraphics) {
         ImGui::TextUnformatted("World graphics: EQ2 Graphics");
         if (original) ImGui::TextDisabled("Paused in Original. Your choices are kept.");
@@ -872,6 +924,7 @@ void Stop() {
     reshade::unregister_event<reshade::addon_event::destroy_pipeline>(&OnRendererPipelineDestroyed);
     reshade::unregister_event<reshade::addon_event::init_pipeline>(&OnRendererPipeline);
     Global->RendererProbe.Stop();
+    Global->Reflex.Shutdown();
     Global->Effects.Clear();
     Global->DLSS.Clear();
     Global->AIO.Clear();

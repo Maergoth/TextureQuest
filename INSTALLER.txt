@@ -1,4 +1,4 @@
-TextureQuest 1.13.2 private preview — Windows x64
+TextureQuest 1.13.3 private preview — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract outside the game folder; keep data beside the EXE.
@@ -6,9 +6,11 @@ TextureQuest 1.13.2 private preview — Windows x64
 4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
 Textures are required. Graphical Effects (experimental) includes lighting,
-shadows, AO, filtering and DLSS on supported hardware.
+shadows, AO, filtering, DLSS and Reflex on supported hardware.
 Press Home to open settings, then choose TextureQuest for individual controls.
 DLSS starts off on new installs; enable its controls there. Updates keep saved choices.
+Reflex driver mode is a separate default-off NVIDIA control. It adds no Boost or
+extra FPS cap. Original mode removes TextureQuest's low-latency request.
 This includes feature checkboxes and Min/Med/Max shadowed lights.
 Advanced opens further tweaks. AF uses 16x. Numpad * switches
 textures and graphics Original/Upscaled without changing your choices. Use

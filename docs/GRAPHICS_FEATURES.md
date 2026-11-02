@@ -21,6 +21,7 @@ AO/contact implementation.
 | Ambient occlusion | Darkens nearby occlusion in ambient world lighting |
 | Anisotropic filtering | 16x filtering on eligible world samplers when enabled |
 | Smooth interface text | Bilinear filtering for interface text; not scene antialiasing |
+| Reflex driver mode (experimental) | Requests NVIDIA driver low-latency mode for EQ2's DX11 device |
 
 Character and emissive lighting depend on the point-light parent control. Emissive
 lighting is an approximation, not a full multi-bounce lighting engine.
@@ -70,6 +71,31 @@ needs their inputs. This preview changes no native EQ2 INI settings. The existin
 backup/restore manager remains available for future verified overrides.
 Bloom, screen-color bounce, contact-only shaders and edge smoothing are retired.
 Unrelated ReShade effects and settings are preserved.
+
+## Experimental Reflex
+
+**Home → TextureQuest → Reflex driver mode** starts off and keeps its choice
+across restarts. It works independently of DLSS. Original mode removes
+TextureQuest's request; switching back reapplies it. There is no Boost, added
+frame cap, driver-profile change or depth processing dependency.
+
+This uses NVIDIA's installed driver API on the native game DX11 device. It does
+not call an extra Sleep at Present or invent input/simulation timing markers.
+NVIDIA supports this driver mode with less optimal wait placement than a full
+engine integration. The panel reports driver acceptance/activity, not measured
+input latency or a guaranteed FPS gain. [NVAPI documentation](https://docs.nvidia.com/nvapi/group__dx.html).
+
+After first use, the installed NVIDIA API stays initialized and loaded until
+EQ2 exits. Turning Reflex off removes TextureQuest's device request and stops its
+status checks. It keeps the library resident because ReShade's unload callbacks
+run before the final native-device release. Hot unloading/reloading the add-on
+can retain one initialization reference per load; process exit reclaims them.
+No driver DLL is distributed or removed by TextureQuest.
+
+An already-enabled external low-latency mode is left untouched. The public API
+cannot recover every prior request parameter or coordinate arbitrary concurrent
+writers. TextureQuest releases only the device request it accepted ownership of;
+it does not claim to reconstruct hidden foreign caps or Boost settings.
 
 ## Experimental DLSS
 

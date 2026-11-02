@@ -445,7 +445,7 @@ class TextureQuestApp:
         self.component_controls = {}
         for key, caption, variable, hint in [
             ('textures', 'Textures (required)', self.component_textures, 'Our generated textures. The in-game toggle switches them off too.'),
-            ('effects', 'Graphical Effects (experimental)', self.component_graphics, 'Lighting, shadows, AO, filtering and DLSS on supported hardware. Press Home to open settings, then choose TextureQuest. The texture shortcut switches all selected features off/on.')]:
+            ('effects', 'Graphical Effects (experimental)', self.component_graphics, 'Lighting, shadows, AO, filtering, DLSS and Reflex on supported hardware. Press Home to open settings, then choose TextureQuest. The texture shortcut switches all selected features off/on.')]:
             row = tk.Frame(component_area, bg=WHITE)
             row.pack(fill='x')
             row.columnconfigure(0, weight=1)
