@@ -43,28 +43,61 @@ AIO2_VALUES.update({('Standalone.DLSSNR', key): '0'
 AIO_CONTROL_KEYS = {('Standalone.DLSSNR', key) for key in
                     ('NeuralRendering', 'FrameGeneration', 'ManagedSrEnabled', 'SourceResolutionOverride')}
 
+# Human-selected November2 defaults. Only absent keys are seeded; historical
+# preset backup values and foreign sections never enter this allowlist.
+GRAPHICS_CORE_DEFAULTS = {('TextureQuest', 'ReflexLowLatency'): '1'}
+GRAPHICS_WORLD_DEFAULTS = {('EQ2Graphics', key): value for key, value in {
+    'AmbientKept': '0.5', 'AmbientOcclusion': '1', 'AnisotropicFiltering': '1',
+    'Anisotropy': '16', 'CharacterShadows': '1', 'EmissiveLights': '1',
+    'EmissiveLightStrength': '15.59', 'OcclusionRadius': '0.66', 'OcclusionStrength': '1.25',
+    'OwnLampShaders': '0', 'PaintedEmissionKept': '0.5', 'PaintedEmissionLight': '0.5',
+    'PointLightShadows': '1', 'ShadowedLights': '256', 'ShadowRange': '200',
+    'ShadowSoftness': '0.14', 'ShadowStrength': '1', 'SmoothIndoorTransition': '1',
+    'SmoothInterfaceText': '1', 'SunLighting': '1', 'SunShadowDirectionFix': '0',
+    'SunShadowMode': '2', 'SunShadowSize': '1.05', 'TextureQuestSunSoftnessPreference': '1.05',
+    'TextureQuestPresetVersion': '2',
+}.items()}
+GRAPHICS_AIO_DEFAULTS = {('Standalone.DLSSNR', key): value for key, value in {
+    'FrameGeneration': '0', 'ManagedSrEnabled': '0', 'NeuralRendering': '0',
+    'ManagedFrameMultiplier': '2', 'Model': '3', 'ManagedSrMode': '1', 'ManagedNrPasses': '1',
+}.items()}
+GRAPHICS_DEFAULT_PROFILES = {
+    name: ('texturequest-' + name + '-settings-v1', dict(GRAPHICS_CORE_DEFAULTS)) for name in ('graphics-core-defaults', 'graphics-world-defaults',
+                           'graphics-aio-defaults', 'graphics-world-aio-defaults')
+}
+for _profile in GRAPHICS_DEFAULT_PROFILES:
+    _schema, _values = GRAPHICS_DEFAULT_PROFILES[_profile]
+    if '-world' in _profile: _values.update(GRAPHICS_WORLD_DEFAULTS)
+    if '-aio' in _profile: _values.update(GRAPHICS_AIO_DEFAULTS)
+GRAPHICS_DEFAULT_SCHEMAS = {schema: values for schema, values in GRAPHICS_DEFAULT_PROFILES.values()}
+
 
 def _profile_values(profile):
+    if profile in GRAPHICS_DEFAULT_PROFILES: return GRAPHICS_DEFAULT_PROFILES[profile]
     if profile == 'feeder': return SCHEMA, VALUES
     if profile == 'aio': return AIO_SCHEMA, AIO_VALUES
     if profile == 'aio2': return AIO_V3_SCHEMA, AIO2_VALUES
     raise ValueError('Unknown DLSS settings backend.')
 
 
-def _parse(lines, values=VALUES):
+def _parse(lines, values=VALUES, *, casefold=False):
     rows, sections, section = {key: [] for key in values}, [], ''
+    canonical = {(s.casefold(), k.casefold()): (s, k) for s, k in values} if casefold else {}
+    section_names = {s.casefold(): s for s, _ in values} if casefold else {}
     for index, line in enumerate(lines):
         body, _ = _ending(line)
         if body.lstrip(' \t').startswith((';', '/', '#')): continue
         header = _SECTION.fullmatch(body)
         if header:
             section = header[1].strip(' \t[]')
+            section = section_names.get(section.casefold(), section)
             sections.append((index, section))
         elif body.lstrip(' \t').startswith('['):
             raise ValueError('Malformed DLSS settings section; settings preserved.')
         else:
             assignment = _assignment(line)
             key = (section, assignment[0]) if assignment else None
+            if casefold and key is not None: key = canonical.get((key[0].casefold(), key[1].casefold()), key)
             if key in rows: rows[key].append(index)
     return rows, sections
 
@@ -79,23 +112,53 @@ def _value(key, before, values=VALUES):
     return ','.join(entry.replace(',', ',,') for entry in entries)
 
 
+def _preserved_graphics_defaults(lines, values):
+    """Keep the renderer's effective old names and explicit legacy sun-off."""
+    aliases = {'EmissiveLights': 'GlowLights', 'EmissiveLightStrength': 'GlowLightStrength',
+               'PaintedEmissionKept': 'PaintedGlowKept'}
+    names = {('EQ2Graphics', key): None for key in (*aliases.values(), 'SunSoftness')}
+    names.update(values)
+    rows, _ = _parse(lines, names, casefold=True)
+    def present(key): return rows.get(('EQ2Graphics', key), [])
+    def number(key):
+        from math import isfinite
+        indices = present(key)
+        if len(indices) != 1: return None
+        raw = _assignment(lines[indices[0]])[2].split(';', 1)[0].split('#', 1)[0].strip()
+        try:
+            value = float(raw)
+            return value if isfinite(value) else None
+        except ValueError: return None
+    omitted = {('EQ2Graphics', key) for key, alias in aliases.items() if present(alias)}
+    softness = number('SunSoftness' if present('SunSoftness') else 'SunShadowSize')
+    if (not any(present(key) for key in ('SunLighting', 'SunShadowDirectionFix', 'SmoothIndoorTransition'))
+            and number('PointLightShadows') == 0 and number('AmbientOcclusion') == 0
+            and softness is not None and softness <= 0):
+        omitted.update(('EQ2Graphics', key) for key in
+                       ('SunLighting', 'SunShadowDirectionFix', 'SmoothIndoorTransition'))
+    return omitted
+
+
 def prepare_dlss_config(raw, *, profile='feeder'):
     """Return prepared bytes and a JSON-safe minimal before/after key lease."""
     schema, values = _profile_values(profile)
+    seed_only = schema in GRAPHICS_DEFAULT_SCHEMAS
     lines, bom = _decode(raw)
-    rows, _ = _parse(lines, values)
+    rows, _ = _parse(lines, values, casefold=seed_only)
     if any(len(indices) > 1 for indices in rows.values()):
         raise ValueError('Duplicate affected DLSS settings; settings preserved.')
+    preserved = _preserved_graphics_defaults(lines, values) if seed_only else set()
     newline = next((_ending(line)[1] for line in lines if _ending(line)[1]), '\r\n')
     original_tail = _ending(lines[-1])[0] if lines else None
     original_unterminated = bool(lines and not _ending(lines[-1])[1])
     bridged, created, changes = False, [], []
     for key in values:
-        rows, sections = _parse(lines, values)
+        if key in preserved: continue
+        rows, sections = _parse(lines, values, casefold=seed_only)
         before = lines[rows[key][0]] if rows[key] else None
         # Existing component choices belong to the user. A launcher refresh
         # supplies absent defaults but never resets their in-game controls.
-        if profile == 'aio2' and before is not None and key in AIO_CONTROL_KEYS:
+        if before is not None and (seed_only or profile == 'aio2' and key in AIO_CONTROL_KEYS):
             continue
         value = _value(key, before, values)
         after = (_replace_value(before, value, scalar=values[key] is not None) if before is not None
@@ -127,10 +190,12 @@ def prepare_dlss_config(raw, *, profile='feeder'):
 
 def _validate(journal):
     keys = {'schema', 'changes', 'created_sections', 'tail_bridge', 'before_sha256', 'after_sha256', 'record_sha256'}
-    if type(journal) is not dict or set(journal) != keys or journal['schema'] not in (SCHEMA, AIO_SCHEMA, AIO_V2_SCHEMA, AIO_V3_SCHEMA):
+    if type(journal) is not dict or set(journal) != keys or journal['schema'] not in (SCHEMA, AIO_SCHEMA, AIO_V2_SCHEMA, AIO_V3_SCHEMA, *GRAPHICS_DEFAULT_SCHEMAS):
         raise ValueError('Invalid DLSS settings journal.')
-    values = (VALUES if journal['schema'] == SCHEMA else
-              AIO2_VALUES if journal['schema'] == AIO_V3_SCHEMA else AIO_VALUES)
+    values = GRAPHICS_DEFAULT_SCHEMAS.get(journal['schema'])
+    if values is None:
+        values = (VALUES if journal['schema'] == SCHEMA else
+                  AIO2_VALUES if journal['schema'] == AIO_V3_SCHEMA else AIO_VALUES)
     body = {key: value for key, value in journal.items() if key != 'record_sha256'}
     if _seal(body) != journal: raise ValueError('DLSS settings journal checksum changed.')
     import re
@@ -156,6 +221,8 @@ def _validate(journal):
             if (type(line) is not str or len(line.encode()) > MAX_INI_BYTES or '\x00' in line or
                     any(c in _ending(line)[0] for c in '\r\n') or not _assignment(line) or _assignment(line)[0] != key[1]):
                 raise ValueError('Invalid DLSS changed line.')
+        if journal['schema'] in GRAPHICS_DEFAULT_SCHEMAS and change['before'] is not None:
+            raise ValueError('Graphics default lease cannot overwrite an existing value.')
         expected = _value(key, change['before'], values)
         after_value = _assignment(change['after'])[2].strip(' \t')
         if values[key] is not None and change['before'] is not None:
@@ -178,7 +245,8 @@ def restore_dlss_config(raw, journal, *, preserve_controls=False):
     """
     values = _validate(journal)
     lines, bom = _decode(raw)
-    rows, _ = _parse(lines, values)
+    seed_only = journal['schema'] in GRAPHICS_DEFAULT_SCHEMAS
+    rows, _ = _parse(lines, values, casefold=seed_only)
     replacements, conflicts = {}, []
     for change in journal['changes']:
         key = (change['section'], change['key'])
@@ -200,7 +268,7 @@ def restore_dlss_config(raw, journal, *, preserve_controls=False):
                                else _replace_value(lines[index], _assignment(before)[2].strip(' \t')))
     lines = [replacements.get(index, line) for index, line in enumerate(lines) if replacements.get(index, line)]
     for section in reversed(journal['created_sections']):
-        _, headers = _parse(lines, values)
+        _, headers = _parse(lines, values, casefold=seed_only)
         matches = [index for index, name in headers if name == section]
         if len(matches) != 1: continue
         start = matches[0]

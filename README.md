@@ -8,9 +8,9 @@ TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim i
 
 AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,694 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
 
-## 1.13 private graphics preview
+## 1.13.5 graphics update
 
-This private candidate includes the public 1.9.5 updater fixes.
+This update includes the 1.9.5 updater fixes and optional experimental graphics.
 
 - **Textures (required):** the released texture pack.
 - **Graphical Effects (experimental):** lighting, shadows, AO, filtering, DLSS and Reflex.
@@ -18,14 +18,16 @@ This private candidate includes the public 1.9.5 updater fixes.
 
 DLSS starts off on new installs; enable it in **Home → TextureQuest**.
 Updates keep your saved choices.
-**Reflex driver mode** is a separate, default-off NVIDIA control in the same panel.
+**Reflex driver mode** is a separate experimental NVIDIA control in the same panel.
 It requests the driver's device low-latency mode without Boost or an extra FPS cap.
 The master shortcut removes TextureQuest's request in Original mode.
 
 Choose components, close EQ2, then **Apply changes**. **Press Home to open settings**,
 then choose **TextureQuest** for feature toggles and Min/Med/Max shadowed lights.
 Further tuning is under **Advanced**. AF uses 16x when enabled.
-Defaults: shadow strength 1, character softness 0.15, AO radius 0.35/strength 1.25.
+Defaults: shadow strength 1, character softness 0.14, AO radius 0.66/strength 1.25,
+emissive strength 15.59 and Max shadowed lights. Reflex starts enabled on supported
+hardware; rebuilt lamp lighting and the sun-direction correction start off.
 Shadowed lights: Min 10, Med 50, Max all supported lights.
 **Numpad \*** switches textures and graphics off/on without changing your choices.
 Uncheck Point-light shadows, Ambient occlusion and Sun lighting to stop the world
@@ -55,7 +57,7 @@ The sun-direction correction now requires current native cascade/caster evidence
 and fades changes instead of using the old abrupt timeout. Compatible upstream
 window projection, lamp-fade and sun-filtering fixes are included. The combined
 result still needs an in-game comparison.
-This is an unpublished local test. Frame generation includes a pacing/GUI-sharing
+Frame generation includes a pacing/GUI-sharing
 correction that improved an isolated comparison; EQ2 performance and smoothness
 still need testing. [Details](docs/GRAPHICS_FEATURES.md).
 

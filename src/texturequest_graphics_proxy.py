@@ -598,11 +598,14 @@ class GraphicsManager:
                  'DLSS=' + ('1' if selection['dlss'] else '0'), 'DLSSBackend=' + dlss_backend, '']
         return '\r\n'.join(lines).encode('utf-8')
 
-    def _restore_dlss_consumer_settings(self, game, record, *, preserve_controls=False):
-        lease = record.get('dlss_consumer_settings')
+    def _restore_dlss_consumer_settings(self, game, record, *, preserve_controls=False, key='dlss_consumer_settings'):
+        # Replacement transfers all current seeded choices; true Uninstall
+        # retains the normal conditional key restore.
+        if preserve_controls and key == 'graphics_defaults_settings': return ()
+        lease = record.get(key)
         if not lease: return ()
         from texturequest_dlss import restore_dlss_config
-        need(lease.get('schema') == 'texturequest-dlss-lease-v1' and
+        need(lease.get('schema') == ('texturequest-graphics-defaults-lease-v1' if key == 'graphics_defaults_settings' else 'texturequest-dlss-lease-v1') and
              core._plain(lease.get('path', ''), game) == game / 'ReShade.ini', 'DLSS settings ownership changed.')
         if not (game / 'ReShade.ini').exists(): return ('ReShade.ini missing',)
         conflicts = []
@@ -825,11 +828,14 @@ class GraphicsManager:
             report('Verifying loose DDS files and texture map.')
             map_path = self._activate_prepared(game, prepared)
             self._write_key(binding)
-            effects_lease, dlss_lease, consumer_lease = None, None, None
+            effects_lease, dlss_lease, consumer_lease, defaults_lease = None, None, None, None
             shader_folder, retired_shader = self._effects_shader(runtime) if selection['effects'] and renderer_profile is None else (None, None)
             dlss_folder = self._dlss_shaders(dlss_profile) if dlss_profile is not None else None
+            aio_defaults = dlss_profile is not None and _dlss_contract(dlss_profile).get('settings') == 'aio2'
+            defaults_profile = 'graphics-' + ('world-' if renderer_profile is not None else '') + ('aio-' if aio_defaults else '') + 'defaults'
+            if defaults_profile == 'graphics-defaults': defaults_profile = 'graphics-core-defaults'
             def configure_effects(raw):
-                nonlocal effects_lease, dlss_lease, consumer_lease
+                nonlocal effects_lease, dlss_lease, consumer_lease, defaults_lease
                 from texturequest_effects import prepare_effects_config
                 for folder, previous, key in ((shader_folder, retired_shader, 'effects'), (dlss_folder, None, 'dlss')):
                     if folder is None: continue
@@ -847,8 +853,13 @@ class GraphicsManager:
                     lease = dict(schema='texturequest-dlss-lease-v1', path=str(game / 'ReShade.ini'), journal=journal)
                     need(consumer_lease is None or consumer_lease == lease, 'DLSS settings changed before installation; settings preserved.')
                     consumer_lease = lease
+                from texturequest_dlss import prepare_dlss_config
+                raw, journal = prepare_dlss_config(raw, profile=defaults_profile)
+                lease = dict(schema='texturequest-graphics-defaults-lease-v1', path=str(game / 'ReShade.ini'), journal=journal)
+                need(defaults_lease is None or defaults_lease == lease, 'Graphics defaults changed before installation; settings preserved.')
+                defaults_lease = lease
                 return raw
-            if (shader_folder is not None or dlss_folder is not None) and (game / 'ReShade.ini').exists():
+            if (game / 'ReShade.ini').exists():
                 configure_effects(quiet_reshade((game / 'ReShade.ini').read_bytes()))
             writes, owned = [], False
             if all(kind == 'none' for kind in kinds.values()):
@@ -881,7 +892,7 @@ class GraphicsManager:
             doc = dict(schema=RECORD_SCHEMA, phase='installing', id=uuid.uuid4().hex, game=str(game), files=files,
                        reshade_owned=owned, shortcut=binding, map=str(map_path), payload='loose-dds',
                        components=selection, effects_settings=effects_lease, dlss_settings=dlss_lease,
-                       dlss_consumer_settings=consumer_lease,
+                       dlss_consumer_settings=consumer_lease, graphics_defaults_settings=defaults_lease,
                        dlss_profile=dlss_profile['id'] if dlss_profile is not None else None,
                        dlss_backend=dlss_backend if dlss_profile is not None else None,
                        renderer_profile=renderer_profile['id'] if renderer_profile is not None else None,
@@ -955,7 +966,8 @@ class GraphicsManager:
                 return self.status(game)
             # The DLSS path was added last; reverse leases so shared loading
             # keys and preexisting user paths restore without false conflicts.
-            settings_conflicts = (self._restore_dlss_consumer_settings(game, doc, preserve_controls=preserve_dlss_controls) +
+            settings_conflicts = (self._restore_dlss_consumer_settings(game, doc, preserve_controls=preserve_dlss_controls, key='graphics_defaults_settings') +
+                                  self._restore_dlss_consumer_settings(game, doc, preserve_controls=preserve_dlss_controls) +
                                   self._restore_effect_settings(game, doc, 'dlss_settings') +
                                   self._restore_effect_settings(game, doc))
             for row in doc['files']:

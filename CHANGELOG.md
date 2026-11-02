@@ -1,11 +1,12 @@
 # Changelog
 
-## 1.13.5 — private graphics preview
+## 1.13.5
 
 - Measure supported particle materials per triangle and accumulate their light in world space, replacing screen-coverage normalization and transient draw-batch tracking. Preserve animated fire.
 - Require current native cascade/caster evidence for the sun-direction correction and fade changes instead of using the abrupt timeout.
 - Merge compatible upstream window projection, lamp fade, loading-scene reset and distance-consistent sun filtering fixes.
 - Preserve saved controls, native bloom choices, texture/DLSS/Reflex functionality and the normal launcher update flow. Local preview; visual stability and performance still need an in-game check.
+- Use the selected graphics defaults for absent settings while retaining existing custom values, legacy off choices and conditional uninstall restoration.
 
 ## 1.13.4 — private graphics preview
 
