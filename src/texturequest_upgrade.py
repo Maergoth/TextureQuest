@@ -134,7 +134,7 @@ class Upgrade:
         if status['installed'] or status['running']:
             report('Replacing the old graphics hook…')
             options = {} if snapshot is None else dict(expected_record=snapshot['graphics'])
-            result = self.graphics.uninstall(game, progress=report, **options)
+            result = self.graphics.uninstall(game, progress=report, preserve_dlss_controls=True, **options)
             if any(name.casefold() != 'reshade.ini' for name in result.get('kept', [])):
                 raise ValueError('Changed hook files were preserved. Remove the conflicting files listed in the install status, then click Finish upgrade.')
 

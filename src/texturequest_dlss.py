@@ -40,6 +40,8 @@ AIO_VALUES = {('Standalone.DLSSNR', key): value for key, value in {
 AIO2_VALUES = dict(AIO_VALUES)
 AIO2_VALUES.update({('Standalone.DLSSNR', key): '0'
                     for key in ('NeuralRendering', 'FrameGeneration', 'ManagedSrEnabled')})
+AIO_CONTROL_KEYS = {('Standalone.DLSSNR', key) for key in
+                    ('NeuralRendering', 'FrameGeneration', 'ManagedSrEnabled', 'SourceResolutionOverride')}
 
 
 def _profile_values(profile):
@@ -93,8 +95,7 @@ def prepare_dlss_config(raw, *, profile='feeder'):
         before = lines[rows[key][0]] if rows[key] else None
         # Existing component choices belong to the user. A launcher refresh
         # supplies absent defaults but never resets their in-game controls.
-        if (profile == 'aio2' and before is not None and key[0] == 'Standalone.DLSSNR' and
-                key[1] in ('NeuralRendering', 'FrameGeneration', 'ManagedSrEnabled', 'SourceResolutionOverride')):
+        if profile == 'aio2' and before is not None and key in AIO_CONTROL_KEYS:
             continue
         value = _value(key, before, values)
         after = (_replace_value(before, value, scalar=values[key] is not None) if before is not None
@@ -168,14 +169,21 @@ def _validate(journal):
     return values
 
 
-def restore_dlss_config(raw, journal):
-    """Restore still-owned values; retain later edits and return conflict keys."""
+def restore_dlss_config(raw, journal, *, preserve_controls=False):
+    """Restore owned values; replacement alone transfers current AIO controls.
+
+    The caller's normal settings transaction retains these exact current lines
+    through retirement so the replacement sees user choices, not absent defaults.
+    A true Uninstall leaves preserve_controls false and retains its old behavior.
+    """
     values = _validate(journal)
     lines, bom = _decode(raw)
     rows, _ = _parse(lines, values)
     replacements, conflicts = {}, []
     for change in journal['changes']:
         key = (change['section'], change['key'])
+        if preserve_controls and key in AIO_CONTROL_KEYS:
+            continue
         before, after, indices = change['before'], change['after'], rows[key]
         title = '.'.join(key)
         if not indices:

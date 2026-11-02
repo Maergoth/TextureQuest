@@ -598,7 +598,7 @@ class GraphicsManager:
                  'DLSS=' + ('1' if selection['dlss'] else '0'), 'DLSSBackend=' + dlss_backend, '']
         return '\r\n'.join(lines).encode('utf-8')
 
-    def _restore_dlss_consumer_settings(self, game, record):
+    def _restore_dlss_consumer_settings(self, game, record, *, preserve_controls=False):
         lease = record.get('dlss_consumer_settings')
         if not lease: return ()
         from texturequest_dlss import restore_dlss_config
@@ -607,7 +607,7 @@ class GraphicsManager:
         if not (game / 'ReShade.ini').exists(): return ('ReShade.ini missing',)
         conflicts = []
         def restore(raw):
-            after, changed = restore_dlss_config(raw, lease['journal'])
+            after, changed = restore_dlss_config(raw, lease['journal'], preserve_controls=preserve_controls)
             conflicts.extend(changed)
             return after
         try:
@@ -932,7 +932,7 @@ class GraphicsManager:
         while watcher and _alive(watcher,Path(record['runtime_dir'])/'TextureQuestGraphics.exe'):
             need(time.monotonic()<end,'Legacy watcher stop not confirmed. Preserve its files.');time.sleep(.05)
 
-    def uninstall(self, game, progress=None, *, expected_record=...):
+    def uninstall(self, game, progress=None, *, expected_record=..., preserve_dlss_controls=False):
         game = core._plain(core.validate_game(game).parent)
         ensure_closed()
         kept = []
@@ -955,12 +955,18 @@ class GraphicsManager:
                 return self.status(game)
             # The DLSS path was added last; reverse leases so shared loading
             # keys and preexisting user paths restore without false conflicts.
-            settings_conflicts = (self._restore_dlss_consumer_settings(game, doc) +
+            settings_conflicts = (self._restore_dlss_consumer_settings(game, doc, preserve_controls=preserve_dlss_controls) +
                                   self._restore_effect_settings(game, doc, 'dlss_settings') +
                                   self._restore_effect_settings(game, doc))
             for row in doc['files']:
                 p = core._plain(row['path'])
                 if not p.exists():
+                    continue
+                # A replacement hands current controls to the new preparation,
+                # including an originally created INI or an empty old lease.
+                # The real Uninstall still follows its original ownership rules.
+                if preserve_dlss_controls and p == game / 'ReShade.ini':
+                    kept.append(p.name)
                     continue
                 if p.name.casefold() in PROXY_NAMES and not doc['reshade_owned']:
                     continue

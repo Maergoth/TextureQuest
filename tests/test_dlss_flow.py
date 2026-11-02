@@ -74,13 +74,17 @@ class DLSSFlow(unittest.TestCase):
         ui.app_version, ui.update_check, ui.dds_source, ui.release = '1.10.3', {}, {}, {}
         self.status['effects_available'] = False
         with patch.object(app, 'game_executable', return_value=self.game / 'EverQuest2.exe'):
-            for available, busy, error, expected in ((True, None, '', 'normal'), (False, None, '', 'disabled'),
-                    (True, 'install', '', 'disabled'), (True, None, 'bad saved selection', 'disabled')):
+            for available, busy, error, unknown, expected in ((True, None, '', False, 'normal'), (False, None, '', False, 'disabled'),
+                    (True, 'install', '', False, 'disabled'), (True, None, 'bad saved selection', False, 'disabled'),
+                    (True, None, '', True, 'disabled')):
                 self.status['dlss_available'], ui.busy, ui.component_error = available, busy, error
+                self.status['unknown'] = unknown
+                self.status['components'] = None if unknown else components.normalize()
                 app.TextureQuestApp.refresh_controls(ui)
                 self.assertEqual(ui.component_controls['effects'].configure.call_args.kwargs['state'], expected)
                 self.assertEqual(ui.component_controls['textures'].configure.call_args.kwargs['state'], 'disabled')
             ui.busy, ui.component_error = None, ''
+            self.status.update(unknown=False, components=components.normalize())
             self.status['dlss_available'] = False; ui.component_graphics.set(True)
             app.TextureQuestApp.refresh_controls(ui)
             self.assertEqual(ui.component_controls['effects'].configure.call_args.kwargs['state'], 'normal')
@@ -153,6 +157,32 @@ class DLSSFlow(unittest.TestCase):
         self.ui.component_graphics.set(False); self.ui.components_changed()
         self.assertEqual(components.load(self.ui.state_dir, self.game)['selection'], components.normalize())
         self.assertFalse(self.ui.component_graphics.get())
+
+    def test_unknown_status_cannot_erase_preferences_on_toggle_or_apply(self):
+        self.ui.load_components()
+        self.ui.save_components(dict(components.normalize(), effects=True, dlss=True))
+        before = components.load(self.ui.state_dir, self.game)
+        self.status = dict(unknown=True, available=False, installed=False, message='Cannot inspect graphics runtime')
+        for action in (self.ui.components_changed, lambda: app.TextureQuestApp.manage_graphics(self.ui)):
+            with self.subTest(action=action):
+                self.ui.component_graphics.set(False)
+                with patch.object(components, 'save', wraps=components.save) as save:
+                    action()
+                    save.assert_not_called()
+                self.assertEqual(components.load(self.ui.state_dir, self.game), before)
+                self.assertTrue(self.ui.component_graphics.get())
+        self.ui.begin.assert_not_called()
+        self.ui.graphics_manager.uninstall.assert_not_called()
+        self.ui.graphics_manager.install.assert_not_called()
+
+    def test_checkbox_projects_one_known_status_snapshot_before_save(self):
+        self.ui.load_components(); self.ui.component_graphics.set(True)
+        known = dict(self.status)
+        self.ui.graphics_status = Mock(side_effect=[known, dict(unknown=True)])
+        self.ui.components_changed()
+        self.ui.graphics_status.assert_called_once_with(str(self.game))
+        self.assertEqual(components.load(self.ui.state_dir, self.game)['selection'],
+                         dict(components.normalize(), effects=True, dlss=True))
 
     def setup_flow(self, failure=False):
         order = []

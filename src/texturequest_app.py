@@ -651,7 +651,10 @@ class TextureQuestApp:
         try:
             if self.busy or not game:
                 raise ValueError('Choose a game folder before changing components.')
-            self.save_components(self.selected_components(apply_graphics=True))
+            status = self.graphics_status(game)
+            if status.get('unknown'):
+                raise ValueError(status.get('message') or 'Graphics status is unknown. Saved choices were kept.')
+            self.save_components(self.selected_components(apply_graphics=True, capabilities=status))
             self.set_message('Choice saved. Apply changes with EQ2 closed. The same shortcut toggles all selected features.')
         except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
             self.load_components()
@@ -690,18 +693,18 @@ class TextureQuestApp:
             choice.configure(state="disabled" if self.busy else "normal")
         game = self.game.get().strip()
         graphics = self.graphics_status(game)
-        component_pending = graphics.get('installed') and components.normalize(graphics.get('components')) != self.selected_components(apply_graphics=True, capabilities=graphics)
+        component_pending = not graphics.get('unknown') and graphics.get('installed') and components.normalize(graphics.get('components')) != self.selected_components(apply_graphics=True, capabilities=graphics)
         self.component_controls['textures'].configure(state='disabled')
         # Keep old choices switchable even if an optional bundle is unavailable.
         graphics_choice = graphics.get('effects_available') or graphics.get('dlss_available') or self.component_graphics.get()
-        self.component_controls['effects'].configure(state='normal' if not self.busy and game and graphics_choice and not self.component_error else 'disabled')
+        self.component_controls['effects'].configure(state='normal' if not self.busy and game and graphics_choice and not graphics.get('unknown') and not self.component_error else 'disabled')
         loader = self.loader_status(game)
         legacy = self.loader_in_use(loader)
         if not self.busy and graphics.get('installed'):
             self.shortcut = shortcut_spec(graphics.get('shortcut'))
         self.shortcut_button.configure(text="Shortcut: " + shortcut_label(self.shortcut), state='disabled' if self.busy else 'normal')
         upgrading = self.upgrade_pending()
-        ready = not self.busy and game and graphics.get('available') and (upgrading or not legacy) and not self.component_error
+        ready = not self.busy and game and graphics.get('available') and not graphics.get('unknown') and (upgrading or not legacy) and not self.component_error
         self.button_state(self.install_button, bool(ready))
         self.install_button.configure(text="Finish upgrade" if upgrading else "Apply changes" if component_pending else "Uninstall graphics hook" if graphics.get('installed') else "Install graphics hook")
         self.menu.entryconfigure(self.legacy_uninstall_index, state="normal" if not self.busy and loader.get('installed') else "disabled")
@@ -887,8 +890,14 @@ class TextureQuestApp:
         if self.busy or not self.graphics_selected():
             return False
         game = self.game.get().strip()
+        status = self.graphics_status(game)
+        if not game or not status["available"] or status["unknown"]:
+            if status.get('unknown'):
+                self.load_components()
+            self.set_message(status["message"] if game else "Choose your game folder first.", error=True)
+            return False
         try:
-            selection = self.selected_components(apply_graphics=True)
+            selection = self.selected_components(apply_graphics=True, capabilities=status)
             self.save_components(selection)
         except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
             self.load_components()
@@ -897,10 +906,6 @@ class TextureQuestApp:
         if self.upgrade_pending():
             self._download_latest(auto_install=True, upgrading=True, selection=selection)
             return True
-        status = self.graphics_status(game)
-        if not game or not status["available"] or status["unknown"]:
-            self.set_message(status["message"] if game else "Choose your game folder first.", error=True)
-            return False
         changing = status['installed'] and components.normalize(status.get('components')) != selection
         removing = status["installed"] and not changing
         if changing and status.get('installed_newer_app'):
@@ -927,7 +932,7 @@ class TextureQuestApp:
                 # Display-only receipts may describe files that have since
                 # disappeared. Validate them before removing a working hook.
                 self.dds_store.verify(self.prepared, full=True)
-                removed = self.graphics_manager.uninstall(game, progress=self.report)
+                removed = self.graphics_manager.uninstall(game, progress=self.report, preserve_dlss_controls=True)
                 if any(name.casefold() != 'reshade.ini' for name in removed.get('kept', [])):
                     raise ValueError('Changed hook files were kept. Resolve the listed files before installing the new choices.')
             result = self.graphics_manager.install(game, self.prepared, dual_load=False, progress=self.report, shortcut=self.shortcut, components=selection)
