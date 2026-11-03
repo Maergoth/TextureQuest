@@ -500,7 +500,10 @@ struct HeldMesh
     uint64_t LastDrawn = 0;
 };
 static std::unordered_map<uint64_t, HeldMesh> HeldMeshes;
+static std::atomic<int> ParticleShadowLimit=emission_policy::ParticleLimit;
+static int CleanParticleShadowLimit(int value){return std::clamp(value,1,int(emission_policy::ParticleLimit));}
 static bool MovingMapUsed[MAX_LIGHTS];
+namespace particle_moving { static void Reset();static void Request(bool,uint64_t);static void WriteState(FILE *); }
 
 // a moving mesh whose world rows are the identity at the world origin, so its vertices are already world positions and
 // its origin says nothing about where it is, with the buffers it is drawn from; an entry is made when its bounds are
@@ -971,6 +974,7 @@ static void StartOver();
 
 static void Reset()
 {
+    particle_moving::Reset();
     CurrentFrame.Rows.clear();
     CurrentFrame.Records.clear();
     CurrentFrame.Lamp.clear();
@@ -2192,6 +2196,7 @@ static void WriteState()
             fprintf(file, " %016llx", static_cast<unsigned long long>(casterKey));
         fprintf(file, "\n");
     }
+    particle_moving::WriteState(file);
     fclose(file);
 }
 
@@ -3234,6 +3239,8 @@ static void DrawInstancedMoving(ID3D11DeviceContext1 *ctx, const std::vector<std
     ctx->SwapDeviceContextState(previous.Get(), nullptr);
 }
 
+#include "particle_moving_shadows.hpp"
+
 static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
 {
     const CpuScope scope(MovingMapCpu);
@@ -3369,6 +3376,7 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
         ctx->SwapDeviceContextState(previous.Get(), nullptr);
     if (instanced)
         DrawInstancedMoving(ctx, faces, faceRows);
+    particle_moving::Draw(ctx,worldMeshes);
     if (DrawAdditionalMoving) DrawAdditionalMoving(ctx);
     MovingCasters.clear();
     MovingWorlds.clear();

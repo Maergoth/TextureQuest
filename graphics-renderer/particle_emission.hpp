@@ -2,6 +2,7 @@
 #include "glow.hpp"
 #include "particle_emission_policy.hpp"
 #include "particle_field_policy.hpp"
+#include "particle_retention_policy.hpp"
 
 // Observational native material replay: complete independent native draws form
 // a bounded partial world-light field. Native rendering is never replaced.
@@ -43,6 +44,11 @@ static std::atomic<float> Strength=1.0f,Radius=1.0f;
 static std::chrono::steady_clock::time_point FieldTime{};
 static ComPtr<ID3D11Resource> FieldScene;
 static bool HasField=false;
+static particle_retention_policy::Cache Retained;
+static double Seconds(std::chrono::steady_clock::time_point time){return std::chrono::duration<double>(time.time_since_epoch()).count();}
+static double SecondsNow(){return Seconds(std::chrono::steady_clock::now());}
+static std::vector<field::Cell> VisibleCells(double now=SecondsNow())
+{return Retained.Merge(Cells,HasField&&!Cells.empty()?field::Visibility(now-Seconds(FieldTime)):0,Epoch,now);}
 static unsigned Seen=0,Measured=0,Active=0,Pending=0,RejectedBounds=0,RejectedState=0,RejectedIO=0;
 static unsigned CompleteFrames=0,IncompleteFrames=0,OverflowFrames=0,SkippedFrames=0;
 struct DomainStats
@@ -131,7 +137,8 @@ static void RemoveLights()
 {for(auto &s:SelectedCells){if(s.light)shadowmaps::Lights.erase(s.light);s={};}SelectedCount=Active=0;}
 static void InvalidateScene()
 {
-    RemoveLights();Cells.clear();HasField=false;FieldScene.Reset();++Epoch;
+    RemoveLights();Cells.clear();Retained.Clear();HasField=false;FieldScene.Reset();++Epoch;
+    shadowmaps::particle_moving::Request(false,Epoch);
     // Do not reuse or release the in-flight packet here. Its event fence and
     // epoch are retired nonblocking in ReadFrame, even across master-off.
     if(Frame.collecting)Frame.ledger.Reject();
@@ -404,7 +411,8 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
             if(valid&&!domain.acceptedDraws)valid=false;
             if(valid)valid=field::Publish(Cells,std::move(candidate),Frame.ledger,Epoch,
                 std::chrono::duration<double>(std::chrono::steady_clock::now()-Frame.time).count());
-            if(valid){HasField=true;FieldTime=std::chrono::steady_clock::now();FieldScene=Frame.scene;++CompleteFrames;}
+            if(valid){HasField=true;FieldTime=std::chrono::steady_clock::now();FieldScene=Frame.scene;
+                Retained.Observe(Cells,Epoch,Seconds(Frame.time),Seconds(FieldTime),Frame.camera);++CompleteFrames;}
             else {++IncompleteFrames;++RejectedBounds;}
             domain.published=valid;LastDomain=domain;
             Frame.busy=false;Frame.scene.Reset();Frame.target.Reset();
@@ -415,28 +423,29 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
     if(HasField&&FieldScene.Get()!=lightbuffer::LightBuffer.Get())InvalidateScene();
 }
 static float Visibility()
-{return HasField?field::Visibility(std::chrono::duration<double>(std::chrono::steady_clock::now()-FieldTime).count()):0;}
-static unsigned ReadyCount(){return glow::ParticlesActive()&&field::CleanStrength(Strength.load())>0&&Visibility()>0
-    ?std::min(unsigned(Cells.size()),emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())):0;}
+{const double now=SecondsNow();return float(std::max(Retained.Strongest(Epoch,now),HasField&&!Cells.empty()?double(field::Visibility(now-Seconds(FieldTime))):0));}
+static unsigned ReadyCount(){return glow::ParticlesActive()&&field::CleanStrength(Strength.load())>0
+    ?std::min(unsigned(VisibleCells().size()),emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())):0;}
 static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit)
 {
+    shadowmaps::particle_moving::Request(glow::ParticlesActive()&&shadowmaps::MovingShadows,Epoch);
     if(!glow::ParticlesActive()){if(HasField||SelectedCount)Hide();return;}
-    const float visibility=Visibility();const float gain=field::CleanStrength(Strength.load());
+    const auto visible=VisibleCells();const float gain=field::CleanStrength(Strength.load());
     const float radius=field::LightRadius(Radius.load(),field::MaximumWorldRadius);std::array<field::Key,field::Lit> prior{};
     for(unsigned i=0;i<SelectedCount;++i)prior[i]=SelectedCells[i].cell;
     const unsigned wanted=gain>0?std::min({allowance,field::Lit,
         emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())}):0;
-    const auto picks=field::Pick(Cells,prior,SelectedCount,shadowmaps::Camera,wanted);auto old=SelectedCells;SelectedCells={};const unsigned oldCount=SelectedCount;SelectedCount=Active=0;
-    for(unsigned i=0;i<wanted&&picks[i]!=SIZE_MAX&&visibility>0;++i)
+    const auto picks=field::Pick(visible,prior,SelectedCount,shadowmaps::Camera,wanted);auto old=SelectedCells;SelectedCells={};const unsigned oldCount=SelectedCount;SelectedCount=Active=0;
+    for(unsigned i=0;i<wanted&&picks[i]!=SIZE_MAX;++i)
     {
-        const auto &cell=Cells[picks[i]];const auto position=field::Position(cell);Selected selected{cell.key,0};
+        const auto &cell=visible[picks[i]];const auto position=field::Position(cell);Selected selected{cell.key,0};
         for(unsigned j=0;j<oldCount;++j)if(old[j].cell==cell.key){selected.light=old[j].light;old[j].light=0;break;}
         if(!selected.light||!shadowmaps::Lights.contains(selected.light))selected.light=shadowmaps::NextLightKey++;
         auto &light=shadowmaps::Lights[selected.light];const bool moved=!light.BuiltFrame||shadowmaps::Distance(light.BuiltPosition,position)>shadowmaps::MOVED_LIGHT_DISTANCE
             ||std::abs(light.GlowRange-radius)>1e-4f;
         light.Glow=true;light.Particle=true;light.GlowShown=true;light.GlowHeld=false;light.EmitterKey=0;light.Position=position;
         light.GlowNormal={};light.GlowArea=1;light.GlowRange=radius;
-        const double strength=field::StrengthReference*gain/XM_PI*visibility;
+        const double strength=field::StrengthReference*gain/XM_PI;
         light.GlowColour={float(cell.power.x*strength),float(cell.power.y*strength),float(cell.power.z*strength)};light.LastSeen=shadowmaps::FrameNumber;
         if(moved)
         {
@@ -453,6 +462,7 @@ static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit)
 static void WriteState(FILE *file)
 {
     if(!file)return;
+    fprintf(file,"particle observed cache: entries %zu, grace 2.0s, fade 1.0s, hard expiry 3.0s\n",Retained.Size());
     fprintf(file,"particle controls: strength %.3f, radius scale %.3f, world radius %.3f\n",field::CleanStrength(Strength.load()),field::CleanRadius(Radius.load()),field::LightRadius(Radius.load(),field::MaximumWorldRadius));
     fprintf(file,"particle field epoch %llu, field %d, cells %zu, selected %u, visibility %.3f; packet frame %llu epoch %llu draws %u triangles %u complete %d collecting %d busy %d\n",
         static_cast<unsigned long long>(Epoch),HasField?1:0,Cells.size(),SelectedCount,Visibility(),

@@ -12,21 +12,8 @@
     }
   },
   "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
-  "revision": "PR4 + TextureQuest023 / private Develop1.13.9",
-  "integration_base_commit": "21a8ef0cded7a293ee53bd7bfc8936830521a0b6",
-  "source_manifest": {
-    "bytes": 5368,
-    "sha256": "0d8360632524c7ce13abfce395c21fe610d7d2b1bcfd056bdec879624ec30601"
-  },
-  "snapshot_root_files": 33,
-  "compiled_source_manifest": {
-    "bytes": 10368,
-    "sha256": "adf1f741d895120536a4c3b5aeba570ab769697a556d519f32aff9135d37899b"
-  },
-  "native_release_asset": {
-    "bytes": 1043968,
-    "sha256": "e7254c08925b523c42fd02fd54707d0884e4e80593ceb5366f62d30e96e9c538"
-  },
+  "revision": "TextureQuest025/026 / private local1.13.10",
+  "integration_base_commit": "26c29e188f80597cc10b604ea5c7e0fb4e2fbdc8",
   "files": [
     {
       "name": "addon.cpp",
@@ -50,8 +37,8 @@
     },
     {
       "name": "glow.hpp",
-      "bytes": 120752,
-      "sha256": "99ccc1b7b210ce430c598e27a33097123c70f1646f4a38dd44203ea9dd76d382"
+      "bytes": 123852,
+      "sha256": "6d546dfb8b10af9e3758c08c20d156029e761a37bb8ffa453ff460adb918b2ec"
     },
     {
       "name": "lamp_holder_policy.hpp",
@@ -65,8 +52,8 @@
     },
     {
       "name": "material_normal_replay.hpp",
-      "bytes": 18764,
-      "sha256": "eeb4c306c718e5686b1818653b07f3b8e9f4a178abebf96b1ddeacd1d656181b"
+      "bytes": 19044,
+      "sha256": "aba02b924128c4885b34c1a97c9ae9f73eff6124e96ea716b75171fe7bcd381d"
     },
     {
       "name": "offscreen_lamp_policy.hpp",
@@ -85,8 +72,8 @@
     },
     {
       "name": "particle_emission.hpp",
-      "bytes": 36148,
-      "sha256": "6fa8fe3fe1100ff85c9a8dd5f7101ea5fe6395212e1357a2bf2db3150affc70a"
+      "bytes": 37046,
+      "sha256": "2bbe4b687604d6df5ca468c675697b144f7ed18a9ba12f715e85c9408fcf10e5"
     },
     {
       "name": "particle_emission_policy.hpp",
@@ -97,6 +84,16 @@
       "name": "particle_field_policy.hpp",
       "bytes": 9848,
       "sha256": "8251071203a5e908bdc3a04bf0cd28deb6abd79a2a4f1b4d4e66282063f7752a"
+    },
+    {
+      "name": "particle_moving_shadows.hpp",
+      "bytes": 11737,
+      "sha256": "559c0ee6f49490d950d839be2eb787f0960d357886df1241cf90b29f4d1e1196"
+    },
+    {
+      "name": "particle_retention_policy.hpp",
+      "bytes": 4540,
+      "sha256": "059472ff5d15e29c07181a9dc2339467be070792fcbf83a8ae94ad6e307cfd48"
     },
     {
       "name": "projected_shadow_admission.hpp",
@@ -115,13 +112,13 @@
     },
     {
       "name": "shadow_maps.hpp",
-      "bytes": 164813,
-      "sha256": "be11ce2e6053bd4d7ba2d51ee56f38270ffbf60c50e70c395983221ff1341b77"
+      "bytes": 165279,
+      "sha256": "838660c6572dddabab33597691025f54bd17c073fce3714a6d419775ce188e97"
     },
     {
       "name": "shadows.hpp",
-      "bytes": 191503,
-      "sha256": "4f22cadb0c991ab80124bdc19341e5b8667cba7af67e8053f69c865e042ebd53"
+      "bytes": 192376,
+      "sha256": "4615bfdafcb4feebc31ea6314a765b3eba6c168e7d84bd2cb07f31e45aeddbb1"
     },
     {
       "name": "sun_direction_policy.hpp",
@@ -162,89 +159,41 @@
       "name": "world_work_policy.hpp",
       "bytes": 2324,
       "sha256": "b5151f161280533a3c517e10df9d1ef929f7ad913b965039f68d59efc102cfeb"
-    },
-    {
-      "name": "deps/imgui/imconfig.h",
-      "bytes": 12289,
-      "sha256": "fb8e32b9af9aa7dad5ec5c5bc862537f5624cb39a814e6d3b36b4629a50b6599"
-    },
-    {
-      "name": "deps/imgui/imgui.h",
-      "bytes": 454459,
-      "sha256": "2ca314d19c7e1ea85687a9c1e37079e0cc823939a551b3e6b2453ff0af9fbf13"
-    },
-    {
-      "name": "deps/reshade/include/reshade.hpp",
-      "bytes": 19843,
-      "sha256": "d86932721cb77e47b996da6bf3861b1a938a1bc843be04d1e0c5dd09133b7f43"
-    },
-    {
-      "name": "deps/reshade/include/reshade_api.hpp",
-      "bytes": 58876,
-      "sha256": "db19051ef285a7a1a3721f2711de973be8805d4ca39a38fbadade7fd22100a17"
-    },
-    {
-      "name": "deps/reshade/include/reshade_api_device.hpp",
-      "bytes": 89369,
-      "sha256": "8492cb9a4352ab9a25140828226a411be36c480c23d53d0fcc806a0515076212"
-    },
-    {
-      "name": "deps/reshade/include/reshade_api_format.hpp",
-      "bytes": 18738,
-      "sha256": "d5fcdf598a9adbd18db6ccd0d15133d08c4dfa4909ec8335f76edaf735ae39cf"
-    },
-    {
-      "name": "deps/reshade/include/reshade_api_pipeline.hpp",
-      "bytes": 50915,
-      "sha256": "2c592013e46e72c62119c0652786ac21c6536a29a1bad30973a6069d1d7f7351"
-    },
-    {
-      "name": "deps/reshade/include/reshade_api_resource.hpp",
-      "bytes": 29552,
-      "sha256": "cae6d40cbd37e314e5ce5fc2cd22e77d7042892284212972bd986ffabb96363e"
-    },
-    {
-      "name": "deps/reshade/include/reshade_events.hpp",
-      "bytes": 126479,
-      "sha256": "5b1f8b8144589712584cc8f2e8b6cf7c2aff05fc1c570b7867cfa1ee841296b7"
-    },
-    {
-      "name": "deps/reshade/include/reshade_overlay.hpp",
-      "bytes": 96000,
-      "sha256": "771f0cdde2dacd21cfe04664e1aaaddae43114a1abb51bb63af5645a88c217a6"
     }
   ],
-  "compile_targets": [
-    "addon.cpp"
-  ],
-  "actual_local_compilation_inputs": 37,
+  "native_release_asset": {
+    "bytes": 1090048,
+    "sha256": "fb4998fe4da008247ee5c402e61108af9aef78df12c744c38127c759a9690887"
+  },
   "build": {
-    "result": {
-      "bytes": 1070,
-      "sha256": "6ce95daded81b97f1c7d0ffce3e465ac7ff5de41178a63d0616a482294bd7b68"
-    },
     "exit_code": 0,
-    "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes"
+    "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes",
+    "compile_log": {
+      "bytes": 55198,
+      "sha256": "7891f32a5d4d26c9c5e96f8fb2925898f1588a4e443e7b23fa97fe9e8aa31a8a"
+    }
   },
   "controlled_gpu": {
-    "result": {
-      "bytes": 973,
-      "sha256": "6532f1eb6fa986d1509cacb3f7e5ff7e8e5d73eb56ba71b59d5a3c74fc4d6538"
-    },
     "status": "PASS",
-    "markers": 4
-  },
-  "peer": {
-    "bytes": 2258,
-    "sha256": "82bdb18af2375e3eab19b4a3411255ee07a31a5321c48a021df41271d62b9224"
+    "markers": {
+      "PASS025 actual retained character shadows particle at native slot33; native16x512 pool/depth/state preserved": true,
+      "PASS025 actual shadow strength0-half-full and modern softness0-2-4 edge response": true,
+      "PASS025 moving pose, light pose, epoch and CharacterShadows-off retire stale maps": true,
+      "PASS025 all128 banked maps and lower stable quantity; unused/off resources retired": true,
+      "PASS025 focused new moving-map behavior complete": true
+    },
+    "result": {
+      "bytes": 9882,
+      "sha256": "6a7372b05273746d4da72be572e4d0e10ca87a1c174e06780cdc115c4be973e4"
+    }
   },
   "prior_metadata": {
-    "revision": "PR4 + TextureQuest020 / local1.13.8 candidate",
+    "revision": "PR4 + TextureQuest023 / private Develop1.13.9",
     "native_release_asset": {
-      "bytes": 1041408,
-      "sha256": "554bb0ab2d48a35a808b061694f825866410a2f1c4e1fd9b3ef862a5bbe6e53a"
+      "bytes": 1043968,
+      "sha256": "e7254c08925b523c42fd02fd54707d0884e4e80593ceb5366f62d30e96e9c538"
     },
     "historical_only": true
   },
-  "qualification": "Private Develop candidate; bounded partial particle capture and WORLD shadow gather/lookup corrections. Moving character shadows retain nearest16-light coverage. Controlled evidence does not prove all game coverage/appearance/FPS."
+  "qualification": "Local only; no GitHub push. Dedicated particle character maps1-128; bounded2s hold/1s fade for observed sources. Captured base-only normal convention rejected in favor of depth fallback. Controlled GPU checks do not prove all game coverage/appearance/FPS; character-section seams need live verification."
 }

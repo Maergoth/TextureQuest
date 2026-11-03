@@ -59,6 +59,10 @@ static void KeepMaterialDraw(shadowmaps::BoundDraw &bound,bool base,size_t shade
     auto *ctx=bound.Context;const shadowmaps::DrawCall &call=bound.Call;
     if(!MaterialActive()||!lightbuffer::LightBuffer||lightbuffer::CurrentTarget!=lightbuffer::LightBuffer.Get()||call.Instances!=1||call.FirstInstance)return;
     MaterialCounts.frame=shadowmaps::FrameNumber;
+    // A base pass proves no material normal convention: its tangent-frame Y
+    // can be a surface tangent (captured floor-disk and wall profiles). Leave
+    // coverage clear so the consumer uses its geometric depth fallback.
+    if(base){++MaterialCounts.unsupported;return;}
     if(capture::VertexClass.Repeated<0){++MaterialCounts.unsupported;return;}
     ComPtr<ID3D11DeviceContext1> ctx1;if(FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))return;
     ComPtr<ID3D11GeometryShader> geometryStage;ComPtr<ID3D11HullShader> hull;ComPtr<ID3D11DomainShader> domain;

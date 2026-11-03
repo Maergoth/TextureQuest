@@ -3285,6 +3285,12 @@ static void DrawAdvancedSettings()
     if(ImGui::SliderInt("Particle light limit",&particleLimit,1,int(emission_policy::ParticleLimit),"%d",ImGuiSliderFlags_AlwaysClamp))
     {glow::ParticleLightLimit=particleLimit;reshade::set_config_value(nullptr,CONFIG_SECTION,"ParticleLightLimit",particleLimit);}
     if(ImGui::IsItemHovered())ImGui::SetTooltip("Maximum particle lights within the emissive and Shadowed lights limits. Higher values cost CPU/GPU time; unsupported or hidden particle sources may still be absent.");
+    ImGui::BeginDisabled(!shadowmaps::MovingShadows);
+    int particleShadows=shadowmaps::ParticleShadowLimit;
+    if(ImGui::SliderInt("Particle shadow limit",&particleShadows,1,int(emission_policy::ParticleLimit),"%d",ImGuiSliderFlags_AlwaysClamp))
+    {shadowmaps::ParticleShadowLimit=shadowmaps::CleanParticleShadowLimit(particleShadows);reshade::set_config_value(nullptr,CONFIG_SECTION,"ParticleShadowLimit",particleShadows);}
+    if(ImGui::IsItemHovered())ImGui::SetTooltip("Particle lights that cast character shadows. Uses a separate shadow pool; higher counts cost GPU time and memory. Requires Character shadows.");
+    ImGui::EndDisabled();
     float particleStrength = particle_field_policy::CleanStrength(particle_emission::Strength.load());
     if (ImGui::SliderFloat("Particle light strength", &particleStrength, 0.0f, particle_field_policy::MaximumStrength, "%.2fx",
             ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic))
@@ -3584,6 +3590,9 @@ static void LoadSettings()
     int particleLimit=emission_policy::DefaultParticleLimit;
     reshade::get_config_value(nullptr,CONFIG_SECTION,"ParticleLightLimit",particleLimit);
     glow::ParticleLightLimit=static_cast<int>(emission_policy::ClampParticleLimit(particleLimit));
+    int particleShadows=128;
+    reshade::get_config_value(nullptr,CONFIG_SECTION,"ParticleShadowLimit",particleShadows);
+    shadowmaps::ParticleShadowLimit=shadowmaps::CleanParticleShadowLimit(particleShadows);
 
     float glowStrength = glow::Strength;
     reshade::get_config_value(nullptr, CONFIG_SECTION, "GlowLightStrength", glowStrength);

@@ -108,7 +108,7 @@ cbuffer Frame : register(b0)
     float4 InverseRows[4];
     // the light buffer's width and height and their inverses
     float4 Size;
-    // x the full-resolution pixels across each texel of ReducedLight
+    // x resolution scale, y material normals, z point softness spread, w legacy scale
     float4 Reduced;
 };
 struct GlowLight
@@ -127,7 +127,7 @@ struct GlowLight
 };
 cbuffer GlowLights : register(b1)
 {
-    // x the number of lights, y the maps' near plane, w 1 to leave out shadows while shadow colours are shown
+    // x light count, y near plane, z shadow strength, w bypass shadows for diagnostics
     float4 Counts;
     // xyz the face size of each map size, w the moving-object maps' face size
     float4 FaceSizes;
@@ -149,7 +149,14 @@ Texture2D<float4> ReducedSurface : register(t6);
 Texture2D<float4> MaterialNormals : register(t7);
 // Extra same-resolution far maps preserve all existing depth/material bindings.
 TextureCubeArray<float> Maps3 : register(t8);
+TextureCubeArray<float> ParticleMaps0 : register(t9);
+TextureCubeArray<float> ParticleMaps1 : register(t10);
+TextureCubeArray<float> ParticleMaps2 : register(t11);
+TextureCubeArray<float> ParticleMaps3 : register(t12);
+)"
+R"(
 SamplerComparisonState Compare : register(s0);
+SamplerState ShadowPoint : register(s1);
 
 static const float2 POISSON[16] = {
     float2(-0.94201624, -0.39906216), float2(0.94558609, -0.76890725), float2(-0.09418410, -0.92938870),
@@ -189,45 +196,54 @@ float DeviceDepth(float along, float nearPlane, float farPlane)
 }
 
 // the lit share of 16 or 4 taps around a direction, spread over the soft edge's width
-float FilterShadow(TextureCubeArray<float> maps, float3 axis, float3 tangent, float3 bitangent, float2x2 rotation,
-    float layer, float reference, bool full)
+float LinearShadowDepth(float depth,float nearPlane,float farPlane)
+{return nearPlane*farPlane/(farPlane-depth*(farPlane-nearPlane));}
+
+// Same contact-hardening world/angular softness contract as native point lamps.
+// Weak lights retain the four-tap quality tier, with the same blocker/penumbra math.
+float FilterShadow(TextureCubeArray<float> maps,float3 axis,float3 tangent,float3 bitangent,float2x2 rotation,
+    float layer,float reference,bool full,float along,float farPlane)
 {
-    // the direction is scaled onto the cube face, where one texel of a 256 face is 2 / 256 across
-    float radius = FILTER_TEXELS * 2 / 256;
-    float lit = 0;
-    if (full)
+    float3 direction=normalize(axis);float spread=max(Reduced.z,0);
+    if(spread<=0)return maps.SampleCmpLevelZero(Compare,float4(direction,layer),reference);
+    float searchRadius=Reduced.w>.5?min(spread*2/along,.2):min(spread*20,1)/along;
+    float blockerSum=0,blockerCount=0;int count=full?16:4;
+    [loop]for(int n=0;n<count;++n)
     {
-        [unroll]
-        for (int n = 0; n < 16; ++n)
-        {
-            float2 offset = mul(rotation, POISSON[n]) * radius;
-            lit += maps.SampleCmpLevelZero(Compare, float4(axis + tangent * offset.x + bitangent * offset.y, layer), reference);
-        }
-        lit /= 16;
+        float2 sample=full?POISSON[n]:SQUARE[n];float2 offset=mul(rotation,sample)*searchRadius;
+        float blocker=LinearShadowDepth(maps.SampleLevel(ShadowPoint,float4(direction+tangent*offset.x+bitangent*offset.y,layer),0),Counts.y,farPlane);
+        if(blocker<along){blockerSum+=blocker;blockerCount+=1;}
     }
-    else
+    if(blockerCount==0)return 1;
+    float distance=blockerSum/blockerCount;
+    float radius=Reduced.w>.5?clamp(spread*(along-distance)/(distance*along),.0015,.15)
+        :max(min(spread*(along-distance),1)/along,.0015);
+    float lit=0;[loop]for(int i=0;i<count;++i)
     {
-        [unroll]
-        for (int m = 0; m < 4; ++m)
-        {
-            float2 offset = mul(rotation, SQUARE[m]) * radius;
-            lit += maps.SampleCmpLevelZero(Compare, float4(axis + tangent * offset.x + bitangent * offset.y, layer), reference);
-        }
-        lit /= 4;
+        float2 sample=full?POISSON[i]:SQUARE[i];float2 offset=mul(rotation,sample)*radius;
+        lit+=maps.SampleCmpLevelZero(Compare,float4(direction+tangent*offset.x+bitangent*offset.y,layer),reference);
     }
-    return lit;
+    return lit/count;
 }
 
 float FilterLightShadow(float size, float3 axis, float3 tangent, float3 bitangent, float2x2 rotation, float layer,
-    float reference, bool full)
+    float reference, bool full,float along,float farPlane)
 {
     if (size < 0.5)
-        return FilterShadow(Maps0, axis, tangent, bitangent, rotation, layer, reference, full);
+        return FilterShadow(Maps0, axis, tangent, bitangent, rotation, layer, reference, full,along,farPlane);
     if (size < 1.5)
-        return FilterShadow(Maps1, axis, tangent, bitangent, rotation, layer, reference, full);
+        return FilterShadow(Maps1, axis, tangent, bitangent, rotation, layer, reference, full,along,farPlane);
     if (size < 2.5)
-        return FilterShadow(Maps2, axis, tangent, bitangent, rotation, layer, reference, full);
-    return FilterShadow(Maps3, axis, tangent, bitangent, rotation, layer, reference, full);
+        return FilterShadow(Maps2, axis, tangent, bitangent, rotation, layer, reference, full,along,farPlane);
+    return FilterShadow(Maps3, axis, tangent, bitangent, rotation, layer, reference, full,along,farPlane);
+}
+
+float FilterParticleShadow(float bank,float3 axis,float3 tangent,float3 bitangent,float2x2 rotation,float cube,float reference,bool full,float along,float farPlane)
+{
+    if(bank<.5)return FilterShadow(ParticleMaps0,axis,tangent,bitangent,rotation,cube,reference,full,along,farPlane);
+    if(bank<1.5)return FilterShadow(ParticleMaps1,axis,tangent,bitangent,rotation,cube,reference,full,along,farPlane);
+    if(bank<2.5)return FilterShadow(ParticleMaps2,axis,tangent,bitangent,rotation,cube,reference,full,along,farPlane);
+    return FilterShadow(ParticleMaps3,axis,tangent,bitangent,rotation,cube,reference,full,along,farPlane);
 }
 
 // what a light adds to a surface before its shadow, and how far inside its reach the surface is, 1 well inside
@@ -352,6 +368,7 @@ float3 FindShadowedLight(float2 position, float3 world, float3 normal, float tot
 
         // compare from about a texel of the coarser map off the surface, so it does not shadow itself
         float faceSize = FaceSizes[min((uint)light.Position.w, 2u)];
+        if(light.Shadow.z>0)faceSize=min(faceSize,256);
         if (light.Moving.x > 0)
             faceSize = min(faceSize, FaceSizes.w);
         float lightDistance = distance(light.Position.xyz, world);
@@ -360,7 +377,7 @@ float3 FindShadowedLight(float2 position, float3 world, float3 normal, float tot
         float3 axes = abs(toPixel);
         float along = max(axes.x, max(axes.y, axes.z));
         float lit = 1;
-        if (along < light.Shadow.x && Counts.w <= 0)
+        if (along < light.Shadow.x && Counts.w <= 0 && Counts.z > 0)
         {
             float reference = DeviceDepth(max(along * 0.985 - 0.02, Counts.y), Counts.y, light.Shadow.x);
             float3 axis = toPixel / along;
@@ -368,10 +385,12 @@ float3 FindShadowedLight(float2 position, float3 world, float3 normal, float tot
             float3 tangent = normalize(cross(up, axis));
             float3 bitangent = normalize(cross(axis, tangent));
             bool full = strength >= FULL_FILTER_SHARE * total;
-            lit = FilterLightShadow(light.Position.w, axis, tangent, bitangent, rotation, light.Normal.w, reference, full);
+            lit = FilterLightShadow(light.Position.w, axis, tangent, bitangent, rotation, light.Normal.w, reference, full,max(along*.985-.02,Counts.y),light.Shadow.x);
             if (light.Moving.x > 0)
-                lit = min(lit, FilterShadow(MovingMaps, axis, tangent, bitangent, rotation, light.Moving.z, reference, full));
+                lit = min(lit, FilterShadow(MovingMaps, axis, tangent, bitangent, rotation, light.Moving.z, reference, full,max(along*.985-.02,Counts.y),light.Shadow.x));
+            if(light.Shadow.z>0)lit=min(lit,FilterParticleShadow(light.Shadow.w,axis,tangent,bitangent,rotation,light.Shadow.z-1,reference,full,max(along*.985-.02,Counts.y),light.Shadow.x));
         }
+        lit=1-saturate(Counts.z)*(1-lit);
         sum += contribution * lit;
         unshadowed += contribution;
     }
@@ -1835,12 +1854,13 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
         const float reach = shadowmaps::FindShadowRadius(light);
         const int size = shadowmaps::GetSizeIndex(slot);
         // full-size slots also have a moving-object map, whose cube is the slot's place in its array
-        const bool movingUsed = slot < shadowmaps::SIZE_STARTS[1] && shadowmaps::MovingMapUsed[slot];
+        const int particleMap=shadowmaps::particle_moving::Binding(slot,light);
+        const bool movingUsed = particleMap<0 && slot < shadowmaps::SIZE_STARTS[1] && shadowmaps::MovingMapUsed[slot];
         constants.Lights[count++] = { { light.BuiltPosition.x, light.BuiltPosition.y, light.BuiltPosition.z, static_cast<float>(size) },
             { light.GlowColour.x, light.GlowColour.y, light.GlowColour.z, reach },
             { light.GlowNormal.x, light.GlowNormal.y, light.GlowNormal.z, static_cast<float>(slot - shadowmaps::SIZE_STARTS[size]) },
             { movingUsed ? 1.0f : 0.0f, light.GlowArea / XM_PI, static_cast<float>(slot), reach * BOUNCE_REACH },
-            { light.Radius, light.Particle ? 1.0f : 0.0f, 0, 0 } };
+            { light.Radius, light.Particle ? 1.0f : 0.0f, particleMap<0?0.0f:float(particleMap%32+1),particleMap<0?0.0f:float(particleMap/32) } };
         area = { std::min(area.left, rect.left), std::min(area.top, rect.top), std::max(area.right, rect.right),
             std::max(area.bottom, rect.bottom) };
         if (logging)
@@ -1864,11 +1884,15 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
             ReducedSurfaceTarget, ReducedSurfaceView))
         return;
 
-    constants.Counts = { static_cast<float>(count), shadowmaps::NEAR_PLANE, 0, shadowmaps::ShowColours ? 1.0f : 0.0f };
+    constants.Counts = { static_cast<float>(count), shadowmaps::NEAR_PLANE,
+        std::isfinite(shadowmaps::Strength.load())?std::clamp(shadowmaps::Strength.load(),0.0f,1.0f):1.0f, shadowmaps::ShowColours ? 1.0f : 0.0f };
     FrameConstants frame;
     XMStoreFloat4x4(&frame.InverseRows, XMMatrixInverse(nullptr, lightbuffer::WorldToClip));
     frame.Size = { static_cast<float>(desc.Width), static_cast<float>(desc.Height), 1.0f / desc.Width, 1.0f / desc.Height };
-    frame.Reduced = { scale, materialNormals?1.0f:0.0f, 0, 0 };
+    const bool legacySoftness=shadowmaps::LegacyPointSoftness.load();
+    const float savedSoftness=shadowmaps::PointSoftness.load();
+    const float pointSoftness=legacySoftness?(std::isfinite(savedSoftness)?std::max(savedSoftness,0.0f):0.0f):shadowmaps::CleanPointSoftness(savedSoftness);
+    frame.Reduced = { scale, materialNormals?1.0f:0.0f,pointSoftness*(legacySoftness?1.0f:sun_softness_settings::Spread),legacySoftness?1.0f:0.0f };
 
     ComPtr<ID3DDeviceContextState> previous;
     ctx1->SwapDeviceContextState(shadowmaps::DrawState.Get(), &previous);
@@ -1881,11 +1905,13 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
     ctx1->PSSetConstantBuffers(0, 2, buffers);
     ID3D11Buffer *offset = shadowmaps::CameraOffsetBuffer.Get();
     ctx1->PSSetConstantBuffers(3, 1, &offset);
-    ID3D11SamplerState *sampler = shadowmaps::CompareSampler.Get();
-    ctx1->PSSetSamplers(0, 1, &sampler);
+    ID3D11SamplerState *samplers[] = {shadowmaps::CompareSampler.Get(),shadowmaps::PointSampler.Get()};
+    ctx1->PSSetSamplers(0, 2, samplers);
     ID3D11ShaderResourceView *views[] = { lightbuffer::DepthCopyView.Get(), shadowmaps::CubeViews[0].Get(),
         shadowmaps::CubeViews[1].Get(), shadowmaps::CubeViews[2].Get(), shadowmaps::MovingView.Get(),
-        ReducedLightView.Get(), ReducedSurfaceView.Get(), materialNormals, shadowmaps::CubeViews[3].Get() };
+        ReducedLightView.Get(), ReducedSurfaceView.Get(), materialNormals, shadowmaps::CubeViews[3].Get(),
+        shadowmaps::particle_moving::Pool[0].view.Get(),shadowmaps::particle_moving::Pool[1].view.Get(),
+        shadowmaps::particle_moving::Pool[2].view.Get(),shadowmaps::particle_moving::Pool[3].view.Get() };
     lightbuffer::StartTimer(ctx1.Get(), lightbuffer::GlowTimer);
     // texels outside the lights' rectangle are left unlit
     ctx1->ClearRenderTargetView(ReducedLightTarget.Get(), clear);
@@ -1901,7 +1927,7 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
     ctx1->RSSetScissorRects(1, &reducedArea);
     ctx1->OMSetBlendState(nullptr, nullptr, 0xffffffff);
     ctx1->PSSetShader(ReducedLightShader.Get(), nullptr, 0);
-    ctx1->PSSetShaderResources(0, 9, views);
+    ctx1->PSSetShaderResources(0, 13, views);
     ctx1->Draw(3, 0);
     ctx1->PSSetShader(UpsampleShader.Get(), nullptr, 0);
     ID3D11RenderTargetView *targets[] = { lightbuffer::LightBufferTarget.Get(), MaskTarget.Get() };
@@ -1910,13 +1936,14 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
     ctx1->RSSetViewports(1, &viewport);
     ctx1->RSSetScissorRects(1, &area);
     ctx1->OMSetBlendState(LightBlend.Get(), nullptr, 0xffffffff);
-    ctx1->PSSetShaderResources(0, 9, views);
+    ctx1->PSSetShaderResources(0, 13, views);
     ctx1->Draw(3, 0);
     lightbuffer::StopTimer(ctx1.Get(), lightbuffer::GlowTimer);
     LightsDrawnThisFrame = count;
 
-    ID3D11ShaderResourceView *noViews[9] = {};
-    ctx1->PSSetShaderResources(0, 9, noViews);
+    ID3D11ShaderResourceView *noViews[13] = {};
+    ctx1->PSSetShaderResources(0, 13, noViews);
+    ID3D11SamplerState *noShadowSamplers[2]{};ctx1->PSSetSamplers(0,2,noShadowSamplers);
     ctx1->IASetInputLayout(nullptr);
     ctx1->SwapDeviceContextState(previous.Get(), nullptr);
 }
