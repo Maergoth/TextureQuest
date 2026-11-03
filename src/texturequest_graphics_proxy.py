@@ -723,7 +723,7 @@ class GraphicsManager:
 
     def _activate_prepared(self, game, prepared):
         """Caller holds operation/helper locks. Old maps and DDS objects remain usable."""
-        DDSStore(self.state_dir).verify(prepared)
+        DDSStore(self.state_dir).verify_for_install(prepared)
         ensure_closed()
         need(str(core._plain(prepared['game'])).casefold() == str(core._plain(game)).casefold(),
              'These textures were matched to a different game folder. Verify the download again.')
@@ -825,7 +825,7 @@ class GraphicsManager:
             kinds = {name: classify(game / name) for name in PROXY_NAMES}
             foreign = [name for name, kind in kinds.items() if kind == 'foreign']
             need(not foreign, 'An unknown graphics proxy is installed: ' + ', '.join(foreign) + '. Remove it first; it was left unchanged.')
-            report('Verifying loose DDS files and texture map.')
+            report('Checking saved texture preparation and texture map.')
             map_path = self._activate_prepared(game, prepared)
             self._write_key(binding)
             effects_lease, dlss_lease, consumer_lease, defaults_lease = None, None, None, None

@@ -63,17 +63,18 @@ class RefreshReuse(unittest.TestCase):
         result = setup.prepare_graphics(self.game, fetch, self.choices, self.store, self.graphics, self.upgrade, **args)
         fetch.assert_called_once(); return result
 
-    def test_01_exact_app_refresh_skips_pak_scan_but_full_verifies_before_retire(self):
-        verify = self.store.verify
+    def test_01_exact_app_refresh_checks_metadata_before_retire_without_dds_scan(self):
+        verify = self.store.verify_for_install
         def checked(*args, **kwargs):
-            self.assertTrue(kwargs["full"]); self.order.append("FULLverify")
+            self.order.append("metadata")
             return verify(*args, **kwargs)
         with patch.object(self.store, "prepare", side_effect=AssertionError("Unexpected PAK rescan")), \
              patch.object(channels, "read_sources", side_effect=AssertionError("Unexpected source read")), \
-             patch.object(self.store, "verify", side_effect=checked):
+             patch.object(self.store, "verify", side_effect=AssertionError("Unexpected DDS scan")), \
+             patch.object(self.store, "verify_for_install", side_effect=checked):
             _, prepared = self.refresh()
         self.assertEqual(prepared, self.prepared)
-        self.assertEqual(self.order, ["FULLverify", "retire", "install", "cleanup"])
+        self.assertEqual(self.order, ["metadata", "retire", "install", "cleanup"])
         self.assertTrue(any("coverage has not been rescanned" in message for message in self.reports))
 
     def test_02_explicit_normal_verification_still_calls_prepare(self):
@@ -83,42 +84,50 @@ class RefreshReuse(unittest.TestCase):
 
     def test_03_complete_source_identity_change_never_reuses(self):
         changed = dict(self.source, new_release_attribute="different")
-        self.assertIsNone(self.candidate(source=changed))
+        with self.assertRaisesRegex(ValueError, "Verify / Update"):
+            self.candidate(source=changed)
 
     def test_04_exact_game_choices_index_distribution_required(self):
         for changes in ({"game": str(self.root / "other")}, {"choices_sha256": "e" * 64},
-                        {"index_sha256": "f" * 64}, {"distribution": "legacy-full-dds"},
-                        {"texture_version": "1.2.9"}):
+                        {"index_sha256": "f" * 64}):
+            self.saved(**changes)
+            with self.assertRaisesRegex(ValueError, "Verify / Update"):
+                self.candidate()
+        for changes in ({"distribution": "legacy-full-dds"}, {"texture_version": "1.2.9"}):
             self.saved(**changes)
             self.assertIsNone(self.candidate())
 
-    def test_05_missing_cached_index_uses_normal_prepare_path(self):
+    def test_05_same_version_missing_index_requests_explicit_repair_without_rescan(self):
         path = self.store.base / "metadata" / (self.source["index"]["sha256"] + ".json")
-        path.unlink(); self.assertIsNone(self.candidate())
-        with patch.object(self.store, "prepare", side_effect=ValueError("Normal preparation required")) as prepare, \
-             self.assertRaisesRegex(ValueError, "Normal preparation"):
+        path.unlink()
+        with patch.object(self.store, "prepare", side_effect=AssertionError("Unexpected automatic repair")) as prepare, \
+             self.assertRaisesRegex(ValueError, "Verify / Update"):
             self.refresh()
-        prepare.assert_called_once(); self.upgrade.before.assert_not_called()
+        prepare.assert_not_called(); self.upgrade.before.assert_not_called()
 
-    def test_06_corrupt_cached_dds_refuses_before_retirement(self):
+    def test_06_unchanged_refresh_trusts_commit_but_explicit_verify_detects_corrupt_dds(self):
         row = self.store.object_rows(self.prepared)[0]
         path = self.store.objects / row["entry"]; raw = path.read_bytes()
         path.write_bytes(raw[:-1] + bytes([raw[-1] ^ 1]))
-        with patch.object(self.store, "prepare", side_effect=AssertionError("No implicit recovery")), self.assertRaises(ValueError):
+        with patch.object(self.store, "prepare", side_effect=AssertionError("No implicit recovery")):
             self.refresh()
-        self.upgrade.before.assert_not_called(); self.graphics.install.assert_not_called()
+        self.upgrade.before.assert_called_once(); self.graphics.install.assert_called_once()
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            self.store.verify(self.prepared)
 
     def test_07_cached_roster_must_bind_exact_current_recipe_targets(self):
         rows = self.store.object_rows(self.prepared)
         rows[0]["sha256"] = "d" * 64; rows[0]["entry"] = "dds/" + "d" * 64 + ".dds"
         self.saved(objects=self.store._metadata(rows))
-        self.assertIsNone(self.candidate())
+        with self.assertRaisesRegex(ValueError, "Verify / Update"):
+            self.candidate()
 
     def test_08_map_header_source_binding_must_match(self):
         raw = bytearray(Path(self.prepared["map"]["path"]).read_bytes()); raw[20] ^= 1
         path = self.store.base / "maps" / (hashlib.sha256(raw).hexdigest() + ".bin"); path.write_bytes(raw)
         self.saved(map=dict(path=str(path), bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest()))
-        self.assertIsNone(self.candidate())
+        with self.assertRaisesRegex(ValueError, "Verify / Update"):
+            self.candidate()
 
     def test_09_patched_game_archive_does_not_claim_new_coverage(self):
         (self.game / "paks/test.vpk").write_bytes(b"invented changed patch bytes; must never be opened here")
@@ -135,19 +144,20 @@ class RefreshReuse(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Close EQ2"): self.refresh(in_use=lambda: True)
         self.upgrade.before.assert_not_called()
 
-    def test_12_pointer_race_after_full_verify_refuses_retirement(self):
-        verify = self.store.verify
+    def test_12_pointer_race_after_metadata_admission_refuses_retirement(self):
+        verify = self.store.verify_for_install
         def race(*args, **kwargs):
             result = verify(*args, **kwargs)
             self.saved(source_sha256="e" * 64)
             return result
-        with patch.object(self.store, "verify", side_effect=race), self.assertRaisesRegex(ValueError, "preparation changed"):
+        with patch.object(self.store, "verify_for_install", side_effect=race), self.assertRaisesRegex(ValueError, "preparation changed"):
             self.refresh()
         self.upgrade.before.assert_not_called()
 
     def test_13_current_recipe_profile_validation_is_required(self):
         with patch.object(channels.codec, "PROFILES", {}):
-            self.assertIsNone(self.candidate())
+            with self.assertRaisesRegex(ValueError, "Verify / Update"):
+                self.candidate()
 
     def test_14_pause_during_reuse_is_not_swallowed(self):
         calls = 0

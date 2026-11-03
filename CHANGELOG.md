@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.13.7
+
+- Reuse the committed texture preparation during app and graphics-hook updates when the texture version and preparation identity are unchanged. Avoid rescanning every DDS file during setup, hook activation and cache cleanup.
+- Keep full verification for a new texture version and the explicit Verify / Update textures command. Changed saved metadata requests repair before the installed hook is replaced.
+- Graphics binaries and texture data remain unchanged from 1.13.6.
+
 ## 1.13.6
 
 - Keep frame generation off when its native setting is missing, as well as in the installer defaults. Preserve explicit saved choices.
