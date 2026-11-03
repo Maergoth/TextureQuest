@@ -1,13 +1,13 @@
 {
   "author_handoff": {
-    "bytes": 2941,
-    "sha256": "810962ec7a07d891268eacd0e6c16c633f4df2ab58bd40622e231f3eab3d09af"
+    "bytes": 4408,
+    "sha256": "d3e8f735a950a1365ac600ca8e42c4a5b276bd708e86973653796cc0485997b4"
   },
   "native_release_asset": {
     "bytes": 5410816,
-    "sha256": "78ef670bd7baf3688f8570294cf793050f9fd8f2751fa7b3086c93ae5eb14fd1"
+    "sha256": "af45413c73384ec412930efd2daba2523f8d04003ff8e89d2cf86e1141ab7d9e"
   },
-  "source_version": "6.8.0.5 UNOFFICIAL",
+  "source_version": "6.8.0.6 UNOFFICIAL",
   "descriptor_compatibility_label": "6.8.0.2-private",
   "overlay": [
     ".gitmodules",
@@ -22,5 +22,21 @@
     "source/texturequest_depth_demand_policy.hpp",
     "source/texturequest_depth_demand_v1.hpp"
   ],
-  "note": "Overlay contains complete final files, not merely the demand delta. The demand patch is historical incremental evidence against the prior input provider, not a standalone upstream patch."
+  "note": "Complete final overlay files. Original nonzero handled Alt or F10 returns are retained; Home and unhandled input keep upstream behavior. The exact DLL has natural normal Release build success, with upstream/diagnostic warnings, not /W4 /WX. Actual EQ2 cure remains unconfirmed.",
+  "source_manifest": {
+    "bytes": 831298,
+    "sha256": "cb4f4a55eb0237e9c8f9c6a5d53a9d2136965f5589ca5430010471c448c4a995"
+  },
+  "compiled_source_manifest": {
+    "bytes": 131398,
+    "sha256": "a38946b1a4a5f983ed6f9f44e4c95a7acb361c8eccd9dba70d5fb66421d07524"
+  },
+  "build_result": {
+    "bytes": 1730,
+    "sha256": "bd4ea5ff655bc7cf80779ff362df510c1e1a8312e2fb18f3886d88d517cb6693"
+  },
+  "reviewed_input_proof": {
+    "bytes": 7561,
+    "sha256": "b39afb603d40af7e7354efbcde0e98635ac6e250f0eafa038b23a0135b4f7aea"
+  }
 }

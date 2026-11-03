@@ -1,0 +1,5 @@
+TextureQuest1.13.8 combined local candidate: Sichii PR4 plus owned020 fixes.
+Renderer1041408B SHA256554bb0ab2d48a35a808b061694f825866410a2f1c4e1fd9b3ef862a5bbe6e53a.
+Provider5410816B SHA256af45413c73384ec412930efd2daba2523f8d04003ff8e89d2cf86e1141ab7d9e.
+Includes strict constant painted retention, separate Object/Particle toggles (absent defaults on), independent particle gain/radius,512/64 ceilings and lazy extra tier up to384MiB, supported normal-cache changes, original-handled F10 retention and available grouped graphics refresh. PR4 draw-state/per-light radii/shader ABI retained; legacy point-filter behavior and stored Sun softness preserved until deliberately adjusted. Six other native payloads/data1.3.0 unchanged; absent FG remains off.
+Controlled native/source evidence does not prove all in-game visuals, full beam/normal/particle coverage, F10 cure or FPS. Final ROOT actual combined GPU result is required before local installation. No public release/tag/merge. Generator remains paused. Existing licenses and permissions remain unchanged; profile IDs/private flags remain compatibility tokens.

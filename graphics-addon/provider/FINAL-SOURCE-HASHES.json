@@ -2,8 +2,12 @@
   "upstream_repository": "https://github.com/crosire/reshade",
   "upstream_commit": "18deaa52de0c425a78b329e9cb3c497281cd00ec",
   "source_manifest": {
-    "bytes": 1612183,
-    "sha256": "13c64bb0be106e549d6bda961d54ca7383a4939c0d5fab4fc72798f9d9708d43"
+    "bytes": 831298,
+    "sha256": "cb4f4a55eb0237e9c8f9c6a5d53a9d2136965f5589ca5430010471c448c4a995"
+  },
+  "compiled_source_manifest": {
+    "bytes": 131398,
+    "sha256": "a38946b1a4a5f983ed6f9f44e4c95a7acb361c8eccd9dba70d5fb66421d07524"
   },
   "files": [
     {
@@ -10164,7 +10168,7 @@
     {
       "name": "res/version.h",
       "bytes": 232,
-      "sha256": "4b6a901c463fa6e1f150ca4190b6517dbfe23c136fbd93445a53204d8dfcd7d0"
+      "sha256": "5ab9e036c58c1786ac43cb0ee557bfa23a53fd381f4d747060505589c4f1046e"
     },
     {
       "name": "res/version.rc2",
@@ -10763,8 +10767,8 @@
     },
     {
       "name": "source/input_windows.cpp",
-      "bytes": 37641,
-      "sha256": "6ab7d6a25a18a4e94f4af6cee1fe4020bf827b5637368df2cbedd7f811fe677c"
+      "bytes": 38341,
+      "sha256": "20b8a29b511c7c322a25c2af4495383ab73ee3309205edf30b306bc647b4edb3"
     },
     {
       "name": "source/input_windows_xinput.cpp",
@@ -11686,5 +11690,9 @@
       "bytes": 1542,
       "sha256": "92fa6e59c5809aaddf5b441dbc980eb2cdb8bff7440d19372e0c2e04fedfb524"
     }
-  ]
+  ],
+  "previous_manifest": {
+    "bytes": 415129,
+    "sha256": "11fb935ac514fe2ada9f4f86db6a12bc2bc84256d06d75c920c81f1f4d19a100"
+  }
 }
