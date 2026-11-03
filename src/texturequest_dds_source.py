@@ -131,8 +131,8 @@ class DDSStore:
     def summary(self):
         """Read the small cache receipt for display, without checking its files.
 
-        This is not readiness or installation authority. saved() retains its
-        inventory checks; normal installation still verifies every object.
+        This alone is not fresh integrity proof. verify_for_install() separately
+        admits an exact committed preparation; saved() retains inventory checks.
         """
         try:
             pointer = core._plain(self.state_dir / 'dds-prepared.json', self.state_dir)
@@ -198,6 +198,46 @@ class DDSStore:
         map_path = core._plain(prepared['map']['path'], self.base)
         pin_file(map_path, prepared['map'])
         need(map_path.read_bytes()[:8] == b'TQMAP002', 'Prepared DDS map format differs')
+        return prepared
+
+    def verify_for_install(self, prepared):
+        """Reuse committed texture preparation across app/hook-only updates.
+
+        Preparation verifies incoming/reused DDS bytes before committing its
+        pointer. An exact committed match needs only bounded metadata/map checks,
+        not a fresh DDS byte proof. Explicit verify() and runtime per-object SHA
+        checks remain available; no DDS object path is touched by this fast path.
+        """
+        from texturequest_texture_map import HEADER, MAX_BYTES
+        version_number(prepared['texture_version'])
+        pointer = core._plain(self.state_dir / 'dds-prepared.json', self.state_dir)
+        if not pointer.exists():
+            return self.verify(prepared, full=True)
+        saved = DDSStore.summary(self)
+        repair = 'Saved texture preparation changed. Use Verify / Update textures to repair it.'
+        need(saved is not None, repair)
+        if saved.get('distribution') != 'generated-channels-only' or saved['texture_version'] != prepared['texture_version']:
+            return self.verify(prepared, full=True)
+        try:
+            need(saved == prepared, repair)
+            need(core._plain(prepared['object_root']) == self.objects, repair)
+            rows = self.object_rows(prepared)
+            for obj in rows:
+                need(isinstance(obj, dict) and re.fullmatch('[a-f0-9]{64}', str(obj.get('sha256'))) is not None and
+                     obj.get('entry') == 'dds/' + obj['sha256'] + '.dds' and type(obj.get('bytes')) is int and
+                     128 <= obj['bytes'] <= catalog.MAX_DDS + 4096, repair)
+            need(len({obj['sha256'] for obj in rows}) == len(rows), repair)
+            map_pin = prepared['map']
+            need(HEADER.size <= map_pin['bytes'] <= MAX_BYTES, repair)
+            map_path = core._plain(map_pin['path'], self.base)
+            with catalog.held(map_path) as (stream, identity):
+                need(identity[2] == map_pin['bytes'] and catalog.sha_file(stream) == map_pin['sha256'], repair)
+                header = HEADER.unpack(stream.read(HEADER.size))
+                need(header[0] == b'TQMAP002' and header[1:4] == tuple(map(int, prepared['texture_version'].split('.'))) and
+                     header[4].hex() == prepared['source_sha256'], repair)
+            need(DDSStore.summary(self) == saved, repair)
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            raise ValueError(repair) from error
         return prepared
 
     def prepare(self, source, game, choices, *, opener=urlopen, pause=None, progress=lambda _: None,

@@ -121,14 +121,14 @@ class CacheMigration(unittest.TestCase):
         self.assertFalse(self.migration.needed(self.game))
         self.assertEqual(core._load(self.state / 'dds-prepared.json'), prepared)
 
-    def test_changed_new_cache_refuses_cleanup(self):
+    def test_changed_preparation_map_refuses_cleanup(self):
         prepared = self.prepared()
         objects = self.state / 'dds/objects/dds'
         old = b'old'; digest = hashlib.sha256(old).hexdigest()
         obsolete = objects / (digest + '.dds'); obsolete.write_bytes(old)
-        current = next(p for p in objects.glob('*.dds') if p != obsolete)
-        current.write_bytes(b'broken')
-        with self.assertRaises(ValueError): self.migration.complete(self.game, prepared)
+        Path(prepared['map']['path']).write_bytes(b'broken')
+        with self.assertRaisesRegex(ValueError, 'Verify / Update'):
+            self.migration.complete(self.game, prepared)
         self.assertTrue(obsolete.exists())
 
     def test_old_direct_pak_downloads_removed_only_after_success(self):

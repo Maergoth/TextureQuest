@@ -153,7 +153,8 @@ class Upgrade:
             if self.graphics.legacy_in_use() or (self.loader and self.loader.cache_in_use()):
                 raise ValueError('An old hook still uses the cache; saved files were preserved.')
             store = DDSStore(self.state)
-            store.verify(prepared)
+            report('Checking saved texture preparation before cache cleanup…')
+            store.verify_for_install(prepared)
             if core._load(self.state / 'dds-prepared.json') != prepared or prepared.get('distribution') != 'generated-channels-only':
                 raise ValueError('The new channel cache changed; old files were preserved.')
             other_games = [g for g in self.graphics._all_games()

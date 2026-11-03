@@ -7,7 +7,7 @@ from texturequest_release import check_pause
 def _saved_runtime_refresh(game, source, choices, store, state, in_use, pause):
     """Reuse a current channel preparation, never claim a fresh game census."""
     from texturequest_channels import validate_source, validate_index
-    from texturequest_dds_source import pin_file
+    from texturequest_dds_source import DDSStore, pin_file, need
     from texturequest_texture_map import HEADER
     source = validate_source(source)
     game = core._plain(core.validate_game(game).parent)  # Directory/EXE admission only, no PAK census.
@@ -15,25 +15,31 @@ def _saved_runtime_refresh(game, source, choices, store, state, in_use, pause):
         ensure_closed(); check_pause(pause)
         if in_use():
             raise ValueError('Close EQ2 before refreshing its graphics runtime. The hook was kept.')
-        saved = store.summary()  # Selection only; full verification still follows.
-        if not isinstance(saved, dict): return None
+        pointer = core._plain(state / 'dds-prepared.json', state)
+        if not pointer.exists(): return None
+        # Read the base summary so valid legacy receipts retain normal preparation.
+        saved = DDSStore.summary(store)
+        repair = 'Saved texture preparation changed. Use Verify / Update textures to repair it.'
+        need(saved is not None, repair)
+        if saved.get('distribution') != 'generated-channels-only' or saved['texture_version'] != source['texture_version']:
+            return None
         try:
             expected = dict(schema='texturequest-loose-dds-prepared-v1', distribution='generated-channels-only',
                 texture_version=source['texture_version'], source_sha256=core._digest(source),
                 index_sha256=source['index']['sha256'], choices_sha256=core._digest(choices),
                 named_textures=source['named_texture_count'])
-            if any(saved.get(key) != value for key, value in expected.items()): return None
-            if core._plain(saved['game']) != core._plain(game): return None
+            need(all(saved.get(key) == value for key, value in expected.items()), repair)
+            need(core._plain(saved['game']) == core._plain(game), repair)
             coverage = saved['coverage']
             if (any(type(coverage.get(key)) is not int for key in ('mapped_groups', 'selected_groups', 'pending_groups'))
                     or coverage['selected_groups'] != source['selected_groups']
                     or not 0 < coverage['mapped_groups'] <= coverage['selected_groups']
-                    or coverage['pending_groups'] != coverage['selected_groups'] - coverage['mapped_groups']): return None
+                    or coverage['pending_groups'] != coverage['selected_groups'] - coverage['mapped_groups']): raise ValueError(repair)
             index_path = core._plain(store.base / 'metadata' / (source['index']['sha256'] + '.json'), store.base)
             pin_file(index_path, source['index'])
             raw = index_path.read_bytes()
             import hashlib
-            if len(raw) != source['index']['bytes'] or hashlib.sha256(raw).hexdigest() != source['index']['sha256']: return None
+            need(len(raw) == source['index']['bytes'] and hashlib.sha256(raw).hexdigest() == source['index']['sha256'], repair)
             index = validate_index(core._json(raw), source, choices)
             targets = {}
             for recipe in index['recipes']:
@@ -41,22 +47,20 @@ def _saved_runtime_refresh(game, source, choices, store, state, in_use, pause):
                 digest = recipe['object_sha256']
                 target = dict(sha256=digest, entry='dds/' + digest + '.dds',
                               bytes=128 + recipe['target']['mip_bytes'] + recipe['target']['tail_bytes'])
-                if digest in targets and targets[digest] != target: return None
+                need(digest not in targets or targets[digest] == target, repair)
                 targets[digest] = target
             rows = store.object_rows(saved)
-            if not rows or len({row['sha256'] for row in rows}) != len(rows) or any(row != targets.get(row['sha256']) for row in rows): return None
+            need(rows and len({row['sha256'] for row in rows}) == len(rows) and all(row == targets.get(row['sha256']) for row in rows), repair)
             map_path = core._plain(saved['map']['path'], store.base)
             with map_path.open('rb') as stream:
                 prefix = stream.read(HEADER.size)
-            if len(prefix) != HEADER.size: return None
+            need(len(prefix) == HEADER.size, repair)
             header = HEADER.unpack(prefix)
-            if header[0] != b'TQMAP002' or header[1:4] != tuple(map(int, source['texture_version'].split('.'))) or header[4].hex() != expected['source_sha256']: return None
-            if core._load(state / 'dds-prepared.json') != saved: return None
+            need(header[0] == b'TQMAP002' and header[1:4] == tuple(map(int, source['texture_version'].split('.'))) and header[4].hex() == expected['source_sha256'], repair)
+            need(core._load(pointer) == saved, repair)
             return saved
-        except (OSError, ValueError, KeyError, TypeError):
-            # Normal preparation retains its stricter source/recovery behavior.
-            # No damaged object is silently adopted or overwritten by this path.
-            return None
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            raise ValueError(repair) from error
 
 
 def prepare_graphics(game, source_fetch, choices, store, graphics, upgrade, *,
@@ -84,13 +88,13 @@ def prepare_graphics(game, source_fetch, choices, store, graphics, upgrade, *,
     else:
         report('Reusing saved texture matches for this app refresh; game coverage has not been rescanned. Use Verify / Update textures for a fresh match.')
     check_pause(pause)
-    report('Verifying replacement textures before changing the installed hook…')
-    overall('Verifying replacement textures', 0, 0, 0, 0)
+    report('Checking saved texture preparation before changing the installed hook…')
+    overall('Checking the texture release', 0, 0, 0, 0)
     with core._lock(upgrade.state / 'operation.lock'), core._lock(upgrade.state / 'sideload/helper-owner.lock'):
         ensure_closed()
         if in_use():
             raise ValueError('Close EQ2 and the old loader before preparing texture updates. The hook was kept.')
-        store.verify(prepared, full=True)
+        store.verify_for_install(prepared)
         if prepared.get('distribution') != 'generated-channels-only' or core._load(upgrade.state / 'dds-prepared.json') != prepared:
             raise ValueError('Replacement preparation changed. The installed hook was kept.')
         check_pause(pause)
