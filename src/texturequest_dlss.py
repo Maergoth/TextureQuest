@@ -51,10 +51,10 @@ GRAPHICS_WORLD_DEFAULTS = {('EQ2Graphics', key): value for key, value in {
     'Anisotropy': '16', 'CharacterShadows': '1', 'EmissiveLights': '1',
     'EmissiveLightStrength': '15.59', 'OcclusionRadius': '0.66', 'OcclusionStrength': '1.25',
     'OwnLampShaders': '0', 'PaintedEmissionKept': '0.5', 'PaintedEmissionLight': '0.5',
-    'PointLightShadows': '1', 'ShadowedLights': '256', 'ShadowRange': '200',
-    'ShadowSoftness': '0.14', 'ShadowStrength': '1', 'SmoothIndoorTransition': '1',
+    'PointLightShadows': '1', 'ShadowedLights': '256',
+    'PointShadowSoftness': '1.6', 'ShadowStrength': '1', 'SmoothIndoorTransition': '1',
     'SmoothInterfaceText': '1', 'SunLighting': '1', 'SunShadowDirectionFix': '0',
-    'SunShadowMode': '2', 'SunShadowSize': '1.05', 'TextureQuestSunSoftnessPreference': '1.05',
+    'SunShadowMode': '2', 'SunSoftness': '1.6', 'TextureQuestSunSoftnessPreferenceRealSun': '1.6',
     'TextureQuestPresetVersion': '2',
 }.items()}
 GRAPHICS_AIO_DEFAULTS = {('Standalone.DLSSNR', key): value for key, value in {

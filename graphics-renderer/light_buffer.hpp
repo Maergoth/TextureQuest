@@ -20,6 +20,7 @@
 #include <wrl/client.h>
 #include <algorithm>
 #include "sun_state_policy.hpp"
+#include "sun_softness_settings.hpp"
 #include "owned_sun_constants.hpp"
 #include <atomic>
 #include <chrono>
@@ -142,16 +143,8 @@ float2 FindAngle(float2 y, float2 x)
 // direction marks the part of the hemisphere above the surface that each depth sample covers, from its front face to a
 // thickness behind it, as bits of a 32-bit mask (visibility bitmask occlusion); the bits are spread evenly over the
 // angle from the normal, which builds occlusion up more smoothly than spacing them for cosine-weighted light
-float2 ps_occlusion(float4 position : SV_Position) : SV_Target
+float2 ComputeOcclusion(int2 texel, int2 size)
 {
-    uint width, height;
-    Depth.GetDimensions(width, height);
-    int2 size = int2(width, height);
-    // each frame computes one texel of each pair in a checkerboard, the other keeping its last result
-    int2 texel = int2(position.xy);
-    if (((texel.x + texel.y) & 1) != (uint(Frame.x) & 1))
-        discard;
-
     float viewDepth = Depth.Load(int3(texel, 0));
     if (viewDepth >= NO_DEPTH)
         return float2(1, NO_DEPTH);
@@ -272,6 +265,21 @@ float2 ps_occlusion(float4 position : SV_Position) : SV_Target
     occlusion = lerp(occlusion, occlusion * occlusion, saturate(Params.y - 1));
     // the distance is stored negated at an edge, where the filter smooths more
     return float2(lerp(1, occlusion, fade), edge ? -viewDepth : viewDepth);
+}
+
+RWTexture2D<float2> OcclusionOutput : register(u0);
+
+// each frame computes one texel of each pair in a checkerboard, those whose x + y has the frame number's parity, the
+// other keeping its last result; each thread takes the active texel of one pair along a row
+[numthreads(8, 8, 1)]
+void cs_occlusion(uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    Depth.GetDimensions(width, height);
+    int2 texel = int2(id.x * 2 + ((id.y + uint(Frame.x)) & 1), id.y);
+    if (texel.x >= int(width) || texel.y >= int(height))
+        return;
+    OcclusionOutput[texel] = ComputeOcclusion(texel, int2(width, height));
 }
 
 )"
@@ -1085,9 +1093,9 @@ struct SunConstants
     XMFLOAT4 Colour, Direction, Ambient, RemovedAmbient;
 };
 
-// Sun softness uses real-Sun angular-radius multiples; preserve the old .1 physical default.
+// Sun softness uses real-Sun angular-radius multiples.
 static std::atomic<bool> SunEnabled = true; // Visible umbrella; child settings remain saved while off.
-static std::atomic<float> SunSoftness = 0.1f / 3.0f / 0.00465f;
+static std::atomic<float> SunSoftness = sun_softness_settings::Default;
 // what a sun shadow takes off: all the light from before the lamps (Full), only the sun's share of it (Split), or the
 // sun's share after part of the ambient light is taken off the geometry before the lamps (DarkerAmbient)
 enum class SunMode { Full, Split, DarkerAmbient };
@@ -1109,20 +1117,18 @@ static std::atomic<float> SurfaceSaturation = 0.0f;
 static std::atomic<bool> ShowOcclusion;
 static uint32_t OcclusionFrame;
 
-static std::mutex Lock;
+// the game's sun shadow cascade pixel shaders are classed capture::CLASS_SUN_PASS, with their pass's image copy slot
+// (g_texBackBuffer) and their replacement's index in SUN_SHADERS, or -1 when they have none
 struct SunPass
 {
-    // the slot of the pass's image copy (g_texBackBuffer)
     UINT ImageSlot;
-    // the index of the pass's replacement in SUN_SHADERS, or -1 when it has none
     int Replacement;
 };
-// the game's sun shadow cascade pixel shaders
-static std::unordered_map<uint64_t, SunPass> SunShaders;
 
 static ComPtr<ID3D11VertexShader> FullScreenShader;
-static ComPtr<ID3D11PixelShader> HalfDepthShader, OcclusionShader, BlurXShader, BlurYShader, ApplyShader, ShowShader,
+static ComPtr<ID3D11PixelShader> HalfDepthShader, BlurXShader, BlurYShader, ApplyShader, ShowShader,
     ScaleShader, DarkenShader, SurfaceShader, ReceiverShader;
+static ComPtr<ID3D11ComputeShader> OcclusionShader;
 static ComPtr<ID3D11PixelShader> SoftSunShaders[SUN_SHADER_COUNT], HalfSunShaders[SUN_SHADER_COUNT];
 static ComPtr<ID3D11Buffer> SoftnessBuffer, SurfaceBuffer, ReceiverBuffer;
 static ComPtr<ID3D11SamplerState> PointClamp, LinearClamp;
@@ -1163,10 +1169,12 @@ static ComPtr<ID3D11ShaderResourceView> DepthCopyView;
 static ComPtr<ID3D11Texture2D> HalfDepth;
 static ComPtr<ID3D11ShaderResourceView> HalfDepthView;
 static ComPtr<ID3D11RenderTargetView> HalfDepthTarget;
-// half-resolution occlusion and view distance: as computed, blurred across, blurred down
+// half-resolution occlusion and view distance: as computed, blurred across, blurred down. The computed one is written
+// by a compute shader through OcclusionOutput, so it has no render target
 static ComPtr<ID3D11Texture2D> OcclusionTextures[3];
 static ComPtr<ID3D11ShaderResourceView> OcclusionViews[3];
 static ComPtr<ID3D11RenderTargetView> OcclusionTargets[3];
+static ComPtr<ID3D11UnorderedAccessView> OcclusionOutput;
 static ComPtr<ID3D11Texture2D> Scaled;
 static ComPtr<ID3D11ShaderResourceView> ScaledView;
 static ComPtr<ID3D11RenderTargetView> ScaledTarget;
@@ -1300,75 +1308,9 @@ static FrameHistory History[HISTORY_FRAMES];
 static size_t HistoryCount;
 static FrameHistory ThisFrame;
 
-// the GPU time from the first Start to the last Stop in a frame, read back a few frames later so nothing waits on it
-struct GpuTimer
-{
-    static constexpr int FRAMES = 4;
-    ComPtr<ID3D11Query> Disjoint[FRAMES], Begin[FRAMES], End[FRAMES];
-    bool Pending[FRAMES] = {};
-    bool Started = false;
-    float Milliseconds = 0;
-};
-static GpuTimer OcclusionTimer, SunTimer, GlowTimer, SurfaceTimer;
-static int TimerFrame;
-
-static void StartTimer(ID3D11DeviceContext *ctx, GpuTimer &timer)
-{
-    if (timer.Started)
-        return;
-
-    if (!timer.Disjoint[TimerFrame])
-    {
-        ComPtr<ID3D11Device> dev;
-        ctx->GetDevice(&dev);
-        D3D11_QUERY_DESC disjoint = { D3D11_QUERY_TIMESTAMP_DISJOINT };
-        D3D11_QUERY_DESC stamp = { D3D11_QUERY_TIMESTAMP };
-        if (FAILED(dev->CreateQuery(&disjoint, &timer.Disjoint[TimerFrame]))
-            || FAILED(dev->CreateQuery(&stamp, &timer.Begin[TimerFrame]))
-            || FAILED(dev->CreateQuery(&stamp, &timer.End[TimerFrame])))
-        {
-            timer.Disjoint[TimerFrame].Reset();
-            return;
-        }
-    }
-    ctx->Begin(timer.Disjoint[TimerFrame].Get());
-    ctx->End(timer.Begin[TimerFrame].Get());
-    timer.Started = true;
-}
-
-static void StopTimer(ID3D11DeviceContext *ctx, GpuTimer &timer)
-{
-    if (timer.Started)
-        ctx->End(timer.End[TimerFrame].Get());
-}
-
-// closes this frame's measurement and reads the oldest one if the GPU has finished it, averaged over about 20 frames
-static void FinishTimer(ID3D11DeviceContext *ctx, GpuTimer &timer)
-{
-    if (timer.Started)
-    {
-        ctx->End(timer.Disjoint[TimerFrame].Get());
-        timer.Pending[TimerFrame] = true;
-        timer.Started = false;
-    }
-    const int oldest = (TimerFrame + 1) % GpuTimer::FRAMES;
-    if (!timer.Pending[oldest])
-        return;
-
-    D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint;
-    UINT64 begin = 0, end = 0;
-    if (ctx->GetData(timer.Disjoint[oldest].Get(), &disjoint, sizeof(disjoint), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK
-        || ctx->GetData(timer.Begin[oldest].Get(), &begin, sizeof(begin), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK
-        || ctx->GetData(timer.End[oldest].Get(), &end, sizeof(end), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK)
-        return;
-
-    timer.Pending[oldest] = false;
-    if (disjoint.Disjoint || end < begin)
-        return;
-
-    const float milliseconds = static_cast<float>(end - begin) * 1000.0f / static_cast<float>(disjoint.Frequency);
-    timer.Milliseconds += (milliseconds - timer.Milliseconds) * 0.05f;
-}
+using shadowmaps::GpuTimer, shadowmaps::StartTimer, shadowmaps::StopTimer, shadowmaps::FinishTimer;
+// LampTimer runs from the first lamp drawn into the light buffer to FinishLightBuffer
+static GpuTimer OcclusionTimer, SunTimer, GlowTimer, SurfaceTimer, LampTimer;
 // the world-to-clip transform of the light buffer's draws, known once two draws agree on it
 static XMMATRIX WorldToClip, CandidateWorldToClip;
 static bool WorldToClipKnown, CandidateKnown;
@@ -1397,15 +1339,12 @@ static void OnInitPipeline(device *, pipeline_layout, uint32_t count, const pipe
             if (SUN_SHADERS[index].Hash == hash)
                 replacement = static_cast<int>(index);
 
-        std::lock_guard guard(Lock);
-        SunShaders[handle.handle] = { image.BindPoint, replacement };
+        std::lock_guard guard(capture::ClassLock);
+        capture::PipelineClass &found = capture::Classes[handle.handle];
+        found.Bits |= capture::CLASS_SUN_PASS;
+        found.SunImageSlot = image.BindPoint;
+        found.SunReplacement = replacement;
     }
-}
-
-static void OnDestroyPipeline(device *, pipeline handle)
-{
-    std::lock_guard guard(Lock);
-    SunShaders.erase(handle.handle);
 }
 
 static void ResetSunHistory()
@@ -1445,6 +1384,7 @@ static void ReleaseLightBuffer()
         OcclusionViews[n].Reset();
         OcclusionTargets[n].Reset();
     }
+    OcclusionOutput.Reset();
     HalfDepth.Reset();
     HalfDepthView.Reset();
     HalfDepthTarget.Reset();
@@ -1489,6 +1429,7 @@ static void OnDestroyDevice(device *)
     SunTimer = {};
     GlowTimer = {};
     SurfaceTimer = {};
+    LampTimer = {};
     for (CascadeMap &map : CascadeMaps)
         map = {};
     MeshSunColours.clear();
@@ -1540,6 +1481,7 @@ static bool CreateObjects(ID3D11Device *dev)
         return false;
 
     ComPtr<ID3DBlob> vertexCode = CompileShader("vs_main", "vs_5_0");
+    ComPtr<ID3DBlob> occlusionCode = CompileShader("cs_occlusion", "cs_5_0");
     D3D11_SAMPLER_DESC samplerDesc = {};
     samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
     samplerDesc.AddressU = samplerDesc.AddressV = samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -1576,7 +1518,10 @@ static bool CreateObjects(ID3D11Device *dev)
         && vertexCode
         && SUCCEEDED(dev->CreateVertexShader(vertexCode->GetBufferPointer(), vertexCode->GetBufferSize(), nullptr,
             &FullScreenShader))
-        && CreatePixelShader(dev, "ps_occlusion", OcclusionShader) && CreatePixelShader(dev, "ps_blur_x", BlurXShader)
+        && occlusionCode
+        && SUCCEEDED(dev->CreateComputeShader(occlusionCode->GetBufferPointer(), occlusionCode->GetBufferSize(),
+            nullptr, &OcclusionShader))
+        && CreatePixelShader(dev, "ps_blur_x", BlurXShader)
         && CreatePixelShader(dev, "ps_blur_y", BlurYShader) && CreatePixelShader(dev, "ps_apply", ApplyShader)
         && CreatePixelShader(dev, "ps_show", ShowShader)
         && CreatePixelShader(dev, "ps_half_depth", HalfDepthShader)
@@ -1701,15 +1646,20 @@ static void SetLightBuffer(ID3D11Device *dev, ID3D11Resource *resource)
         && SUCCEEDED(dev->CreateShaderResourceView(BaseLight.Get(), &viewDesc, &BaseLightView))
         && SUCCEEDED(dev->CreateShaderResourceView(texture.Get(), &viewDesc, &LightBufferView))
         && SUCCEEDED(dev->CreateRenderTargetView(texture.Get(), &targetDesc, &LightBufferTarget));
+    D3D11_TEXTURE2D_DESC computedDesc = occlusionDesc;
+    computedDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
     D3D11_TEXTURE2D_DESC halfDepthDesc = occlusionDesc;
     halfDepthDesc.Format = DXGI_FORMAT_R32_FLOAT;
     created = created && (!tq_world::Work.AO() || (SUCCEEDED(dev->CreateTexture2D(&halfDepthDesc, nullptr, &HalfDepth))
         && SUCCEEDED(dev->CreateShaderResourceView(HalfDepth.Get(), nullptr, &HalfDepthView))
         && SUCCEEDED(dev->CreateRenderTargetView(HalfDepth.Get(), nullptr, &HalfDepthTarget))));
     for (int n = 0; n < 3 && created && tq_world::Work.AO(); ++n)
-        created = SUCCEEDED(dev->CreateTexture2D(&occlusionDesc, nullptr, &OcclusionTextures[n]))
+        created = SUCCEEDED(dev->CreateTexture2D(n == 0 ? &computedDesc : &occlusionDesc, nullptr,
+                &OcclusionTextures[n]))
             && SUCCEEDED(dev->CreateShaderResourceView(OcclusionTextures[n].Get(), nullptr, &OcclusionViews[n]))
-            && SUCCEEDED(dev->CreateRenderTargetView(OcclusionTextures[n].Get(), nullptr, &OcclusionTargets[n]));
+            && (n == 0
+                ? SUCCEEDED(dev->CreateUnorderedAccessView(OcclusionTextures[n].Get(), nullptr, &OcclusionOutput))
+                : SUCCEEDED(dev->CreateRenderTargetView(OcclusionTextures[n].Get(), nullptr, &OcclusionTargets[n])));
     if (!created)
     {
         ReleaseLightBuffer();
@@ -1762,11 +1712,10 @@ static bool IsSameCamera(const XMMATRIX &first, const XMMATRIX &second)
 }
 
 // the world-to-clip transform of a draw from its object-to-clip (c3 to c6) and world (c7 to c9) rows
-static void ReadWorldToClip(ID3D11DeviceContext *ctx)
+static void ReadWorldToClip(shadowmaps::BoundDraw &bound)
 {
-    XMFLOAT4 rows[shadowmaps::ROW_COUNT];
     XMMATRIX worldToClip;
-    if (!shadowmaps::ReadDrawRows(ctx, rows) || !shadowmaps::FindWorldToClip(rows, worldToClip))
+    if (!bound.ReadRows() || !shadowmaps::FindWorldToClip(bound.Rows, worldToClip))
         return;
 
     if (CandidateKnown)
@@ -1789,6 +1738,12 @@ static bool IsCopyPending()
 }
 
 static void DarkenAmbient(ID3D11DeviceContext *ctx);
+
+static void StartLampTimer(ID3D11DeviceContext *ctx)
+{
+    if (LightBuffer && !Processed && CurrentTarget == LightBuffer.Get())
+        StartTimer(ctx, LampTimer);
+}
 
 // copies the light buffer before the first lamp, after the Darker ambient mode takes off the ambient light it does not
 // keep, so the copy and the lamps' share of the light both leave that light out
@@ -1992,8 +1947,18 @@ static void ApplyOcclusion(ID3D11DeviceContext1 *ctx)
     StartTimer(ctx, OcclusionTimer);
     ID3D11ShaderResourceView *depth[] = { DepthCopyView.Get() };
     DrawFullScreen(ctx, HalfDepthTarget.Get(), width, height, HalfDepthShader.Get(), depth, 1);
-    ID3D11ShaderResourceView *halfDepth[] = { HalfDepthView.Get() };
-    DrawFullScreen(ctx, OcclusionTargets[0].Get(), width, height, OcclusionShader.Get(), halfDepth, 1);
+    ID3D11ShaderResourceView *halfDepth = HalfDepthView.Get();
+    ID3D11UnorderedAccessView *output = OcclusionOutput.Get();
+    ctx->CSSetConstantBuffers(0, 1, &buffer);
+    ctx->CSSetShaderResources(0, 1, &halfDepth);
+    ctx->CSSetUnorderedAccessViews(0, 1, &output, nullptr);
+    ctx->CSSetShader(OcclusionShader.Get(), nullptr, 0);
+    // a thread for each pair of texels along a row, in groups of 8x8
+    ctx->Dispatch(((width + 1) / 2 + 7) / 8, (height + 7) / 8, 1);
+    ID3D11ShaderResourceView *noView = nullptr;
+    ID3D11UnorderedAccessView *noOutput = nullptr;
+    ctx->CSSetShaderResources(0, 1, &noView);
+    ctx->CSSetUnorderedAccessViews(0, 1, &noOutput, nullptr);
     ID3D11ShaderResourceView *computed[] = { nullptr, OcclusionViews[0].Get() };
     DrawFullScreen(ctx, OcclusionTargets[1].Get(), width, height, BlurXShader.Get(), computed, 2);
     ID3D11ShaderResourceView *across[] = { nullptr, OcclusionViews[1].Get() };
@@ -2058,8 +2023,9 @@ static void WriteState()
     fprintf(file,"sun correction weight %.3f, native activity %d, evidence frame %llu, epoch %llu\n",
         DirectionCorrection.weight,DirectionCorrection.active?1:0,static_cast<unsigned long long>(DirectionCorrection.evidenceFrame),
         static_cast<unsigned long long>(DirectionCorrection.epoch));
-    fprintf(file, "occlusion %.3f ms, sun %.3f ms, glow %.3f ms, surface %.3f ms\n", OcclusionTimer.Milliseconds,
-        SunTimer.Milliseconds, GlowTimer.Milliseconds, SurfaceTimer.Milliseconds);
+    fprintf(file, "occlusion %.3f ms, sun %.3f ms, glow %.3f ms, surface %.3f ms, lamps %.3f ms, lamp and window "
+        "shadow maps %.3f ms\n", OcclusionTimer.Milliseconds, SunTimer.Milliseconds, GlowTimer.Milliseconds,
+        SurfaceTimer.Milliseconds, LampTimer.Milliseconds, shadowmaps::MapTimer.Milliseconds);
     fprintf(file, "smooth indoor transition %d, sun shadow share %.3f toward %.0f, cascade map caster draws %d %d %d of "
         "levels %.1f %.1f %.1f, copies kept %d %d %d\n", SmoothIndoorTransition.load() ? 1 : 0, SunShadowShare,
         SunShadowTarget, CascadeMaps[0].Draws, CascadeMaps[1].Draws, CascadeMaps[2].Draws, CascadeMaps[0].DrawLevel,
@@ -2102,14 +2068,20 @@ static void WriteState()
             frame.CorrectedDirection.y, frame.CorrectedDirection.z, frame.DirectionAttempts, frame.DirectionApplied);
     }
     fprintf(file, "\n--- sun shadow shaders: pixel shader, image slot, replacement\n");
-    for (const auto &[shader, pass] : SunShaders)
-        fprintf(file, "%016llx %u %d\n", static_cast<unsigned long long>(shader), pass.ImageSlot, pass.Replacement);
+    {
+        std::lock_guard guard(capture::ClassLock);
+        for (const auto &[shader, found] : capture::Classes)
+            if ((found.Bits & capture::CLASS_SUN_PASS) != 0)
+                fprintf(file, "%016llx %u %d\n", static_cast<unsigned long long>(shader), found.SunImageSlot,
+                    found.SunReplacement);
+    }
     fclose(file);
 }
 
 // runs when the game moves on from the light buffer, its lamps done and the main pass yet to read it
 static void FinishLightBuffer(ID3D11DeviceContext *ctx)
 {
+    StopTimer(ctx, LampTimer);
     ++ThisFrame.Finishes;
     if (capture::State == capture::Phase::Capturing)
     {
@@ -2210,16 +2182,13 @@ static void ReadSun(ID3D11DeviceContext *ctx, const XMFLOAT4 (&rows)[shadowmaps:
 // reads the direction toward the sun or moon from the near cascade's sun shadow pass, the first in SUN_SHADERS: its
 // pixel shader's row c2 is the shadow map's depth row, which points away from the light
 static bool ReadCameraRow(ID3D11DeviceContext1 *ctx,XMFLOAT3 &camera);
-static void ReadSunTowardLight(ID3D11DeviceContext *ctx)
+static void ReadSunTowardLight(shadowmaps::BoundDraw &bound)
 {
-    {
-        std::lock_guard guard(Lock);
-        auto shader = SunShaders.find(capture::PixelShader);
-        if (shader == SunShaders.end() || shader->second.Replacement != 0)
-            return;
-    }
+    if ((capture::PixelClass.Bits & capture::CLASS_SUN_PASS) == 0 || capture::PixelClass.SunReplacement != 0)
+        return;
     if(!WorldToClipKnown||!ScreenTarget)return;
-    D3D11_VIEWPORT viewport{};UINT views=1;ctx->RSGetViewports(&views,&viewport);
+    auto *ctx=bound.Context;
+    UINT views=0;const D3D11_VIEWPORT &viewport=bound.GetViewport(views);
     if(views!=1||viewport.TopLeftX||viewport.TopLeftY||viewport.Width!=shadowmaps::ScreenWidth
         ||viewport.Height!=shadowmaps::ScreenHeight||viewport.MinDepth!=0||viewport.MaxDepth!=1)return;
     ComPtr<ID3D11DeviceContext1> ctx1;
@@ -2511,37 +2480,33 @@ static bool BuildReceiverDepth(ID3D11DeviceContext *ctx, ID3D11ShaderResourceVie
 }
 
 // counts the game's caster draws into each cascade map
-static void CountCasterDraw(ID3D11DeviceContext *ctx=nullptr)
+static void CountCasterDraw(shadowmaps::BoundDraw &bound)
 {
     for (CascadeMap &map : CascadeMaps)
     {
         // Keep the upstream caster/share accounting unchanged. Direction-source evidence has
         // a separate exact actual binding + write-state proof and supports depth-only maps too.
         if(map.Resource&&map.Resource==CurrentTarget)++map.Draws;
-        if(!ctx||!map.Resource||(map.Resource!=CurrentTarget&&map.Resource!=CurrentDepth))continue;
+        if(!map.Resource||(map.Resource!=CurrentTarget&&map.Resource!=CurrentDepth))continue;
         ComPtr<ID3D11RenderTargetView> rtv;ComPtr<ID3D11DepthStencilView>dsv;
-        ctx->OMGetRenderTargets(1,&rtv,&dsv);
+        bound.Context->OMGetRenderTargets(1,&rtv,&dsv);
         ComPtr<ID3D11Resource> colour,depth;
         if(rtv)rtv->GetResource(&colour);if(dsv)dsv->GetResource(&depth);
         bool colourWrite=false,depthWrite=false;
         if(colour.Get()==map.Resource)
         {
-            ComPtr<ID3D11BlendState> blend;FLOAT factor[4]{};UINT mask=0;
-            ctx->OMGetBlendState(&blend,factor,&mask);
-            D3D11_BLEND_DESC desc{};if(blend)blend->GetDesc(&desc);
+            UINT mask=0;const D3D11_BLEND_DESC *blend=bound.GetBlend(&mask);
             D3D11_RENDER_TARGET_VIEW_DESC view{};rtv->GetDesc(&view);
             colourWrite=mask!=0&&view.ViewDimension==D3D11_RTV_DIMENSION_TEXTURE2D&&view.Texture2D.MipSlice==0
-                &&(!blend||(desc.RenderTarget[0].RenderTargetWriteMask&D3D11_COLOR_WRITE_ENABLE_RED));
+                &&(!blend||(blend->RenderTarget[0].RenderTargetWriteMask&D3D11_COLOR_WRITE_ENABLE_RED));
         }
         if(depth.Get()==map.Resource)
         {
-            ComPtr<ID3D11DepthStencilState> state;UINT reference=0;
-            ctx->OMGetDepthStencilState(&state,&reference);
-            D3D11_DEPTH_STENCIL_DESC desc{};if(state)state->GetDesc(&desc);
+            const D3D11_DEPTH_STENCIL_DESC *state=bound.GetDepth();
             D3D11_DEPTH_STENCIL_VIEW_DESC view{};dsv->GetDesc(&view);
             depthWrite=view.ViewDimension==D3D11_DSV_DIMENSION_TEXTURE2D&&view.Texture2D.MipSlice==0
                 &&!(view.Flags&D3D11_DSV_READ_ONLY_DEPTH)
-                &&(!state||(desc.DepthEnable&&desc.DepthWriteMask==D3D11_DEPTH_WRITE_MASK_ALL));
+                &&(!state||(state->DepthEnable&&state->DepthWriteMask==D3D11_DEPTH_WRITE_MASK_ALL));
         }
         if(!sun_source_policy::NativeWrite(colour.Get()==map.Resource,colourWrite,depth.Get()==map.Resource,depthWrite))continue;
         if(map.NativeWriteFrame!=SunFrame||map.NativeWriteEpoch!=DirectionCorrection.epoch)
@@ -2626,14 +2591,9 @@ static void CopyCascadeMap(ID3D11DeviceContext *ctx, CascadeMap &map, ID3D11Reso
 static bool EaseSunShadow(ID3D11DeviceContext *ctx, ComPtr<ID3D11ShaderResourceView> &gameMap,
     ComPtr<ID3D11ShaderResourceView> &gameReceivers, ComPtr<ID3D11ShaderResourceView> &gameFacing, int &keptCascade)
 {
-    int cascade = -1;
-    {
-        std::lock_guard guard(Lock);
-        auto shader = SunShaders.find(capture::PixelShader);
-        if (shader == SunShaders.end())
-            return false;
-        cascade = shader->second.Replacement;
-    }
+    if ((capture::PixelClass.Bits & capture::CLASS_SUN_PASS) == 0)
+        return false;
+    const int cascade = capture::PixelClass.SunReplacement;
     ComPtr<ID3D11DeviceContext1> ctx1;
     if (cascade < 0 || FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))
         return false;
@@ -2958,14 +2918,9 @@ static bool DrawSunPass(command_list *cmd, uint32_t vertices, uint32_t instances
     if (!fixWanted && softness <= 0)
         return false;
 
-    SunPass pass = {};
-    {
-        std::lock_guard guard(Lock);
-        auto shader = SunShaders.find(capture::PixelShader);
-        if (shader == SunShaders.end())
-            return false;
-        pass = shader->second;
-    }
+    if ((capture::PixelClass.Bits & capture::CLASS_SUN_PASS) == 0)
+        return false;
+    const SunPass pass = { capture::PixelClass.SunImageSlot, capture::PixelClass.SunReplacement };
     const bool soften = softness > 0 && pass.Replacement >= 0;
     if (!fixWanted && !soften)
         return false;
@@ -3045,9 +3000,10 @@ static bool DrawSunPass(command_list *cmd, uint32_t vertices, uint32_t instances
 // first draw after the light buffer is finished that reads the colour image or draws into it without writing depth.
 // That comes before the copy the sun shadow passes take of the image, so they take their shadow off the boosted image,
 // and before anything transparent
-static void DrawSurfaceColour(ID3D11DeviceContext *ctx)
+static void DrawSurfaceColour(shadowmaps::BoundDraw &bound)
 {
     if (!tq_world::Work.Surface()) return;
+    auto *ctx = bound.Context;
     const float saturation = SurfaceSaturation;
     if (saturation <= 0 || !Processed || SurfaceDone || !LightBuffer || !LightBufferView || !DepthCopied || CreateFailed
         || CurrentTarget == LightBuffer.Get())
@@ -3076,11 +3032,9 @@ static void DrawSurfaceColour(ID3D11DeviceContext *ctx)
     {
         if (CurrentTarget != ColourImage)
             return;
-        ComPtr<ID3D11DepthStencilState> depthState;
-        ctx->OMGetDepthStencilState(&depthState, nullptr);
         D3D11_DEPTH_STENCIL_DESC depthDesc = { TRUE, D3D11_DEPTH_WRITE_MASK_ALL };
-        if (depthState)
-            depthState->GetDesc(&depthDesc);
+        if (const D3D11_DEPTH_STENCIL_DESC *depthState = bound.GetDepth())
+            depthDesc = *depthState;
         if (CurrentDepth && depthDesc.DepthEnable && depthDesc.DepthWriteMask == D3D11_DEPTH_WRITE_MASK_ALL)
             return;
     }
@@ -3147,10 +3101,11 @@ static void DrawSurfaceColour(ID3D11DeviceContext *ctx)
     StopTimer(ctx, SurfaceTimer);
 }
 
-static void OnAnyDraw(command_list *cmd)
+static void OnAnyDraw(shadowmaps::BoundDraw &bound)
 {
-    if(!tq_world::Work.Tracking())return;
-    auto *ctx = reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native());
+    if(!tq_world::Work.Tracking()||bound.LightBufferNoted)return;
+    bound.LightBufferNoted = true;
+    auto *ctx = bound.Context;
     if (!LightBuffer)
     {
         if (!FrameTargets.empty())
@@ -3176,39 +3131,39 @@ static void OnAnyDraw(command_list *cmd)
     LightBufferDrawn = true;
     if (!WorldToClipKnown && (tq_world::Work.Point() || tq_world::Work.AO() || tq_world::Work.Sun()
             || (tq_world::Work.Mask() & tq_world::CaptureWork) != 0))
-        ReadWorldToClip(ctx);
+        ReadWorldToClip(bound);
 }
 
 // whether a draw fills only part of a screen-sized target. With the character window open the game draws the window's
 // scene into the world's own targets before the world, through a viewport the window's size, with its own camera at
 // the origin and its own lamps; the add-on leaves those draws alone
-static bool IsPartialView(ID3D11DeviceContext *ctx)
+static bool IsPartialView(shadowmaps::BoundDraw &bound)
 {
-    D3D11_VIEWPORT viewport;
-    UINT count = 1;
-    ctx->RSGetViewports(&count, &viewport);
+    UINT count = 0;
+    const D3D11_VIEWPORT &viewport = bound.GetViewport(count);
     return ScreenTarget && count
         && (viewport.Width < shadowmaps::ScreenWidth || viewport.Height < shadowmaps::ScreenHeight);
 }
 
-static bool OnDraw(command_list *cmd, uint32_t vertices, uint32_t instances, uint32_t firstVertex, uint32_t firstInstance)
+// the light buffer's part of a game draw, run after shadows::HandleDraw's for the same draw
+static bool HandleDraw(command_list *cmd, shadowmaps::BoundDraw &bound)
 {
     if(!tq_world::Work.Tracking())return false;
-    const shadowmaps::CpuScope scope(shadowmaps::DrawCpu);
-    if (IsPartialView(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native())))
+    if (IsPartialView(bound))
         return false;
 
-    if(tq_world::Work.Sun()&&vertices&&instances)CountCasterDraw(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()));
-    DrawSurfaceColour(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()));
-    OnAnyDraw(cmd);
-    if(!tq_world::Work.Sun())return false;
-    auto *ctx = reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native());
+    const shadowmaps::DrawCall &call = bound.Call;
+    if(tq_world::Work.Sun()&&call.Count&&call.Instances)CountCasterDraw(bound);
+    DrawSurfaceColour(bound);
+    OnAnyDraw(bound);
+    if(call.Indexed||!tq_world::Work.Sun())return false;
+    const uint32_t vertices = call.Count, instances = call.Instances, firstVertex = call.First,
+        firstInstance = call.FirstInstance;
+    auto *ctx = bound.Context;
     ComPtr<ID3D11ShaderResourceView> gameMap, gameReceivers, gameFacing;
     int keptCascade = 0;
-    ReadSunTowardLight(ctx);
-    bool cascade=false;
-    {std::lock_guard guard(Lock);auto found=SunShaders.find(capture::PixelShader);
-        cascade=found!=SunShaders.end()&&found->second.Replacement>=0;}
+    ReadSunTowardLight(bound);
+    const bool cascade=(capture::PixelClass.Bits&capture::CLASS_SUN_PASS)!=0&&capture::PixelClass.SunReplacement>=0;
     ScopedSunConstants transaction;
     const bool owned=cascade&&transaction.Begin(ctx,true,20);
     const bool kept = owned&&EaseSunShadow(ctx, gameMap, gameReceivers, gameFacing, keptCascade);
@@ -3233,19 +3188,6 @@ static bool OnDraw(command_list *cmd, uint32_t vertices, uint32_t instances, uin
             capture::AddSnapshot(ctx, image.Get(), KEPT_PASS_SNAPSHOTS[keptCascade][1]);
     }
     return true;
-}
-
-static bool OnDrawIndexed(command_list *cmd, uint32_t indices, uint32_t instances, uint32_t, int32_t, uint32_t)
-{
-    if(!tq_world::Work.Tracking())return false;
-    const shadowmaps::CpuScope scope(shadowmaps::DrawCpu);
-    if (IsPartialView(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native())))
-        return false;
-
-    if(tq_world::Work.Sun()&&indices&&instances)CountCasterDraw(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()));
-    DrawSurfaceColour(reinterpret_cast<ID3D11DeviceContext *>(cmd->get_native()));
-    OnAnyDraw(cmd);
-    return false;
 }
 
 // draws this frame's occlusion over the finished image in grey
@@ -3301,7 +3243,9 @@ static void OnPresent(command_queue *, swapchain *chain, const rect *, const rec
     FinishTimer(immediate.Get(), SunTimer);
     FinishTimer(immediate.Get(), GlowTimer);
     FinishTimer(immediate.Get(), SurfaceTimer);
-    TimerFrame = (TimerFrame + 1) % GpuTimer::FRAMES;
+    FinishTimer(immediate.Get(), LampTimer);
+    FinishTimer(immediate.Get(), shadowmaps::MapTimer);
+    shadowmaps::TimerFrame = (shadowmaps::TimerFrame + 1) % GpuTimer::FRAMES;
     D3D11_TEXTURE2D_DESC desc;
     if (LightBuffer && ((!LightBufferDrawn && ++UndrawnFrames > LIGHT_BUFFER_LIFETIME)
         || !IsScreenSized(LightBuffer.Get(), desc)))
@@ -3343,19 +3287,16 @@ static void SuspendScene()
     CurrentTarget=nullptr;CurrentDepth=nullptr;ScreenTarget=false;
     FrameTargets.clear();LightBufferDrawn=false;SunMasterActive=false;
     shadowmaps::ProbeDepth.Reset();
-    OcclusionTimer={};SunTimer={};GlowTimer={};SurfaceTimer={};
+    OcclusionTimer={};SunTimer={};GlowTimer={};SurfaceTimer={};LampTimer={};
     ThisFrame={};StartScene();
 }
 
 static void Register()
 {
     reshade::register_event<reshade::addon_event::init_pipeline>(&tq_world::Guard<&OnInitPipeline>::Call);
-    reshade::register_event<reshade::addon_event::destroy_pipeline>(&tq_world::Guard<&OnDestroyPipeline>::Call);
     reshade::register_event<reshade::addon_event::destroy_device>(&tq_world::Guard<&OnDestroyDevice>::Call);
     reshade::register_event<reshade::addon_event::destroy_resource>(&tq_world::Guard<&OnDestroyResource>::Call);
     reshade::register_event<reshade::addon_event::bind_render_targets_and_depth_stencil>(&tq_world::WorkGuard<&OnBindRenderTargets>::Call);
-    reshade::register_event<reshade::addon_event::draw>(&tq_world::WorkGuard<&OnDraw>::Call);
-    reshade::register_event<reshade::addon_event::draw_indexed>(&tq_world::WorkGuard<&OnDrawIndexed>::Call);
     reshade::register_event<reshade::addon_event::present>(&tq_world::Guard<&OnPresent>::Call);
 }
 }

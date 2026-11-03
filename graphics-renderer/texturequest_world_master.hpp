@@ -12,9 +12,10 @@ public:
     bool Enabled()const noexcept{return effective_.load(std::memory_order_acquire);}
     void Commit(bool snapshot)noexcept{effective_.store(snapshot,std::memory_order_release);}
     bool Device(std::uint64_t native)noexcept{
-        if(!native)return false;std::uint64_t empty=0;
-        device_.compare_exchange_strong(empty,native,std::memory_order_acq_rel);
-        return device_.load(std::memory_order_acquire)==native;
+        if(!native)return false;
+        std::uint64_t current=device_.load(std::memory_order_acquire);
+        if(!current&&device_.compare_exchange_strong(current,native,std::memory_order_acq_rel))return true;
+        return current==native;
     }
     void Release(std::uint64_t native)noexcept{
         if(!native)return;

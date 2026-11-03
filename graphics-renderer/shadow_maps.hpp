@@ -16,15 +16,18 @@
 #include <wrl/client.h>
 #include <algorithm>
 #include <atomic>
+#include <bitset>
 #include <cfloat>
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <optional>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 #include "lamp_holder_policy.hpp"
+#include "sun_softness_settings.hpp"
 
 namespace shadowmaps
 {
@@ -38,6 +41,8 @@ constexpr UINT FACE_SIZES[] = { 1024, 512, 256 };
 constexpr int SIZE_COUNT = 3;
 constexpr UINT MOVING_FACE_SIZE = 512;
 constexpr UINT MAX_MOVING = 256;
+// the moving maps' faces, six for each of the nearest size's slots
+constexpr UINT MOVING_SLICES = SIZE_STARTS[1] * 6;
 constexpr UINT MAX_RECORDS = 4096;
 // constants c[3..13]: object-to-clip rows, world rows, then the light position
 constexpr UINT FIRST_ROW = 3;
@@ -57,6 +62,8 @@ constexpr float MIN_CASTER_SIZE = 0.1f;
 constexpr uint32_t LOADING_FRAMES = 60;
 // light positions closer than this are the same light; flickering lights move a little
 constexpr float LIGHT_MERGE_DISTANCE = 0.5f;
+// lamp lights closer than this are the same light whatever their hue; a lamp's colour can drift as it flickers
+constexpr float SAME_SPOT_DISTANCE = 0.05f;
 // a light drawn this close to a mapped light is taken to be that light
 constexpr float LIGHT_MATCH_DISTANCE = 1.0f;
 // a light that has moved further than this from where its map was drawn, such as a carried torch, is redrawn every frame
@@ -68,6 +75,25 @@ constexpr UINT MAX_PROBES = 256;
 constexpr uint64_t RECENT_FRAMES = 10;
 // how far a moving mesh may reach from its origin; characters are drawn in pieces smaller than this
 constexpr float MESH_RADIUS = 2.0f;
+// cached objects further than this from the camera are not probed
+constexpr float PROBE_DISTANCE = 200;
+// cached objects not seen for a while are dropped once the camera is further than this from them, and a camera jump this
+// far is a zone change or a teleport
+constexpr float KEEP_DISTANCE = 400;
+// a cached object not seen for this long is dropped wherever it is, unless a light holds it
+constexpr std::chrono::minutes CASTER_AGE_LIMIT { 10 };
+// how often, in frames, objects are checked against CASTER_AGE_LIMIT
+constexpr uint64_t AGE_CHECK_FRAMES = 60;
+// a moving mesh the game stopped drawing is held while it is within this distance of the camera
+constexpr float HELD_DISTANCE = 100;
+// the game's fade covers a cylinder of a lamp's reach in radius and half height, whose rim is this many reaches away
+constexpr float FADE_EXTENT = 1.41421356f;
+// the shadow radius of a lamp whose reach cannot be read; the largest lamp reach seen is about 71
+constexpr float FALLBACK_LAMP_RADIUS = 100.0f;
+// a light's objects are gathered again once its shadow radius grows past the radius they were gathered within by more
+// than rounding and flicker, or shrinks well below it
+constexpr float RADIUS_GROWTH = 1.01f;
+constexpr float RADIUS_SHRINK = 0.75f;
 // the window maps: their size, the most kept at once, and how long one stays once the game stops drawing its light
 constexpr UINT WINDOW_MAP_SIZE = 1024;
 constexpr size_t MAX_WINDOWS = 8;
@@ -84,6 +110,8 @@ constexpr float WINDOW_FILTER_TEXELS = 1.5f;
 constexpr float WINDOW_MATCH_DISTANCE = 0.25f;
 // frames between sending probes and reading their results
 constexpr UINT PROBE_LATENCY = 3;
+// frames between a GPU copy of a mesh's triangles or a glow measure and reading it on the CPU
+constexpr UINT READ_LATENCY = 3;
 
 static const XMVECTORF32 FACE_DIRECTIONS[6] = { { 1, 0, 0 }, { -1, 0, 0 }, { 0, 1, 0 }, { 0, -1, 0 }, { 0, 0, 1 },
     { 0, 0, -1 } };
@@ -115,6 +143,39 @@ float4 main(float3 position : POSITION) : SV_Position
     float4 p = float4(position, 1);
     float4 w = float4(float3(dot(p, row0), dot(p, row1), dot(p, row2)) - CameraOffset.xyz, 1);
     return float4(dot(w, ViewProjection[0]), dot(w, ViewProjection[1]), dot(w, ViewProjection[2]), dot(w, ViewProjection[3]));
+}
+)";
+
+// draws a moving mesh into every moving-map face it reaches in one instanced draw: instance n draws into the slice at
+// Slices[Index.y + n] (a light's slot times 6 plus the face), with that slice's view-projection rows from FaceRows.
+// SV_InstanceID does not include the draw's start instance, so the list's start comes in Index.y.
+constexpr const char *INSTANCED_CASTER_SHADER = R"(
+cbuffer Caster : register(b0) { uint4 Index; };
+cbuffer Camera : register(b3) { float4 CameraOffset; };
+ByteAddressBuffer Worlds : register(t13);
+StructuredBuffer<float4> FaceRows : register(t14);
+Buffer<uint> Slices : register(t15);
+
+struct Output
+{
+    float4 position : SV_Position;
+    uint slice : SV_RenderTargetArrayIndex;
+};
+
+Output main(float3 position : POSITION, uint instance : SV_InstanceID)
+{
+    uint start = Index.x * 48;
+    float4 row0 = asfloat(Worlds.Load4(start));
+    float4 row1 = asfloat(Worlds.Load4(start + 16));
+    float4 row2 = asfloat(Worlds.Load4(start + 32));
+    float4 p = float4(position, 1);
+    float4 w = float4(float3(dot(p, row0), dot(p, row1), dot(p, row2)) - CameraOffset.xyz, 1);
+    Output output;
+    output.slice = Slices[Index.y + instance];
+    uint row = output.slice * 4;
+    output.position = float4(dot(w, FaceRows[row]), dot(w, FaceRows[row + 1]), dot(w, FaceRows[row + 2]),
+        dot(w, FaceRows[row + 3]));
+    return output;
 }
 )";
 
@@ -165,8 +226,15 @@ struct Caster
     // the bounds of the object's triangles in world positions, once read back
     XMFLOAT3 Low, High;
     bool BoundsKnown = false;
-    // set once the bounds are asked for, read or not
+    // set once the bounds are asked for, read or not, and the frame they were last asked for; a read asked for on
+    // another frame, or before the object's buffers were last rewritten, is ignored
     bool BoundsRequested = false;
+    uint64_t BoundsAskedFrame = 0;
+    // set when the object's buffers were rewritten after its bounds were asked for; they are asked for again once the
+    // writes settle, and the old bounds are used until then
+    bool BoundsStale = false;
+    // when the game last drew the object, by the clock, so its age does not depend on the frame rate
+    std::chrono::steady_clock::time_point SeenTime;
 };
 
 struct Light
@@ -191,6 +259,11 @@ struct Light
     uint64_t LastSeen;
     uint64_t LastSelected;
     std::unordered_set<uint64_t> CasterKeys;
+    // the shadow radius its objects were gathered within, which is also its maps' far plane; 0 before they are gathered
+    float Radius = 0;
+    // set while the light's objects were gathered within the fallback radius of a lamp whose reach was not known yet;
+    // Radius may already be the reach-based one, and the objects are gathered again once the lamp has a slot
+    bool FallbackRadius = false;
     uint64_t Version;
     // set when objects were removed from the light, so its map is redrawn on the next frame
     bool RedrawNow;
@@ -260,27 +333,35 @@ struct MovingCaster
 struct LightTable
 {
     XMFLOAT4 Lights[MAX_LIGHTS];
+    // x the maps' near plane, z the shadow strength, w 1 while shadow colours are shown
     XMFLOAT4 Params;
     XMFLOAT4 Softness;
     // x is 1 when the light's moving-object map has anything in it
     XMFLOAT4 Moving[MAX_LIGHTS];
+    // x the far plane of the slot's maps, its light's shadow radius
+    XMFLOAT4 FarPlanes[MAX_LIGHTS];
 };
 
 static Frame CurrentFrame;
 static uint64_t FrameNumber = 1;
-// the frame each buffer was last written from the CPU, by its handle
-static std::unordered_map<uint64_t, uint64_t> BufferWrites;
-// how many different frames each buffer has been written on; a static index buffer is filled once, so one written again
-// holds the index lists the game refills as it goes, such as those it builds for a moving light, and nothing drawn from
-// it is cached. Vertex buffers are left out: a large static one may be filled over several frames as a zone loads
-static std::unordered_map<uint64_t, uint32_t> BufferWriteFrames;
+// a vertex or index buffer written from the CPU: the frame it was last written, and how many different frames it has
+// been written on; a static index buffer is filled once, so one written again holds the index lists the game refills as
+// it goes, such as those it builds for a moving light, and nothing drawn from it is cached. Vertex buffers are left out
+// of that: a large static one may be filled over several frames as a zone loads
+struct BufferWrite
+{
+    uint64_t Frame = 0;
+    uint32_t Frames = 0;
+};
+// by buffer handle
+static std::unordered_map<uint64_t, BufferWrite> BufferWrites;
 // buffers first seen refilled this frame; cached objects drawn with one as their index buffer are dropped
 static std::vector<uint64_t> NewlyRefilled;
 
 static bool IsRefilled(ID3D11Buffer *buffer)
 {
-    auto found = BufferWriteFrames.find(reinterpret_cast<uint64_t>(buffer));
-    return found != BufferWriteFrames.end() && found->second >= 2;
+    auto found = BufferWrites.find(reinterpret_cast<uint64_t>(buffer));
+    return found != BufferWrites.end() && found->second.Frames >= 2;
 }
 static uint64_t NextLightKey = 1;
 static std::unordered_map<uint64_t, Caster> Casters;
@@ -309,6 +390,18 @@ static std::unordered_map<uint64_t,float> MeshSizes;
 // Bounded classification ownership: never retain native buffers just for identity.
 struct MeshResources{uint64_t vertex,index;};
 static std::unordered_map<uint64_t,MeshResources> ClassifiedMeshes;
+// the keys of the classified meshes, world meshes and objects with bounds asked for that are drawn from each buffer, by
+// buffer handle, so a destroyed or rewritten buffer finds them without a scan; a key can outlive its entry, so each is
+// checked against the entry's buffers
+static std::unordered_map<uint64_t, std::unordered_set<uint64_t>> BufferMeshes;
+
+static void IndexMesh(uint64_t key, uint64_t vertex, uint64_t index)
+{
+    if (vertex)
+        BufferMeshes[vertex].insert(key);
+    if (index && index != vertex)
+        BufferMeshes[index].insert(key);
+}
 // how many sightings in a row each mesh has looked like it moved; a few moves apart from each other are not enough to
 // mark it
 static std::unordered_map<uint64_t, uint32_t> MoveSightings;
@@ -340,6 +433,8 @@ static ComPtr<ID3D11Buffer> CasterBuffer, LightTableBuffer, CameraOffsetBuffer;
 // passed to a shader by binding the buffer at that slot's block, and a last block holding -1 for a light with no map
 static ComPtr<ID3D11Buffer> ViewBuffer, SlotBuffer;
 static ViewConstants UploadedView;
+// the light table as last uploaded to LightTableBuffer
+static LightTable UploadedTable;
 static ComPtr<ID3D11VertexShader> CasterShader;
 static ComPtr<ID3D11RasterizerState> CasterRasterizer;
 static ComPtr<ID3D11DepthStencilState> CasterDepth;
@@ -352,6 +447,13 @@ static ComPtr<ID3D11DepthStencilView> MovingFaceViews[SIZE_STARTS[1] * 6];
 static ComPtr<ID3D11ShaderResourceView> MovingView, MovingWorldView;
 static ComPtr<ID3D11Buffer> MovingWorldBuffer, MovingConstantsBuffer;
 static ComPtr<ID3D11VertexShader> MovingCasterShader;
+// the instanced moving-map path, all null where the GPU cannot pick the render target slice from the vertex shader,
+// which leaves the per-face drawing: a depth view over every moving face, each face's view-projection rows, the faces
+// each mesh is drawn into, and the draw's constants
+static ComPtr<ID3D11DepthStencilView> MovingArrayView;
+static ComPtr<ID3D11Buffer> MovingFaceRowBuffer, MovingSliceBuffer, InstancedConstantsBuffer;
+static ComPtr<ID3D11ShaderResourceView> MovingFaceRowView, MovingSliceView;
+static ComPtr<ID3D11VertexShader> InstancedCasterShader;
 // moving meshes drawn this frame, with their world rows, uploaded to MovingWorldBuffer before drawing
 // the light buffer's depth and camera-relative world-to-clip transform for this frame, set when the game finishes it
 static ComPtr<ID3D11ShaderResourceView> ProbeDepth;
@@ -391,6 +493,36 @@ struct HeldMesh
 static std::unordered_map<uint64_t, HeldMesh> HeldMeshes;
 static bool MovingMapUsed[MAX_LIGHTS];
 
+// a moving mesh whose world rows are the identity at the world origin, so its vertices are already world positions and
+// its origin says nothing about where it is, with the buffers it is drawn from; an entry is made when its bounds are
+// asked for
+struct WorldMesh
+{
+    uint64_t Vertex, Index;
+    XMFLOAT3 Low, High;
+    bool BoundsKnown = false;
+    // set when its bounds cannot be read: it is not a triangle mesh within glow::MAX_TRIANGLES, or has no triangles
+    bool Unreadable = false;
+    // the frame its bounds were asked for; a read asked for on another frame, for an entry since dropped or before its
+    // buffers were last rewritten, is ignored
+    uint64_t AskedFrame = 0;
+    // set when its buffers were rewritten after its bounds were asked for; they are asked for again once the writes
+    // settle, and the old bounds are used until then
+    bool Stale = false;
+};
+// by mesh key; never holds a mesh whose buffers the game rewrites as it draws, which is Dynamic
+static std::unordered_map<uint64_t, WorldMesh> WorldMeshes;
+constexpr float WORLD_IDENTITY[12] = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0 };
+
+// a slot a lamp draw can take its shadow from, as it stood at the end of the last frame, in slot order
+struct ShadowSlot
+{
+    int Slot;
+    XMFLOAT3 Position;
+    XMFLOAT3 Hue;
+};
+static std::vector<ShadowSlot> ShadowSlots;
+
 // a directional light the game projects through a window, such as sunlight through stained glass. Its picture and fade
 // follow rows that give an absolute position its picture coordinates u and v and its distance along the beam s, 0 at
 // the window and 1 at the end of the fade, with no perspective. Its map holds, over the picture, the distance along the
@@ -428,15 +560,20 @@ static bool CreateFailed;
 
 static std::atomic<int> LightLimit = 50;
 static std::atomic<bool> MovingShadows = true;
-static std::atomic<float> Range = 25.0f;
 static std::atomic<float> Strength = 1.0f;
 // paints each light's shadow result in solid colours instead of darkening the light
 static std::atomic<bool> ShowColours;
-// the size given to each light, in world units; bigger lights cast softer shadows
-static std::atomic<float> LightSize = 0.15f;
+// how soft point light shadows are, in multiples of the real sun's angular size, the same scale as the sun's softness:
+// a shadow's edge spreads by this much of the real sun's spread per world unit between its caster and the surface
+static std::atomic<float> PointSoftness = sun_softness_settings::Default;
 static int MapsDrawnThisSecond, MapsDrawnLastSecond, CastersAddedThisSecond, CastersAddedLastSecond;
 static int ExtraDrawsThisSecond, ExtraDrawsLastSecond, MovingDrawsThisSecond, MovingDrawsLastSecond;
+// moving-map faces drawn into, which equals moving draws without instancing
+static int MovingFacesThisSecond, MovingFacesLastSecond;
 static int LampShaderDrawsThisSecond, LampShaderDrawsLastSecond;
+static int StaticCasterDrawsThisSecond, StaticCasterDrawsLastSecond;
+// lamp draws whose constants gave no reach
+static int NoReachLampsThisSecond, NoReachLampsLastSecond;
 static int FramesThisSecond, FramesLastSecond;
 static std::chrono::steady_clock::time_point SecondStart;
 
@@ -468,9 +605,12 @@ struct CpuScope
     }
 };
 
-static CpuTimer DrawCpu, BindCpu, LightBufferCpu, MapCpu, GlowCpu, PresentCpu, ShaderSortCpu;
-static CpuTimer *const CPU_TIMERS[] = { &DrawCpu, &BindCpu, &LightBufferCpu, &MapCpu, &GlowCpu, &PresentCpu,
-    &ShaderSortCpu };
+// StaticMapCpu and MovingMapCpu are parts of MapCpu, the lamp and window shadow maps' end of frame: StaticMapCpu the
+// cube maps and the objects gathered again for them, MovingMapCpu the held moving meshes, the window maps and the
+// moving-object maps
+static CpuTimer DrawCpu, BindCpu, LightBufferCpu, MapCpu, StaticMapCpu, MovingMapCpu, GlowCpu, PresentCpu, ShaderSortCpu;
+static CpuTimer *const CPU_TIMERS[] = { &DrawCpu, &BindCpu, &LightBufferCpu, &MapCpu, &StaticMapCpu, &MovingMapCpu,
+    &GlowCpu, &PresentCpu, &ShaderSortCpu };
 static int CpuFramesThisSecond, CpuFramesLastSecond;
 static double CpuSecondMilliseconds;
 static std::chrono::steady_clock::time_point CpuSecondStart;
@@ -497,6 +637,77 @@ static void EndCpuFrame()
 static double GetCpuMilliseconds(const CpuTimer &timer)
 {
     return timer.LastSecond / 1e6 / std::max(CpuFramesLastSecond, 1);
+}
+
+// the GPU time from the first Start to the last Stop in a frame, read back a few frames later so nothing waits on it
+struct GpuTimer
+{
+    static constexpr int FRAMES = 4;
+    ComPtr<ID3D11Query> Disjoint[FRAMES], Begin[FRAMES], End[FRAMES];
+    bool Pending[FRAMES] = {};
+    bool Started = false;
+    float Milliseconds = 0;
+};
+// the GPU time of drawing the lamp shadow maps, static and moving, and the window maps
+static GpuTimer MapTimer;
+static int TimerFrame;
+
+static void StartTimer(ID3D11DeviceContext *ctx, GpuTimer &timer)
+{
+    if (timer.Started)
+        return;
+
+    if (!timer.Disjoint[TimerFrame])
+    {
+        ComPtr<ID3D11Device> dev;
+        ctx->GetDevice(&dev);
+        D3D11_QUERY_DESC disjoint = { D3D11_QUERY_TIMESTAMP_DISJOINT };
+        D3D11_QUERY_DESC stamp = { D3D11_QUERY_TIMESTAMP };
+        if (FAILED(dev->CreateQuery(&disjoint, &timer.Disjoint[TimerFrame]))
+            || FAILED(dev->CreateQuery(&stamp, &timer.Begin[TimerFrame]))
+            || FAILED(dev->CreateQuery(&stamp, &timer.End[TimerFrame])))
+        {
+            timer.Disjoint[TimerFrame].Reset();
+            return;
+        }
+    }
+    ctx->Begin(timer.Disjoint[TimerFrame].Get());
+    ctx->End(timer.Begin[TimerFrame].Get());
+    timer.Started = true;
+}
+
+static void StopTimer(ID3D11DeviceContext *ctx, GpuTimer &timer)
+{
+    if (timer.Started)
+        ctx->End(timer.End[TimerFrame].Get());
+}
+
+// closes this frame's measurement and reads the oldest one if the GPU has finished it, averaged over about 20 frames
+static void FinishTimer(ID3D11DeviceContext *ctx, GpuTimer &timer)
+{
+    if (timer.Started)
+    {
+        ctx->End(timer.Disjoint[TimerFrame].Get());
+        timer.Pending[TimerFrame] = true;
+        timer.Started = false;
+    }
+    const int oldest = (TimerFrame + 1) % GpuTimer::FRAMES;
+    if (!timer.Pending[oldest])
+        return;
+
+    D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint;
+    UINT64 begin = 0, end = 0;
+    if (ctx->GetData(timer.Disjoint[oldest].Get(), &disjoint, sizeof(disjoint), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK
+        || ctx->GetData(timer.Begin[oldest].Get(), &begin, sizeof(begin), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK
+        || ctx->GetData(timer.End[oldest].Get(), &end, sizeof(end), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK)
+        return;
+
+    timer.Pending[oldest] = false;
+    if (disjoint.Disjoint || end < begin)
+        return;
+
+    const float milliseconds = static_cast<float>(end - begin) * 1000.0f / static_cast<float>(disjoint.Frequency);
+    timer.Milliseconds += (milliseconds - timer.Milliseconds) * 0.05f;
 }
 
 static uint64_t HashValue(uint64_t hash, uint64_t value)
@@ -588,6 +799,55 @@ static bool CreateCubeArray(ID3D11Device *dev, UINT size, UINT count, ComPtr<ID3
     return SUCCEEDED(dev->CreateShaderResourceView(texture.Get(), &viewDesc, &view));
 }
 
+static void ResetInstancedObjects()
+{
+    MovingArrayView.Reset();
+    MovingFaceRowBuffer.Reset();
+    MovingSliceBuffer.Reset();
+    InstancedConstantsBuffer.Reset();
+    MovingFaceRowView.Reset();
+    MovingSliceView.Reset();
+    InstancedCasterShader.Reset();
+}
+
+// makes the instanced moving-map objects; false where the GPU cannot write the render target slice from the vertex
+// shader or an object cannot be made, which leaves the per-face drawing
+static bool CreateInstancedObjects(ID3D11Device *dev)
+{
+    D3D11_FEATURE_DATA_D3D11_OPTIONS3 options = {};
+    if (FAILED(dev->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS3, &options, sizeof(options)))
+        || !options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizer)
+        return false;
+
+    D3D11_DEPTH_STENCIL_VIEW_DESC arrayDesc = {};
+    arrayDesc.Format = DXGI_FORMAT_D32_FLOAT;
+    arrayDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+    arrayDesc.Texture2DArray = { 0, 0, MOVING_SLICES };
+    if (FAILED(dev->CreateDepthStencilView(MovingTexture.Get(), &arrayDesc, &MovingArrayView)))
+        return false;
+
+    D3D11_BUFFER_DESC rowDesc = { MOVING_SLICES * 4 * 16, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0,
+        D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, 16 };
+    D3D11_BUFFER_DESC sliceDesc = { MAX_MOVING * MOVING_SLICES * 4, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE };
+    D3D11_BUFFER_DESC constantsDesc = { 16, D3D11_USAGE_DEFAULT, D3D11_BIND_CONSTANT_BUFFER };
+    if (FAILED(dev->CreateBuffer(&rowDesc, nullptr, &MovingFaceRowBuffer))
+        || FAILED(dev->CreateBuffer(&sliceDesc, nullptr, &MovingSliceBuffer))
+        || FAILED(dev->CreateBuffer(&constantsDesc, nullptr, &InstancedConstantsBuffer)))
+        return false;
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC rowViewDesc = {};
+    rowViewDesc.Format = DXGI_FORMAT_UNKNOWN;
+    rowViewDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+    rowViewDesc.Buffer = { 0, MOVING_SLICES * 4 };
+    D3D11_SHADER_RESOURCE_VIEW_DESC sliceViewDesc = {};
+    sliceViewDesc.Format = DXGI_FORMAT_R32_UINT;
+    sliceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+    sliceViewDesc.Buffer = { 0, MAX_MOVING * MOVING_SLICES };
+    return SUCCEEDED(dev->CreateShaderResourceView(MovingFaceRowBuffer.Get(), &rowViewDesc, &MovingFaceRowView))
+        && SUCCEEDED(dev->CreateShaderResourceView(MovingSliceBuffer.Get(), &sliceViewDesc, &MovingSliceView))
+        && CreateVertexShader(dev, INSTANCED_CASTER_SHADER, InstancedCasterShader);
+}
+
 static bool CreateMovingObjects(ID3D11Device *dev)
 {
     if (!CreateCubeArray(dev, MOVING_FACE_SIZE, SIZE_STARTS[1], MovingTexture, MovingFaceViews, MovingView))
@@ -607,6 +867,8 @@ static bool CreateMovingObjects(ID3D11Device *dev)
     if (FAILED(dev->CreateShaderResourceView(MovingWorldBuffer.Get(), &worldViewDesc, &MovingWorldView)))
         return false;
 
+    if (!CreateInstancedObjects(dev))
+        ResetInstancedObjects();
     return CreateVertexShader(dev, MOVING_CASTER_SHADER, MovingCasterShader);
 }
 
@@ -691,6 +953,7 @@ static void Reset()
     CurrentFrame.BaseRecords = 0;
     CurrentFrame.CameraKnown = false;
     StartOver();
+    MapTimer = {};
     Lights.clear();
     std::fill(std::begin(SlotLights), std::end(SlotLights), 0);
     std::fill(std::begin(SlotActive), std::end(SlotActive), false);
@@ -723,6 +986,7 @@ static void Reset()
     MovingWorldBuffer.Reset();
     MovingConstantsBuffer.Reset();
     MovingCasterShader.Reset();
+    ResetInstancedObjects();
     ProbeDepth.Reset();
     ProbeBuffer.Reset();
     VisibleBuffer.Reset();
@@ -739,9 +1003,9 @@ static void Reset()
     DrawnMeshes.clear();
     BaseMeshes.clear();
     SeeThroughMeshes.clear();
-    HeldMeshes.clear();
     Windows.clear();
     std::fill(std::begin(MovingMapUsed), std::end(MovingMapUsed), false);
+    ShadowSlots.clear();
     FramesWithoutCamera=0;
     CreateFailed = false;
 }
@@ -900,6 +1164,112 @@ static bool ReadDrawRows(ID3D11DeviceContext *ctx, XMFLOAT4 (&rows)[ROW_COUNT])
     return true;
 }
 
+// a game draw being handled, with the state bound for it read from the context the first time a handler asks, so the
+// draw's handlers read each part once. It lives only while its draw is handled: whatever binds other state for the draw
+// puts it back before the next handler, and whatever binds other vertex constants calls ForgetRows
+struct BoundDraw
+{
+    ID3D11DeviceContext *Context;
+    DrawCall Call;
+    // whether lightbuffer::OnAnyDraw has followed this draw
+    bool LightBufferNoted = false;
+
+    // the first viewport, with how many are bound up to one
+    const D3D11_VIEWPORT &GetViewport(UINT &count)
+    {
+        if (!ViewportRead)
+        {
+            ViewportCount = 1;
+            Context->RSGetViewports(&ViewportCount, &Viewport);
+            ViewportRead = true;
+        }
+        count = ViewportCount;
+        return Viewport;
+    }
+
+    // the blend state's description, null with none bound, and the sample mask
+    const D3D11_BLEND_DESC *GetBlend(UINT *sampleMask = nullptr)
+    {
+        if (!BlendRead)
+        {
+            ComPtr<ID3D11BlendState> blend;
+            Context->OMGetBlendState(&blend, nullptr, &SampleMask);
+            if (blend)
+                blend->GetDesc(&BlendDesc);
+            HasBlend = blend != nullptr;
+            BlendRead = true;
+        }
+        if (sampleMask)
+            *sampleMask = SampleMask;
+        return HasBlend ? &BlendDesc : nullptr;
+    }
+
+    // the depth-stencil state's description, null with none bound
+    const D3D11_DEPTH_STENCIL_DESC *GetDepth()
+    {
+        if (!DepthRead)
+        {
+            ComPtr<ID3D11DepthStencilState> depth;
+            Context->OMGetDepthStencilState(&depth, nullptr);
+            if (depth)
+                depth->GetDesc(&DepthDesc);
+            HasDepth = depth != nullptr;
+            DepthRead = true;
+        }
+        return HasDepth ? &DepthDesc : nullptr;
+    }
+
+    // the vertex and index buffers drawn from, keyed by HashMesh
+    const Geometry &GetMesh()
+    {
+        if (!MeshRead)
+        {
+            Context->IAGetVertexBuffers(0, 1, &Mesh.VertexBuffer, &Mesh.Stride, &Mesh.VertexOffset);
+            Context->IAGetIndexBuffer(&Mesh.IndexBuffer, &Mesh.IndexFormat, &Mesh.IndexOffset);
+            Mesh.Call = Call;
+            Mesh.Key = HashMesh(Mesh);
+            MeshRead = true;
+        }
+        return Mesh;
+    }
+
+    D3D11_PRIMITIVE_TOPOLOGY GetTopology()
+    {
+        if (!TopologyRead)
+        {
+            Context->IAGetPrimitiveTopology(&Topology);
+            TopologyRead = true;
+        }
+        return Topology;
+    }
+
+    // reads the draw's vertex constant rows into Rows once; false when they cannot be read
+    bool ReadRows()
+    {
+        if (!RowsTried)
+        {
+            RowsValid = ReadDrawRows(Context, Rows);
+            RowsTried = true;
+        }
+        return RowsValid;
+    }
+
+    void ForgetRows()
+    {
+        RowsTried = false;
+    }
+
+    XMFLOAT4 Rows[ROW_COUNT] = {};
+    D3D11_VIEWPORT Viewport = {};
+    UINT ViewportCount = 0, SampleMask = 0;
+    D3D11_BLEND_DESC BlendDesc = {};
+    D3D11_DEPTH_STENCIL_DESC DepthDesc = {};
+    Geometry Mesh = {};
+    D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    bool ViewportRead = false, BlendRead = false, HasBlend = false, DepthRead = false, HasDepth = false, MeshRead = false;
+    bool TopologyRead = false, RowsTried = false, RowsValid = false;
+};
+
 // how many times further than the game's own reach a lamp's light carries
 constexpr float LIGHT_REACH = 1.0f;
 // the constant windows already stretched, with the frame they were stretched on, so a window drawn twice is stretched once
@@ -968,7 +1338,6 @@ static void StretchLight(ID3D11DeviceContext *ctx)
     ctx->Unmap(constants.Get(), 0);
 }
 
-// finds the slot of a light drawn at this camera-relative position whose map has anything in it, or -1
 // a lamp draw's light colour, row c11, over its brightest channel
 static XMFLOAT3 FindHue(const XMFLOAT4 &colour)
 {
@@ -983,6 +1352,15 @@ static bool IsSameHue(const XMFLOAT3 &a, const XMFLOAT3 &b)
     return std::abs(a.x - b.x) < HUE_TOLERANCE && std::abs(a.y - b.y) < HUE_TOLERANCE && std::abs(a.z - b.z) < HUE_TOLERANCE;
 }
 
+// whether two lamp lights this far apart with these hues are one light: within SAME_SPOT_DISTANCE whatever their hues,
+// beyond it only when their hues match
+static bool IsSameLamp(float distance, const XMFLOAT3 &a, const XMFLOAT3 &b)
+{
+    return distance < SAME_SPOT_DISTANCE || IsSameHue(a, b);
+}
+
+// finds the slot of the nearest light within LIGHT_MATCH_DISTANCE of a lamp drawn at this camera-relative position whose
+// map has anything in it, of the lamp's hue unless it is within SAME_SPOT_DISTANCE, or -1
 static int FindShadowSlot(const XMFLOAT4 &relative, const XMFLOAT4 &colour)
 {
     if (!OffsetKnown)
@@ -992,21 +1370,38 @@ static int FindShadowSlot(const XMFLOAT4 &relative, const XMFLOAT4 &colour)
     const XMFLOAT3 position = { relative.x - CurrentOffset.x, relative.y - CurrentOffset.y, relative.z - CurrentOffset.z };
     int nearest = -1;
     float nearestDistance = LIGHT_MATCH_DISTANCE;
+    for (const ShadowSlot &candidate : ShadowSlots)
+    {
+        const float distance = Distance(candidate.Position, position);
+        if (!(distance < nearestDistance) || !IsSameLamp(distance, candidate.Hue, hue))
+            continue;
+
+        // a see-through mesh noted during the frame can take a light's last caster
+        if (!MovingMapUsed[candidate.Slot])
+        {
+            auto light = Lights.find(SlotLights[candidate.Slot]);
+            if (light == Lights.end() || light->second.CasterKeys.empty())
+                continue;
+        }
+        nearest = candidate.Slot;
+        nearestDistance = distance;
+    }
+    return nearest;
+}
+
+// lists the slots FindShadowSlot can pick; run once the frame's maps are drawn
+static void ListShadowSlots()
+{
+    ShadowSlots.clear();
     for (int slot = 0; slot < MAX_LIGHTS; ++slot)
     {
         auto light = Lights.find(SlotLights[slot]);
         if (!SlotActive[slot] || light == Lights.end() || light->second.Glow || !light->second.BuiltFrame
-            || (light->second.CasterKeys.empty() && !MovingMapUsed[slot]) || !IsSameHue(light->second.Hue, hue))
+            || (light->second.CasterKeys.empty() && !MovingMapUsed[slot]))
             continue;
 
-        const float distance = Distance(light->second.BuiltPosition, position);
-        if (distance < nearestDistance)
-        {
-            nearest = slot;
-            nearestDistance = distance;
-        }
+        ShadowSlots.push_back({ slot, light->second.BuiltPosition, light->second.Hue });
     }
-    return nearest;
 }
 
 // finds a light draw's camera-relative world-to-clip transform from its object-to-clip rows and world rows
@@ -1049,9 +1444,10 @@ static void UpdateView(ID3D11DeviceContext *ctx, const XMFLOAT4 (&rows)[ROW_COUN
     ctx->UpdateSubresource(ViewBuffer.Get(), 0, nullptr, &view, 0, 0);
 }
 
-// finds the screen rectangle that pixels within shadow range of a light draw's light can cover. Returns false when that
-// range is off screen; leaves full set when it reaches behind the camera, where no rectangle bounds it.
-static bool FindShadowRect(const XMFLOAT4 (&rows)[ROW_COUNT], const D3D11_VIEWPORT &viewport, D3D11_RECT &rect,
+// finds the screen rectangle that pixels within the shadow radius of a light draw's light, whose map is in this slot, can
+// cover. Returns false when that radius is off screen; leaves full set when it reaches behind the camera, where no
+// rectangle bounds it.
+static bool FindShadowRect(const XMFLOAT4 (&rows)[ROW_COUNT], int slot, const D3D11_VIEWPORT &viewport, D3D11_RECT &rect,
     bool &full)
 {
     full = true;
@@ -1060,7 +1456,7 @@ static bool FindShadowRect(const XMFLOAT4 (&rows)[ROW_COUNT], const D3D11_VIEWPO
         return true;
 
     worldToClip = XMMatrixTranspose(worldToClip);
-    const float range = Range.load();
+    const float range = UploadedTable.FarPlanes[slot].x;
     float minX = 1e30f, minY = 1e30f, maxX = -1e30f, maxY = -1e30f;
     for (int corner = 0; corner < 8; ++corner)
     {
@@ -1170,10 +1566,10 @@ static void RecordDirectionalMoving(ID3D11DeviceContext *ctx, const DrawCall &ca
 }
 
 // records a draw of a mesh with its constant rows, from a lamp pass or from the light buffer's base light
-static void Record(ID3D11DeviceContext *ctx, const DrawCall &call, const XMFLOAT4 (&rows)[ROW_COUNT], bool lamp)
+static void Record(BoundDraw &bound, const XMFLOAT4 (&rows)[ROW_COUNT], bool lamp)
 {
     Frame &frame = CurrentFrame;
-    if (frame.Records.size() >= MAX_RECORDS || call.Instances != 1)
+    if (frame.Records.size() >= MAX_RECORDS || bound.Call.Instances != 1)
         return;
 
     frame.Rows.insert(frame.Rows.end(), rows, rows + ROW_COUNT);
@@ -1181,13 +1577,9 @@ static void Record(ID3D11DeviceContext *ctx, const DrawCall &call, const XMFLOAT
     if (!lamp)
         ++frame.BaseRecords;
 
-    Geometry geometry;
-    ctx->IAGetVertexBuffers(0, 1, &geometry.VertexBuffer, &geometry.Stride, &geometry.VertexOffset);
-    ctx->IAGetIndexBuffer(&geometry.IndexBuffer, &geometry.IndexFormat, &geometry.IndexOffset);
-    ctx->IAGetInputLayout(&geometry.Layout);
-    ctx->IAGetPrimitiveTopology(&geometry.Topology);
-    geometry.Call = call;
-    geometry.Key = HashMesh(geometry);
+    Geometry geometry = bound.GetMesh();
+    bound.Context->IAGetInputLayout(&geometry.Layout);
+    geometry.Topology = bound.GetTopology();
     D3D11_BUFFER_DESC vertexDesc = {};
     if (geometry.VertexBuffer)
         geometry.VertexBuffer->GetDesc(&vertexDesc);
@@ -1209,29 +1601,90 @@ static void Record(ID3D11DeviceContext *ctx, const DrawCall &call, const XMFLOAT
     frame.Records.push_back(std::move(geometry));
 }
 
-// adds a confirmed object to every light whose shadow range holds its origin; a glow light uses its own range and leaves
-// out its emitter
-static void AddToNearbyLights(uint64_t casterKey, const XMFLOAT3 &position)
+// the distance from a point to the nearest point of a box
+static float FindBoxDistance(const XMFLOAT3 &low, const XMFLOAT3 &high, const XMFLOAT3 &point)
 {
-    const float range = Range.load();
+    const XMFLOAT3 nearest = { std::clamp(point.x, low.x, high.x), std::clamp(point.y, low.y, high.y),
+        std::clamp(point.z, low.z, high.z) };
+    return Distance(nearest, point);
+}
+
+// the distance from a point to an object's bounds, or to its origin while its bounds are not known
+static float FindCasterDistance(const Caster &caster, const XMFLOAT3 &point)
+{
+    if (!caster.BoundsKnown)
+        return Distance({ caster.World[3], caster.World[7], caster.World[11] }, point);
+
+    return FindBoxDistance(caster.Low, caster.High, point);
+}
+
+// whether world rows are the identity at the world origin once offset is taken from their position, which means the
+// mesh's vertices are already world positions
+static bool IsInWorldPositions(const float *world, const XMFLOAT3 &offset)
+{
+    // the offset comes from the camera as read, which may differ from the game's in the last bits
+    constexpr float ORIGIN_TOLERANCE = 0.01f;
+    for (int i : { 0, 1, 2, 4, 5, 6, 8, 9, 10 })
+        if (world[i] != WORLD_IDENTITY[i])
+            return false;
+    return std::abs(world[3] - offset.x) < ORIGIN_TOLERANCE && std::abs(world[7] - offset.y) < ORIGIN_TOLERANCE
+        && std::abs(world[11] - offset.z) < ORIGIN_TOLERANCE;
+}
+
+// whether every copy of a held mesh is in world positions, so its anchor says nothing about where it is
+static bool IsHeldInWorldPositions(const HeldMesh &held)
+{
+    if (held.Worlds.empty())
+        return false;
+    for (size_t start = 0; start + 12 <= held.Worlds.size(); start += 12)
+        if (!IsInWorldPositions(&held.Worlds[start], {}))
+            return false;
+    return true;
+}
+
+// how far a light's shadows can reach: a lamp's light ends at the rim of its fade, and a glow light's at its range. Any
+// object that shadows a lit surface lies between it and the light, so this bounds the light's objects.
+static float FindShadowRadius(const Light &light)
+{
+    const float radius = light.Glow ? light.GlowRange : light.Reach > 0 ? light.Reach * FADE_EXTENT : FALLBACK_LAMP_RADIUS;
+    // the far plane stays past the near plane
+    return std::max(radius, 2 * NEAR_PLANE);
+}
+
+// gives a light every confirmed object within its shadow radius other than its emitter, and notes that radius
+static void GatherCasters(Light &light)
+{
+    light.Radius = FindShadowRadius(light);
+    light.FallbackRadius = !light.Glow && light.Reach <= 0;
+    light.CasterKeys.clear();
+    for (const auto &[casterKey, caster] : Casters)
+        if (casterKey != light.EmitterKey && caster.FramesSeen >= CONFIRM_FRAMES
+            && FindCasterDistance(caster, light.Position) < light.Radius)
+            light.CasterKeys.insert(casterKey);
+}
+
+// adds a newly confirmed object to every light whose shadow radius reaches it, other than a glow light's emitter
+static void AddToNearbyLights(uint64_t casterKey, const Caster &caster)
+{
     for (auto &[key, light] : Lights)
-        if (Distance(light.Position, position) < (light.Glow ? light.GlowRange : range) && casterKey != light.EmitterKey
+        if (casterKey != light.EmitterKey && FindCasterDistance(caster, light.Position) < light.Radius
             && light.CasterKeys.insert(casterKey).second)
             ++light.Version;
 }
 
-// finds the lamp of this hue nearest this position within this distance, or 0; glow lights are never found
+// finds the lamp nearest this position within this distance, of this hue unless it is within SAME_SPOT_DISTANCE, or 0;
+// glow lights are never found
 static uint64_t FindNearestLight(const XMFLOAT3 &position, const XMFLOAT3 &hue, float within)
 {
     uint64_t nearest = 0;
     float nearestDistance = within;
     for (auto &[key, light] : Lights)
     {
-        if (light.Glow || !IsSameHue(light.Hue, hue))
+        if (light.Glow)
             continue;
 
         const float distance = Distance(light.Position, position);
-        if (distance < nearestDistance)
+        if (distance < nearestDistance && IsSameLamp(distance, light.Hue, hue))
         {
             nearest = key;
             nearestDistance = distance;
@@ -1240,10 +1693,9 @@ static uint64_t FindNearestLight(const XMFLOAT3 &position, const XMFLOAT3 &hue, 
     return nearest;
 }
 
-// finds the lamp at this position, or adds one holding every confirmed object whose origin is within its shadow range;
-// glow lights are added by the glow code and never found here.
-// ponytail: an object is placed by its origin, so a large mesh whose origin is out of range casts only once seen in that
-// lamp's pass; bounds from the vertex data would fix that
+// finds the lamp at this position, or adds one holding every confirmed object within its shadow radius; glow lights are
+// added by the glow code and never found here. A new lamp's reach is not known yet, so it starts with the fallback
+// radius and gathers its objects again once its reach is read.
 static uint64_t FindLight(const XMFLOAT3 &position, const XMFLOAT3 &hue)
 {
     if (const uint64_t nearest = FindNearestLight(position, hue, LIGHT_MERGE_DISTANCE))
@@ -1253,11 +1705,7 @@ static uint64_t FindLight(const XMFLOAT3 &position, const XMFLOAT3 &hue)
     Light &light = Lights[key];
     light.Position = position;
     light.Hue = hue;
-    const float range = Range.load();
-    for (const auto &[casterKey, caster] : Casters)
-        if (caster.FramesSeen >= CONFIRM_FRAMES
-            && Distance({ caster.World[3], caster.World[7], caster.World[11] }, position) < range)
-            light.CasterKeys.insert(casterKey);
+    GatherCasters(light);
     return key;
 }
 
@@ -1266,22 +1714,88 @@ static void StartOver()
     Windows.clear();
     if(SceneEpochChanged)SceneEpochChanged();
     Casters.clear();
-    BaseMeshes.clear();SeeThroughMeshes.clear();MeshSizes.clear();ClassifiedMeshes.clear();
+    BaseMeshes.clear();SeeThroughMeshes.clear();MeshSizes.clear();ClassifiedMeshes.clear();BufferMeshes.clear();
     Anchors.clear();
     MovingMeshes.clear();
     MoveSightings.clear();
     StillSightings.clear();
+    WorldMeshes.clear();
+    HeldMeshes.clear();
     for (auto &[key, light] : Lights)
         light.CasterKeys.clear();
     std::erase_if(Lights, [](const auto &entry) { return entry.second.Slot < 0; });
 }
 
+// notes a CPU write of a buffer the game can draw from; only vertex and index buffers are looked up in BufferWrites, so
+// the constant buffers written for nearly every draw are left out
 static void NoteBufferWrite(uint64_t buffer)
 {
-    uint64_t &frame = BufferWrites[buffer];
-    if (frame != FrameNumber && ++BufferWriteFrames[buffer] == 2)
+    D3D11_BUFFER_DESC desc;
+    reinterpret_cast<ID3D11Buffer *>(buffer)->GetDesc(&desc);
+    if ((desc.BindFlags & (D3D11_BIND_VERTEX_BUFFER | D3D11_BIND_INDEX_BUFFER)) == 0)
+        return;
+
+    BufferWrite &write = BufferWrites[buffer];
+    if (write.Frame == FrameNumber)
+        return;
+    write.Frame = FrameNumber;
+    if (++write.Frames == 2)
         NewlyRefilled.push_back(buffer);
-    frame = FrameNumber;
+
+    // bounds asked for before the buffer's first write in a frame go stale, and reads in flight are dropped. A mesh
+    // drawn with it as a dynamic vertex buffer or a refilled index buffer is Dynamic and keeps no bounds. Keys whose
+    // entries are gone are dropped
+    auto meshes = BufferMeshes.find(buffer);
+    if (meshes == BufferMeshes.end())
+        return;
+    const auto keepsBounds = [buffer, &desc, &write](uint64_t vertex, uint64_t index) {
+        return !(vertex == buffer && desc.Usage == D3D11_USAGE_DYNAMIC) && !(index == buffer && write.Frames >= 2);
+    };
+    std::unordered_set<uint64_t> &keys = meshes->second;
+    for (auto key = keys.begin(); key != keys.end();)
+    {
+        bool used = false;
+        if (auto it = WorldMeshes.find(*key); it != WorldMeshes.end()
+            && (it->second.Vertex == buffer || it->second.Index == buffer))
+        {
+            used = true;
+            if (keepsBounds(it->second.Vertex, it->second.Index))
+            {
+                it->second.Stale = true;
+                it->second.AskedFrame = 0;
+            }
+        }
+        if (auto it = Casters.find(*key); it != Casters.end())
+        {
+            const uint64_t vertex = reinterpret_cast<uint64_t>(it->second.Mesh.VertexBuffer.Get());
+            const uint64_t index = reinterpret_cast<uint64_t>(it->second.Mesh.IndexBuffer.Get());
+            if (vertex == buffer || index == buffer)
+            {
+                used = true;
+                if (keepsBounds(vertex, index))
+                {
+                    it->second.BoundsStale = true;
+                    it->second.BoundsAskedFrame = 0;
+                }
+            }
+        }
+        if (auto it = ClassifiedMeshes.find(*key); it != ClassifiedMeshes.end()
+            && (it->second.vertex == buffer || it->second.index == buffer))
+            used = true;
+        key = used ? std::next(key) : keys.erase(key);
+    }
+    if (keys.empty())
+        BufferMeshes.erase(meshes);
+}
+
+// whether a mesh's vertex or index buffer was written from the CPU within this many frames
+static bool IsWrittenWithin(const Geometry &mesh, uint64_t frames)
+{
+    for (const ID3D11Buffer *buffer : { mesh.VertexBuffer.Get(), mesh.IndexBuffer.Get() })
+        if (auto write = BufferWrites.find(reinterpret_cast<uint64_t>(buffer));
+            buffer && write != BufferWrites.end() && write->second.Frame + frames >= FrameNumber)
+            return true;
+    return false;
 }
 
 static void OnMapBuffer(device *, resource buffer, uint64_t, uint64_t, map_access access, void **)
@@ -1300,17 +1814,24 @@ static bool OnUpdateBuffer(device *, const void *, resource buffer, uint64_t, ui
     return false;
 }
 
-// forgets a destroyed buffer, so a new one at the same address starts unwritten
+// forgets a destroyed buffer, so a new one at the same address starts unwritten, with the meshes drawn from it
 static void OnDestroyResource(device *, resource handle)
 {
     BufferWrites.erase(handle.handle);
-    BufferWriteFrames.erase(handle.handle);
-    for(auto it=ClassifiedMeshes.begin();it!=ClassifiedMeshes.end();)
+    auto meshes = BufferMeshes.find(handle.handle);
+    if (meshes == BufferMeshes.end())
+        return;
+
+    for (uint64_t key : meshes->second)
     {
-        if(it->second.vertex==handle.handle||it->second.index==handle.handle)
-        {BaseMeshes.erase(it->first);SeeThroughMeshes.erase(it->first);MeshSizes.erase(it->first);it=ClassifiedMeshes.erase(it);}
-        else ++it;
+        if (auto it = ClassifiedMeshes.find(key); it != ClassifiedMeshes.end()
+            && (it->second.vertex == handle.handle || it->second.index == handle.handle))
+        {BaseMeshes.erase(key);SeeThroughMeshes.erase(key);MeshSizes.erase(key);ClassifiedMeshes.erase(it);}
+        if (auto it = WorldMeshes.find(key); it != WorldMeshes.end()
+            && (it->second.Vertex == handle.handle || it->second.Index == handle.handle))
+            WorldMeshes.erase(it);
     }
+    BufferMeshes.erase(meshes);
 }
 
 // marks a mesh as moving when its vertices have been rewritten from the CPU lately, which is how the game animates
@@ -1340,7 +1861,7 @@ static void FindMovingMeshes(const Frame &frame, const XMFLOAT4 *records, const 
             continue;
 
         auto written = BufferWrites.find(reinterpret_cast<uint64_t>(frame.Records[i].VertexBuffer.Get()));
-        if (written != BufferWrites.end() && written->second + ANIMATION_FRAMES >= FrameNumber)
+        if (written != BufferWrites.end() && written->second.Frame + ANIMATION_FRAMES >= FrameNumber)
             animated.insert(frame.Records[i].Key);
 
         const float *world = &records[i * ROW_COUNT + 4].x;
@@ -1439,9 +1960,9 @@ static void WriteBuffer(FILE *file, const char *name, ID3D11Buffer *buffer)
     D3D11_BUFFER_DESC desc = {};
     if (buffer)
         buffer->GetDesc(&desc);
-    auto frames = BufferWriteFrames.find(reinterpret_cast<uint64_t>(buffer));
+    auto written = BufferWrites.find(reinterpret_cast<uint64_t>(buffer));
     fprintf(file, " %s usage %d written on %u frames", name, static_cast<int>(desc.Usage),
-        frames == BufferWriteFrames.end() ? 0u : frames->second);
+        written == BufferWrites.end() ? 0u : written->second.Frames);
 }
 
 static void WriteGeometry(FILE *file, const Geometry &mesh)
@@ -1487,14 +2008,24 @@ static void WriteState()
     WriteVector(file, CurrentFrame.Camera);
     fprintf(file, " (%d), next light key %llu, create failed %d\n", CurrentFrame.CameraKnown ? 1 : 0,
         static_cast<unsigned long long>(NextLightKey), CreateFailed ? 1 : 0);
-    fprintf(file, "last second: %d frames, %d maps drawn, %d objects added, %d extra draws, %d moving draws, %d lamp "
-        "shader draws\n", FramesLastSecond, MapsDrawnLastSecond, CastersAddedLastSecond, ExtraDrawsLastSecond,
-        MovingDrawsLastSecond, LampShaderDrawsLastSecond);
+    fprintf(file, "last second: %d frames, %d maps drawn, %d objects added, %d extra draws, %d moving draws (%d faces), "
+        "%d lamp shader draws, %d static caster draws, %d lamp draws with no reach; moving maps instanced %d\n",
+        FramesLastSecond, MapsDrawnLastSecond, CastersAddedLastSecond, ExtraDrawsLastSecond, MovingDrawsLastSecond,
+        MovingFacesLastSecond, LampShaderDrawsLastSecond, StaticCasterDrawsLastSecond, NoReachLampsLastSecond,
+        InstancedCasterShader ? 1 : 0);
+    fprintf(file, "cpu ms per frame over the last second (profiling %d): game draws %.3f, pipeline binds, buffer "
+        "writes and samplers %.3f, light buffer passes %.3f, lamp and window shadow maps %.3f (static maps %.3f, "
+        "moving and window maps %.3f), emissive lights %.3f, end of frame %.3f; shader sorting %.3f ms in the second\n",
+        CpuProfileEnabled.load() ? 1 : 0,
+        GetCpuMilliseconds(DrawCpu), GetCpuMilliseconds(BindCpu), GetCpuMilliseconds(LightBufferCpu),
+        GetCpuMilliseconds(MapCpu), GetCpuMilliseconds(StaticMapCpu), GetCpuMilliseconds(MovingMapCpu),
+        GetCpuMilliseconds(GlowCpu), GetCpuMilliseconds(PresentCpu), ShaderSortCpu.LastSecond / 1e6);
     fprintf(file, "this second so far: %d frames, %d maps drawn, %d objects added, %d extra draws, %d moving draws, %d "
-        "lamp shader draws\n", FramesThisSecond, MapsDrawnThisSecond, CastersAddedThisSecond, ExtraDrawsThisSecond,
-        MovingDrawsThisSecond, LampShaderDrawsThisSecond);
-    fprintf(file, "settings: range %.2f, strength %.2f, light size %.3f, light limit %d, moving shadows %d, show colours "
-        "%d\n", Range.load(), Strength.load(), LightSize.load(), LightLimit.load(), MovingShadows.load() ? 1 : 0,
+        "lamp shader draws, %d static caster draws, %d lamp draws with no reach\n", FramesThisSecond,
+        MapsDrawnThisSecond, CastersAddedThisSecond, ExtraDrawsThisSecond, MovingDrawsThisSecond,
+        LampShaderDrawsThisSecond, StaticCasterDrawsThisSecond, NoReachLampsThisSecond);
+    fprintf(file, "settings: strength %.2f, softness %.3f, light limit %d, moving shadows %d, show colours %d\n",
+        Strength.load(), PointSoftness.load(), LightLimit.load(), MovingShadows.load() ? 1 : 0,
         ShowColours.load() ? 1 : 0);
 
     struct MeshCount
@@ -1556,10 +2087,10 @@ static void WriteState()
         fprintf(file, ", built at ");
         WriteVector(file, light.BuiltPosition);
         fprintf(file, ", seen %lld ago, selected %lld ago, built %lld ago, version %llu, built version %llu, slot %d, "
-            "redraw now %d, slot changed %d, %zu objects", ago(light.LastSeen), ago(light.LastSelected),
+            "redraw now %d, slot changed %d, %zu objects, radius %.2f", ago(light.LastSeen), ago(light.LastSelected),
             ago(light.BuiltFrame), static_cast<unsigned long long>(light.Version),
             static_cast<unsigned long long>(light.BuiltVersion), light.Slot, light.RedrawNow ? 1 : 0,
-            light.SlotChanged ? 1 : 0, light.CasterKeys.size());
+            light.SlotChanged ? 1 : 0, light.CasterKeys.size(), light.Radius);
         if (light.Glow)
         {
             fprintf(file, ", glow emitter %016llx, range %.2f, area %.2f, shown %d, held %d, colour ",
@@ -1606,12 +2137,8 @@ static void WriteState()
 
     fprintf(file, "\n--- buffers written from the CPU: %zu; buffer handle, last written frames ago, frames written on\n",
         BufferWrites.size());
-    for (const auto &[buffer, frame] : BufferWrites)
-    {
-        auto frames = BufferWriteFrames.find(buffer);
-        fprintf(file, "%016llx %lld %u\n", static_cast<unsigned long long>(buffer), ago(frame),
-            frames == BufferWriteFrames.end() ? 0u : frames->second);
-    }
+    for (const auto &[buffer, write] : BufferWrites)
+        fprintf(file, "%016llx %lld %u\n", static_cast<unsigned long long>(buffer), ago(write.Frame), write.Frames);
 
     fprintf(file, "\n--- moving objects drawn this frame: %zu, %zu distinct\n", MovingCasters.size(), MovingThisFrame.size());
     for (const MovingCaster &moving : MovingCasters)
@@ -1686,6 +2213,7 @@ static void ReadFrame(Frame &frame)
     const XMFLOAT4 *records = frame.Rows.data();
     const XMFLOAT3 offset = { -frame.Camera.x, -frame.Camera.y, -frame.Camera.z };
     FindMovingMeshes(frame, records, offset);
+    const auto now = std::chrono::steady_clock::now();
 
     for (size_t i = 0; i < frame.Records.size(); ++i)
     {
@@ -1724,8 +2252,9 @@ static void ReadFrame(Frame &frame)
         caster.World[7] = position.y;
         caster.World[11] = position.z;
         if (caster.LastSeen != FrameNumber && ++caster.FramesSeen == CONFIRM_FRAMES)
-            AddToNearbyLights(casterKey, position);
+            AddToNearbyLights(casterKey, caster);
         caster.LastSeen = FrameNumber;
+        caster.SeenTime = now;
         if (!lightKey)
             continue;
 
@@ -1751,11 +2280,26 @@ static void RemoveCaster(uint64_t casterKey)
         }
 }
 
+// remembers the buffers of a mesh being classified; false when ClassifiedMeshes is full
+static bool KeepMeshResources(const Geometry &mesh)
+{
+    const MeshResources resources{reinterpret_cast<uint64_t>(mesh.VertexBuffer.Get()),reinterpret_cast<uint64_t>(mesh.IndexBuffer.Get())};
+    auto found=ClassifiedMeshes.find(mesh.Key);
+    if(found==ClassifiedMeshes.end())
+    {
+        if(ClassifiedMeshes.size()>=MAX_RECORDS)return false;
+        ClassifiedMeshes.emplace(mesh.Key,resources);
+    }
+    else if(found->second.vertex==resources.vertex&&found->second.index==resources.index)return true;
+    else found->second=resources;
+    IndexMesh(mesh.Key,resources.vertex,resources.index);
+    return true;
+}
+
 static void NoteBaseMesh(const Geometry &mesh)
 {
     const uint64_t meshKey=mesh.Key;
-    if(ClassifiedMeshes.size()>=MAX_RECORDS&&!ClassifiedMeshes.contains(meshKey))return;
-    ClassifiedMeshes[meshKey]={reinterpret_cast<uint64_t>(mesh.VertexBuffer.Get()),reinterpret_cast<uint64_t>(mesh.IndexBuffer.Get())};
+    if(!KeepMeshResources(mesh))return;
     BaseMeshes.insert(meshKey);
     SeeThroughMeshes.erase(meshKey);
 }
@@ -1763,8 +2307,7 @@ static void NoteBaseMesh(const Geometry &mesh)
 static void NoteBlendedMesh(const Geometry &mesh)
 {
     const uint64_t meshKey=mesh.Key;
-    if(ClassifiedMeshes.size()>=MAX_RECORDS&&!ClassifiedMeshes.contains(meshKey))return;
-    ClassifiedMeshes[meshKey]={reinterpret_cast<uint64_t>(mesh.VertexBuffer.Get()),reinterpret_cast<uint64_t>(mesh.IndexBuffer.Get())};
+    if(!KeepMeshResources(mesh))return;
     if (BaseMeshes.contains(meshKey) || !SeeThroughMeshes.insert(meshKey).second)
         return;
 
@@ -1811,7 +2354,7 @@ static void ReadProbes(ID3D11DeviceContext *ctx, UINT slot)
     probed.clear();
 }
 
-// probes the spots of cached objects within shadow range of the camera that the game did not draw this frame against
+// probes the spots of cached objects within PROBE_DISTANCE of the camera that the game did not draw this frame against
 // the light buffer's depth
 static void SendProbes(ID3D11DeviceContext1 *ctx, UINT slot)
 {
@@ -1821,7 +2364,6 @@ static void SendProbes(ID3D11DeviceContext1 *ctx, UINT slot)
     // probes this close to the screen edge are left out, where the game's culling and ours may disagree
     constexpr float EDGE = 0.98f;
 
-    const float range = Range.load();
     const XMMATRIX worldToClip = XMMatrixTranspose(ProbeWorldToClip);
     std::vector<XMFLOAT4> probes;
     for (auto &[key, caster] : Casters)
@@ -1835,7 +2377,7 @@ static void SendProbes(ID3D11DeviceContext1 *ctx, UINT slot)
         const XMVECTOR relative = XMVectorSet(caster.World[3] - Camera.x, caster.World[7] - Camera.y,
             caster.World[11] - Camera.z, 0);
         const float distance = XMVectorGetX(XMVector3Length(relative));
-        if (distance > range || distance < 2 * PROBE_BIAS)
+        if (distance > PROBE_DISTANCE || distance < 2 * PROBE_BIAS)
             continue;
 
         XMFLOAT4 clip;
@@ -1873,17 +2415,16 @@ static void SendProbes(ID3D11DeviceContext1 *ctx, UINT slot)
     ctx->CopyResource(VisibleReadback[slot].Get(), VisibleBuffer.Get());
 }
 
-// drops objects not seen for a while once the camera is far from them; the game does not draw objects out of view, so
-// nearby ones are kept
+// drops objects not seen for a while once the camera is far from them, and those not seen for CASTER_AGE_LIMIT that no
+// light holds; the game does not draw objects out of view, so nearby ones and those a light shadows with are kept
 static void Evict()
 {
-    const float keepDistance = 4 * Range.load();
     if (CameraFound)
     {
         // a jump this far, or a loading screen, is a zone change or a teleport, and the place left behind may share
         // coordinates with the new one
         const bool jumped = LastCameraKnown
-            && (Distance(Camera, LastCamera) > keepDistance || FramesWithoutCamera >= LOADING_FRAMES);
+            && (Distance(Camera, LastCamera) > KEEP_DISTANCE || FramesWithoutCamera >= LOADING_FRAMES);
         FramesWithoutCamera = 0;
         LastCamera = Camera;
         LastCameraKnown = true;
@@ -1900,7 +2441,7 @@ static void Evict()
     for(const auto &[key,caster]:Casters)if(caster.BoundsKnown&&Distance(caster.Low,caster.High)<MIN_CASTER_SIZE)tiny.push_back(key);
     for(uint64_t key:tiny)RemoveCaster(key);
     // zone meshes all have the world origin as theirs, so the distance is to an object's bounds once they are known
-    std::erase_if(Casters, [keepDistance](const auto &entry) {
+    std::erase_if(Casters, [](const auto &entry) {
         const Caster &caster = entry.second;
         const XMFLOAT3 nearest = caster.BoundsKnown
             ? XMFLOAT3 { std::clamp(Camera.x, caster.Low.x, caster.High.x), std::clamp(Camera.y, caster.Low.y, caster.High.y),
@@ -1909,12 +2450,86 @@ static void Evict()
         if (caster.BoundsKnown && Distance(caster.Low, caster.High) < MIN_CASTER_SIZE)
             return true;
 
-        return caster.LastSeen + CASTER_LIFETIME < FrameNumber && Distance(nearest, Camera) > keepDistance;
+        return caster.LastSeen + CASTER_LIFETIME < FrameNumber && Distance(nearest, Camera) > KEEP_DISTANCE;
     });
+    if (FrameNumber % AGE_CHECK_FRAMES == 0)
+    {
+        const auto now = std::chrono::steady_clock::now();
+        std::vector<uint64_t> old;
+        for (const auto &[key, caster] : Casters)
+            if (now - caster.SeenTime > CASTER_AGE_LIMIT)
+                old.push_back(key);
+        if (!old.empty())
+        {
+            // a glow emitter is held by its own lights, which leave it out of their objects
+            std::unordered_set<uint64_t> held;
+            for (const auto &[key, light] : Lights)
+            {
+                held.insert(light.EmitterKey);
+                held.insert(light.CasterKeys.begin(), light.CasterKeys.end());
+            }
+            for (const Window &window : Windows)
+                held.insert(window.CasterKeys.begin(), window.CasterKeys.end());
+            for (uint64_t key : old)
+                if (!held.contains(key))
+                    Casters.erase(key);
+        }
+    }
     std::erase_if(Lights, [](const auto &entry) {
         return entry.second.Slot < 0 && entry.second.LastSeen + LIGHT_LIFETIME < FrameNumber
             && entry.second.LastInRange + REMEMBERED_LAMP_FRAMES < FrameNumber;
     });
+}
+
+// folds lamp lights within SAME_SPOT_DISTANCE of each other, such as those a lamp left while its colour drifted, into
+// the one whose slot is active, else the one with a slot, else the one seen last. It keeps the larger reach, and gathers
+// its objects again through the usual shadow radius change; the other light's slot is freed.
+// ponytail: compares every pair of lamp lights each frame, half a million distances at a thousand lamps; a spatial grid
+// if lamps ever number that many
+static void FoldStackedLights()
+{
+    // map nodes stay put when other entries are erased
+    std::vector<std::pair<uint64_t, Light *>> lamps;
+    for (auto &[key, light] : Lights)
+        if (!light.Glow)
+            lamps.emplace_back(key, &light);
+    const auto rank = [](const Light &light) {
+        return std::tuple(light.Slot >= 0 && SlotActive[light.Slot], light.Slot >= 0, light.LastSeen);
+    };
+    for (size_t a = 0; a < lamps.size(); ++a)
+        for (size_t b = a + 1; b < lamps.size() && lamps[a].second; ++b)
+        {
+            if (!lamps[b].second)
+                continue;
+
+            Light &first = *lamps[a].second;
+            Light &second = *lamps[b].second;
+            if (Distance(first.Position, second.Position) >= SAME_SPOT_DISTANCE)
+                continue;
+
+            const bool keepFirst = rank(first) >= rank(second);
+            Light &survivor = keepFirst ? first : second;
+            const Light &ghost = keepFirst ? second : first;
+            if (ghost.Reach > survivor.Reach)
+            {
+                survivor.Reach = ghost.Reach;
+                survivor.Colour = ghost.Colour;
+            }
+            if (survivor.FadePower <= 0)
+                survivor.FadePower = ghost.FadePower;
+            survivor.LastSeen = std::max(survivor.LastSeen, ghost.LastSeen);
+            survivor.LastInRange = std::max(survivor.LastInRange, ghost.LastInRange);
+            survivor.LastAdded = std::max(survivor.LastAdded, ghost.LastAdded);
+            survivor.MissedInView = std::min(survivor.MissedInView, ghost.MissedInView);
+            if (ghost.Slot >= 0)
+            {
+                SlotLights[ghost.Slot] = 0;
+                MovingMapUsed[ghost.Slot] = false;
+            }
+            auto &[ghostKey, ghostLight] = keepFirst ? lamps[b] : lamps[a];
+            Lights.erase(ghostKey);
+            ghostLight = nullptr;
+        }
 }
 
 // gives the nearest lights a cube map slot. A slot keeps its map until a nearer light needs it, and then goes to the
@@ -2020,14 +2635,21 @@ static std::vector<uint64_t> AssignSlots()
     return selected;
 }
 
-static void DrawCaster(ID3D11DeviceContext *ctx, const Geometry &mesh)
+static void DrawCaster(ID3D11DeviceContext *ctx, const Geometry &mesh, UINT instances = 1)
 {
     ID3D11Buffer *vertexBuffer = mesh.VertexBuffer.Get();
     ctx->IASetInputLayout(mesh.Layout.Get());
     ctx->IASetVertexBuffers(0, 1, &vertexBuffer, &mesh.Stride, &mesh.VertexOffset);
     ctx->IASetIndexBuffer(mesh.IndexBuffer.Get(), mesh.IndexFormat, mesh.IndexOffset);
     ctx->IASetPrimitiveTopology(mesh.Topology);
-    if (mesh.Call.Indexed)
+    if (instances > 1)
+    {
+        if (mesh.Call.Indexed)
+            ctx->DrawIndexedInstanced(mesh.Call.Count, instances, mesh.Call.First, mesh.Call.BaseVertex, 0);
+        else
+            ctx->DrawInstanced(mesh.Call.Count, instances, mesh.Call.First, 0);
+    }
+    else if (mesh.Call.Indexed)
         ctx->DrawIndexed(mesh.Call.Count, mesh.Call.First, mesh.Call.BaseVertex);
     else
         ctx->Draw(mesh.Call.Count, mesh.Call.First);
@@ -2104,8 +2726,20 @@ static std::unordered_set<uint64_t> FindSiblingHolders(const Light &light)
     return siblings;
 }
 
+// whether a sphere about a position relative to a light can reach into a cube face, which sees a 90 degree square cone
+// around its axis
+static bool ReachesFace(int face, const XMFLOAT3 &relative, float radius)
+{
+    const float axes[3] = { relative.x, relative.y, relative.z };
+    const int axis = face / 2;
+    const float along = (face % 2 ? -1.0f : 1.0f) * axes[axis];
+    const float across = std::max(std::abs(axes[(axis + 1) % 3]), std::abs(axes[(axis + 2) % 3]));
+    return !(along + radius * 1.4143f < across);
+}
+
 static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
 {
+    const CpuScope scope(StaticMapCpu);
     const auto siblingHolders=FindSiblingHolders(light);
     ComPtr<ID3DDeviceContextState> previous;
     ctx->SwapDeviceContextState(DrawState.Get(), &previous);
@@ -2119,7 +2753,7 @@ static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
 
     light.BuiltPosition = light.Position;
     const XMVECTOR eye = XMLoadFloat3(&light.BuiltPosition);
-    const XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, 1.0f, NEAR_PLANE, Range.load());
+    const XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, 1.0f, NEAR_PLANE, light.Radius);
     const float size = static_cast<float>(FACE_SIZES[GetSizeIndex(light.Slot)]);
     const D3D11_VIEWPORT viewport = { 0, 0, size, size, 0, 1 };
     ctx->RSSetViewports(1, &viewport);
@@ -2152,6 +2786,28 @@ static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
         }
     }
 
+    // each object to draw, with the centre of its bounds relative to the light and how far it reaches from there. An
+    // object whose bounds are not known yet may be any size, so it goes into every face.
+    std::vector<std::tuple<const Caster *, XMFLOAT3, float>> drawn;
+    drawn.reserve(light.CasterKeys.size());
+    for (uint64_t key : light.CasterKeys)
+    {
+        // a lamp's own model would shadow its whole light, which the game means to shine through it
+        auto caster = Casters.find(key);
+        if (caster == Casters.end() || (!light.Glow && (HoldsLight(caster->second, light.Position)||siblingHolders.contains(key))))
+            continue;
+
+        const Caster &object = caster->second;
+        if (!object.BoundsKnown)
+        {
+            drawn.emplace_back(&object, XMFLOAT3 {}, FLT_MAX);
+            continue;
+        }
+        const XMFLOAT3 relative = { (object.Low.x + object.High.x) / 2 - light.BuiltPosition.x,
+            (object.Low.y + object.High.y) / 2 - light.BuiltPosition.y, (object.Low.z + object.High.z) / 2 - light.BuiltPosition.z };
+        drawn.emplace_back(&object, relative, Distance(object.Low, object.High) / 2);
+    }
+
     CasterConstants constants;
     for (int face = 0; face < 6; ++face)
     {
@@ -2160,16 +2816,15 @@ static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
         ctx->OMSetRenderTargets(0, nullptr, view);
         const XMMATRIX viewMatrix = XMMatrixLookToLH(eye, FACE_DIRECTIONS[face], FACE_UPS[face]);
         XMStoreFloat4x4(&constants.ViewProjection, XMMatrixTranspose(XMMatrixMultiply(viewMatrix, projection)));
-        for (uint64_t key : light.CasterKeys)
+        for (const auto &[object, relative, extent] : drawn)
         {
-            // a lamp's own model would shadow its whole light, which the game means to shine through it
-            auto caster = Casters.find(key);
-            if (caster == Casters.end() || (!light.Glow && (HoldsLight(caster->second, light.Position)||siblingHolders.contains(key))))
+            if (!ReachesFace(face, relative, extent))
                 continue;
 
-            std::copy(caster->second.World, caster->second.World + 12, constants.World);
+            std::copy(object->World, object->World + 12, constants.World);
             ctx->UpdateSubresource(CasterBuffer.Get(), 0, nullptr, &constants, 0, 0);
-            DrawCaster(ctx, caster->second.Mesh);
+            DrawCaster(ctx, object->Mesh);
+            ++StaticCasterDrawsThisSecond;
         }
     }
 
@@ -2194,6 +2849,29 @@ static bool IsOnScreen(const XMFLOAT3 &position)
     return clip.w > NEAR_PLANE && std::abs(clip.x) <= clip.w && std::abs(clip.y) <= clip.w;
 }
 
+// whether a box may be inside the camera's view: the camera is inside it, or its corners are not all beyond the same
+// side of the view, IsOnScreen's left, right, top, bottom or near plane
+static bool IsBoxOnScreen(const XMFLOAT3 &low, const XMFLOAT3 &high)
+{
+    if (!ProbeDepth)
+        return false;
+    if (FindBoxDistance(low, high, Camera) == 0)
+        return true;
+
+    const XMMATRIX worldToClip = XMMatrixTranspose(ProbeWorldToClip);
+    // one bit for each side every corner so far is beyond
+    int outside = 0x1f;
+    for (int corner = 0; corner < 8; ++corner)
+    {
+        XMFLOAT4 clip;
+        XMStoreFloat4(&clip, XMVector4Transform(XMVectorSet((corner & 1 ? high.x : low.x) - Camera.x,
+            (corner & 2 ? high.y : low.y) - Camera.y, (corner & 4 ? high.z : low.z) - Camera.z, 1), worldToClip));
+        outside &= (clip.x < -clip.w ? 1 : 0) | (clip.x > clip.w ? 2 : 0) | (clip.y < -clip.w ? 4 : 0)
+            | (clip.y > clip.w ? 8 : 0) | (clip.w <= NEAR_PLANE ? 16 : 0);
+    }
+    return outside == 0;
+}
+
 // notes where this frame's moving meshes were drawn, and adds those that stay in one place but were not drawn because
 // they are off screen, from where they were last drawn. One that is on screen and not drawn is gone, and one that
 // moves about, such as a character, is not kept, so neither leaves a shadow behind.
@@ -2203,9 +2881,12 @@ static void HoldMovingMeshes()
     constexpr float IN_PLACE_RADIUS = 1.0f;
     constexpr uint64_t IN_PLACE_FRAMES = 60;
 
+    // a mesh whose buffers the game now rewrites is no longer held
     std::unordered_map<uint64_t, std::vector<const MovingCaster *>> drawn;
     for (const MovingCaster &caster : MovingCasters)
-        if (!caster.Mesh.Dynamic)
+        if (caster.Mesh.Dynamic)
+            HeldMeshes.erase(caster.Mesh.Key);
+        else
             drawn[caster.Mesh.Key].push_back(&caster);
     for (const auto &[meshKey, copies] : drawn)
     {
@@ -2233,7 +2914,6 @@ static void HoldMovingMeshes()
         held.LastDrawn = FrameNumber;
     }
 
-    const float range = Range.load();
     for (auto held = HeldMeshes.begin(); held != HeldMeshes.end();)
     {
         HeldMesh &mesh = held->second;
@@ -2243,8 +2923,25 @@ static void HoldMovingMeshes()
             ++held;
             continue;
         }
-        if (mesh.InPlaceSince + IN_PLACE_FRAMES > mesh.LastDrawn || IsOnScreen(mesh.Anchor)
-            || Distance(mesh.Anchor, Camera) > 2 * range)
+        // a mesh in world positions is judged by its bounds, and kept while they are being read; one whose bounds cannot
+        // be read is judged by its origin
+        bool onScreen = IsOnScreen(mesh.Anchor);
+        float distance = Distance(mesh.Anchor, Camera);
+        if (IsHeldInWorldPositions(mesh))
+            if (auto bounds = WorldMeshes.find(held->first); bounds == WorldMeshes.end() || !bounds->second.Unreadable)
+            {
+                const bool known = bounds != WorldMeshes.end() && bounds->second.BoundsKnown;
+                // one whose bounds cannot be asked for while the game keeps writing its buffers is not held, like a
+                // mesh whose buffers the game rewrites
+                if (!known && IsWrittenWithin(mesh.Mesh, READ_LATENCY))
+                {
+                    held = HeldMeshes.erase(held);
+                    continue;
+                }
+                onScreen = known && IsBoxOnScreen(bounds->second.Low, bounds->second.High);
+                distance = known ? FindBoxDistance(bounds->second.Low, bounds->second.High, Camera) : 0;
+            }
+        if (mesh.InPlaceSince + IN_PLACE_FRAMES > mesh.LastDrawn || onScreen || distance > HELD_DISTANCE)
         {
             held = HeldMeshes.erase(held);
             continue;
@@ -2460,8 +3157,62 @@ static void DrawWindowMaps(ID3D11DeviceContext1 *ctx)
 }
 
 // redraws each light's moving-object map from the moving meshes drawn this frame near that light, and the window maps
+// draws each moving mesh once, into every moving-map face set in its entry of faces, by its index; the faces are
+// cleared already
+static void DrawInstancedMoving(ID3D11DeviceContext1 *ctx, const std::vector<std::bitset<MOVING_SLICES>> &faces,
+    const std::vector<XMFLOAT4X4> &faceRows)
+{
+    std::vector<UINT> slices;
+    for (const MovingCaster &caster : MovingCasters)
+        for (UINT slice = 0; slice < MOVING_SLICES; ++slice)
+            if (faces[caster.Index][slice])
+                slices.push_back(slice);
+    if (slices.empty())
+        return;
+
+    const D3D11_BOX box = { 0, 0, 0, static_cast<UINT>(slices.size() * sizeof(UINT)), 1, 1 };
+    ctx->UpdateSubresource(MovingSliceBuffer.Get(), 0, &box, slices.data(), 0, 0);
+    ctx->UpdateSubresource(MovingFaceRowBuffer.Get(), 0, nullptr, faceRows.data(), 0, 0);
+
+    ComPtr<ID3DDeviceContextState> previous;
+    ctx->SwapDeviceContextState(DrawState.Get(), &previous);
+    const D3D11_VIEWPORT viewport = { 0, 0, MOVING_FACE_SIZE, MOVING_FACE_SIZE, 0, 1 };
+    ctx->RSSetViewports(1, &viewport);
+    ctx->RSSetState(CasterRasterizer.Get());
+    ctx->OMSetDepthStencilState(CasterDepth.Get(), 0);
+    ctx->VSSetShader(InstancedCasterShader.Get(), nullptr, 0);
+    ctx->PSSetShader(nullptr, nullptr, 0);
+    ID3D11Buffer *constants = InstancedConstantsBuffer.Get();
+    ctx->VSSetConstantBuffers(0, 1, &constants);
+    ID3D11Buffer *offset = CameraOffsetBuffer.Get();
+    ctx->VSSetConstantBuffers(3, 1, &offset);
+    ID3D11ShaderResourceView *views[] = { MovingWorldView.Get(), MovingFaceRowView.Get(), MovingSliceView.Get() };
+    ctx->VSSetShaderResources(13, 3, views);
+    ctx->OMSetRenderTargets(0, nullptr, MovingArrayView.Get());
+
+    UINT start = 0;
+    for (const MovingCaster &caster : MovingCasters)
+    {
+        const UINT count = static_cast<UINT>(faces[caster.Index].count());
+        if (!count)
+            continue;
+
+        const uint32_t index[4] = { caster.Index, start, 0, 0 };
+        ctx->UpdateSubresource(InstancedConstantsBuffer.Get(), 0, nullptr, index, 0, 0);
+        DrawCaster(ctx, caster.Mesh, count);
+        start += count;
+        ++MovingDrawsThisSecond;
+        MovingFacesThisSecond += count;
+    }
+
+    // the maps stay bound as depth in the drawing state otherwise, which would unbind them from the shadow pass
+    ctx->OMSetRenderTargets(0, nullptr, nullptr);
+    ctx->SwapDeviceContextState(previous.Get(), nullptr);
+}
+
 static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
 {
+    const CpuScope scope(MovingMapCpu);
     // the world rows are relative to this frame's camera, so they need this frame's camera position
     if (!CameraFound)
         MovingCasters.clear();
@@ -2475,25 +3226,50 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
     if (!Windows.empty())
         DrawWindowMaps(ctx);
 
+    // for each moving mesh in world positions, by index, its entry, or nullptr while it has none; a mesh whose bounds
+    // are not read goes in every map. Empty for a mesh found by its origin
+    std::vector<std::optional<const WorldMesh *>> worldMeshes(MovingCasters.size());
+    for (const MovingCaster &caster : MovingCasters)
+        if (!caster.Mesh.Dynamic && IsInWorldPositions(&MovingWorlds[caster.Index * 12], CurrentOffset))
+        {
+            auto found = WorldMeshes.find(caster.Mesh.Key);
+            worldMeshes[caster.Index] = found == WorldMeshes.end() ? nullptr : &found->second;
+        }
+
+    // with instancing, each moving mesh's faces to draw into and each face's view-projection rows, drawn after the loop
+    const bool instanced = InstancedCasterShader != nullptr;
+    std::vector<std::bitset<MOVING_SLICES>> faces(instanced ? MovingCasters.size() : 0);
+    std::vector<XMFLOAT4X4> faceRows(instanced ? MOVING_SLICES : 0);
     ComPtr<ID3DDeviceContextState> previous;
     bool swapped = false;
-    const float range = Range.load();
-    const XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, 1.0f, NEAR_PLANE, range);
     for (int slot = 0; slot < SIZE_STARTS[1]; ++slot)
     {
         auto light = Lights.find(SlotLights[slot]);
-        // each nearby mesh with its position relative to the light, from its world rows and this frame's offset
-        std::vector<std::pair<const MovingCaster *, XMFLOAT3>> nearby;
+        // each nearby mesh with the centre of its bounds, or its origin, relative to the light, and how far it reaches
+        // from there
+        std::vector<std::tuple<const MovingCaster *, XMFLOAT3, float>> nearby;
         if (SlotActive[slot] && light != Lights.end())
             for (const MovingCaster &caster : MovingCasters)
             {
                 if(SeeThroughMeshes.contains(caster.Mesh.Key))continue;
-                const float *world = &MovingWorlds[caster.Index * 12];
                 const XMFLOAT3 &lightPosition = light->second.BuiltPosition;
+                if (const std::optional<const WorldMesh *> &entry = worldMeshes[caster.Index])
+                {
+                    const WorldMesh *worldMesh = *entry;
+                    if (!worldMesh || !worldMesh->BoundsKnown)
+                        nearby.emplace_back(&caster, XMFLOAT3 {}, FLT_MAX);
+                    else if (FindBoxDistance(worldMesh->Low, worldMesh->High, lightPosition) < light->second.Radius)
+                        nearby.emplace_back(&caster, XMFLOAT3 { (worldMesh->Low.x + worldMesh->High.x) / 2 - lightPosition.x,
+                            (worldMesh->Low.y + worldMesh->High.y) / 2 - lightPosition.y,
+                            (worldMesh->Low.z + worldMesh->High.z) / 2 - lightPosition.z },
+                            Distance(worldMesh->Low, worldMesh->High) / 2);
+                    continue;
+                }
+                const float *world = &MovingWorlds[caster.Index * 12];
                 const XMFLOAT3 relative = { world[3] - CurrentOffset.x - lightPosition.x,
                     world[7] - CurrentOffset.y - lightPosition.y, world[11] - CurrentOffset.z - lightPosition.z };
-                if (Distance(relative, { 0, 0, 0 }) < range + MESH_RADIUS)
-                    nearby.emplace_back(&caster, relative);
+                if (Distance(relative, { 0, 0, 0 }) < light->second.Radius + MESH_RADIUS)
+                    nearby.emplace_back(&caster, relative, MESH_RADIUS);
             }
         if (nearby.empty())
         {
@@ -2501,6 +3277,24 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
                 for (int face = 0; face < 6; ++face)
                     ctx->ClearDepthStencilView(MovingFaceViews[slot * 6 + face].Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
             MovingMapUsed[slot] = false;
+            continue;
+        }
+
+        if (instanced)
+        {
+            const XMVECTOR eye = XMLoadFloat3(&light->second.BuiltPosition);
+            const XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, 1.0f, NEAR_PLANE, light->second.Radius);
+            for (int face = 0; face < 6; ++face)
+            {
+                const UINT slice = static_cast<UINT>(slot * 6 + face);
+                ctx->ClearDepthStencilView(MovingFaceViews[slice].Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+                const XMMATRIX viewMatrix = XMMatrixLookToLH(eye, FACE_DIRECTIONS[face], FACE_UPS[face]);
+                XMStoreFloat4x4(&faceRows[slice], XMMatrixTranspose(XMMatrixMultiply(viewMatrix, projection)));
+                for (const auto &[caster, relative, extent] : nearby)
+                    if (ReachesFace(face, relative, extent))
+                        faces[caster->Index].set(slice);
+            }
+            MovingMapUsed[slot] = true;
             continue;
         }
 
@@ -2524,6 +3318,7 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
 
         MovingConstants constants = {};
         const XMVECTOR eye = XMLoadFloat3(&light->second.BuiltPosition);
+        const XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, 1.0f, NEAR_PLANE, light->second.Radius);
         for (int face = 0; face < 6; ++face)
         {
             ID3D11DepthStencilView *view = MovingFaceViews[slot * 6 + face].Get();
@@ -2531,20 +3326,16 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
             ctx->OMSetRenderTargets(0, nullptr, view);
             const XMMATRIX viewMatrix = XMMatrixLookToLH(eye, FACE_DIRECTIONS[face], FACE_UPS[face]);
             XMStoreFloat4x4(&constants.ViewProjection, XMMatrixTranspose(XMMatrixMultiply(viewMatrix, projection)));
-            for (const auto &[caster, relative] : nearby)
+            for (const auto &[caster, relative, extent] : nearby)
             {
-                // a face sees a 90 degree square cone around its axis; skip meshes that cannot reach into it
-                const float axes[3] = { relative.x, relative.y, relative.z };
-                const int axis = face / 2;
-                const float along = (face % 2 ? -1.0f : 1.0f) * axes[axis];
-                const float across = std::max(std::abs(axes[(axis + 1) % 3]), std::abs(axes[(axis + 2) % 3]));
-                if (along + MESH_RADIUS * 1.4143f < across)
+                if (!ReachesFace(face, relative, extent))
                     continue;
 
                 constants.Index[0] = caster->Index;
                 ctx->UpdateSubresource(MovingConstantsBuffer.Get(), 0, nullptr, &constants, 0, 0);
                 DrawCaster(ctx, caster->Mesh);
                 ++MovingDrawsThisSecond;
+                ++MovingFacesThisSecond;
             }
         }
         MovingMapUsed[slot] = true;
@@ -2552,6 +3343,8 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
 
     if (swapped)
         ctx->SwapDeviceContextState(previous.Get(), nullptr);
+    if (instanced)
+        DrawInstancedMoving(ctx, faces, faceRows);
     if (DrawAdditionalMoving) DrawAdditionalMoving(ctx);
     MovingCasters.clear();
     MovingWorlds.clear();
@@ -2562,7 +3355,8 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
 
 static void UploadLightTable(ID3D11DeviceContext *ctx)
 {
-    LightTable table = {};
+    LightTable &table = UploadedTable;
+    table = {};
     for (int slot = 0; slot < MAX_LIGHTS; ++slot)
     {
         table.Lights[slot] = { 0, 0, 0, -1 };
@@ -2572,9 +3366,10 @@ static void UploadLightTable(ID3D11DeviceContext *ctx)
 
         const XMFLOAT3 &position = it->second.BuiltPosition;
         table.Lights[slot] = { position.x, position.y, position.z, static_cast<float>(slot) };
+        table.FarPlanes[slot] = { it->second.Radius, 0, 0, 0 };
     }
-    table.Params = { NEAR_PLANE, Range.load(), Strength.load(), ShowColours.load() ? 1.0f : 0.0f };
-    table.Softness = { LightSize.load(), 0, 0, 0 };
+    table.Params = { NEAR_PLANE, 0, Strength.load(), ShowColours.load() ? 1.0f : 0.0f };
+    table.Softness = { PointSoftness.load() * sun_softness_settings::Spread, 0, 0, 0 };
     for (int slot = 0; slot < MAX_LIGHTS; ++slot)
         table.Moving[slot] = { MovingMapUsed[slot] ? 1.0f : 0.0f, 0, 0, 0 };
     ctx->UpdateSubresource(LightTableBuffer.Get(), 0, nullptr, &table, 0, 0);
@@ -2601,6 +3396,7 @@ static void EndFrame(ID3D11Device *dev, ID3D11DeviceContext *ctx)
     Evict();
     const UINT probeSlot = FrameNumber % PROBE_LATENCY;
     ReadProbes(ctx, probeSlot);
+    FoldStackedLights();
     const std::vector<uint64_t> selected = AssignSlots();
 
     ComPtr<ID3D11DeviceContext1> ctx1;
@@ -2609,25 +3405,68 @@ static void EndFrame(ID3D11Device *dev, ID3D11DeviceContext *ctx)
         if (probe)
             SendProbes(ctx1.Get(), probeSlot);
 
-        // one new or stale map per frame, plus every map whose light has moved or changed size
+        StartTimer(ctx, MapTimer);
+        // one new or stale map per frame, plus every map whose light has moved or whose lamp changed size
         bool drewStale = false;
+        // the glow light resized longest ago, drawn as the frame's stale map when no other map is stale, so lights a
+        // slider keeps resizing take turns and do not hold back new and stale maps; one whose map is older than
+        // REFRESH_INTERVAL is stale like any other
+        Light *resizedGlow = nullptr;
         for (uint64_t key : selected)
         {
             Light &light = Lights[key];
             if (light.Slot < 0)
                 continue;
 
+            // a lamp whose shadow radius changed gathers its objects again and, like a moved light, is redrawn at once.
+            // A lamp gathered with the fallback radius does so as soon as its reach is read, however close the two are.
+            // A glow light's radius follows the strength settings, which a slider can change every frame, so its map
+            // goes stale instead, and it gathers its objects again when it is redrawn.
+            const float radius = FindShadowRadius(light);
+            const bool radiusChanged = radius > light.Radius * RADIUS_GROWTH || radius < light.Radius * RADIUS_SHRINK;
+            bool resized = false;
+            if (!light.Glow && ((light.FallbackRadius && light.Reach > 0) || radiusChanged))
+            {
+                const CpuScope mapScope(StaticMapCpu);
+                GatherCasters(light);
+                ++light.Version;
+                resized = light.BuiltFrame != 0;
+            }
             const bool moved = light.BuiltFrame && Distance(light.Position, light.BuiltPosition) > MOVED_LIGHT_DISTANCE;
             const bool stale = !light.BuiltFrame || light.RedrawNow
-                || (light.BuiltVersion < light.Version && light.BuiltFrame + REFRESH_INTERVAL < FrameNumber);
-            if (moved || light.SlotChanged || (stale && !drewStale))
+                || ((light.BuiltVersion < light.Version || (light.Glow && radiusChanged))
+                    && light.BuiltFrame + REFRESH_INTERVAL < FrameNumber);
+            if (moved || resized || light.SlotChanged || (stale && !drewStale))
             {
+                if (light.Glow && radiusChanged)
+                {
+                    const CpuScope mapScope(StaticMapCpu);
+                    GatherCasters(light);
+                    ++light.Version;
+                }
                 DrawCubeMap(ctx1.Get(), light);
-                drewStale = drewStale || !moved;
+                drewStale = drewStale || !(moved || resized);
             }
+            else if (light.Glow && radiusChanged && (!resizedGlow || light.BuiltFrame < resizedGlow->BuiltFrame))
+                resizedGlow = &light;
+        }
+        if (resizedGlow && !drewStale)
+        {
+            {
+                const CpuScope mapScope(StaticMapCpu);
+                GatherCasters(*resizedGlow);
+                ++resizedGlow->Version;
+            }
+            DrawCubeMap(ctx1.Get(), *resizedGlow);
         }
         DrawMovingMaps(ctx1.Get());
+        StopTimer(ctx, MapTimer);
     }
+    // a lamp with no map takes its own shadow radius as soon as its reach is read, so objects added to it later are
+    // those its light reaches; it keeps FallbackRadius, and gathers all its objects again once it has a slot
+    for (auto &[key, light] : Lights)
+        if (light.Slot < 0 && light.FallbackRadius && light.Reach > 0)
+            light.Radius = FindShadowRadius(light);
 
     const auto now = std::chrono::steady_clock::now();
     if (now - SecondStart >= std::chrono::seconds(1))
@@ -2640,15 +3479,22 @@ static void EndFrame(ID3D11Device *dev, ID3D11DeviceContext *ctx)
         ExtraDrawsThisSecond = 0;
         MovingDrawsLastSecond = MovingDrawsThisSecond;
         MovingDrawsThisSecond = 0;
+        MovingFacesLastSecond = MovingFacesThisSecond;
+        MovingFacesThisSecond = 0;
         WindowMapsDrawnLastSecond = WindowMapsDrawnThisSecond;
         WindowMapsDrawnThisSecond = 0;
         LampShaderDrawsLastSecond = LampShaderDrawsThisSecond;
         LampShaderDrawsThisSecond = 0;
+        StaticCasterDrawsLastSecond = StaticCasterDrawsThisSecond;
+        StaticCasterDrawsThisSecond = 0;
+        NoReachLampsLastSecond = NoReachLampsThisSecond;
+        NoReachLampsThisSecond = 0;
         FramesLastSecond = FramesThisSecond;
         FramesThisSecond = 0;
         SecondStart = now;
     }
 
+    ListShadowSlots();
     UploadLightTable(ctx);
     // a light draw can come before the frame's first draw that holds the camera; it uses a prediction from the last two
     // frames
@@ -2671,5 +3517,6 @@ static void RebuildAll()
 {
     for (auto &[key, light] : Lights)
         light.BuiltFrame = 0;
+    ShadowSlots.clear();
 }
 }
