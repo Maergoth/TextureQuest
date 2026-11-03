@@ -1,39 +1,17 @@
-TextureQuest 1.13.6
+TextureQuest 1.13.9 — private Develop/local candidate
 
-- Cache SHA-verified loose DDS session bytes within a 16-object/64 MiB reader cache, avoiding repeated disk reads and full hashes on cache hits.
-- Restore optional world-surface saturation controls and attempt supported material/normal routing. Normal coverage remains partial.
-- Share compiled shader results between lighting and material normals; material setup returns immediately while compilation is pending.
-- Add tunable emissive and particle light limits: 1–256 and 1–32, with absent defaults of 64 and 4. They share the Shadowed lights pool; native lamps take priority.
-- Keep finite remote or oversized particle primitives from invalidating the whole emission packet and suppressing nearby light. Existing alpha and radial behavior is retained.
-- Exclude invalid Sun gather lanes from shadow contribution while retaining the original tap count, treating unavailable samples as unshadowed. Controlled border cases pass; Sun movement/shadow-direction flicker remains unresolved.
-- Present both shadow-softness controls on a 1–10 scale while retaining stored appearance until a control is adjusted.
-- Set both absent frame-generation startup defaults off in the compiled AIO. Explicit saved settings and the normal app update/settings-preservation flow retain precedence.
+- Raise the particle-light ceiling to 128, intensity to 128× and radius control to 16× / 128 world units.
+- Admit bounded independent particle draws: an oversized or unsupported draw no longer discards later fitting draws. Scene/epoch/event/map failures still fail closed; excluded-only observations do not refresh old energy.
+- Correct WORLD shadow caster gathering and particle shadow lookup. Moving character shadows remain limited to the nearest 16 eligible lights, not all 128 particles.
 
-Press Home for graphics settings. Textures remain required; Graphical Effects
-is optional and experimental. Numpad * switches TextureQuest textures and effects
-together. Native bloom remains the player's choice. Keep native lighting and
-GPU shadows enabled when using renderer features that depend on those inputs.
+The capture remains bounded to 512 draws / 32,768 triangles and can be partial;
+draw order and native culling can affect source coverage. The exact production
+CPU checks and one focused actual-D3D11 run passed. No historical alpha/full-suite
+replay or new test trees were added. These checks do not prove all game coverage,
+appearance or FPS; Sun movement flicker remains unresolved.
 
-Texture data remains 1.3.0. Only generated texture channels are distributed;
-the installed game supplies untouched data. No game PAK replacement is used.
-
-These are fix attempts for Tenri/Sichii's continued review, published before
-local installation. No 1.13.6 in-world result or performance gain is claimed;
-controlled tests have limited coverage. See [the collaborator handoff](https://github.com/Maergoth/TextureQuest/blob/v1.13.6/docs/GRAPHICS-1.13.6-HANDOFF.md)
-for the exact behavior and remaining visual issues.
-
-Thanks to Sichii for EQ2 Graphics and permission to include it. Third-party
-components retain their respective licences and notices; runtime profile IDs
-and retained private labels remain compatibility/history tokens.
-
-Controlled-test qualifications retained with this release:
-
-- Controlled source/component GPU evidence only; no1.13.6 local game installation, appearance or FPS approval.
-- Material/normal path is limited to128 current-frame known-profile draws; unsupported records retain depth-normal fallback and enabled atlas/replay has unmeasured cost.
-- Sun border/sentinel controlled cases pass; actual outdoor box removal and moving sun-direction flicker remain unconfirmed, and direction-history additions are diagnostic only.
-- Particle finite-domain poisoning is corrected; visible square causes, emitter discovery, camera/distance/occlusion continuity and flicker remain in-world follow-up.
-- The prior combined test exited124 after three successful budget markers; partial component evidence is preserved, never reported as an overall pass or replayed.
-- DDS cache ownership is16objects/64MiB; active handoff references may retain evicted bytes. Cache hits are verified session bytes, not current-disk verification. Physical symlink creation was denied, separately injected reparse rejection was tested.
-- Frame generation/upscaling/Reflex performance and latency remain unmeasured; FG startup default is off, explicit saved choices win.
-
-Published before local installation under the current user direction. No 1.13.6 local game result is claimed.
+Saved controls and texture data 1.3.0 remain. Provider/AIO/NVIDIA and the other
+seven native payloads retain their installed combined1.13.8 bytes; only the
+renderer changes. The old1.13.8 normal update is consumed. This is a fresh private
+package for local use and Develop review, with no public tag/release or main
+update. The generator remains paused.

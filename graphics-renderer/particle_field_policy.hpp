@@ -20,11 +20,12 @@ constexpr float CellWidth=2;
 // Particle gain is independent of surface emission. Existing settings migrate
 // their previous shared gain once; both new multipliers otherwise start at 1.
 constexpr float StrengthReference=1.0f;
-inline float CleanStrength(float value){return std::isfinite(value)?std::clamp(value,0.0f,64.0f):1.0f;}
-inline float CleanRadius(float value){return std::isfinite(value)?std::clamp(value,.25f,8.0f):1.0f;}
+constexpr float MaximumStrength=128.0f,MaximumRadiusScale=16.0f,MaximumWorldRadius=128.0f;
+inline float CleanStrength(float value){return std::isfinite(value)?std::clamp(value,0.0f,MaximumStrength):1.0f;}
+inline float CleanRadius(float value){return std::isfinite(value)?std::clamp(value,.25f,MaximumRadiusScale):1.0f;}
 inline float LightRadius(float scale,float shadowRange)
 {
-    const float limit=std::isfinite(shadowRange)?std::max(2.0f,std::min(64.0f,shadowRange)):24.0f;
+    const float limit=std::isfinite(shadowRange)?std::max(2.0f,std::min(MaximumWorldRadius,shadowRange)):24.0f;
     return std::clamp(CellWidth*4*CleanRadius(scale),2.0f,limit);
 }
 constexpr double CaptureSeconds=.5,HoldSeconds=.20,ExpireSeconds=.70;
@@ -41,7 +42,7 @@ inline void Add(Power &a,const Power &b){a.x+=b.x;a.y+=b.y;a.z+=b.z;}
 enum class TriangleClass { Invalid, Excluded, Included };
 enum class Exclusion { None, Extent, Distance };
 inline TriangleClass ClassifyTriangle(const XMFLOAT4 *p,const Reduction &r,const XMFLOAT3 &camera,
-    Power &power,XMFLOAT3 &position,Exclusion *reason=nullptr)
+    Power &power,XMFLOAT3 &position,Exclusion *reason=nullptr,float receiverRadius=0)
 {
     if(reason)*reason=Exclusion::None;
     if(!p||!Finite(camera))return TriangleClass::Invalid;
@@ -71,7 +72,10 @@ inline TriangleClass ClassifyTriangle(const XMFLOAT4 *p,const Reduction &r,const
         {power={};if(reason)*reason=Exclusion::Extent;return TriangleClass::Excluded;}
     }
     const double dx=double(position.x)-camera.x,dy=double(position.y)-camera.y,dz=double(position.z)-camera.z;
-    if(dx*dx+dy*dy+dz*dz>96*96)
+    // A captured source outside the receiver domain can still light it when
+    // its radius overlaps. The bounded reach does not invent culled sources.
+    const double distanceLimit=96+(std::isfinite(receiverRadius)?std::clamp(receiverRadius,0.0f,MaximumWorldRadius):0.0f);
+    if(dx*dx+dy*dy+dz*dz>distanceLimit*distanceLimit)
     {power={};if(reason)*reason=Exclusion::Distance;return TriangleClass::Excluded;}
     return TriangleClass::Included;
 }
@@ -146,14 +150,21 @@ inline float Visibility(double age)
 struct Ledger
 {
     uint64_t frame=0,epoch=0;unsigned draws=0,triangles=0;bool complete=true;
-    void Begin(uint64_t f,uint64_t e){*this={f,e,0,0,true};}
+    // Capacity and unsupported individual sources do not invalidate other draws.
+    // These counters describe a bounded partial domain, never complete coverage.
+    unsigned attempted=0,capacityExcluded=0,stateExcluded=0;
+    void Begin(uint64_t f,uint64_t e){*this={};frame=f;epoch=e;}
+    void Attempt(){++attempted;}
     bool Add(unsigned vertices,unsigned instances)
     {
-        ++draws;
-        if(!complete||!vertices||vertices%3||instances!=1||draws>Draws||vertices/3>Triangles-triangles)
-        {complete=false;return false;}
-        triangles+=vertices/3;return true;
+        if(!complete)return false;
+        if(!vertices||vertices%3||instances!=1){++stateExcluded;return false;}
+        if(draws>=Draws||vertices/3>Triangles-triangles){++capacityExcluded;return false;}
+        ++draws;triangles+=vertices/3;return true;
     }
+    void Exclude(){++stateExcluded;}
+    void Undo(unsigned vertices){if(draws&&vertices/3<=triangles){--draws;triangles-=vertices/3;}Exclude();}
+    // Only packet-wide provenance/completion failures use Reject.
     void Reject(){complete=false;}
     bool CanPublish(uint64_t e,double age)const
     {return complete&&epoch==e&&std::isfinite(age)&&age>=0&&age<=CaptureSeconds;}

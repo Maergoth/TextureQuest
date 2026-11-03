@@ -1,3 +1,3 @@
-1f9e164902e09fe6f9005bb72456b2ed42a0c0a20f46b48aec31107de7990654  TextureQuest-Installer-1.13.8-windows-x64.zip
+b2bb988c6564812479a4102cd6541121a1387eacd55bbac85b723eef6fb97732  TextureQuest-Installer-1.13.9-windows-x64.zip
 a9057b253d6006fc317f801466ce1f55b9d4a27d0baf5e3227863a1cf9e6924c  release-manifest.json
-a029df60d8bb041ca0e9ecd73488c41093d4d4c245544bab05c568069cfb8436  texturequest-version.json
+1c6743a800767ebd4d8300197efc5ef984ceec91a628384ff5686ba88b5a80f8  texturequest-version.json

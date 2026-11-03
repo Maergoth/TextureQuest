@@ -122,7 +122,7 @@ struct GlowLight
     // x 1 when the light's moving-object map is drawn, y the cell's area over pi, z that cube's place in its array, w the
     // reach of its bounce light
     float4 Moving;
-    // x the far plane of its maps
+    // x the far plane of its maps; y 1 for an independent particle light
     float4 Shadow;
 };
 cbuffer GlowLights : register(b1)
@@ -342,7 +342,9 @@ float3 FindShadowedLight(float2 position, float3 world, float3 normal, float tot
         float strength = max(contribution.r, max(contribution.g, contribution.b));
         if (strength < CUTOFF)
             continue;
-        if (strength < MIN_SHADOW_SHARE * total)
+        // Particle shadows must not disappear as unrelated lights increase.
+        // Keep the existing aggregate shortcut only for object surface lights.
+        if (light.Shadow.y < 0.5 && strength < MIN_SHADOW_SHARE * total)
         {
             skipped += contribution;
             continue;
@@ -1838,7 +1840,7 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
             { light.GlowColour.x, light.GlowColour.y, light.GlowColour.z, reach },
             { light.GlowNormal.x, light.GlowNormal.y, light.GlowNormal.z, static_cast<float>(slot - shadowmaps::SIZE_STARTS[size]) },
             { movingUsed ? 1.0f : 0.0f, light.GlowArea / XM_PI, static_cast<float>(slot), reach * BOUNCE_REACH },
-            { light.Radius, 0, 0, 0 } };
+            { light.Radius, light.Particle ? 1.0f : 0.0f, 0, 0 } };
         area = { std::min(area.left, rect.left), std::min(area.top, rect.top), std::max(area.right, rect.right),
             std::max(area.bottom, rect.bottom) };
         if (logging)

@@ -3286,7 +3286,7 @@ static void DrawAdvancedSettings()
     {glow::ParticleLightLimit=particleLimit;reshade::set_config_value(nullptr,CONFIG_SECTION,"ParticleLightLimit",particleLimit);}
     if(ImGui::IsItemHovered())ImGui::SetTooltip("Maximum particle lights within the emissive and Shadowed lights limits. Higher values cost CPU/GPU time; unsupported or hidden particle sources may still be absent.");
     float particleStrength = particle_field_policy::CleanStrength(particle_emission::Strength.load());
-    if (ImGui::SliderFloat("Particle light strength", &particleStrength, 0.0f, 64.0f, "%.2fx",
+    if (ImGui::SliderFloat("Particle light strength", &particleStrength, 0.0f, particle_field_policy::MaximumStrength, "%.2fx",
             ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic))
     {
         particle_emission::Strength = particle_field_policy::CleanStrength(particleStrength);
@@ -3294,7 +3294,7 @@ static void DrawAdvancedSettings()
     }
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Brightness of captured particle lights, independent of surface emissive strength.");
     float particleRadius = particle_field_policy::CleanRadius(particle_emission::Radius.load());
-    if (ImGui::SliderFloat("Particle light radius", &particleRadius, 0.25f, 8.0f, "%.2fx",
+    if (ImGui::SliderFloat("Particle light radius", &particleRadius, 0.25f, particle_field_policy::MaximumRadiusScale, "%.2fx",
             ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic))
     {
         particle_emission::Radius = particle_field_policy::CleanRadius(particleRadius);

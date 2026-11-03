@@ -279,6 +279,8 @@ struct Light
     uint64_t BuiltVersion = 0;
     // a light the add-on draws for a glowing surface, rather than one the game draws
     bool Glow = false;
+    // Independent native particle source; kept in spare glow-shadow constants.
+    bool Particle = false;
     // the glowing object's caster key, left out of the light's casters
     uint64_t EmitterKey = 0;
     // the glow's colour times its cell's area over pi

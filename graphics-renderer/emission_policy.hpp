@@ -7,7 +7,7 @@
 namespace emission_policy
 {
 // Storage ceilings are distinct from the saved per-user defaults.
-constexpr unsigned GlowLimit=512,ParticleLimit=64,DefaultGlowLimit=64,DefaultParticleLimit=4;
+constexpr unsigned GlowLimit=512,ParticleLimit=128,DefaultGlowLimit=64,DefaultParticleLimit=4;
 inline unsigned ClampGlowLimit(int value){return static_cast<unsigned>(std::clamp(value,1,int(GlowLimit)));}
 inline unsigned ClampParticleLimit(int value){return static_cast<unsigned>(std::clamp(value,1,int(ParticleLimit)));}
 struct Budget { unsigned total=0,particles=0,surfaces=0; };

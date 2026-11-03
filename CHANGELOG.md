@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.13.9 — private Develop candidate
+
+- Raise particle-light limit to 128, intensity ceiling to 128×, and radius-control ceiling to 16× / 128 world units.
+- Keep later fitting particle draws when another draw exceeds bounded capture capacity or has unsupported data. Isolate per-draw failures while retaining global scene/epoch/readback failure guards.
+- Correct particle WORLD shadow caster gathering and lookup. Moving character shadow maps retain nearest-16-light coverage; higher particle limits do not expand that coverage.
+- Preserve saved controls, texture data 1.3.0 and the other seven native payloads. Focused controlled checks passed; full game appearance and FPS remain unproved. No public tag/release or main update.
+
 ## 1.13.8 — graphics candidate
 
 - Increase complete particle capture capacity to 512 draws / 32,768 triangles for the captured combat workload. Add independent particle-light strength and radius controls.
