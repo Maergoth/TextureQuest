@@ -3,10 +3,11 @@
 // textured additive passes that use no light position and cast no shadows. Each glowing mesh is read back from the GPU
 // once and split into cells on a grid fixed to the world; cells that together cover every glowing mesh near the camera,
 // smaller nearer it, become point lights with cube map shadows, drawn into the light buffer, and the painted glow
-// layers are dimmed where those lights reach.
+// layers retain a constant user-selected share on confirmed native world passes.
 #pragma once
 #include <reshade.hpp>
 #include "emission_policy.hpp"
+#include "painted_emission_policy.hpp"
 #include <d3d11_1.h>
 #include <d3d11shader.h>
 #include <d3dcompiler.h>
@@ -112,7 +113,7 @@ cbuffer Frame : register(b0)
 };
 struct GlowLight
 {
-    // xyz the light's absolute position; w the size of its map, 0 to 2
+    // xyz the light's absolute position; w the map-array tier, 0 to 3
     float4 Position;
     // rgb the glow's colour times the cell's area over pi; w the light's reach
     float4 Colour;
@@ -121,7 +122,7 @@ struct GlowLight
     // x 1 when the light's moving-object map is drawn, y the cell's area over pi, z that cube's place in its array, w the
     // reach of its bounce light
     float4 Moving;
-    // x the far plane of its maps
+    // x the far plane of its maps; y 1 for an independent particle light
     float4 Shadow;
 };
 cbuffer GlowLights : register(b1)
@@ -131,7 +132,7 @@ cbuffer GlowLights : register(b1)
     // xyz the face size of each map size, w the moving-object maps' face size
     float4 FaceSizes;
     // MAX_GLOW_LIGHTS
-    GlowLight Lights[256];
+    GlowLight Lights[512];
 };
 // this frame's camera offset
 cbuffer Camera : register(b3) { float4 CameraOffset; };
@@ -146,6 +147,8 @@ Texture2D<float4> ReducedLight : register(t5);
 Texture2D<float4> ReducedSurface : register(t6);
 // Optional current-camera native material/vertex normals, RGB encoded 0..1 and coverage in alpha.
 Texture2D<float4> MaterialNormals : register(t7);
+// Extra same-resolution far maps preserve all existing depth/material bindings.
+TextureCubeArray<float> Maps3 : register(t8);
 SamplerComparisonState Compare : register(s0);
 
 static const float2 POISSON[16] = {
@@ -222,7 +225,9 @@ float FilterLightShadow(float size, float3 axis, float3 tangent, float3 bitangen
         return FilterShadow(Maps0, axis, tangent, bitangent, rotation, layer, reference, full);
     if (size < 1.5)
         return FilterShadow(Maps1, axis, tangent, bitangent, rotation, layer, reference, full);
-    return FilterShadow(Maps2, axis, tangent, bitangent, rotation, layer, reference, full);
+    if (size < 2.5)
+        return FilterShadow(Maps2, axis, tangent, bitangent, rotation, layer, reference, full);
+    return FilterShadow(Maps3, axis, tangent, bitangent, rotation, layer, reference, full);
 }
 
 // what a light adds to a surface before its shadow, and how far inside its reach the surface is, 1 well inside
@@ -288,6 +293,8 @@ bool FindSurface(float2 pixel, out float3 world, out float3 normal, out float ca
         return false;
 
     normal = normalize(normal);
+    // Only the geometric depth fallback needs camera-facing orientation.
+    if (dot(normal, offsetPosition) > 0) normal = -normal;
     if (Reduced.y>0.5)
     {
         float4 stored=MaterialNormals.Load(int3(pixel,0));
@@ -295,9 +302,7 @@ bool FindSurface(float2 pixel, out float3 world, out float3 normal, out float ca
         if (stored.w>0.5 && all(isfinite(material)) && dot(material,material)>1e-6)
             normal=normalize(material);
     }
-    // the camera sits at the origin of camera-relative positions, and the surface faces it
-    if (dot(normal, offsetPosition) > 0)
-        normal = -normal;
+    // Valid native material normals retain their world/TBN orientation.
     return true;
 }
 
@@ -337,14 +342,16 @@ float3 FindShadowedLight(float2 position, float3 world, float3 normal, float tot
         float strength = max(contribution.r, max(contribution.g, contribution.b));
         if (strength < CUTOFF)
             continue;
-        if (strength < MIN_SHADOW_SHARE * total)
+        // Particle shadows must not disappear as unrelated lights increase.
+        // Keep the existing aggregate shortcut only for object surface lights.
+        if (light.Shadow.y < 0.5 && strength < MIN_SHADOW_SHARE * total)
         {
             skipped += contribution;
             continue;
         }
 
         // compare from about a texel of the coarser map off the surface, so it does not shadow itself
-        float faceSize = FaceSizes[(uint)light.Position.w];
+        float faceSize = FaceSizes[min((uint)light.Position.w, 2u)];
         if (light.Moving.x > 0)
             faceSize = min(faceSize, FaceSizes.w);
         float lightDistance = distance(light.Position.xyz, world);
@@ -463,17 +470,17 @@ Output ps_upsample(float4 position : SV_Position)
 }
 )";
 
-// adds the painted glow drawn aside back onto the colour target, dimmed where glow lights reach
+// Adds the known painted-world pass back with its constant retained share.
 constexpr const char *COMPOSITE_SHADER = R"(
-// x the share of painted glow kept where glow lights reach
+// x is the retained share, independent of optional world-light measurement.
 cbuffer Composite : register(b0) { float4 Kept; };
 Texture2D<float4> Painted : register(t0);
-Texture2D<float> Mask : register(t1);
 
 float4 main(float4 position : SV_Position) : SV_Target
 {
     int3 pixel = int3(position.xy, 0);
-    return float4(Painted.Load(pixel).rgb * lerp(1, Kept.x, Mask.Load(pixel)), 0);
+    float4 painted = Painted.Load(pixel);
+    return float4(painted.rgb * Kept.x, painted.a);
 }
 )";
 
@@ -583,16 +590,22 @@ struct Candidate
 };
 
 static std::atomic<bool> Enabled = true;
+// Saved choices; the existing world/master gate determines effective work.
+static std::atomic<bool> ObjectsEnabled = true, ParticlesEnabled = true;
+static bool ObjectsActive(){return Enabled && ObjectsEnabled && tq_world::Work.Point();}
+static bool ParticlesActive(){return Enabled && ParticlesEnabled && tq_world::Work.Point();}
+static bool SourcesActive(){return ObjectsActive() || ParticlesActive();}
 static std::atomic<int> LightLimit = emission_policy::DefaultGlowLimit;
 static std::atomic<int> ParticleLightLimit = emission_policy::DefaultParticleLimit;
 static std::atomic<float> Strength = 1.0f;
-// the share of the game's painted glow kept where glow lights reach
+// the constant share kept for confirmed native painted-world passes
 static std::atomic<float> PaintedKept = 0.5f;
 // what a painted glow's light is scaled by, against an emitter pass's; at 0 painted glow gives no light
 static std::atomic<float> PaintedLight = 0.25f;
 static std::mutex Lock;
 // the texture slots each pixel shader declares, one bit per slot, by pipeline handle
 static std::unordered_map<uint64_t, uint64_t> ShaderTextures;
+static std::unordered_map<uint64_t, uint64_t> PaintedVertexHashes, PaintedPixelHashes;
 // glowing objects by caster key
 static std::unordered_map<uint64_t, Emitter> Emitters;
 // the measure draw's colour and depth, each copied whole for reading
@@ -633,7 +646,7 @@ static std::unordered_map<uint64_t, uint64_t> CellLights;
 static std::unordered_set<uint64_t> ActiveCells;
 static ComPtr<ID3D11VertexShader> LightVertexShader;
 static ComPtr<ID3D11PixelShader> ReducedLightShader, UpsampleShader;
-static ComPtr<ID3D11BlendState> LightBlend;
+static ComPtr<ID3D11BlendState> LightBlend, PaintedCompositeBlend;
 static ComPtr<ID3D11RasterizerState> LightRasterizer;
 static ComPtr<ID3D11Buffer> FrameBuffer, LightConstantsBuffer;
 // how much glow lights reach each pixel this frame, written with the lights
@@ -645,7 +658,7 @@ static uint64_t MaskFrame = UINT64_MAX;
 static ComPtr<ID3D11Texture2D> ReducedLightTexture, ReducedSurfaceTexture;
 static ComPtr<ID3D11RenderTargetView> ReducedLightTarget, ReducedSurfaceTarget;
 static ComPtr<ID3D11ShaderResourceView> ReducedLightView, ReducedSurfaceView;
-// the painted glow passes drawn aside until they are added back, dimmed by the mask
+// qualified painted glow passes drawn aside until they are added back
 static ComPtr<ID3D11Texture2D> PaintedTexture;
 static ComPtr<ID3D11RenderTargetView> PaintedTarget;
 static ComPtr<ID3D11ShaderResourceView> PaintedView;
@@ -674,12 +687,30 @@ static void ClassifyPixelShader(const void *code, size_t size, uint64_t handle)
     }
     std::lock_guard guard(Lock);
     ShaderTextures[handle] = textures;
+    PaintedPixelHashes[handle] = capture::HashCode(code, size);
+}
+
+static void ClassifyPaintedVertex(uint64_t hash, uint64_t handle)
+{
+    std::lock_guard guard(Lock);
+    PaintedVertexHashes.erase(handle);
+    if (painted_emission_policy::Vertex(hash)) PaintedVertexHashes[handle] = hash;
 }
 
 static void ForgetPixelShader(uint64_t handle)
 {
     std::lock_guard guard(Lock);
     ShaderTextures.erase(handle);
+    PaintedPixelHashes.erase(handle);
+    PaintedVertexHashes.erase(handle);
+}
+
+static void ForgetPaintedDevice()
+{
+    std::lock_guard guard(Lock);
+    ShaderTextures.clear();
+    PaintedPixelHashes.clear();
+    PaintedVertexHashes.clear();
 }
 
 // whether the bound state adds the draw's colour onto its target (blend one, one) with depth write on
@@ -728,8 +759,55 @@ static AddedPass GetAddedPass(shadowmaps::BoundDraw &bound, uint64_t pixelShader
     return AddedPass::Painted;
 }
 
+// Exact native pair and reproducible additive coverage only. Never infer a world
+// pass from a texture, camera transform, or a similar-looking shader alone.
+static bool IsQualifiedPaintedWorld(ID3D11DeviceContext *ctx, uint64_t pixelShader)
+{
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> pixel;
+    UINT vertexClasses = 0, pixelClasses = 0;
+    ctx->VSGetShader(&vertex, nullptr, &vertexClasses);
+    ctx->PSGetShader(&pixel, nullptr, &pixelClasses);
+    if (!vertex || !pixel || vertexClasses || pixelClasses
+        || reinterpret_cast<uint64_t>(pixel.Get()) != pixelShader) return false;
+    {
+        std::lock_guard guard(Lock);
+        const auto v = PaintedVertexHashes.find(reinterpret_cast<uint64_t>(vertex.Get()));
+        const auto p = PaintedPixelHashes.find(pixelShader);
+        if (v == PaintedVertexHashes.end() || p == PaintedPixelHashes.end()
+            || !painted_emission_policy::Match(v->second, p->second)) return false;
+    }
+    ComPtr<ID3D11GeometryShader> geometry;
+    ComPtr<ID3D11HullShader> hull;
+    ComPtr<ID3D11DomainShader> domain;
+    ctx->GSGetShader(&geometry, nullptr, nullptr);
+    ctx->HSGetShader(&hull, nullptr, nullptr);
+    ctx->DSGetShader(&domain, nullptr, nullptr);
+    if (geometry || hull || domain) return false;
+    ID3D11RenderTargetView *targets[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
+    ctx->OMGetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, targets, nullptr);
+    bool soleTarget = targets[0] != nullptr;
+    for (UINT i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
+        if (targets[i]) { if (i) soleTarget = false; targets[i]->Release(); }
+    if (!soleTarget) return false;
+    ComPtr<ID3D11BlendState> blend;
+    UINT sampleMask = 0;
+    ctx->OMGetBlendState(&blend, nullptr, &sampleMask);
+    if (!blend || sampleMask != 0xffffffff) return false;
+    D3D11_BLEND_DESC desc;
+    blend->GetDesc(&desc);
+    const auto &target = desc.RenderTarget[0];
+    const UINT rgb = D3D11_COLOR_WRITE_ENABLE_RED | D3D11_COLOR_WRITE_ENABLE_GREEN | D3D11_COLOR_WRITE_ENABLE_BLUE;
+    return !desc.AlphaToCoverageEnable && !desc.IndependentBlendEnable
+        && target.BlendEnable && target.SrcBlend == D3D11_BLEND_ONE && target.DestBlend == D3D11_BLEND_ONE
+        && target.BlendOp == D3D11_BLEND_OP_ADD && (target.RenderTargetWriteMask & rgb) == rgb
+        && target.DestBlendAlpha == D3D11_BLEND_ONE && target.BlendOpAlpha == D3D11_BLEND_OP_ADD
+        && (target.SrcBlendAlpha == D3D11_BLEND_ONE || target.SrcBlendAlpha == D3D11_BLEND_ZERO);
+}
+
 static bool CreateMeasureObjects(ID3D11Device *dev)
 {
+    if (MeasureTarget && MeasureBlend && MeasureDepthState) return true;
     const D3D11_TEXTURE2D_DESC desc = { MEASURE_WIDTH, MEASURE_HEIGHT, 1, 1, DXGI_FORMAT_R32G32B32A32_FLOAT, { 1, 0 },
         D3D11_USAGE_DEFAULT, D3D11_BIND_RENDER_TARGET };
     const D3D11_TEXTURE2D_DESC depthDesc = { MEASURE_WIDTH, MEASURE_HEIGHT, 1, 1, DXGI_FORMAT_R32_TYPELESS, { 1, 0 },
@@ -838,6 +916,7 @@ static void Measure(ID3D11DeviceContext *ctx, const shadowmaps::DrawCall &call, 
     Emitters[casterKey].MeasuredFrame = shadowmaps::FrameNumber;
 }
 
+static bool CreatePaintedObjects(ID3D11Device *dev);
 static void CompositePainted(ID3D11DeviceContext *ctx);
 static bool DrawPaintedAside(ID3D11DeviceContext *ctx, const shadowmaps::DrawCall &call, const D3D11_TEXTURE2D_DESC &desc);
 
@@ -848,20 +927,25 @@ static bool DrawPaintedAside(ID3D11DeviceContext *ctx, const shadowmaps::DrawCal
 static bool HandleColourDraw(shadowmaps::BoundDraw &bound, uint64_t pixelShader)
 {
     auto *ctx = bound.Context;
-    const shadowmaps::DrawCall &call = bound.Call;
-    // painted glow drawn aside is added back before any other draw, so the order of what reaches the screen is kept
-    if (PaintedDestination && (call.Instances != 1 || GetAddedPass(bound, pixelShader) != AddedPass::Painted))
-        CompositePainted(ctx);
+    const auto &call = bound.Call;
+    if (!ObjectsActive()) { if (PaintedDestination) CompositePainted(ctx); return false; }
+    D3D11_TEXTURE2D_DESC desc = {};
+    const bool eligible = call.Instances == 1
+        && call.FirstInstance == 0 && lightbuffer::LightBuffer
+        && lightbuffer::CurrentTarget != lightbuffer::LightBuffer.Get()
+        && lightbuffer::IsScreenSized(lightbuffer::CurrentTarget, desc);
+    const AddedPass pass = eligible ? GetAddedPass(bound, pixelShader) : AddedPass::None;
+    const bool knownPainted = pass == AddedPass::Painted && IsQualifiedPaintedWorld(ctx, pixelShader);
+    // Flush before an unqualified/UI/unknown draw as well as an ordinary draw.
+    if (PaintedDestination && !knownPainted) CompositePainted(ctx);
+    if (!eligible || pass == AddedPass::None) return false;
 
-    D3D11_TEXTURE2D_DESC desc;
-    if (!Enabled || CreateFailed || call.Instances != 1 || !lightbuffer::LightBuffer || !lightbuffer::Processed
-        || lightbuffer::CurrentTarget == lightbuffer::LightBuffer.Get()
-        || !lightbuffer::IsScreenSized(lightbuffer::CurrentTarget, desc))
-        return false;
-
-    const AddedPass pass = GetAddedPass(bound, pixelShader);
-    if (pass == AddedPass::None)
-        return false;
+    // Keeping painted light is a native-colour policy. Optional emitter measurement
+    // may refuse an unknown camera, caster or readback without changing this share.
+    const bool handled = knownPainted && painted_emission_policy::Kept(PaintedKept.load()) < 1.0f
+        && DrawPaintedAside(ctx, call, desc);
+    if (handled) ++PaintedSkippedThisSecond;
+    if (CreateFailed || !lightbuffer::Processed) return handled;
 
     // a frame capture notes why a glow pass is not used
     const bool logging = capture::State == capture::Phase::Capturing && capture::Log;
@@ -870,14 +954,14 @@ static bool HandleColourDraw(shadowmaps::BoundDraw &bound, uint64_t pixelShader)
     {
         if (logging)
             fprintf(capture::Log, "  glow %s pass not used: constants not read\n", kind);
-        return false;
+        return handled;
     }
-    const auto &rows = bound.Rows;
 
+    const auto &rows = bound.Rows;
     XMMATRIX measureCamera;
     if(!lightbuffer::WorldToClipKnown||!shadowmaps::FindWorldToClip(rows,measureCamera)
-        ||!lightbuffer::IsSameCamera(measureCamera,lightbuffer::WorldToClip))return false;
-    for(const auto &row:rows)if(!std::isfinite(row.x)||!std::isfinite(row.y)||!std::isfinite(row.z)||!std::isfinite(row.w))return false;
+        ||!lightbuffer::IsSameCamera(measureCamera,lightbuffer::WorldToClip))return handled;
+    for(const auto &row:rows)if(!std::isfinite(row.x)||!std::isfinite(row.y)||!std::isfinite(row.z)||!std::isfinite(row.w))return handled;
     const XMFLOAT3 position = { rows[4].w - shadowmaps::CurrentOffset.x, rows[5].w - shadowmaps::CurrentOffset.y,
         rows[6].w - shadowmaps::CurrentOffset.z };
     const uint64_t casterKey = shadowmaps::FindCasterKey(bound.GetMesh().Key, position);
@@ -887,7 +971,7 @@ static bool HandleColourDraw(shadowmaps::BoundDraw &bound, uint64_t pixelShader)
         if (logging)
             fprintf(capture::Log, "  glow %s pass not used: mesh %s\n", kind,
                 caster == shadowmaps::Casters.end() ? "not a known object" : "not confirmed yet");
-        return false;
+        return handled;
     }
 
     if (logging)
@@ -912,15 +996,12 @@ static bool HandleColourDraw(shadowmaps::BoundDraw &bound, uint64_t pixelShader)
             && emission_policy::Samples.Take(shadowmaps::FrameNumber,emission_policy::Producer::Surface))
             Measure(ctx, call, casterKey);
     }
-    if (!painted || !DrawPaintedAside(ctx, call, desc))
-        return false;
-
-    ++PaintedSkippedThisSecond;
-    return true;
+    return handled;
 }
 
 static bool CreateShapeObjects(ID3D11Device *dev)
 {
+    if (ShapeVertexShader && ShapeStreamShader) return true;
     ComPtr<ID3DBlob> code;
     if (!shadowmaps::CompileShader(SHAPE_SHADER, "vs_5_0", code)
         || FAILED(dev->CreateVertexShader(code->GetBufferPointer(), code->GetBufferSize(), nullptr, &ShapeVertexShader)))
@@ -1716,7 +1797,7 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
 {
     LightsDrawnThisFrame = 0;
     ComPtr<ID3D11DeviceContext1> ctx1;
-    if (!Enabled || CreateFailed || !UpsampleShader || !shadowmaps::CubeViews[0] || !shadowmaps::OffsetKnown
+    if (!SourcesActive() || CreateFailed || !UpsampleShader || !shadowmaps::CubeViews[0] || !shadowmaps::OffsetKnown
         || !lightbuffer::LightBufferTarget || !lightbuffer::DepthCopyView || FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))
         return;
 
@@ -1745,6 +1826,7 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
         auto it = shadowmaps::Lights.find(shadowmaps::SlotLights[slot]);
         D3D11_RECT rect;
         if (!shadowmaps::SlotActive[slot] || it == shadowmaps::Lights.end() || !it->second.GlowShown || !it->second.BuiltFrame
+            || (Emitters.contains(it->second.EmitterKey) ? !ObjectsActive() : !ParticlesActive())
             || !FindLightRect(worldToClip, it->second.BuiltPosition, shadowmaps::FindShadowRadius(it->second) * BOUNCE_REACH,
                 desc.Width, desc.Height, rect))
             continue;
@@ -1758,7 +1840,7 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
             { light.GlowColour.x, light.GlowColour.y, light.GlowColour.z, reach },
             { light.GlowNormal.x, light.GlowNormal.y, light.GlowNormal.z, static_cast<float>(slot - shadowmaps::SIZE_STARTS[size]) },
             { movingUsed ? 1.0f : 0.0f, light.GlowArea / XM_PI, static_cast<float>(slot), reach * BOUNCE_REACH },
-            { light.Radius, 0, 0, 0 } };
+            { light.Radius, light.Particle ? 1.0f : 0.0f, 0, 0 } };
         area = { std::min(area.left, rect.left), std::min(area.top, rect.top), std::max(area.right, rect.right),
             std::max(area.bottom, rect.bottom) };
         if (logging)
@@ -1803,7 +1885,7 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
     ctx1->PSSetSamplers(0, 1, &sampler);
     ID3D11ShaderResourceView *views[] = { lightbuffer::DepthCopyView.Get(), shadowmaps::CubeViews[0].Get(),
         shadowmaps::CubeViews[1].Get(), shadowmaps::CubeViews[2].Get(), shadowmaps::MovingView.Get(),
-        ReducedLightView.Get(), ReducedSurfaceView.Get(), materialNormals };
+        ReducedLightView.Get(), ReducedSurfaceView.Get(), materialNormals, shadowmaps::CubeViews[3].Get() };
     lightbuffer::StartTimer(ctx1.Get(), lightbuffer::GlowTimer);
     // texels outside the lights' rectangle are left unlit
     ctx1->ClearRenderTargetView(ReducedLightTarget.Get(), clear);
@@ -1819,7 +1901,7 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
     ctx1->RSSetScissorRects(1, &reducedArea);
     ctx1->OMSetBlendState(nullptr, nullptr, 0xffffffff);
     ctx1->PSSetShader(ReducedLightShader.Get(), nullptr, 0);
-    ctx1->PSSetShaderResources(0, 8, views);
+    ctx1->PSSetShaderResources(0, 9, views);
     ctx1->Draw(3, 0);
     ctx1->PSSetShader(UpsampleShader.Get(), nullptr, 0);
     ID3D11RenderTargetView *targets[] = { lightbuffer::LightBufferTarget.Get(), MaskTarget.Get() };
@@ -1828,18 +1910,18 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
     ctx1->RSSetViewports(1, &viewport);
     ctx1->RSSetScissorRects(1, &area);
     ctx1->OMSetBlendState(LightBlend.Get(), nullptr, 0xffffffff);
-    ctx1->PSSetShaderResources(0, 8, views);
+    ctx1->PSSetShaderResources(0, 9, views);
     ctx1->Draw(3, 0);
     lightbuffer::StopTimer(ctx1.Get(), lightbuffer::GlowTimer);
     LightsDrawnThisFrame = count;
 
-    ID3D11ShaderResourceView *noViews[8] = {};
-    ctx1->PSSetShaderResources(0, 8, noViews);
+    ID3D11ShaderResourceView *noViews[9] = {};
+    ctx1->PSSetShaderResources(0, 9, noViews);
     ctx1->IASetInputLayout(nullptr);
     ctx1->SwapDeviceContextState(previous.Get(), nullptr);
 }
 
-// adds the painted glow drawn aside onto the target it was drawn for, kept in full where no glow light reaches
+// Adds qualified painted glow with a constant retained share, independent of the light mask.
 static void CompositePainted(ID3D11DeviceContext *ctx)
 {
     ComPtr<ID3D11RenderTargetView> destination = std::move(PaintedDestination);
@@ -1849,7 +1931,7 @@ static void CompositePainted(ID3D11DeviceContext *ctx)
 
     D3D11_TEXTURE2D_DESC desc;
     PaintedTexture->GetDesc(&desc);
-    const XMFLOAT4 kept = { PaintedKept.load(), 0, 0, 0 };
+    const XMFLOAT4 kept = { ObjectsActive() ? painted_emission_policy::Kept(PaintedKept.load()) : 1.0f, 0, 0, 0 };
     ComPtr<ID3DDeviceContextState> previous;
     ctx1->SwapDeviceContextState(shadowmaps::DrawState.Get(), &previous);
     ctx1->UpdateSubresource(CompositeBuffer.Get(), 0, nullptr, &kept, 0, 0);
@@ -1863,19 +1945,18 @@ static void CompositePainted(ID3D11DeviceContext *ctx)
     ctx1->RSSetState(LightRasterizer.Get());
     const D3D11_RECT whole = { 0, 0, static_cast<LONG>(desc.Width), static_cast<LONG>(desc.Height) };
     ctx1->RSSetScissorRects(1, &whole);
-    ctx1->OMSetBlendState(LightBlend.Get(), nullptr, 0xffffffff);
+    ctx1->OMSetBlendState(PaintedCompositeBlend.Get(), nullptr, 0xffffffff);
     ID3D11Buffer *buffer = CompositeBuffer.Get();
     ctx1->PSSetConstantBuffers(0, 1, &buffer);
-    // without this frame's mask every pixel keeps its painted glow
-    ID3D11ShaderResourceView *views[] = { PaintedView.Get(), MaskFrame == shadowmaps::FrameNumber ? MaskView.Get() : nullptr };
-    ctx1->PSSetShaderResources(0, 2, views);
+    ID3D11ShaderResourceView *painted = PaintedView.Get();
+    ctx1->PSSetShaderResources(0, 1, &painted);
     ctx1->Draw(3, 0);
     ID3D11ShaderResourceView *noViews[2] = {};
     ctx1->PSSetShaderResources(0, 2, noViews);
     ctx1->SwapDeviceContextState(previous.Get(), nullptr);
 }
 
-// draws a painted glow pass aside, to be added back dimmed by the mask; false when it cannot, so the game draws it
+// Draws the qualified native pass aside; false leaves its original game draw untouched.
 static bool DrawPaintedAside(ID3D11DeviceContext *ctx, const shadowmaps::DrawCall &call, const D3D11_TEXTURE2D_DESC &desc)
 {
     ComPtr<ID3D11RenderTargetView> target;
@@ -1883,6 +1964,9 @@ static bool DrawPaintedAside(ID3D11DeviceContext *ctx, const shadowmaps::DrawCal
     ctx->OMGetRenderTargets(1, &target, &depth);
     if (!target)
         return false;
+    ComPtr<ID3D11Device> device;
+    ctx->GetDevice(&device);
+    if (!shadowmaps::DrawState || !CreatePaintedObjects(device.Get())) return false;
     if (PaintedDestination && PaintedDestination != target)
         CompositePainted(ctx);
     if (!PaintedDestination)
@@ -1909,46 +1993,64 @@ static bool DrawPaintedAside(ID3D11DeviceContext *ctx, const shadowmaps::DrawCal
     return true;
 }
 
-static bool CreateObjects(ID3D11Device *dev)
+// Painted retention does not need an admitted camera, emitter, measure target,
+// light list or mask. Commit this small set only after every object succeeds.
+static bool CreatePaintedObjects(ID3D11Device *dev)
 {
-    if (UpsampleShader)
+    if (CompositePixelShader && LightVertexShader && PaintedCompositeBlend && CompositeBuffer && LightRasterizer)
         return true;
-
     ComPtr<ID3DBlob> vertexCode, compositeCode;
-    if (!shadowmaps::CompileShader(FULL_SCREEN_SHADER, "vs_5_0", vertexCode)
-        || !shadowmaps::CompileShader(COMPOSITE_SHADER, "ps_5_0", compositeCode)
-        || FAILED(dev->CreatePixelShader(compositeCode->GetBufferPointer(), compositeCode->GetBufferSize(), nullptr,
-            &CompositePixelShader))
-        || FAILED(dev->CreateVertexShader(vertexCode->GetBufferPointer(), vertexCode->GetBufferSize(), nullptr,
-            &LightVertexShader)))
-        return false;
-
-    // the light adds to the light buffer, and the mask is written as it is
+    ComPtr<ID3D11VertexShader> vertex;
+    ComPtr<ID3D11PixelShader> pixel;
+    ComPtr<ID3D11BlendState> blend;
+    ComPtr<ID3D11RasterizerState> rasterizer;
+    ComPtr<ID3D11Buffer> buffer;
     D3D11_BLEND_DESC blendDesc = {};
-    blendDesc.IndependentBlendEnable = TRUE;
-    blendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_RED;
-    D3D11_RENDER_TARGET_BLEND_DESC &target = blendDesc.RenderTarget[0];
+    auto &target = blendDesc.RenderTarget[0];
     target.BlendEnable = TRUE;
     target.SrcBlend = target.DestBlend = target.SrcBlendAlpha = target.DestBlendAlpha = D3D11_BLEND_ONE;
     target.BlendOp = target.BlendOpAlpha = D3D11_BLEND_OP_ADD;
-    target.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_RED | D3D11_COLOR_WRITE_ENABLE_GREEN
-        | D3D11_COLOR_WRITE_ENABLE_BLUE;
+    target.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
     D3D11_RASTERIZER_DESC rasterizerDesc = {};
     rasterizerDesc.FillMode = D3D11_FILL_SOLID;
     rasterizerDesc.CullMode = D3D11_CULL_NONE;
     rasterizerDesc.DepthClipEnable = TRUE;
     rasterizerDesc.ScissorEnable = TRUE;
+    const D3D11_BUFFER_DESC bufferDesc = { sizeof(XMFLOAT4), D3D11_USAGE_DEFAULT, D3D11_BIND_CONSTANT_BUFFER };
+    if (!shadowmaps::CompileShader(FULL_SCREEN_SHADER, "vs_5_0", vertexCode)
+        || !shadowmaps::CompileShader(COMPOSITE_SHADER, "ps_5_0", compositeCode)
+        || FAILED(dev->CreatePixelShader(compositeCode->GetBufferPointer(), compositeCode->GetBufferSize(), nullptr, &pixel))
+        || FAILED(dev->CreateVertexShader(vertexCode->GetBufferPointer(), vertexCode->GetBufferSize(), nullptr, &vertex))
+        || FAILED(dev->CreateBlendState(&blendDesc, &blend))
+        || FAILED(dev->CreateRasterizerState(&rasterizerDesc, &rasterizer))
+        || FAILED(dev->CreateBuffer(&bufferDesc, nullptr, &buffer))) return false;
+    CompositePixelShader = std::move(pixel);
+    LightVertexShader = std::move(vertex);
+    PaintedCompositeBlend = std::move(blend);
+    LightRasterizer = std::move(rasterizer);
+    CompositeBuffer = std::move(buffer);
+    return true;
+}
+
+static bool CreateObjects(ID3D11Device *dev)
+{
+    if (UpsampleShader) return true;
+    if (!CreatePaintedObjects(dev)) return false;
+    // The light adds to the light buffer, and the mask is written as it is.
+    D3D11_BLEND_DESC blendDesc = {};
+    blendDesc.IndependentBlendEnable = TRUE;
+    blendDesc.RenderTarget[1].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_RED;
+    auto &target = blendDesc.RenderTarget[0];
+    target.BlendEnable = TRUE;
+    target.SrcBlend = target.DestBlend = target.SrcBlendAlpha = target.DestBlendAlpha = D3D11_BLEND_ONE;
+    target.BlendOp = target.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+    target.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_RED | D3D11_COLOR_WRITE_ENABLE_GREEN | D3D11_COLOR_WRITE_ENABLE_BLUE;
     const D3D11_BUFFER_DESC frameDesc = { sizeof(FrameConstants), D3D11_USAGE_DEFAULT, D3D11_BIND_CONSTANT_BUFFER };
     const D3D11_BUFFER_DESC lightDesc = { sizeof(LightConstants), D3D11_USAGE_DEFAULT, D3D11_BIND_CONSTANT_BUFFER };
-    const D3D11_BUFFER_DESC compositeDesc = { sizeof(XMFLOAT4), D3D11_USAGE_DEFAULT, D3D11_BIND_CONSTANT_BUFFER };
     if (FAILED(dev->CreateBlendState(&blendDesc, &LightBlend))
-        || FAILED(dev->CreateBuffer(&compositeDesc, nullptr, &CompositeBuffer))
-        || FAILED(dev->CreateRasterizerState(&rasterizerDesc, &LightRasterizer))
         || FAILED(dev->CreateBuffer(&frameDesc, nullptr, &FrameBuffer))
         || FAILED(dev->CreateBuffer(&lightDesc, nullptr, &LightConstantsBuffer))
-        || !CreateShapeObjects(dev) || !CreateMeasureObjects(dev))
-        return false;
-
+        || !CreateShapeObjects(dev)) return false;
     return lightbuffer::CreatePixelShader(dev, "ps_reduced_light", ReducedLightShader, LIGHT_SHADER)
         && lightbuffer::CreatePixelShader(dev, "ps_upsample", UpsampleShader, LIGHT_SHADER);
 }
@@ -2010,6 +2112,7 @@ static void Reset(bool keepShapeBuffers = false)
     ReducedLightShader.Reset();
     UpsampleShader.Reset();
     LightBlend.Reset();
+    PaintedCompositeBlend.Reset();
     LightRasterizer.Reset();
     FrameBuffer.Reset();
     LightConstantsBuffer.Reset();
@@ -2276,55 +2379,52 @@ static void WriteState()
     fclose(file);
 }
 
+// Retire only surface-owned lights. Particle keys are owned by their producer.
+static void RetireObjects()
+{
+    if (!Emitters.empty())
+        std::erase_if(shadowmaps::Lights, [](const auto &entry) {
+            return entry.second.Glow && Emitters.contains(entry.second.EmitterKey);
+        });
+    Emitters.clear();CellLights.clear();ActiveCells.clear();
+    std::erase_if(ShapeReads, [](const ShapeRead &read){return !read.BoundsOnly;});
+    std::fill(std::begin(MeasuredKeys),std::end(MeasuredKeys),0);
+    std::fill(std::begin(MeasuredTickets),std::end(MeasuredTickets),0);
+}
+
 static void EndFrame(ID3D11Device *dev, ID3D11DeviceContext *ctx,unsigned particleDemand=0)
 {
     const shadowmaps::CpuScope scope(shadowmaps::GlowCpu);
     ParticleSlots=0;
-    if (capture::State == capture::Phase::Capturing)
-        WriteState();
-    if (PaintedDestination)
-        CompositePainted(ctx);
-    MeasuredThisFrame = false;
-    LightsDrawnLastFrame = LightsDrawnThisFrame;
-    LightsDrawnThisFrame = 0;
-    CellsPickedLastFrame = 0;
-    // the shadow maps roll their counters on this frame, when a second has passed since they last did
-    if (std::chrono::steady_clock::now() - shadowmaps::SecondStart >= std::chrono::seconds(1))
-    {
-        PaintedSkippedLastSecond = PaintedSkippedThisSecond;
-        PaintedSkippedThisSecond = 0;
-    }
-    if (CreateFailed || !shadowmaps::DrawState)
-        return;
-    if (!CreateObjects(dev))
-    {
-        reshade::log::message(reshade::log::level::error, "Could not create the glow light objects.");
-        Reset();
-        CreateFailed = true;
-        return;
-    }
-
-    // bounds are read with glow lights off too: lamps leave out the model that holds their light
+    if (capture::State == capture::Phase::Capturing) WriteState();
+    if (PaintedDestination) CompositePainted(ctx);
+    if (!ObjectsActive()) RetireObjects();
+    MeasuredThisFrame=false;LightsDrawnLastFrame=LightsDrawnThisFrame;LightsDrawnThisFrame=0;CellsPickedLastFrame=0;
+    if (std::chrono::steady_clock::now()-shadowmaps::SecondStart >= std::chrono::seconds(1))
+    {PaintedSkippedLastSecond=PaintedSkippedThisSecond;PaintedSkippedThisSecond=0;}
+    if (CreateFailed || !shadowmaps::DrawState) return;
+    // Native point shadows still need mesh bounds to exclude a lamp's holder.
+    // This does not sample source colour, create emission depth or capture particles.
+    if (!CreateShapeObjects(dev)) {CreateFailed=true;return;}
     ReadShapes(ctx);
     ComPtr<ID3D11DeviceContext1> ctx1;
-    if (FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))
-        return;
+    if (FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1)))) return;
     RequestBounds(ctx1.Get());
-    if (!Enabled)
-        return;
-
-    ReadMeasure(ctx);
-    // an emitter out of view still lights what is near it, so it lasts as long as its mesh is kept
-    std::erase_if(Emitters, [](const auto &entry) { return !shadowmaps::Casters.contains(entry.first); });
-    std::erase_if(CellLights, [](const auto &entry) { return !shadowmaps::Lights.contains(entry.second); });
-    for (auto &[casterKey, emitter] : Emitters)
-        if (!emitter.ShapeRequested)
-        {
-            RequestShape(ctx1.Get(), casterKey, emitter);
-            break;
-        }
-    UpdateRadii();
-    if (shadowmaps::CameraFound)
-        PickLights(particleDemand);
+    if (!SourcesActive()) return;
+    if (!CreateObjects(dev) || (ObjectsActive() && !CreateMeasureObjects(dev)))
+    {
+        reshade::log::message(reshade::log::level::error,"Could not create the glow light objects.");
+        Reset();CreateFailed=true;return;
+    }
+    if (ObjectsActive())
+    {
+        ReadMeasure(ctx);
+        std::erase_if(Emitters, [](const auto &entry){return !shadowmaps::Casters.contains(entry.first);});
+        std::erase_if(CellLights, [](const auto &entry){return !shadowmaps::Lights.contains(entry.second);});
+        for (auto &[casterKey,emitter] : Emitters)
+            if (!emitter.ShapeRequested) {RequestShape(ctx1.Get(),casterKey,emitter);break;}
+        UpdateRadii();
+    }
+    if (shadowmaps::CameraFound) PickLights(ParticlesActive()?particleDemand:0);
 }
 }

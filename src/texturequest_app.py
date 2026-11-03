@@ -1080,9 +1080,23 @@ class TextureQuestApp:
             return
         minimum = (self.prepared or {}).get('texture_version', '1.3.0')
         binding = dict(self.shortcut)
-        # Automatic updates retain legacy per-capability choices. Only an
-        # explicit Install/Apply action supplies the merged graphics selection.
-        selection = self.selected_components() if selection is None else components.normalize(selection)
+        # A normal refresh applies the same umbrella choice as Install/Apply;
+        # legacy single-bundle flags must not omit another available bundle.
+        try:
+            status = self.graphics_status(game)
+            if (status.get('unknown') or type(status.get('effects_available')) is not bool
+                    or type(status.get('dlss_available')) is not bool):
+                raise ValueError(status.get('message') or 'Graphics status is unknown. Saved choices were kept.')
+            if selection is None:
+                selection = self.selected_components(apply_graphics=True, capabilities=status)
+            else:
+                selection = components.with_graphics(selection, components.graphics_selected(selection),
+                    effects_available=status.get('effects_available'), dlss_available=status.get('dlss_available'))
+            self.save_components(selection)
+        except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
+            self.load_components()
+            self.set_message(str(error), error=True)
+            return False
         def setup():
             from texturequest_setup import prepare_graphics
             choices = core._json(resource('shared-texture-choices.json').read_bytes())

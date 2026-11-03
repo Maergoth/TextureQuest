@@ -114,7 +114,8 @@ def _value(key, before, values=VALUES):
 
 def _preserved_graphics_defaults(lines, values):
     """Keep the renderer's effective old names and explicit legacy sun-off."""
-    aliases = {'EmissiveLights': 'GlowLights', 'EmissiveLightStrength': 'GlowLightStrength',
+    aliases = {'PointShadowSoftness': 'ShadowSoftness',
+               'EmissiveLights': 'GlowLights', 'EmissiveLightStrength': 'GlowLightStrength',
                'PaintedEmissionKept': 'PaintedGlowKept'}
     names = {('EQ2Graphics', key): None for key in (*aliases.values(), 'SunSoftness')}
     names.update(values)

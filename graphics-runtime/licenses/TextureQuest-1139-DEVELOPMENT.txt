@@ -1,0 +1,5 @@
+TextureQuest1.13.9 private Develop/local candidate. No public tag/release.
+Renderer1043968B SHA256e7254c08925b523c42fd02fd54707d0884e4e80593ceb5366f62d30e96e9c538.
+Only renderer changes from installed combined1138; provideraf45413c/AIO96771d0f and the other native payloads are unchanged. Texturedata1.3.0 unchanged.
+Bounded partial particle draw admission, per-draw failure isolation,128particle limit,128x strength,16x radius control/128world radius, full confirmed WORLD caster gathering and corrected particle shadow lookup. Particles are not unshadowed. Moving character shadow coverage remains nearest16eligible lights, not all128particles. Draw order/culling can limit source coverage.
+Strict native build, focused productionCPU and one focused actualD11 run passed; no universal game/visual/FPS claim. Saved controls and native INIs remain separate normal-update responsibilities. Existing permissions/licenses/notices remain intact; historical private/profile IDs are compatibility tokens. Generator paused.

@@ -1,7 +1,7 @@
 #pragma once
 // Included inside shadows after the existing kept-draw and shader helpers.
 // This cache contains current-frame native references, never texture byte copies.
-constexpr size_t MATERIAL_DRAW_LIMIT=128;
+constexpr size_t MATERIAL_DRAW_LIMIT=512;
 struct MaterialDraw { KeptDraw draw;std::vector<std::pair<uint64_t,uint64_t>> buffers;D3D11_RECT scissor{}; };
 struct MaterialStats
 {
@@ -24,7 +24,7 @@ static ID3D11Resource *MaterialSource=nullptr;
 static DirectX::XMFLOAT4X4 MaterialCamera{};
 static DirectX::XMFLOAT3 MaterialOffset{};
 static bool MaterialActive()
-{return tq_world::Work.Point()&&Enabled&&glow::Enabled&&!shadowmaps::ShowColours;}
+{return tq_world::Work.Point()&&Enabled&&glow::SourcesActive()&&!shadowmaps::ShowColours;}
 static void BeginMaterialFrame()
 {
     MaterialDraws.clear();{std::lock_guard guard(MaterialVersionLock);MaterialBufferVersions.clear();}MaterialFrame=UINT64_MAX;MaterialSource=nullptr;
@@ -60,7 +60,6 @@ static void KeepMaterialDraw(shadowmaps::BoundDraw &bound,bool base,size_t shade
     if(!MaterialActive()||!lightbuffer::LightBuffer||lightbuffer::CurrentTarget!=lightbuffer::LightBuffer.Get()||call.Instances!=1||call.FirstInstance)return;
     MaterialCounts.frame=shadowmaps::FrameNumber;
     if(capture::VertexClass.Repeated<0){++MaterialCounts.unsupported;return;}
-    if(MaterialDraws.size()>=MATERIAL_DRAW_LIMIT){++MaterialCounts.capacity;return;}
     ComPtr<ID3D11DeviceContext1> ctx1;if(FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))return;
     ComPtr<ID3D11GeometryShader> geometryStage;ComPtr<ID3D11HullShader> hull;ComPtr<ID3D11DomainShader> domain;
     ctx1->GSGetShader(&geometryStage,nullptr,nullptr);ctx1->HSGetShader(&hull,nullptr,nullptr);ctx1->DSGetShader(&domain,nullptr,nullptr);
@@ -106,6 +105,8 @@ static void KeepMaterialDraw(shadowmaps::BoundDraw &bound,bool base,size_t shade
     const auto &geometry=bound.GetMesh();draw.Mesh=geometry.Key;
     const uint64_t key=FindCopyKey(geometry.Key,rows);
     if(auto old=MaterialDraws.find(key);old!=MaterialDraws.end()&&(!old->second.draw.Base||base))return;
+    // Existing base records may upgrade at full cache capacity.
+    if(!MaterialDraws.contains(key)&&MaterialDraws.size()>=MATERIAL_DRAW_LIMIT){++MaterialCounts.capacity;return;}
     const auto remember=[&](ID3D11Buffer*buffer)
     {
         if(!buffer)return true;

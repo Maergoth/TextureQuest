@@ -3,13 +3,13 @@
 #include "particle_emission_policy.hpp"
 #include "particle_field_policy.hpp"
 
-// Observational native material replay: one complete source frame becomes one
-// bounded absolute-world light field. Native rendering is never replaced.
+// Observational native material replay: complete independent native draws form
+// a bounded partial world-light field. Native rendering is never replaced.
 namespace particle_emission
 {
 using Microsoft::WRL::ComPtr;using namespace DirectX;
 namespace policy=particle_emission_policy;namespace field=particle_field_policy;
-struct DrawRecord { unsigned first=0,count=0;uint64_t vertex=0,pixel=0;ComPtr<ID3D11Query> query; };
+struct DrawRecord { unsigned first=0,count=0;uint64_t vertex=0,pixel=0;ComPtr<ID3D11Query> query;bool valid=false; };
 struct Packet
 {
     ComPtr<ID3D11Buffer> output,read,reduced,reducedRead;
@@ -34,11 +34,12 @@ static ComPtr<ID3D11ShaderResourceView> AtlasView;
 static ComPtr<ID3D11RasterizerState> Raster;
 static ComPtr<ID3D11DepthStencilState> NoDepth;
 static bool Failed=false,Probing=false;
-static uint64_t Epoch=1,ObservedFrame=UINT64_MAX;
+static uint64_t Epoch=1,ObservedFrame=UINT64_MAX,ExcludedSourceFrame=UINT64_MAX;
 static std::vector<field::Cell> Cells;
 struct Selected {field::Key cell;uint64_t light=0;};
 static std::array<Selected,field::Lit> SelectedCells;
 static unsigned SelectedCount=0;
+static std::atomic<float> Strength=1.0f,Radius=1.0f;
 static std::chrono::steady_clock::time_point FieldTime{};
 static ComPtr<ID3D11Resource> FieldScene;
 static bool HasField=false;
@@ -48,6 +49,7 @@ struct DomainStats
 {
     uint64_t frame=0,epoch=0;unsigned draws=0,triangles=0,included=0,excludedDistance=0,excludedExtent=0,invalid=0;
     unsigned firstExcluded=UINT32_MAX,firstInvalid=UINT32_MAX;bool inspected=false,published=false;
+    unsigned attempted=0,capacityExcluded=0,stateExcluded=0,invalidDraws=0,acceptedDraws=0;
 };
 static DomainStats LastDomain;
 static std::mutex ShaderLock;
@@ -90,7 +92,7 @@ struct Out {float4 position:SV_Position;float4 color0:COLOR0;float4 color1:COLOR
   bool valid=safe&&all(isfinite(p))&&abs(p.w)>1e-8;
   o.worldPosition=float4(valid?p.xyz/p.w-Offset.xyz:0,valid?1:0);
   float2 pixel=origin+(i==1?float2(7.5,0):(i==2?float2(0,7.5):0));
-  o.position=float4(pixel.x/512-1,1-pixel.y/256,.5,1);
+  o.position=float4(pixel.x/512-1,1-pixel.y/1024,.5,1);
   stream.Append(o);
  }
  stream.RestartStrip();
@@ -139,7 +141,7 @@ static void Reset(bool keepProfiles=false)
 {
     InvalidateScene();Frame={};State.Reset();Shape.Reset();Reduce.Reset();CloneShared.Reset();Constants.Reset();ReduceConstants.Reset();
     SharedParameters.Reset();SharedRaw.Reset();SharedConstants.Reset();SharedRawView.Reset();Atlas.Reset();AtlasTarget.Reset();AtlasView.Reset();Raster.Reset();NoDepth.Reset();
-    Failed=false;ObservedFrame=UINT64_MAX;Pending=RejectedBounds=RejectedState=RejectedIO=0;
+    Failed=false;ObservedFrame=ExcludedSourceFrame=UINT64_MAX;Pending=RejectedBounds=RejectedState=RejectedIO=0;
     LastDomain={};
     if(!keepProfiles){std::lock_guard guard(ShaderLock);VertexProfiles.clear();PixelProfiles.clear();}
 }
@@ -267,7 +269,7 @@ static bool AdditiveSource(const D3D11_BLEND_DESC &b,const D3D11_DEPTH_STENCIL_D
 }
 static void Observe(shadowmaps::BoundDraw &bound,uint64_t vs,uint64_t ps)
 {
-    if(!glow::Enabled||Probing)return;uint64_t vh=0,ph=0;if(!Profiles(vs,ps,vh,ph))return;
+    if(!glow::ParticlesActive()||Probing)return;uint64_t vh=0,ph=0;if(!Profiles(vs,ps,vh,ph))return;
     auto *native=bound.Context;const shadowmaps::DrawCall &call=bound.Call;
     // These same native shaders also draw ordinary alpha-over fire layers.
     // Those layers are outside this explicitly additive emission domain; they
@@ -277,13 +279,9 @@ static void Observe(shadowmaps::BoundDraw &bound,uint64_t vs,uint64_t ps)
     if(!AdditiveSource(*blend,*depth,mask))return;
     if(capture::State==capture::Phase::Capturing&&call.Instances==1&&call.Count<=field::Triangles*3)
         capture::SaveGlowBuffers(native,capture::DrawIndex,true);
-    emission_policy::Samples.NoteParticle(shadowmaps::FrameNumber);if(!BeginFrame(native))return;
-    const unsigned base=Frame.ledger.triangles;
-    if(!Frame.ledger.Add(call.Count,call.Instances)){++OverflowFrames;return;}
-    const auto reject=[] {Frame.ledger.Reject();++RejectedState;};
+    const auto reject=[] {ExcludedSourceFrame=shadowmaps::FrameNumber;if(Frame.collecting&&ObservedFrame==shadowmaps::FrameNumber)Frame.ledger.Exclude();++RejectedState;};
     if(!lightbuffer::Processed||!shadowmaps::CameraFound||!lightbuffer::WorldToClipKnown
-        ||lightbuffer::CurrentTarget==lightbuffer::LightBuffer.Get()||Frame.scene.Get()!=lightbuffer::LightBuffer.Get()
-        ||Frame.target.Get()!=lightbuffer::CurrentTarget){reject();return;}
+        ||lightbuffer::CurrentTarget==lightbuffer::LightBuffer.Get()){reject();return;}
     D3D11_TEXTURE2D_DESC target{};if(!lightbuffer::IsScreenSized(lightbuffer::CurrentTarget,target)){reject();return;}
     if(bound.GetTopology()!=D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST){reject();return;}
     UINT views=0;const D3D11_VIEWPORT &viewport=bound.GetViewport(views);
@@ -292,13 +290,19 @@ static void Observe(shadowmaps::BoundDraw &bound,uint64_t vs,uint64_t ps)
     if(!bound.ReadRows()){reject();return;}
     const auto &rows=bound.Rows;
     for(const auto &row:rows)if(!std::isfinite(row.x)||!std::isfinite(row.y)||!std::isfinite(row.z)||!std::isfinite(row.w)){reject();return;}
-    if(!shadowmaps::FindWorldToClip(rows,camera)||!lightbuffer::IsSameCamera(camera,XMLoadFloat4x4(&Frame.cameraMatrix))
+    if(!shadowmaps::FindWorldToClip(rows,camera)||!lightbuffer::IsSameCamera(camera,lightbuffer::WorldToClip)){reject();return;}
+    // An unrelated first pass must not anchor the packet to the wrong target.
+    emission_policy::Samples.NoteParticle(shadowmaps::FrameNumber);if(!BeginFrame(native))return;Frame.ledger.Attempt();
+    if(Frame.scene.Get()!=lightbuffer::LightBuffer.Get()||Frame.target.Get()!=lightbuffer::CurrentTarget
+        ||!lightbuffer::IsSameCamera(camera,XMLoadFloat4x4(&Frame.cameraMatrix))
         ||shadowmaps::CurrentOffset.x!=Frame.offset.x||shadowmaps::CurrentOffset.y!=Frame.offset.y||shadowmaps::CurrentOffset.z!=Frame.offset.z){reject();return;}
     ComPtr<ID3D11DeviceContext1> ctx;ComPtr<ID3D11Device> dev;native->GetDevice(&dev);
     if(FAILED(native->QueryInterface(IID_PPV_ARGS(&ctx)))||!Compile(dev.Get())){Frame.ledger.Reject();++RejectedIO;return;}
+    const unsigned base=Frame.ledger.triangles;
+    if(!Frame.ledger.Add(call.Count,call.Instances)){++OverflowFrames;return;}
     ShapeConstants data{};XMStoreFloat4x4(&data.inverse,XMMatrixInverse(nullptr,camera));data.offset={Frame.offset.x,Frame.offset.y,Frame.offset.z,0};data.base=base;
-    auto &record=Frame.records[Frame.ledger.draws-1];record.first=base;record.count=call.Count/3;record.vertex=vh;record.pixel=ph;
-    if(!Capture(ctx.Get(),call,data,record))reject();
+    auto &record=Frame.records[Frame.ledger.draws-1];record.first=base;record.count=call.Count/3;record.vertex=vh;record.pixel=ph;record.valid=true;
+    if(!Capture(ctx.Get(),call,data,record)){record.valid=false;Frame.ledger.Undo(call.Count);++RejectedState;}
 }
 static void Seal(ID3D11DeviceContext *native)
 {
@@ -306,7 +310,9 @@ static void Seal(ID3D11DeviceContext *native)
     if(!Frame.ledger.complete||!Frame.ledger.triangles||!State)
     {
         if(!Frame.ledger.complete)++IncompleteFrames;
-        else {Cells.clear();HasField=true;FieldTime=std::chrono::steady_clock::now();FieldScene=Frame.scene;++CompleteFrames;}
+        else if(!Frame.ledger.attempted){Cells.clear();HasField=true;FieldTime=std::chrono::steady_clock::now();FieldScene=Frame.scene;++CompleteFrames;}
+        // No admitted source is not an empty scene: exclusions retain only the
+        // existing short retirement window, never refresh stale source energy.
         // Even an incomplete frame may contain queued SO/atlas commands. Fence
         // those commands before allowing the single packet storage to be reused.
         if(Frame.writes&&Frame.complete){native->End(Frame.complete.Get());Frame.busy=true;}
@@ -327,15 +333,16 @@ static void Seal(ID3D11DeviceContext *native)
 }
 static void ReadFrame(ID3D11DeviceContext *ctx)
 {
+    if (!glow::ParticlesActive() && (HasField || SelectedCount || Frame.collecting)) Hide();
     // No exact selected draw in this frame is a complete empty observation,
     // only when no earlier frame owns the one packet and this is our service
     // turn. A frame whose draws were skipped while pending is never empty.
-    if(glow::Enabled&&!Frame.busy&&ObservedFrame!=shadowmaps::FrameNumber
+    if(glow::ParticlesActive()&&!Frame.busy&&ObservedFrame!=shadowmaps::FrameNumber&&ExcludedSourceFrame!=shadowmaps::FrameNumber
         &&emission_policy::Samples.Recent(shadowmaps::FrameNumber)
         &&shadowmaps::CameraFound&&lightbuffer::WorldToClipKnown&&lightbuffer::LightBuffer)
         BeginFrame(ctx);
     Seal(ctx);
-    if(!glow::Enabled){if(HasField||SelectedCount)Hide();}
+    if(!glow::ParticlesActive()){if(HasField||SelectedCount)Hide();}
     if(Frame.busy)
     {
         BOOL complete=FALSE;const auto result=ctx->GetData(Frame.complete.Get(),&complete,sizeof(complete),D3D11_ASYNC_GETDATA_DONOTFLUSH);
@@ -343,37 +350,48 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
         {
             DomainStats domain;domain.frame=Frame.ledger.frame;domain.epoch=Frame.ledger.epoch;
             domain.draws=Frame.ledger.draws;domain.triangles=Frame.ledger.triangles;
+            domain.attempted=Frame.ledger.attempted;domain.capacityExcluded=Frame.ledger.capacityExcluded;domain.stateExcluded=Frame.ledger.stateExcluded;
             bool valid=Frame.ledger.CanPublish(Epoch,std::chrono::duration<double>(std::chrono::steady_clock::now()-Frame.time).count())
-                &&glow::Enabled&&Frame.scene.Get()==lightbuffer::LightBuffer.Get();
+                &&glow::ParticlesActive()&&Frame.scene.Get()==lightbuffer::LightBuffer.Get();
             if(valid)for(unsigned i=0;i<Frame.ledger.draws;++i)
-            {D3D11_QUERY_DATA_SO_STATISTICS stats{};const auto state=ctx->GetData(Frame.records[i].query.Get(),&stats,sizeof(stats),D3D11_ASYNC_GETDATA_DONOTFLUSH);
+            {auto &record=Frame.records[i];D3D11_QUERY_DATA_SO_STATISTICS stats{};const auto state=ctx->GetData(record.query.Get(),&stats,sizeof(stats),D3D11_ASYNC_GETDATA_DONOTFLUSH);
                 if(state==S_FALSE){Pending=1;return;}
-                if(state!=S_OK||stats.NumPrimitivesWritten!=Frame.records[i].count||stats.PrimitivesStorageNeeded!=Frame.records[i].count){valid=false;break;}}
+                if(state!=S_OK){valid=false;break;}
+                record.valid=stats.NumPrimitivesWritten==record.count&&stats.PrimitivesStorageNeeded==record.count;
+                if(!record.valid)++domain.invalidDraws;}
             D3D11_MAPPED_SUBRESOURCE positions{},material{};
             bool positionMapped=false,materialMapped=false;
             if(valid){const auto mapped=ctx->Map(Frame.read.Get(),0,D3D11_MAP_READ,D3D11_MAP_FLAG_DO_NOT_WAIT,&positions);
                 if(mapped==DXGI_ERROR_WAS_STILL_DRAWING){Pending=1;return;}positionMapped=SUCCEEDED(mapped);valid=positionMapped;}
             if(valid){const auto mapped=ctx->Map(Frame.reducedRead.Get(),0,D3D11_MAP_READ,D3D11_MAP_FLAG_DO_NOT_WAIT,&material);
                 if(mapped==DXGI_ERROR_WAS_STILL_DRAWING){ctx->Unmap(Frame.read.Get(),0);Pending=1;return;}materialMapped=SUCCEEDED(mapped);valid=materialMapped;}
-            std::vector<field::Cell> candidate;candidate.reserve(field::Triangles*8);
+            std::vector<field::Cell> candidate;if(valid)candidate.reserve(field::Triangles*8);
             if(valid)
             {
                 domain.inspected=true;
                 const auto *world=static_cast<const XMFLOAT4*>(positions.pData);const auto *raw=static_cast<const field::Reduction*>(material.pData);
-                for(unsigned t=0;t<Frame.ledger.triangles;++t)
+                for(unsigned i=0;i<Frame.ledger.draws;++i)
                 {
-                    field::Power energy;XMFLOAT3 location;field::Exclusion reason;
-                    const auto kind=field::ClassifyTriangle(world+t*3,raw[t],Frame.camera,energy,location,&reason);
-                    if(kind==field::TriangleClass::Invalid)
-                    {++domain.invalid;domain.firstInvalid=t;valid=false;break;}
-                    if(kind==field::TriangleClass::Excluded)
+                    const auto &record=Frame.records[i];if(!record.valid)continue;
+                    const size_t start=candidate.size();bool sourceValid=true;
+                    for(unsigned t=record.first;t<record.first+record.count;++t)
                     {
-                        if(reason==field::Exclusion::Distance)++domain.excludedDistance;else ++domain.excludedExtent;
-                        if(domain.firstExcluded==UINT32_MAX)domain.firstExcluded=t;
-                        continue;
+                        field::Power energy;XMFLOAT3 location;field::Exclusion reason;
+                        const auto kind=field::ClassifyTriangle(world+t*3,raw[t],Frame.camera,energy,location,&reason,field::LightRadius(Radius.load(),field::MaximumWorldRadius));
+                        if(kind==field::TriangleClass::Invalid)
+                        {++domain.invalid;if(domain.firstInvalid==UINT32_MAX)domain.firstInvalid=t;sourceValid=false;break;}
+                        if(kind==field::TriangleClass::Excluded)
+                        {
+                            if(reason==field::Exclusion::Distance)++domain.excludedDistance;else ++domain.excludedExtent;
+                            if(domain.firstExcluded==UINT32_MAX)domain.firstExcluded=t;
+                            continue;
+                        }
+                        if(std::max({energy.x,energy.y,energy.z})>1e20){sourceValid=false;break;}
+                        ++domain.included;
+                        if(!field::Splat(candidate,location,energy)){sourceValid=false;break;}
                     }
-                    ++domain.included;
-                    if(!field::Splat(candidate,location,energy)){valid=false;break;}
+                    if(!sourceValid){candidate.resize(start);++domain.invalidDraws;}
+                    else ++domain.acceptedDraws;
                 }
             }
             if(materialMapped)ctx->Unmap(Frame.reducedRead.Get(),0);if(positionMapped)ctx->Unmap(Frame.read.Get(),0);
@@ -383,6 +401,7 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
                 for(const auto &cell:candidate)if(!field::Good(cell.power)||!field::Finite(field::Position(cell))
                     ||std::max({cell.power.x,cell.power.y,cell.power.z})>1e20){valid=false;break;}
             }
+            if(valid&&!domain.acceptedDraws)valid=false;
             if(valid)valid=field::Publish(Cells,std::move(candidate),Frame.ledger,Epoch,
                 std::chrono::duration<double>(std::chrono::steady_clock::now()-Frame.time).count());
             if(valid){HasField=true;FieldTime=std::chrono::steady_clock::now();FieldScene=Frame.scene;++CompleteFrames;}
@@ -397,31 +416,33 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
 }
 static float Visibility()
 {return HasField?field::Visibility(std::chrono::duration<double>(std::chrono::steady_clock::now()-FieldTime).count()):0;}
-static unsigned ReadyCount(){return glow::Enabled&&Visibility()>0
+static unsigned ReadyCount(){return glow::ParticlesActive()&&field::CleanStrength(Strength.load())>0&&Visibility()>0
     ?std::min(unsigned(Cells.size()),emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())):0;}
 static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit)
 {
-    if(!glow::Enabled){if(HasField||SelectedCount)Hide();return;}
-    const float visibility=Visibility();std::array<field::Key,field::Lit> prior{};
+    if(!glow::ParticlesActive()){if(HasField||SelectedCount)Hide();return;}
+    const float visibility=Visibility();const float gain=field::CleanStrength(Strength.load());
+    const float radius=field::LightRadius(Radius.load(),field::MaximumWorldRadius);std::array<field::Key,field::Lit> prior{};
     for(unsigned i=0;i<SelectedCount;++i)prior[i]=SelectedCells[i].cell;
-    const unsigned wanted=std::min({allowance,field::Lit,
-        emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())});
+    const unsigned wanted=gain>0?std::min({allowance,field::Lit,
+        emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())}):0;
     const auto picks=field::Pick(Cells,prior,SelectedCount,shadowmaps::Camera,wanted);auto old=SelectedCells;SelectedCells={};const unsigned oldCount=SelectedCount;SelectedCount=Active=0;
     for(unsigned i=0;i<wanted&&picks[i]!=SIZE_MAX&&visibility>0;++i)
     {
         const auto &cell=Cells[picks[i]];const auto position=field::Position(cell);Selected selected{cell.key,0};
         for(unsigned j=0;j<oldCount;++j)if(old[j].cell==cell.key){selected.light=old[j].light;old[j].light=0;break;}
         if(!selected.light||!shadowmaps::Lights.contains(selected.light))selected.light=shadowmaps::NextLightKey++;
-        auto &light=shadowmaps::Lights[selected.light];const bool moved=!light.BuiltFrame||shadowmaps::Distance(light.Position,position)>.25f;
-        light.Glow=true;light.GlowShown=true;light.GlowHeld=false;light.EmitterKey=selected.light;light.Position=position;
-        light.GlowNormal={};light.GlowArea=1;light.GlowRange=std::clamp(field::CellWidth*4,2.0f,24.0f);
-        const double strength=std::max(0.0f,glow::Strength.load())/XM_PI*visibility;
+        auto &light=shadowmaps::Lights[selected.light];const bool moved=!light.BuiltFrame||shadowmaps::Distance(light.BuiltPosition,position)>shadowmaps::MOVED_LIGHT_DISTANCE
+            ||std::abs(light.GlowRange-radius)>1e-4f;
+        light.Glow=true;light.Particle=true;light.GlowShown=true;light.GlowHeld=false;light.EmitterKey=0;light.Position=position;
+        light.GlowNormal={};light.GlowArea=1;light.GlowRange=radius;
+        const double strength=field::StrengthReference*gain/XM_PI*visibility;
         light.GlowColour={float(cell.power.x*strength),float(cell.power.y*strength),float(cell.power.z*strength)};light.LastSeen=shadowmaps::FrameNumber;
         if(moved)
         {
-            light.CasterKeys.clear();light.Radius=shadowmaps::FindShadowRadius(light);unsigned scanned=0;
-            for(const auto &[key,caster]:shadowmaps::Casters){if(++scanned>2048||light.CasterKeys.size()>=128)break;
-                if(caster.FramesSeen>=shadowmaps::CONFIRM_FRAMES&&shadowmaps::FindCasterDistance(caster,position)<light.Radius)light.CasterKeys.insert(key);}
+            // Use the same complete confirmed-radius query as native/object lights.
+            // An unordered prefix can omit a nearby wall even when the light is selected.
+            shadowmaps::GatherCasters(light);
             ++light.Version;light.RedrawNow=true;
         }
         SelectedCells[SelectedCount++]=selected;++Active;
@@ -432,10 +453,14 @@ static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit)
 static void WriteState(FILE *file)
 {
     if(!file)return;
+    fprintf(file,"particle controls: strength %.3f, radius scale %.3f, world radius %.3f\n",field::CleanStrength(Strength.load()),field::CleanRadius(Radius.load()),field::LightRadius(Radius.load(),field::MaximumWorldRadius));
     fprintf(file,"particle field epoch %llu, field %d, cells %zu, selected %u, visibility %.3f; packet frame %llu epoch %llu draws %u triangles %u complete %d collecting %d busy %d\n",
         static_cast<unsigned long long>(Epoch),HasField?1:0,Cells.size(),SelectedCount,Visibility(),
         static_cast<unsigned long long>(Frame.ledger.frame),static_cast<unsigned long long>(Frame.ledger.epoch),
         Frame.ledger.draws,Frame.ledger.triangles,Frame.ledger.complete?1:0,Frame.collecting?1:0,Frame.busy?1:0);
+    fprintf(file,"particle source domain: current attempted %u admitted %u capacity excluded %u state excluded %u; last attempted %u admitted %u capacity excluded %u state excluded %u accepted draws %u invalid draws %u\n",
+        Frame.ledger.attempted,Frame.ledger.draws,Frame.ledger.capacityExcluded,Frame.ledger.stateExcluded,
+        LastDomain.attempted,LastDomain.draws,LastDomain.capacityExcluded,LastDomain.stateExcluded,LastDomain.acceptedDraws,LastDomain.invalidDraws);
     fprintf(file,"particle last read frame %llu epoch %llu draws %u triangles %u inspected %d included %u excluded far %u large %u invalid %u first excluded %u first invalid %u published %d; totals complete %u incomplete %u overflow %u skipped %u rejected state %u bounds %u IO %u\n",
         static_cast<unsigned long long>(LastDomain.frame),static_cast<unsigned long long>(LastDomain.epoch),
         LastDomain.draws,LastDomain.triangles,LastDomain.inspected?1:0,LastDomain.included,LastDomain.excludedDistance,LastDomain.excludedExtent,LastDomain.invalid,
