@@ -44,7 +44,7 @@ constexpr UINT CAMERA_OFFSET_SLOT = 3;
 constexpr UINT VIEW_SLOT = 4;
 constexpr UINT ADDED_LAMP_SLOT = 5;
 constexpr UINT ADDED_MAPS_SLOT = 16;
-constexpr UINT ADDED_LIST_SLOT = 19;
+constexpr UINT ADDED_LIST_SLOT = 23;
 constexpr UINT DRAW_SLOT_SLOT = 6;
 constexpr UINT CULLED_SLOT = 7;
 constexpr UINT CULLED_DEPTH_SLOT = 20;
@@ -162,7 +162,8 @@ float FindLitIn(TextureCubeArray<float> maps, float3 worldPosition, float3 norma
     float lightDistance = max(length(toLight), 1e-4);
     float facing = dot(normal, toLight) / lightDistance;
     // the draw binds the array of its light's map size, so the cube is the slot's place in that array
-    float layer = slot < MIDDLE_START ? slot : slot < FAR_START ? slot - MIDDLE_START : slot - FAR_START;
+    float layer = slot < MIDDLE_START ? slot : slot < FAR_START ? slot - MIDDLE_START
+        : slot < EXTRA_START ? slot - FAR_START : slot - EXTRA_START;
     float faceSize = slot < MIDDLE_START ? MOVING_FACE_SIZE : slot < FAR_START ? MIDDLE_FACE_SIZE : FAR_FACE_SIZE;
     float texel = 2 * lightDistance / faceSize;
     worldPosition += (facing < 0 ? -normal : normal) * texel * (1 + 2 * (1 - abs(facing)));
@@ -720,7 +721,7 @@ R"(// the lamps added to a moving mesh, all drawn in one draw after the light bu
 // what a single-pass lamp adds: its faded colour times its light amount and shadow.
 
 // the maps of every size, nearest first, for the added lamps, whose lamps can have maps of any size
-TextureCubeArray<float> AddedMaps[3] : register(t16);
+TextureCubeArray<float> AddedMaps[4] : register(t16);
 
 // AddedHeader: x the lamp count; y the single-pass lamp shader, an index into LAMP_SHADERS, whose light amount the lamps
 // follow; z 1 when the mesh's texture coordinates go through rows c20 to c23; w 1 to light by the normal map in the
@@ -735,7 +736,7 @@ cbuffer AddedLamps : register(b5)
 };
 // every added lamp of the frame, three rows each: its camera-relative position with its reach in w, its colour, and its
 // map's slot in x, -1 for none, with its fade's power (FindFade) in y
-StructuredBuffer<float4> AddedLampList : register(t19);
+StructuredBuffer<float4> AddedLampList : register(t23);
 
 struct AddedInterpolants
 {
@@ -812,8 +813,10 @@ float FindLampShadow(float slot, float3 relative, float3 surfaceNormal, float2 s
         lit = FindLitIn(AddedMaps[0], worldPosition, surfaceNormal, lightPosition, slot, seed);
     else if (slot < FAR_START)
         lit = FindLitIn(AddedMaps[1], worldPosition, surfaceNormal, lightPosition, slot, seed);
-    else
+    else if (slot < EXTRA_START)
         lit = FindLitIn(AddedMaps[2], worldPosition, surfaceNormal, lightPosition, slot, seed);
+    else
+        lit = FindLitIn(AddedMaps[3], worldPosition, surfaceNormal, lightPosition, slot, seed);
     return 1 - Params.z * (1 - lit);
 }
 
@@ -896,7 +899,8 @@ float4 material_normal(AddedInterpolants i) : SV_Target
     }
     float lengthSquared=dot(normal,normal);
     if (!all(isfinite(normal)) || lengthSquared<1e-12) discard;
-    normal=FaceCamera(normal*rsqrt(lengthSquared),i.relative);
+    // Native TBN orientation is material data, independent of the viewer.
+    normal*=rsqrt(lengthSquared);
     return float4(normal*.5+.5,1);
 }
 
@@ -1230,6 +1234,7 @@ static void OnInitPipeline(device *, pipeline_layout, uint32_t count, const pipe
             const auto &desc = *static_cast<const shader_desc *>(subobjects[i].data);
             const uint64_t hash = capture::HashCode(desc.code, desc.code_size);
             particle_emission::RememberShader(hash,handle.handle,true);
+            glow::ClassifyPaintedVertex(hash, handle.handle);
             if (projected_shadow_policy::AdmittedVertex(hash))
             {
                 std::lock_guard guard(Lock);
@@ -1364,6 +1369,7 @@ static void OnDestroyDevice(device *dev)
     KeptDraws.clear();
     UnsureMeshes.clear();
     glow::Reset();
+    glow::ForgetPaintedDevice();
     shadowmaps::Reset();
     CreateFailed = false;
 }
@@ -1383,18 +1389,21 @@ static ComPtr<ID3DBlob> CompileShader(const ShaderEntry &shader)
     sprintf_s(matchDistance, "%g", shadowmaps::LIGHT_MATCH_DISTANCE);
     char movingFaceSize[16];
     sprintf_s(movingFaceSize, "%u", shadowmaps::MOVING_FACE_SIZE);
-    char middleStart[8], farStart[8], middleFaceSize[16], farFaceSize[16];
+    char middleStart[8], farStart[8], extraStart[8], middleFaceSize[16], farFaceSize[16];
     sprintf_s(middleStart, "%d", shadowmaps::SIZE_STARTS[1]);
     sprintf_s(farStart, "%d", shadowmaps::SIZE_STARTS[2]);
+    sprintf_s(extraStart, "%d", shadowmaps::SIZE_STARTS[3]);
     sprintf_s(middleFaceSize, "%u", shadowmaps::FACE_SIZES[1]);
     sprintf_s(farFaceSize, "%u", shadowmaps::FACE_SIZES[2]);
     char lightReach[16];
     sprintf_s(lightReach, "%g", shadowmaps::LIGHT_REACH);
     char culledLamps[8];
     sprintf_s(culledLamps, "%d", MAX_CULLED_LAMPS);
-    static_assert(shadowmaps::SIZE_COUNT == 3);
+    static_assert(shadowmaps::SIZE_COUNT == 4);
+    static_assert(shadowmaps::FACE_SIZES[2] == shadowmaps::FACE_SIZES[3]);
     const D3D_SHADER_MACRO macros[] = { { "MAX_LIGHTS", lightCount }, { "LIGHT_MATCH_DISTANCE", matchDistance },
         { "MOVING_FACE_SIZE", movingFaceSize }, { "MIDDLE_START", middleStart }, { "FAR_START", farStart },
+        { "EXTRA_START", extraStart },
         { "MIDDLE_FACE_SIZE", middleFaceSize }, { "FAR_FACE_SIZE", farFaceSize },
         { "LIGHT_REACH", lightReach }, { "MAX_CULLED_LAMPS", culledLamps }, { nullptr, nullptr } };
 
@@ -2850,7 +2859,7 @@ static void DrawAddedLamps(ID3D11DeviceContext *ctx)
     for (int n = 0; n < shadowmaps::SIZE_COUNT; ++n)
         maps[n] = shadowmaps::CubeViews[n].Get();
     ctx1->PSSetShaderResources(ADDED_MAPS_SLOT, shadowmaps::SIZE_COUNT, maps);
-    static_assert(ADDED_LIST_SLOT == ADDED_MAPS_SLOT + shadowmaps::SIZE_COUNT);
+    static_assert(ADDED_MAPS_SLOT + shadowmaps::SIZE_COUNT <= CULLED_DEPTH_SLOT && ADDED_LIST_SLOT > WINDOW_MAP_SLOT);
     ID3D11ShaderResourceView *lampList = AddedLampView.Get();
     ctx1->PSSetShaderResources(ADDED_LIST_SLOT, 1, &lampList);
     ID3D11SamplerState *compareSampler = shadowmaps::CompareSampler.Get();
@@ -3279,6 +3288,22 @@ static void DrawAdvancedSettings()
     if(ImGui::SliderInt("Particle light limit",&particleLimit,1,int(emission_policy::ParticleLimit),"%d",ImGuiSliderFlags_AlwaysClamp))
     {glow::ParticleLightLimit=particleLimit;reshade::set_config_value(nullptr,CONFIG_SECTION,"ParticleLightLimit",particleLimit);}
     if(ImGui::IsItemHovered())ImGui::SetTooltip("Maximum particle lights within the emissive and Shadowed lights limits. Higher values cost CPU/GPU time; unsupported or hidden particle sources may still be absent.");
+    float particleStrength = particle_field_policy::CleanStrength(particle_emission::Strength.load());
+    if (ImGui::SliderFloat("Particle light strength", &particleStrength, 0.0f, 64.0f, "%.2fx",
+            ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic))
+    {
+        particle_emission::Strength = particle_field_policy::CleanStrength(particleStrength);
+        reshade::set_config_value(nullptr, CONFIG_SECTION, "ParticleLightStrength", particle_emission::Strength.load());
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Brightness of captured particle lights, independent of surface emissive strength.");
+    float particleRadius = particle_field_policy::CleanRadius(particle_emission::Radius.load());
+    if (ImGui::SliderFloat("Particle light radius", &particleRadius, 0.25f, 8.0f, "%.2fx",
+            ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic))
+    {
+        particle_emission::Radius = particle_field_policy::CleanRadius(particleRadius);
+        reshade::set_config_value(nullptr, CONFIG_SECTION, "ParticleLightRadius", particle_emission::Radius.load());
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Lighting reach for particles. Larger ranges include more shadow casters and cost more.");
     float glowStrength = glow::Strength;
     if (ImGui::SliderFloat("Emissive light strength", &glowStrength, 0.0f, 32.0f, "%.2f",
             ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic))
@@ -3561,6 +3586,17 @@ static void LoadSettings()
     reshade::get_config_value(nullptr, CONFIG_SECTION, "GlowLightStrength", glowStrength);
     reshade::get_config_value(nullptr, CONFIG_SECTION, "EmissiveLightStrength", glowStrength);
     glow::Strength = glowStrength;
+
+    // Preserve the old effective particle gain once, then keep it independent
+    // from later changes to the surface-emission control. Fresh profiles use 1.
+    float particleStrength = particle_emission::Strength.load();
+    const bool savedParticleStrength = reshade::get_config_value(nullptr, CONFIG_SECTION, "ParticleLightStrength", particleStrength);
+    particle_emission::Strength = particle_field_policy::CleanStrength(savedParticleStrength ? particleStrength : glowStrength);
+    if (!savedParticleStrength)
+        reshade::set_config_value(nullptr, CONFIG_SECTION, "ParticleLightStrength", particle_emission::Strength.load());
+    float particleRadius = particle_emission::Radius.load();
+    reshade::get_config_value(nullptr, CONFIG_SECTION, "ParticleLightRadius", particleRadius);
+    particle_emission::Radius = particle_field_policy::CleanRadius(particleRadius);
 
     float paintedKept = glow::PaintedKept;
     float paintedLight=glow::PaintedLight;

@@ -39,6 +39,7 @@ static std::vector<field::Cell> Cells;
 struct Selected {field::Key cell;uint64_t light=0;};
 static std::array<Selected,field::Lit> SelectedCells;
 static unsigned SelectedCount=0;
+static std::atomic<float> Strength=1.0f,Radius=1.0f;
 static std::chrono::steady_clock::time_point FieldTime{};
 static ComPtr<ID3D11Resource> FieldScene;
 static bool HasField=false;
@@ -90,7 +91,7 @@ struct Out {float4 position:SV_Position;float4 color0:COLOR0;float4 color1:COLOR
   bool valid=safe&&all(isfinite(p))&&abs(p.w)>1e-8;
   o.worldPosition=float4(valid?p.xyz/p.w-Offset.xyz:0,valid?1:0);
   float2 pixel=origin+(i==1?float2(7.5,0):(i==2?float2(0,7.5):0));
-  o.position=float4(pixel.x/512-1,1-pixel.y/256,.5,1);
+  o.position=float4(pixel.x/512-1,1-pixel.y/1024,.5,1);
   stream.Append(o);
  }
  stream.RestartStrip();
@@ -397,25 +398,27 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
 }
 static float Visibility()
 {return HasField?field::Visibility(std::chrono::duration<double>(std::chrono::steady_clock::now()-FieldTime).count()):0;}
-static unsigned ReadyCount(){return glow::Enabled&&Visibility()>0
+static unsigned ReadyCount(){return glow::Enabled&&field::CleanStrength(Strength.load())>0&&Visibility()>0
     ?std::min(unsigned(Cells.size()),emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())):0;}
 static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit)
 {
     if(!glow::Enabled){if(HasField||SelectedCount)Hide();return;}
-    const float visibility=Visibility();std::array<field::Key,field::Lit> prior{};
+    const float visibility=Visibility();const float gain=field::CleanStrength(Strength.load());
+    const float radius=field::LightRadius(Radius.load(),shadowmaps::Range.load());std::array<field::Key,field::Lit> prior{};
     for(unsigned i=0;i<SelectedCount;++i)prior[i]=SelectedCells[i].cell;
-    const unsigned wanted=std::min({allowance,field::Lit,
-        emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())});
+    const unsigned wanted=gain>0?std::min({allowance,field::Lit,
+        emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())}):0;
     const auto picks=field::Pick(Cells,prior,SelectedCount,shadowmaps::Camera,wanted);auto old=SelectedCells;SelectedCells={};const unsigned oldCount=SelectedCount;SelectedCount=Active=0;
     for(unsigned i=0;i<wanted&&picks[i]!=SIZE_MAX&&visibility>0;++i)
     {
         const auto &cell=Cells[picks[i]];const auto position=field::Position(cell);Selected selected{cell.key,0};
         for(unsigned j=0;j<oldCount;++j)if(old[j].cell==cell.key){selected.light=old[j].light;old[j].light=0;break;}
         if(!selected.light||!shadowmaps::Lights.contains(selected.light))selected.light=shadowmaps::NextLightKey++;
-        auto &light=shadowmaps::Lights[selected.light];const bool moved=!light.BuiltFrame||shadowmaps::Distance(light.Position,position)>.25f;
+        auto &light=shadowmaps::Lights[selected.light];const bool moved=!light.BuiltFrame||shadowmaps::Distance(light.Position,position)>.25f
+            ||std::abs(light.GlowRange-radius)>1e-4f;
         light.Glow=true;light.GlowShown=true;light.GlowHeld=false;light.EmitterKey=selected.light;light.Position=position;
-        light.GlowNormal={};light.GlowArea=1;light.GlowRange=std::clamp(field::CellWidth*4,2.0f,std::max(2.0f,std::min(24.0f,shadowmaps::Range.load())));
-        const double strength=std::max(0.0f,glow::Strength.load())/XM_PI*visibility;
+        light.GlowNormal={};light.GlowArea=1;light.GlowRange=radius;
+        const double strength=field::StrengthReference*gain/XM_PI*visibility;
         light.GlowColour={float(cell.power.x*strength),float(cell.power.y*strength),float(cell.power.z*strength)};light.LastSeen=shadowmaps::FrameNumber;
         if(moved)
         {
@@ -432,6 +435,7 @@ static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit)
 static void WriteState(FILE *file)
 {
     if(!file)return;
+    fprintf(file,"particle controls: strength %.3f, radius scale %.3f, world radius %.3f\n",field::CleanStrength(Strength.load()),field::CleanRadius(Radius.load()),field::LightRadius(Radius.load(),shadowmaps::Range.load()));
     fprintf(file,"particle field epoch %llu, field %d, cells %zu, selected %u, visibility %.3f; packet frame %llu epoch %llu draws %u triangles %u complete %d collecting %d busy %d\n",
         static_cast<unsigned long long>(Epoch),HasField?1:0,Cells.size(),SelectedCount,Visibility(),
         static_cast<unsigned long long>(Frame.ledger.frame),static_cast<unsigned long long>(Frame.ledger.epoch),

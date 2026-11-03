@@ -1,39 +1,39 @@
-# Renderer017 release source and build
+# Renderer019 source and build
 
-The 1.13.6 renderer image is 1005056 bytes, SHA256
-`6ed81ea023473c201d94be5c99fe8640b4c6da802031d7deb2bff029ff69d748`. RELEASE-SOURCE.json lists the 36 actual
-local compilation inputs: addon.cpp and the headers recorded by the existing
-strict full build's /showIncludes log. The frozen snapshot contains
-44 files; its documentation, release metadata and build wrappers are
-not described as compiled inputs.
+The 1.13.8 candidate image is 1,013,248 bytes, SHA256
+`73e0c5e4145993a1c3818837aa18127b3c92026890c97545f59ce863c0e3167b`.
+RELEASE-SOURCE.json lists the explicit addon.cpp translation unit and 34 local
+headers from the strict native build's actual /showIncludes log. The frozen
+45-file snapshot also contains documentation, licenses and wrappers; those
+are not compiled inputs. The checkout matches the compiled roster.
 
-The integration retains Sichii upstream3752e0b9 provenance and the maintainer's
-confirmed redistribution permission. This does not assign MIT/Apache terms
-to Sichii's work. ImGui/ReShade dependency licenses retain their own terms.
-The upstream README remains preserved.
-
-The release build used the existing VS18 x64/MSVC14.50.35717 toolchain and:
+The existing VS18 x64/MSVC14.50.35717 build exited 0 with:
 
 ```text
 /std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes
 /Ideps/reshade/include /Ideps/imgui addon.cpp /LD
 ```
 
-The preserved release command uses an isolated output/object/temp directory.
-The generic build.cmd wrapper omits /WX; add it for the release warning policy.
-No rebuild or test was run while sealing this existing exit0 build. Rebuilding
-produces a new candidate; use the exact runtime descriptor/release image pins
-for publication rather than substituting a new binary under old evidence.
+Output, object and temporary files were isolated on D:. This documentation
+does not rebuild the image. The generic build.cmd omits /WX; retain the strict
+release flags for a new candidate and give it new image/evidence pins.
+No stock game shader bytecode is distributed.
 
-017 includes surface-saturation restoration, the material/normal attempt,
-emissive limits1–256/particle limits1–32 with absent defaults64/4 and native-lamp
-priority in the shared Shadowed lights pool, finite particle-primitive exclusion,
-Sun border sampling guards and both softness UI scales1–10. Stored appearance
-is preserved until a softness control is adjusted. Invalid Sun gather lanes
-contribute no shadow and the original tap count remains. Alpha/radial behavior
-is retained from1.13.5 rather than a new correction.
+019 adds qualified constant painted-emission retention to the earlier larger
+particle packets, independent particle gain/radius, 512/64 light ceilings,
+lazy extra shadow tier and material-normal cache stability changes. The new
+controlled GPU fixture passed four marker groups using the latest retained
+native pair with owned geometry and state. The other two pairs have exact
+policy/provenance checks, not new geometry execution. ROOT's closure joins
+unchanged 018 components and the unchanged LIGHT_SHADER literal to retained
+particle/capacity/normal cases; it does not claim a new whole-runtime test.
 
-GPU closure is separate. Normal coverage is partial; Sun movement flicker is
-unresolved and histories are diagnostic. No full in-world visual, particle
-coverage or performance result follows from this build. See
-[the collaborator handoff](../docs/GRAPHICS-1.13.6-HANDOFF.md).
+Sichii upstream3752e0b9 provenance and the maintainer's confirmed redistribution
+permission remain intact; this does not assign an invented open-source license
+to that work. ImGui/ReShade retain their separate dependency licenses.
+
+Actual EQ2 appearance, automatic hook discovery, full beam/particle/normal
+coverage and FPS remain unproved. Sun movement flicker is unresolved. PR4's
+draw-state, per-light-radius and shader-layout changes require a separate
+resolved build; this image does not contain PR4. See
+[the candidate handoff](../docs/GRAPHICS-1.13.8-HANDOFF.md).

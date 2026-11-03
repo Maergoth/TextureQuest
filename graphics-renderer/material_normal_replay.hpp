@@ -1,7 +1,7 @@
 #pragma once
 // Included inside shadows after the existing kept-draw and shader helpers.
 // This cache contains current-frame native references, never texture byte copies.
-constexpr size_t MATERIAL_DRAW_LIMIT=128;
+constexpr size_t MATERIAL_DRAW_LIMIT=512;
 struct MaterialDraw { KeptDraw draw;std::vector<std::pair<uint64_t,uint64_t>> buffers;D3D11_RECT scissor{}; };
 struct MaterialStats
 {
@@ -59,7 +59,6 @@ static void KeepMaterialDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall
     if(!MaterialActive()||!lightbuffer::LightBuffer||lightbuffer::CurrentTarget!=lightbuffer::LightBuffer.Get()||call.Instances!=1||call.FirstInstance)return;
     MaterialCounts.frame=shadowmaps::FrameNumber;
     {std::lock_guard guard(Lock);if(!RepeatedShaders.contains(capture::VertexShader)){++MaterialCounts.unsupported;return;}}
-    if(MaterialDraws.size()>=MATERIAL_DRAW_LIMIT){++MaterialCounts.capacity;return;}
     ComPtr<ID3D11DeviceContext1> ctx1;if(FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))return;
     ComPtr<ID3D11GeometryShader> geometryStage;ComPtr<ID3D11HullShader> hull;ComPtr<ID3D11DomainShader> domain;
     ctx1->GSGetShader(&geometryStage,nullptr,nullptr);ctx1->HSGetShader(&hull,nullptr,nullptr);ctx1->DSGetShader(&domain,nullptr,nullptr);
@@ -105,6 +104,8 @@ static void KeepMaterialDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall
     const auto geometry=FindDrawnMesh(ctx,call);draw.Mesh=geometry.Key;
     const uint64_t key=FindCopyKey(geometry.Key,rows);
     if(auto old=MaterialDraws.find(key);old!=MaterialDraws.end()&&(!old->second.draw.Base||base))return;
+    // A better material pass may replace its existing base record even at capacity.
+    if(!MaterialDraws.contains(key)&&MaterialDraws.size()>=MATERIAL_DRAW_LIMIT){++MaterialCounts.capacity;return;}
     const auto remember=[&](ID3D11Buffer*buffer)
     {
         if(!buffer)return true;

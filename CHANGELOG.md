@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.13.8 — graphics candidate
+
+- Increase complete particle capture capacity to 512 draws / 32,768 triangles for the captured combat workload. Add independent particle-light strength and radius controls.
+- Raise emissive and particle light ceilings to 512 and 64, retaining absent defaults of 64 and 4. Shadow maps above 256 allocate on demand and can add 384 MiB of GPU memory.
+- Apply Painted emission kept as a constant share on strictly qualified native world passes, independent of optional emitter measurement and the camera-dependent light mask.
+- Increase the supported material-normal draw cache to 512 and allow better material records to replace base records even when full.
+- Preserve an original keyboard hook's handled F10 result, addressing the demonstrated redundant Windows menu activation path. Keep Home and existing Alt handling.
+- Reconcile the selected Graphical Effects group with all available bundles during normal refresh, including legacy effects-only selections that omitted the DLSS panel.
+- Preserve texture data 1.3.0 and the AIO/DLSS native payloads. Actual game behavior, complete beam coverage and FPS remain unproved; see the 1.13.8 handoff. This candidate is not a new public release.
+
 ## 1.13.7
 
 - Reuse the committed texture preparation during app and graphics-hook updates when the texture version and preparation identity are unchanged. Avoid rescanning every DDS file during setup, hook activation and cache cleanup.

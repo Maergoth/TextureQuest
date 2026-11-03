@@ -15,8 +15,18 @@
 namespace particle_field_policy
 {
 using DirectX::XMFLOAT3;using DirectX::XMFLOAT4;
-constexpr unsigned Triangles=8192,Draws=64,Tile=8,AtlasWidth=1024,AtlasHeight=512,Samples=28,Lit=emission_policy::ParticleLimit;
+constexpr unsigned Triangles=32768,Draws=512,Tile=8,AtlasWidth=1024,AtlasHeight=2048,Samples=28,Lit=emission_policy::ParticleLimit;
 constexpr float CellWidth=2;
+// Particle gain is independent of surface emission. Existing settings migrate
+// their previous shared gain once; both new multipliers otherwise start at 1.
+constexpr float StrengthReference=1.0f;
+inline float CleanStrength(float value){return std::isfinite(value)?std::clamp(value,0.0f,64.0f):1.0f;}
+inline float CleanRadius(float value){return std::isfinite(value)?std::clamp(value,.25f,8.0f):1.0f;}
+inline float LightRadius(float scale,float shadowRange)
+{
+    const float limit=std::isfinite(shadowRange)?std::max(2.0f,std::min(64.0f,shadowRange)):24.0f;
+    return std::clamp(CellWidth*4*CleanRadius(scale),2.0f,limit);
+}
 constexpr double CaptureSeconds=.5,HoldSeconds=.20,ExpireSeconds=.70;
 struct Key { int x=0,y=0,z=0; auto operator<=>(const Key&)const=default; };
 struct Power { double x=0,y=0,z=0; };

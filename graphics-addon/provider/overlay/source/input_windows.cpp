@@ -778,6 +778,22 @@ static bool tq_keyboard_alt_class(LPARAM lParam)
         return false;
 }
 
+// F10 is also a Windows menu key without the Alt context bit. Preserve an
+// original hook's handled result for it; ordinary keys (including Home) keep
+// the upstream chaining policy. No key is suppressed unless already handled.
+template <DWORD hook_id>
+static bool tq_keyboard_handled_menu_key(WPARAM wParam, LPARAM lParam)
+{
+    if (tq_keyboard_alt_class<hook_id>(lParam))
+        return true;
+    if constexpr (hook_id == WH_KEYBOARD)
+        return wParam == VK_F10;
+    else if constexpr (hook_id == WH_KEYBOARD_LL)
+        return lParam != 0 && reinterpret_cast<const KBDLLHOOKSTRUCT *>(lParam)->vkCode == VK_F10;
+    else
+        return false;
+}
+
 // Private compatibility evidence only. No key codes, text, scan codes, handles,
 // addresses or thread IDs are logged. One shared cap lasts for this DLL load.
 #if defined(TQ_PRIVATE_INPUT_COMPAT_TRACE) && TQ_PRIVATE_INPUT_COMPAT_TRACE
@@ -826,14 +842,14 @@ static LRESULT CALLBACK handle_windows_hook(int nCode, WPARAM wParam, LPARAM lPa
 			it != s_windows_hooks.end())
 		{
 			const HOOKPROC orig_hook_proc = it->second.second;
-			// Alt-class keyboard hooks retain nonzero results below. Mouse behavior remains unchanged.
+			// Handled Alt/F10 keyboard results are retained below. Mouse behavior remains unchanged.
 			// Nonzero mouse results continue the chain so ReShade can still receive input.
 			const LRESULT result = orig_hook_proc(nCode, wParam, lParam);
 			if constexpr (hook_id == WH_KEYBOARD || hook_id == WH_KEYBOARD_LL)
 			{
 				// Honor only Alt-class nonzero decisions. Other keys, including
 				// Home, follow upstream zero-return/nonzero-chain behavior.
-				if (result != 0 && tq_keyboard_alt_class<hook_id>(lParam))
+				if (result != 0 && tq_keyboard_handled_menu_key<hook_id>(wParam, lParam))
 				{
 					tq_private_input_honored<hook_id>(lParam, false);
 					return result;
@@ -853,7 +869,7 @@ static LRESULT CALLBACK handle_windows_hook(int nCode, WPARAM wParam, LPARAM lPa
 			{
 				// Honor only Alt-class nonzero decisions. Other keys, including
 				// Home, follow upstream zero-return/nonzero-chain behavior.
-				if (result != 0 && tq_keyboard_alt_class<hook_id>(lParam))
+				if (result != 0 && tq_keyboard_handled_menu_key<hook_id>(wParam, lParam))
 				{
 					tq_private_input_honored<hook_id>(lParam, true);
 					return result;

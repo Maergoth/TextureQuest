@@ -25,17 +25,24 @@
 #include <unordered_set>
 #include <vector>
 #include "lamp_holder_policy.hpp"
+#include "emission_policy.hpp"
 
 namespace shadowmaps
 {
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
-constexpr int MAX_LIGHTS = 256;
+constexpr int MAX_LIGHTS = static_cast<int>(emission_policy::GlowLimit);
 // the first slot of each map size, nearest lights first; a size's slots run up to the next size's first slot
-constexpr int SIZE_STARTS[] = { 0, 16, 64 };
-constexpr UINT FACE_SIZES[] = { 1024, 512, 256 };
-constexpr int SIZE_COUNT = 3;
+constexpr int SIZE_STARTS[] = { 0, 16, 64, 256 };
+constexpr UINT FACE_SIZES[] = { 1024, 512, 256, 256 };
+constexpr int SIZE_COUNT = 4;
+// The fourth tier keeps the old 256 maps intact and is allocated only on actual
+// demand beyond them. Every cube array remains within the D11 slice limit.
+static_assert((SIZE_STARTS[1]-SIZE_STARTS[0])*6 <= D3D11_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION);
+static_assert((SIZE_STARTS[2]-SIZE_STARTS[1])*6 <= D3D11_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION);
+static_assert((SIZE_STARTS[3]-SIZE_STARTS[2])*6 <= D3D11_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION);
+static_assert((MAX_LIGHTS-SIZE_STARTS[3])*6 <= D3D11_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION);
 constexpr UINT MOVING_FACE_SIZE = 512;
 constexpr UINT MAX_MOVING = 256;
 constexpr UINT MAX_RECORDS = 4096;
@@ -265,6 +272,8 @@ struct LightTable
     // x is 1 when the light's moving-object map has anything in it
     XMFLOAT4 Moving[MAX_LIGHTS];
 };
+static_assert(sizeof(LightTable) == 32 + 32 * MAX_LIGHTS);
+static_assert(sizeof(LightTable) <= D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16);
 
 static Frame CurrentFrame;
 static uint64_t FrameNumber = 1;
@@ -588,6 +597,14 @@ static bool CreateCubeArray(ID3D11Device *dev, UINT size, UINT count, ComPtr<ID3
     return SUCCEEDED(dev->CreateShaderResourceView(texture.Get(), &viewDesc, &view));
 }
 
+// Extra 256 maps cost 384 MiB at D32/256px; lower limits pay no texture cost.
+static bool EnsureExtraCubeArray(ID3D11Device *dev)
+{
+    constexpr int extra = SIZE_COUNT - 1;
+    return CubeViews[extra] || CreateCubeArray(dev, FACE_SIZES[extra], MAX_LIGHTS - SIZE_STARTS[extra],
+        CubeTextures[extra], &FaceViews[SIZE_STARTS[extra] * 6], CubeViews[extra]);
+}
+
 static bool CreateMovingObjects(ID3D11Device *dev)
 {
     if (!CreateCubeArray(dev, MOVING_FACE_SIZE, SIZE_STARTS[1], MovingTexture, MovingFaceViews, MovingView))
@@ -616,7 +633,8 @@ static bool CreateObjects(ID3D11Device *dev)
     if (FAILED(dev->QueryInterface(IID_PPV_ARGS(&dev1))))
         return false;
 
-    for (int index = 0; index < SIZE_COUNT; ++index)
+    // Preserve the original allocation until a selected light needs the extra tier.
+    for (int index = 0; index < SIZE_COUNT - 1; ++index)
         if (!CreateCubeArray(dev, FACE_SIZES[index], GetSizeEnd(index) - SIZE_STARTS[index], CubeTextures[index],
                 &FaceViews[SIZE_STARTS[index] * 6], CubeViews[index]))
             return false;
@@ -2602,6 +2620,15 @@ static void EndFrame(ID3D11Device *dev, ID3D11DeviceContext *ctx)
     const UINT probeSlot = FrameNumber % PROBE_LATENCY;
     ReadProbes(ctx, probeSlot);
     const std::vector<uint64_t> selected = AssignSlots();
+    if (!CubeViews[SIZE_COUNT - 1] && std::any_of(selected.begin(), selected.end(), [](uint64_t key) {
+            return Lights.at(key).Slot >= SIZE_STARTS[SIZE_COUNT - 1];
+        }) && !EnsureExtraCubeArray(dev))
+    {
+        reshade::log::message(reshade::log::level::error, "Could not allocate the requested extra shadow maps.");
+        Reset();
+        CreateFailed = true;
+        return;
+    }
 
     ComPtr<ID3D11DeviceContext1> ctx1;
     if (SUCCEEDED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))

@@ -1,10 +1,10 @@
 # Source versus runtime payloads
 
-This source bundle contains no executable runtime payload. After the normal
-1.13.5 local install is verified, copy the exact final package002 RUNTIME.json
-here into the app checkout and preserve the corresponding notices. Do not
-publish this staging note in place of that descriptor and do not reuse the old
-tracked schema-v6 descriptor or its obsolete two DLLs.
+This source bundle contains no executable runtime payload. RUNTIME.json pins
+the current 1.13.8 candidate: renderer019 and the conditional handled-F10
+provider, with the other six native payloads unchanged from1.13.6/1.13.7.
+RELEASE-1138-PROVENANCE.json records the source/build and controlled-evidence
+joins. Older release provenance and notices remain historical records.
 
 Build the installer with an explicit --graphics-runtime-dir pointing to the
 verified complete release runtime. build_installer.py validates every selected
