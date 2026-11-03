@@ -12,14 +12,14 @@
     }
   },
   "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
-  "revision": "TextureQuest renderer019 / 1.13.8 candidate",
+  "revision": "TextureQuest standalone renderer020 / 1.13.8 candidate",
   "source_manifest": {
-    "bytes": 7523,
-    "sha256": "4e17384e0469d9c1d85d57fa7d51ed9346164d59fa67ae036b387b64a534e22a"
+    "bytes": 7408,
+    "sha256": "ff3fb7313d78abe74f7e8e4131587070b98c37db684b63847be733ab5ec4343e"
   },
   "native_release_asset": {
-    "bytes": 1013248,
-    "sha256": "73e0c5e4145993a1c3818837aa18127b3c92026890c97545f59ce863c0e3167b"
+    "bytes": 1015808,
+    "sha256": "0d092e7869d4832c0d83eb59a3cbfa096525d04ca54d55799c8fa835ae77addc"
   },
   "files": [
     {
@@ -94,8 +94,8 @@
     },
     {
       "name": "shadows.hpp",
-      "bytes": 189389,
-      "sha256": "229b6f858167650d08106e121e3bcb1c9f4ea26d7100d2df0d04f95d8a4bcd12"
+      "bytes": 190472,
+      "sha256": "48862c209d4615f879885ebfbe9b7145485883c5bb6fa0269c66f6d6193fc32b"
     },
     {
       "name": "texturequest_world_presets.hpp",
@@ -144,8 +144,8 @@
     },
     {
       "name": "glow.hpp",
-      "bytes": 106762,
-      "sha256": "cf65b377ca4ee92611641ccba13f1a35bf9f6f44052b7a29a996c8b90d3ea98b"
+      "bytes": 107935,
+      "sha256": "257352baa0f814b3ef25032812857d5fadbe5cba867b20de5118068a9f4f93c9"
     },
     {
       "name": "painted_emission_policy.hpp",
@@ -174,8 +174,8 @@
     },
     {
       "name": "particle_emission.hpp",
-      "bytes": 34020,
-      "sha256": "08edbc16b4ce1784a18a1d7e328e03566eac3456a7437f0f1bfdbdc52b845dda"
+      "bytes": 34183,
+      "sha256": "8e4e689f12974836d2f42455f3ce39bc8950c407a14b6e721652b82b2bb50e56"
     },
     {
       "name": "particle_emission_policy.hpp",
@@ -194,8 +194,8 @@
     },
     {
       "name": "material_normal_replay.hpp",
-      "bytes": 18538,
-      "sha256": "3408f18a56b24828d17e88d304cc69afb40bfa6a54ca448c7dac646791ff9bef"
+      "bytes": 18546,
+      "sha256": "3c42444a292bc67b4b8985779549ed9c95a57bb8571701fed9ed0c8b40af828e"
     }
   ],
   "compile_targets": [
@@ -215,42 +215,74 @@
   "build": {
     "exit_code": 0,
     "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes",
-    "result": {
-      "bytes": 1267,
-      "sha256": "4f23014031070ed4baae9c1c1668f3f88009381aa537ffbc7ddb43efbe528b1c"
+    "source_handoff": {
+      "bytes": 2606,
+      "sha256": "87dd5575b485138061e8792f894f1b424b62278103578a2ce24a09d65424b703"
     },
     "compiled_source_manifest": {
-      "bytes": 9455,
-      "sha256": "22d74d8e395d6f997783ad0a7025f56e2d6a9660df6314b7326434510cf429e3"
+      "bytes": 6295,
+      "sha256": "8ec673b51223c4f6da3e11382f5b73c39487836477159f5fda424a6efc0cf99b"
     },
     "log": {
-      "bytes": 54588,
-      "sha256": "876a7a644c80a34b9aea520fe3f24858286e21fb019dac0a56499f338113346d"
-    }
-  },
-  "controlled_gpu": {
-    "result": {
-      "bytes": 2764,
-      "sha256": "053c7ed065d36273facb1f37272aee2e399451de37f7c1751f32ddc720d6396d"
+      "bytes": 54732,
+      "sha256": "eebb1aacbb0b3387ba49387f29d2ce23aaf06ca2c145a769eea1f2439abe1488"
     },
-    "actual_gpu_executed": true,
-    "scope": "Latest retained native pair with owned geometry/state; four marker groups passed. Other two pairs have exact policy/provenance checks, not new geometry execution."
+    "performed_for_this_source_preparation": false
   },
   "prior_metadata": {
-    "revision": "TextureQuest renderer017 / 1.13.6",
+    "revision": "TextureQuest renderer019 / 1.13.8 candidate",
     "native_release_asset": {
-      "bytes": 1005056,
-      "sha256": "6ed81ea023473c201d94be5c99fe8640b4c6da802031d7deb2bff029ff69d748"
+      "bytes": 1013248,
+      "sha256": "73e0c5e4145993a1c3818837aa18127b3c92026890c97545f59ce863c0e3167b"
     },
-    "historical_only": true
+    "build": {
+      "exit_code": 0,
+      "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes",
+      "result": {
+        "bytes": 1267,
+        "sha256": "4f23014031070ed4baae9c1c1668f3f88009381aa537ffbc7ddb43efbe528b1c"
+      },
+      "compiled_source_manifest": {
+        "bytes": 9455,
+        "sha256": "22d74d8e395d6f997783ad0a7025f56e2d6a9660df6314b7326434510cf429e3"
+      },
+      "log": {
+        "bytes": 54588,
+        "sha256": "876a7a644c80a34b9aea520fe3f24858286e21fb019dac0a56499f338113346d"
+      }
+    },
+    "controlled_gpu": {
+      "result": {
+        "bytes": 2764,
+        "sha256": "053c7ed065d36273facb1f37272aee2e399451de37f7c1751f32ddc720d6396d"
+      },
+      "actual_gpu_executed": true,
+      "scope": "Latest retained native pair with owned geometry/state; four marker groups passed. Other two pairs have exact policy/provenance checks, not new geometry execution."
+    },
+    "root_test_closure": {
+      "bytes": 5275,
+      "sha256": "dfabf7e6db9388caa590a872697010aa43784e5cd343aa4195c0ff2071f9d824"
+    },
+    "static_peer": {
+      "bytes": 2326,
+      "sha256": "35bd50a66aa7382a96474e1852e9c8278fc2932d2135fd3843008f1984f615ee"
+    },
+    "prior_metadata": {
+      "revision": "TextureQuest renderer017 / 1.13.6",
+      "native_release_asset": {
+        "bytes": 1005056,
+        "sha256": "6ed81ea023473c201d94be5c99fe8640b4c6da802031d7deb2bff029ff69d748"
+      },
+      "historical_only": true
+    }
   },
-  "qualification": "Source/build joins and targeted controlled evidence; actual game appearance, automatic discovery, full beam/particle coverage and FPS are not proved. PR4 combined source requires a separate build.",
-  "root_test_closure": {
-    "bytes": 5275,
-    "sha256": "dfabf7e6db9388caa590a872697010aa43784e5cd343aa4195c0ff2071f9d824"
-  },
-  "static_peer": {
-    "bytes": 2326,
-    "sha256": "35bd50a66aa7382a96474e1852e9c8278fc2932d2135fd3843008f1984f615ee"
+  "qualification": "Exact standalone020 source joins to retained strict DLL0d092e78.277 focused CPU/config checks. Earlier019 GPU/closure remains historical; no standalone020 hardware rerun is claimed. PR4 author code/80-byte ABI is not included.",
+  "focused_cpu": {
+    "result": {
+      "bytes": 2055,
+      "sha256": "539c2cacd280f7c9009995eb2db9b61445674acda97cb2f225685073a36f9fec"
+    },
+    "checks": 277,
+    "scope": "Exact source/config/retirement gates; no GPU execution."
   }
 }

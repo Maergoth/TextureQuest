@@ -24,7 +24,7 @@ static ID3D11Resource *MaterialSource=nullptr;
 static DirectX::XMFLOAT4X4 MaterialCamera{};
 static DirectX::XMFLOAT3 MaterialOffset{};
 static bool MaterialActive()
-{return tq_world::Work.Point()&&Enabled&&glow::Enabled&&!shadowmaps::ShowColours;}
+{return tq_world::Work.Point()&&Enabled&&glow::SourcesActive()&&!shadowmaps::ShowColours;}
 static void BeginMaterialFrame()
 {
     MaterialDraws.clear();{std::lock_guard guard(MaterialVersionLock);MaterialBufferVersions.clear();}MaterialFrame=UINT64_MAX;MaterialSource=nullptr;

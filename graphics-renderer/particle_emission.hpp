@@ -268,7 +268,7 @@ static bool AdditiveSource(const D3D11_BLEND_DESC &b,const D3D11_DEPTH_STENCIL_D
 }
 static void Observe(ID3D11DeviceContext *native,const shadowmaps::DrawCall &call,uint64_t vs,uint64_t ps)
 {
-    if(!glow::Enabled||Probing)return;uint64_t vh=0,ph=0;if(!Profiles(vs,ps,vh,ph))return;
+    if(!glow::ParticlesActive()||Probing)return;uint64_t vh=0,ph=0;if(!Profiles(vs,ps,vh,ph))return;
     // These same native shaders also draw ordinary alpha-over fire layers.
     // Those layers are outside this explicitly additive emission domain; they
     // must neither poison a complete additive packet nor be counted as energy.
@@ -328,15 +328,16 @@ static void Seal(ID3D11DeviceContext *native)
 }
 static void ReadFrame(ID3D11DeviceContext *ctx)
 {
+    if (!glow::ParticlesActive() && (HasField || SelectedCount || Frame.collecting)) Hide();
     // No exact selected draw in this frame is a complete empty observation,
     // only when no earlier frame owns the one packet and this is our service
     // turn. A frame whose draws were skipped while pending is never empty.
-    if(glow::Enabled&&!Frame.busy&&ObservedFrame!=shadowmaps::FrameNumber
+    if(glow::ParticlesActive()&&!Frame.busy&&ObservedFrame!=shadowmaps::FrameNumber
         &&emission_policy::Samples.Recent(shadowmaps::FrameNumber)
         &&shadowmaps::CameraFound&&lightbuffer::WorldToClipKnown&&lightbuffer::LightBuffer)
         BeginFrame(ctx);
     Seal(ctx);
-    if(!glow::Enabled){if(HasField||SelectedCount)Hide();}
+    if(!glow::ParticlesActive()){if(HasField||SelectedCount)Hide();}
     if(Frame.busy)
     {
         BOOL complete=FALSE;const auto result=ctx->GetData(Frame.complete.Get(),&complete,sizeof(complete),D3D11_ASYNC_GETDATA_DONOTFLUSH);
@@ -345,7 +346,7 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
             DomainStats domain;domain.frame=Frame.ledger.frame;domain.epoch=Frame.ledger.epoch;
             domain.draws=Frame.ledger.draws;domain.triangles=Frame.ledger.triangles;
             bool valid=Frame.ledger.CanPublish(Epoch,std::chrono::duration<double>(std::chrono::steady_clock::now()-Frame.time).count())
-                &&glow::Enabled&&Frame.scene.Get()==lightbuffer::LightBuffer.Get();
+                &&glow::ParticlesActive()&&Frame.scene.Get()==lightbuffer::LightBuffer.Get();
             if(valid)for(unsigned i=0;i<Frame.ledger.draws;++i)
             {D3D11_QUERY_DATA_SO_STATISTICS stats{};const auto state=ctx->GetData(Frame.records[i].query.Get(),&stats,sizeof(stats),D3D11_ASYNC_GETDATA_DONOTFLUSH);
                 if(state==S_FALSE){Pending=1;return;}
@@ -356,7 +357,7 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
                 if(mapped==DXGI_ERROR_WAS_STILL_DRAWING){Pending=1;return;}positionMapped=SUCCEEDED(mapped);valid=positionMapped;}
             if(valid){const auto mapped=ctx->Map(Frame.reducedRead.Get(),0,D3D11_MAP_READ,D3D11_MAP_FLAG_DO_NOT_WAIT,&material);
                 if(mapped==DXGI_ERROR_WAS_STILL_DRAWING){ctx->Unmap(Frame.read.Get(),0);Pending=1;return;}materialMapped=SUCCEEDED(mapped);valid=materialMapped;}
-            std::vector<field::Cell> candidate;candidate.reserve(field::Triangles*8);
+            std::vector<field::Cell> candidate;if(valid)candidate.reserve(field::Triangles*8);
             if(valid)
             {
                 domain.inspected=true;
@@ -398,11 +399,11 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
 }
 static float Visibility()
 {return HasField?field::Visibility(std::chrono::duration<double>(std::chrono::steady_clock::now()-FieldTime).count()):0;}
-static unsigned ReadyCount(){return glow::Enabled&&field::CleanStrength(Strength.load())>0&&Visibility()>0
+static unsigned ReadyCount(){return glow::ParticlesActive()&&field::CleanStrength(Strength.load())>0&&Visibility()>0
     ?std::min(unsigned(Cells.size()),emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())):0;}
 static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit)
 {
-    if(!glow::Enabled){if(HasField||SelectedCount)Hide();return;}
+    if(!glow::ParticlesActive()){if(HasField||SelectedCount)Hide();return;}
     const float visibility=Visibility();const float gain=field::CleanStrength(Strength.load());
     const float radius=field::LightRadius(Radius.load(),shadowmaps::Range.load());std::array<field::Key,field::Lit> prior{};
     for(unsigned i=0;i<SelectedCount;++i)prior[i]=SelectedCells[i].cell;

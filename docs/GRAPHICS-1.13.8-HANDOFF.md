@@ -2,12 +2,16 @@
 
 This batch is being prepared as a separate PR against current public main.
 Keep that PR open and unmerged for review. Sichii's draft PR4 remains untouched;
-a separate local integration branch will combine both changes for a normal
-portable-app build. No new public release or local installation is included in
+the separate local integration branch combines both changes for a normal
+portable-app build with a different renderer binary. No new public release or local installation is included in
 this preparation. The generator remains paused.
 
 ## Changes
 
+- Emissive lights has separate Particles and Objects checkboxes. Both absent
+  defaults remain on; disabling one stops its source sampling and retires only
+  its owned output. Both off also stops emission material-normal work. Advanced
+  settings stay saved independently and are greyed out for a disabled source.
 - Complete particle packets now allow 512 draws and 32,768 triangles. The
   captured combat workload contained 331 supported draws and 24,212 triangles,
   exceeding the old draw bound. This increases capacity without accepting an
@@ -48,7 +52,9 @@ The grouped-refresh change passed 33 focused headless tests, including legacy
 selections, missing/incomplete capability status, compare-and-save refusal and
 no writes to synthetic feature settings. The provider's exact input fragment
 and an owned Windows message loop reproduced the conditional F10 menu path;
-they do not establish the result in EQ2. The strict renderer build passed.
+they do not establish the result in EQ2. The exact standalone020 strict renderer build passed, with 277 focused
+CPU/config/retirement checks. No new standalone020 GPU execution was performed.
+The earlier019 GPU evidence below remains historical.
 The new painted-kept GPU fixture passed four marker groups on the latest
 retained native pair with controlled geometry/state, including measurement
 refusals, alpha, feature-off gates, lifetime and native state/constant bytes.
@@ -62,12 +68,12 @@ coverage and FPS are not proved. Material normals still have partial coverage;
 Sun movement flicker remains a separate unresolved issue. Controlled cases do
 not establish every native callback or scene.
 
-PR4 and this batch overlap in renderer draw handling, shader layouts, light-map
-bindings and controls. Their branches cannot yet be described as conflict-free.
-The combined local build must preserve PR4's draw-state refactor and per-light
-shadow radii while porting these fixes, then compile and check the actual
-resolved source. Existing test results do not certify that future combined
-binary. Neither PR should absorb or overwrite the other author's branch.
+This PR contains the standalone020 renderer (DLL0d092e78…), without PR4 author
+code. The separately resolved local integration includes PR4 and our fixes, uses
+its 80-byte glow/per-light far-plane ABI (DLL554bb0ab…), and passed its own five
+controlled GPU marker groups. Those results belong to that different binary.
+Keep both branches independently reviewable; neither should overwrite the other
+author's branch. No actual game appearance or FPS proof is implied.
 
 Keep local captures and stock game binaries out of the repository. Install the
 combined candidate only through the normal app/hook flow after the games are

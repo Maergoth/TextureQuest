@@ -2,6 +2,7 @@
 
 ## 1.13.8 — graphics candidate
 
+- Add independent Particles and Objects checkboxes under Emissive lights. Preserve both-on absent defaults and saved controls; stop disabled source sampling and retire only its owned output.
 - Increase complete particle capture capacity to 512 draws / 32,768 triangles for the captured combat workload. Add independent particle-light strength and radius controls.
 - Raise emissive and particle light ceilings to 512 and 64, retaining absent defaults of 64 and 4. Shadow maps above 256 allocate on demand and can add 384 MiB of GPU memory.
 - Apply Painted emission kept as a constant share on strictly qualified native world passes, independent of optional emitter measurement and the camera-dependent light mask.

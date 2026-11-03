@@ -1,8 +1,8 @@
 TextureQuest 1.13.8 experimental graphics candidate
 
-Renderer019: 1013248 bytes, SHA256 73e0c5e4145993a1c3818837aa18127b3c92026890c97545f59ce863c0e3167b.
+Standalone renderer020: 1015808 bytes, SHA256 0d092e7869d4832c0d83eb59a3cbfa096525d04ca54d55799c8fa835ae77addc.
 Provider6.8.0.6: 5410816 bytes, SHA256 af45413c73384ec412930efd2daba2523f8d04003ff8e89d2cf86e1141ab7d9e.
 
-Larger complete particle capture, independent particle gain/radius, light ceilings512/64 (defaults64/4), lazy extra map tier up to384 MiB, supported normal-cache stability, conditional original-handled F10 retention, and qualified constant painted-emission retention. AIO/NVIDIA/main texture addon and texture1.3.0 bytes are unchanged. Historical profile IDs/private labels remain compatibility tokens.
+Independent Particles/Objects emissive source checkboxes (both absent defaults on), producer/owned-output retirement and no source sampling when disabled. Larger complete particle capture, independent particle gain/radius, light ceilings512/64 (defaults64/4), lazy extra map tier up to384 MiB, supported normal-cache stability, conditional original-handled F10 retention, and qualified constant painted-emission retention. AIO/NVIDIA/main texture addon and texture1.3.0 bytes are unchanged. Historical profile IDs/private labels remain compatibility tokens.
 
-Strict renderer build and targeted controlled CPU/GPU/input evidence do not prove actual EQ2 appearance, automatic hook discovery, full beam/particle/normal coverage, F10 cure or FPS. Sun movement flicker remains unresolved. PR4 integration needs a separate resolved source build. Preserve saved feature choices; absent frame generation remains off. No license or redistribution permission is expanded. Existing licenses/notices remain intact.
+Strict standalone020 build,277 focused CPU/config checks and explicitly retained historical 019 controlled GPU/input evidence do not prove actual EQ2 appearance, automatic hook discovery, full beam/particle/normal coverage, F10 cure or FPS. Sun movement flicker remains unresolved. This standalone image contains no PR4 code; the separately tested local PR4 integration is a different binary. Preserve saved feature choices; absent frame generation remains off. No license or redistribution permission is expanded. Existing licenses/notices remain intact.

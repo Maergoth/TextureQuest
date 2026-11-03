@@ -4,40 +4,33 @@
   "state": "unmerged candidate; no public release or local install",
   "runtime": {
     "bytes": 8489,
-    "sha256": "981c7df123ef06b4a4aec0257f175b67b368be076b089e5e7d53e7a4cd204405"
+    "sha256": "dd9f6c579d860bbf52fffe358777620a893301c3b020c8550d2a2c1f49a80bdb"
   },
   "previous_runtime": {
     "bytes": 8311,
     "sha256": "371c162242715d9ce27bff2f764e90f5a0824a8be2bcf8389cd9fe2f261f9d24"
   },
   "renderer": {
+    "variant": "standalone020; no PR4 code",
     "native": {
-      "bytes": 1013248,
-      "sha256": "73e0c5e4145993a1c3818837aa18127b3c92026890c97545f59ce863c0e3167b"
+      "bytes": 1015808,
+      "sha256": "0d092e7869d4832c0d83eb59a3cbfa096525d04ca54d55799c8fa835ae77addc"
     },
     "source_snapshot": {
-      "bytes": 7523,
-      "sha256": "4e17384e0469d9c1d85d57fa7d51ed9346164d59fa67ae036b387b64a534e22a"
+      "bytes": 7408,
+      "sha256": "ff3fb7313d78abe74f7e8e4131587070b98c37db684b63847be733ab5ec4343e"
     },
     "compiled_source": {
-      "bytes": 9455,
-      "sha256": "22d74d8e395d6f997783ad0a7025f56e2d6a9660df6314b7326434510cf429e3"
+      "bytes": 6295,
+      "sha256": "8ec673b51223c4f6da3e11382f5b73c39487836477159f5fda424a6efc0cf99b"
     },
-    "build": {
-      "bytes": 1267,
-      "sha256": "4f23014031070ed4baae9c1c1668f3f88009381aa537ffbc7ddb43efbe528b1c"
+    "source_handoff": {
+      "bytes": 2606,
+      "sha256": "87dd5575b485138061e8792f894f1b424b62278103578a2ce24a09d65424b703"
     },
-    "new_gpu": {
-      "bytes": 2764,
-      "sha256": "053c7ed065d36273facb1f37272aee2e399451de37f7c1751f32ddc720d6396d"
-    },
-    "root_test_closure": {
-      "bytes": 5275,
-      "sha256": "dfabf7e6db9388caa590a872697010aa43784e5cd343aa4195c0ff2071f9d824"
-    },
-    "static_peer": {
-      "bytes": 2326,
-      "sha256": "35bd50a66aa7382a96474e1852e9c8278fc2932d2135fd3843008f1984f615ee"
+    "compile_log": {
+      "bytes": 54732,
+      "sha256": "eebb1aacbb0b3387ba49387f29d2ce23aaf06ca2c145a769eea1f2439abe1488"
     },
     "compiled_source_joins": [
       {
@@ -112,8 +105,8 @@
       },
       {
         "name": "shadows.hpp",
-        "bytes": 189389,
-        "sha256": "229b6f858167650d08106e121e3bcb1c9f4ea26d7100d2df0d04f95d8a4bcd12"
+        "bytes": 190472,
+        "sha256": "48862c209d4615f879885ebfbe9b7145485883c5bb6fa0269c66f6d6193fc32b"
       },
       {
         "name": "texturequest_world_presets.hpp",
@@ -162,8 +155,8 @@
       },
       {
         "name": "glow.hpp",
-        "bytes": 106762,
-        "sha256": "cf65b377ca4ee92611641ccba13f1a35bf9f6f44052b7a29a996c8b90d3ea98b"
+        "bytes": 107935,
+        "sha256": "257352baa0f814b3ef25032812857d5fadbe5cba867b20de5118068a9f4f93c9"
       },
       {
         "name": "painted_emission_policy.hpp",
@@ -192,8 +185,8 @@
       },
       {
         "name": "particle_emission.hpp",
-        "bytes": 34020,
-        "sha256": "08edbc16b4ce1784a18a1d7e328e03566eac3456a7437f0f1bfdbdc52b845dda"
+        "bytes": 34183,
+        "sha256": "8e4e689f12974836d2f42455f3ce39bc8950c407a14b6e721652b82b2bb50e56"
       },
       {
         "name": "particle_emission_policy.hpp",
@@ -212,42 +205,53 @@
       },
       {
         "name": "material_normal_replay.hpp",
-        "bytes": 18538,
-        "sha256": "3408f18a56b24828d17e88d304cc69afb40bfa6a54ca448c7dac646791ff9bef"
+        "bytes": 18546,
+        "sha256": "3c42444a292bc67b4b8985779549ed9c95a57bb8571701fed9ed0c8b40af828e"
       }
     ],
-    "retained_018_components": [
-      {
-        "name": "emission_policy.hpp",
-        "bytes": 3065,
-        "sha256": "223bf366a0651b95121698e942054f7bd7d5728a53b80a636e8d4d23d30b96fd"
+    "focused_cpu": {
+      "result": {
+        "bytes": 2055,
+        "sha256": "539c2cacd280f7c9009995eb2db9b61445674acda97cb2f225685073a36f9fec"
       },
-      {
-        "name": "particle_field_policy.hpp",
-        "bytes": 8690,
-        "sha256": "d0b2cef3fa933e9181384fa8ab310dc712920b856e934d0c19a2bf476cd0ebc1"
+      "checks": 277,
+      "gpu_executed": false
+    },
+    "historical_renderer019": {
+      "native": {
+        "bytes": 1013248,
+        "sha256": "73e0c5e4145993a1c3818837aa18127b3c92026890c97545f59ce863c0e3167b"
       },
-      {
-        "name": "particle_emission.hpp",
-        "bytes": 34020,
-        "sha256": "08edbc16b4ce1784a18a1d7e328e03566eac3456a7437f0f1bfdbdc52b845dda"
+      "source_snapshot": {
+        "bytes": 7523,
+        "sha256": "4e17384e0469d9c1d85d57fa7d51ed9346164d59fa67ae036b387b64a534e22a"
       },
-      {
-        "name": "shadow_maps.hpp",
-        "bytes": 124109,
-        "sha256": "70db95f7626bb763f91b30a797ae566d9e8c016b7f53c564686e20d29e091e22"
+      "compiled_source": {
+        "bytes": 9455,
+        "sha256": "22d74d8e395d6f997783ad0a7025f56e2d6a9660df6314b7326434510cf429e3"
       },
-      {
-        "name": "material_normal_replay.hpp",
-        "bytes": 18538,
-        "sha256": "3408f18a56b24828d17e88d304cc69afb40bfa6a54ca448c7dac646791ff9bef"
+      "build": {
+        "bytes": 1267,
+        "sha256": "4f23014031070ed4baae9c1c1668f3f88009381aa537ffbc7ddb43efbe528b1c"
+      },
+      "new_gpu": {
+        "bytes": 2764,
+        "sha256": "053c7ed065d36273facb1f37272aee2e399451de37f7c1751f32ddc720d6396d"
+      },
+      "root_test_closure": {
+        "bytes": 5275,
+        "sha256": "dfabf7e6db9388caa590a872697010aa43784e5cd343aa4195c0ff2071f9d824"
+      },
+      "static_peer": {
+        "bytes": 2326,
+        "sha256": "35bd50a66aa7382a96474e1852e9c8278fc2932d2135fd3843008f1984f615ee"
+      },
+      "prior_018_cases": {
+        "bytes": 1635,
+        "sha256": "dfe50ff7a137cae999902d047c7381bd8c2af73926822f36fea210ce40d50218"
       }
-    ],
-    "retained_LIGHT_SHADER_sha256": "3bbe01dcde7c2b6050e02b1efb85311b4d12a71a69dea92671e09ac956e05336",
-    "prior_018_cases": {
-      "bytes": 1635,
-      "sha256": "dfe50ff7a137cae999902d047c7381bd8c2af73926822f36fea210ce40d50218"
-    }
+    },
+    "standalone020_gpu": "Not rerun; retained019 proof remains historical. The separate combined local PR4 binary and its actual GPU result are not this native payload."
   },
   "provider": {
     "native": {
@@ -371,10 +375,14 @@
     "sha256": "a9057b253d6006fc317f801466ce1f55b9d4a27d0baf5e3227863a1cf9e6924c"
   },
   "limits": [
-    "Actual retained latest native pair with controlled owned geometry/state; other two pairs have exact policy/provenance checks only.",
-    "Retained018 evidence joins exact unchanged components and shader literal; no full old-suite replay or whole-runtime coverage.",
+    "Standalone020 exact strict compiled-source/DLL join and277 focused CPU/config checks; no new standalone020 hardware execution.",
+    "Retained019/018 controlled evidence remains historical; no full old-suite replay or whole-runtime coverage.",
     "Actual EQ2 automatic discovery, appearance, F10 cure, full beam/particle/normal coverage and FPS remain unproved.",
-    "PR4 is not included; a semantic port and separate actual combined build remain pending.",
-    "No local install, public release, C write or generator action."
-  ]
+    "PR4 code is not part of this candidate branch; combined local integration uses a different binary/source.",
+    "This source preparation performed no build, package, install, public release, Git mutation, C write or generator action."
+  ],
+  "previous_candidate_runtime": {
+    "bytes": 8489,
+    "sha256": "981c7df123ef06b4a4aec0257f175b67b368be076b089e5e7d53e7a4cd204405"
+  }
 }

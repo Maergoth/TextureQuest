@@ -3134,7 +3134,7 @@ static void DrawAddedLights(ID3D11DeviceContext *ctx)
     if (!tq_world::Work.Point() || !Enabled)
         return;
 
-    DrawMaterialNormals(ctx);
+    if (glow::SourcesActive()) DrawMaterialNormals(ctx);
     DrawAddedLamps(ctx);
     DrawCulledLamps(ctx);
     // a frame capture saves the light buffer with the added lamps, which its after-lights snapshot, taken before them,
@@ -3187,6 +3187,14 @@ static void DrawSettings()
     }
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Supported emissive surfaces and local textured particles light nearby surfaces. Other material and character glow may be unsupported.");
+    ImGui::Indent();ImGui::BeginDisabled(!emissive);
+    bool emissiveParticles=glow::ParticlesEnabled;
+    if (ImGui::Checkbox("Particles",&emissiveParticles))
+    {glow::ParticlesEnabled=emissiveParticles;reshade::set_config_value(nullptr,CONFIG_SECTION,"EmissiveParticles",emissiveParticles);}
+    bool emissiveObjects=glow::ObjectsEnabled;
+    if (ImGui::Checkbox("Objects",&emissiveObjects))
+    {glow::ObjectsEnabled=emissiveObjects;reshade::set_config_value(nullptr,CONFIG_SECTION,"EmissiveObjects",emissiveObjects);}
+    ImGui::EndDisabled();ImGui::Unindent();
     ImGui::EndDisabled();
     if (emissive)
     {
@@ -3284,6 +3292,7 @@ static void DrawAdvancedSettings()
     if(ImGui::SliderInt("Emissive light limit",&emissiveLimit,1,glow::MAX_GLOW_LIGHTS,"%d",ImGuiSliderFlags_AlwaysClamp))
     {glow::LightLimit=emissiveLimit;reshade::set_config_value(nullptr,CONFIG_SECTION,"EmissiveLightLimit",emissiveLimit);}
     if(ImGui::IsItemHovered())ImGui::SetTooltip("Shares the Shadowed lights pool with native lamps, which take priority. Higher limits cost CPU/GPU time and do not guarantee emitter coverage.");
+    ImGui::BeginDisabled(!glow::ParticlesEnabled);
     int particleLimit=glow::ParticleLightLimit;
     if(ImGui::SliderInt("Particle light limit",&particleLimit,1,int(emission_policy::ParticleLimit),"%d",ImGuiSliderFlags_AlwaysClamp))
     {glow::ParticleLightLimit=particleLimit;reshade::set_config_value(nullptr,CONFIG_SECTION,"ParticleLightLimit",particleLimit);}
@@ -3304,8 +3313,10 @@ static void DrawAdvancedSettings()
         reshade::set_config_value(nullptr, CONFIG_SECTION, "ParticleLightRadius", particle_emission::Radius.load());
     }
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Lighting reach for particles. Larger ranges include more shadow casters and cost more.");
+    ImGui::EndDisabled();
+    ImGui::BeginDisabled(!glow::ObjectsEnabled);
     float glowStrength = glow::Strength;
-    if (ImGui::SliderFloat("Emissive light strength", &glowStrength, 0.0f, 32.0f, "%.2f",
+    if (ImGui::SliderFloat("Object light strength", &glowStrength, 0.0f, 32.0f, "%.2f",
             ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic))
     {
         glow::Strength = glowStrength;
@@ -3321,6 +3332,8 @@ static void DrawAdvancedSettings()
         reshade::set_config_value(nullptr, CONFIG_SECTION, "PaintedEmissionKept", paintedKept);
     }
     ImGui::EndDisabled();
+    ImGui::EndDisabled();
+
     ImGui::EndDisabled();
 
     ImGui::SeparatorText("Sun shadows");
@@ -3574,6 +3587,10 @@ static void LoadSettings()
     reshade::get_config_value(nullptr, CONFIG_SECTION, "GlowLights", glowLights);
     reshade::get_config_value(nullptr, CONFIG_SECTION, "EmissiveLights", glowLights);
     glow::Enabled = glowLights;
+    bool emissiveParticles=true,emissiveObjects=true;
+    reshade::get_config_value(nullptr,CONFIG_SECTION,"EmissiveParticles",emissiveParticles);
+    reshade::get_config_value(nullptr,CONFIG_SECTION,"EmissiveObjects",emissiveObjects);
+    glow::ParticlesEnabled=emissiveParticles;glow::ObjectsEnabled=emissiveObjects;
 
     int emissiveLimit=emission_policy::DefaultGlowLimit;
     reshade::get_config_value(nullptr,CONFIG_SECTION,"EmissiveLightLimit",emissiveLimit);

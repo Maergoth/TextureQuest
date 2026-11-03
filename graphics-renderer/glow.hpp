@@ -568,6 +568,11 @@ struct Candidate
 };
 
 static std::atomic<bool> Enabled = true;
+// Saved choices; the existing world/master gate determines effective work.
+static std::atomic<bool> ObjectsEnabled = true, ParticlesEnabled = true;
+static bool ObjectsActive(){return Enabled && ObjectsEnabled && tq_world::Work.Point();}
+static bool ParticlesActive(){return Enabled && ParticlesEnabled && tq_world::Work.Point();}
+static bool SourcesActive(){return ObjectsActive() || ParticlesActive();}
 static std::atomic<int> LightLimit = emission_policy::DefaultGlowLimit;
 static std::atomic<int> ParticleLightLimit = emission_policy::DefaultParticleLimit;
 static std::atomic<float> Strength = 1.0f;
@@ -773,6 +778,7 @@ static bool IsQualifiedPaintedWorld(ID3D11DeviceContext *ctx, uint64_t pixelShad
 
 static bool CreateMeasureObjects(ID3D11Device *dev)
 {
+    if (MeasureTarget && MeasureBlend && MeasureDepthState) return true;
     const D3D11_TEXTURE2D_DESC desc = { MEASURE_WIDTH, MEASURE_HEIGHT, 1, 1, DXGI_FORMAT_R32G32B32A32_FLOAT, { 1, 0 },
         D3D11_USAGE_DEFAULT, D3D11_BIND_RENDER_TARGET };
     const D3D11_TEXTURE2D_DESC depthDesc = { MEASURE_WIDTH, MEASURE_HEIGHT, 1, 1, DXGI_FORMAT_R32_TYPELESS, { 1, 0 },
@@ -902,8 +908,9 @@ static bool DrawPaintedAside(ID3D11DeviceContext *ctx, const shadowmaps::DrawCal
 // measured alone
 static bool HandleColourDraw(ID3D11DeviceContext *ctx, const shadowmaps::DrawCall &call, uint64_t pixelShader)
 {
+    if (!ObjectsActive()) { if (PaintedDestination) CompositePainted(ctx); return false; }
     D3D11_TEXTURE2D_DESC desc = {};
-    const bool eligible = Enabled && tq_world::Work.Point() && call.Instances == 1
+    const bool eligible = call.Instances == 1
         && call.FirstInstance == 0 && lightbuffer::LightBuffer
         && lightbuffer::CurrentTarget != lightbuffer::LightBuffer.Get()
         && lightbuffer::IsScreenSized(lightbuffer::CurrentTarget, desc);
@@ -978,6 +985,7 @@ static bool HandleColourDraw(ID3D11DeviceContext *ctx, const shadowmaps::DrawCal
 
 static bool CreateShapeObjects(ID3D11Device *dev)
 {
+    if (ShapeVertexShader && ShapeStreamShader) return true;
     ComPtr<ID3DBlob> code;
     if (!shadowmaps::CompileShader(SHAPE_SHADER, "vs_5_0", code)
         || FAILED(dev->CreateVertexShader(code->GetBufferPointer(), code->GetBufferSize(), nullptr, &ShapeVertexShader)))
@@ -1569,7 +1577,7 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
 {
     LightsDrawnThisFrame = 0;
     ComPtr<ID3D11DeviceContext1> ctx1;
-    if (!Enabled || CreateFailed || !UpsampleShader || !shadowmaps::CubeViews[0] || !shadowmaps::OffsetKnown
+    if (!SourcesActive() || CreateFailed || !UpsampleShader || !shadowmaps::CubeViews[0] || !shadowmaps::OffsetKnown
         || !lightbuffer::LightBufferTarget || !lightbuffer::DepthCopyView || FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))
         return;
 
@@ -1598,6 +1606,7 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
         auto it = shadowmaps::Lights.find(shadowmaps::SlotLights[slot]);
         D3D11_RECT rect;
         if (!shadowmaps::SlotActive[slot] || it == shadowmaps::Lights.end() || !it->second.GlowShown || !it->second.BuiltFrame
+            || (Emitters.contains(it->second.EmitterKey) ? !ObjectsActive() : !ParticlesActive())
             || !FindLightRect(worldToClip, it->second.BuiltPosition,
                 std::min(it->second.GlowRange, shadowmaps::Range.load()) * BOUNCE_REACH, desc.Width, desc.Height, rect))
             continue;
@@ -1702,7 +1711,7 @@ static void CompositePainted(ID3D11DeviceContext *ctx)
 
     D3D11_TEXTURE2D_DESC desc;
     PaintedTexture->GetDesc(&desc);
-    const XMFLOAT4 kept = { Enabled && tq_world::Work.Point() ? painted_emission_policy::Kept(PaintedKept.load()) : 1.0f, 0, 0, 0 };
+    const XMFLOAT4 kept = { ObjectsActive() ? painted_emission_policy::Kept(PaintedKept.load()) : 1.0f, 0, 0, 0 };
     ComPtr<ID3DDeviceContextState> previous;
     ctx1->SwapDeviceContextState(shadowmaps::DrawState.Get(), &previous);
     ctx1->UpdateSubresource(CompositeBuffer.Get(), 0, nullptr, &kept, 0, 0);
@@ -1821,7 +1830,7 @@ static bool CreateObjects(ID3D11Device *dev)
     if (FAILED(dev->CreateBlendState(&blendDesc, &LightBlend))
         || FAILED(dev->CreateBuffer(&frameDesc, nullptr, &FrameBuffer))
         || FAILED(dev->CreateBuffer(&lightDesc, nullptr, &LightConstantsBuffer))
-        || !CreateShapeObjects(dev) || !CreateMeasureObjects(dev)) return false;
+        || !CreateShapeObjects(dev)) return false;
     return lightbuffer::CreatePixelShader(dev, "ps_reduced_light", ReducedLightShader, LIGHT_SHADER)
         && lightbuffer::CreatePixelShader(dev, "ps_upsample", UpsampleShader, LIGHT_SHADER);
 }
@@ -2117,54 +2126,51 @@ static void WriteState()
     fclose(file);
 }
 
+// Retire only surface-owned lights. Particle keys are owned by their producer.
+static void RetireObjects()
+{
+    if (!Emitters.empty())
+        std::erase_if(shadowmaps::Lights, [](const auto &entry) {
+            return entry.second.Glow && Emitters.contains(entry.second.EmitterKey);
+        });
+    Emitters.clear();CellLights.clear();ActiveCells.clear();
+    std::erase_if(ShapeReads, [](const ShapeRead &read){return !read.BoundsOnly;});
+    std::fill(std::begin(MeasuredKeys),std::end(MeasuredKeys),0);
+    std::fill(std::begin(MeasuredTickets),std::end(MeasuredTickets),0);
+}
+
 static void EndFrame(ID3D11Device *dev, ID3D11DeviceContext *ctx,unsigned particleDemand=0)
 {
     const shadowmaps::CpuScope scope(shadowmaps::GlowCpu);
     ParticleSlots=0;
-    if (capture::State == capture::Phase::Capturing)
-        WriteState();
-    if (PaintedDestination)
-        CompositePainted(ctx);
-    MeasuredThisFrame = false;
-    LightsDrawnLastFrame = LightsDrawnThisFrame;
-    LightsDrawnThisFrame = 0;
-    CellsPickedLastFrame = 0;
-    // the shadow maps roll their counters on this frame, when a second has passed since they last did
-    if (std::chrono::steady_clock::now() - shadowmaps::SecondStart >= std::chrono::seconds(1))
-    {
-        PaintedSkippedLastSecond = PaintedSkippedThisSecond;
-        PaintedSkippedThisSecond = 0;
-    }
-    if (CreateFailed || !shadowmaps::DrawState)
-        return;
-    if (!CreateObjects(dev))
-    {
-        reshade::log::message(reshade::log::level::error, "Could not create the glow light objects.");
-        Reset();
-        CreateFailed = true;
-        return;
-    }
-
-    // bounds are read with glow lights off too: lamps leave out the model that holds their light
+    if (capture::State == capture::Phase::Capturing) WriteState();
+    if (PaintedDestination) CompositePainted(ctx);
+    if (!ObjectsActive()) RetireObjects();
+    MeasuredThisFrame=false;LightsDrawnLastFrame=LightsDrawnThisFrame;LightsDrawnThisFrame=0;CellsPickedLastFrame=0;
+    if (std::chrono::steady_clock::now()-shadowmaps::SecondStart >= std::chrono::seconds(1))
+    {PaintedSkippedLastSecond=PaintedSkippedThisSecond;PaintedSkippedThisSecond=0;}
+    if (CreateFailed || !shadowmaps::DrawState) return;
+    // Native point shadows still need mesh bounds to exclude a lamp's holder.
+    // This does not sample source colour, create emission depth or capture particles.
+    if (!CreateShapeObjects(dev)) {CreateFailed=true;return;}
     ReadShapes(ctx);
     ComPtr<ID3D11DeviceContext1> ctx1;
-    if (FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))
-        return;
+    if (FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1)))) return;
     RequestBounds(ctx1.Get());
-    if (!Enabled)
-        return;
-
-    ReadMeasure(ctx);
-    // an emitter out of view still lights what is near it, so it lasts as long as its mesh is kept
-    std::erase_if(Emitters, [](const auto &entry) { return !shadowmaps::Casters.contains(entry.first); });
-    std::erase_if(CellLights, [](const auto &entry) { return !shadowmaps::Lights.contains(entry.second); });
-    for (auto &[casterKey, emitter] : Emitters)
-        if (!emitter.ShapeRequested)
-        {
-            RequestShape(ctx1.Get(), casterKey, emitter);
-            break;
-        }
-    if (shadowmaps::CameraFound)
-        PickLights(particleDemand);
+    if (!SourcesActive()) return;
+    if (!CreateObjects(dev) || (ObjectsActive() && !CreateMeasureObjects(dev)))
+    {
+        reshade::log::message(reshade::log::level::error,"Could not create the glow light objects.");
+        Reset();CreateFailed=true;return;
+    }
+    if (ObjectsActive())
+    {
+        ReadMeasure(ctx);
+        std::erase_if(Emitters, [](const auto &entry){return !shadowmaps::Casters.contains(entry.first);});
+        std::erase_if(CellLights, [](const auto &entry){return !shadowmaps::Lights.contains(entry.second);});
+        for (auto &[casterKey,emitter] : Emitters)
+            if (!emitter.ShapeRequested) {RequestShape(ctx1.Get(),casterKey,emitter);break;}
+    }
+    if (shadowmaps::CameraFound) PickLights(ParticlesActive()?particleDemand:0);
 }
 }

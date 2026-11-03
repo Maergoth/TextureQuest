@@ -1,7 +1,7 @@
-# Renderer019 source and build
+# Standalone renderer020 source and build
 
-The 1.13.8 candidate image is 1,013,248 bytes, SHA256
-`73e0c5e4145993a1c3818837aa18127b3c92026890c97545f59ce863c0e3167b`.
+The 1.13.8 candidate image is 1,015,808 bytes, SHA256
+`0d092e7869d4832c0d83eb59a3cbfa096525d04ca54d55799c8fa835ae77addc`.
 RELEASE-SOURCE.json lists the explicit addon.cpp translation unit and 34 local
 headers from the strict native build's actual /showIncludes log. The frozen
 45-file snapshot also contains documentation, licenses and wrappers; those
@@ -19,10 +19,15 @@ does not rebuild the image. The generic build.cmd omits /WX; retain the strict
 release flags for a new candidate and give it new image/evidence pins.
 No stock game shader bytecode is distributed.
 
-019 adds qualified constant painted-emission retention to the earlier larger
+020 adds independent Particles and Objects checkboxes under Emissive lights.
+Both absent defaults remain on. Disabled sources stop producer sampling and retire
+only their own output; both off also stops material-normal work for emission.
+Saved source controls remain independent. Exact standalone source/config gates
+passed 277 focused CPU checks; the retained strict DLL was not rebuilt here.
+
+019 added qualified constant painted-emission retention to the earlier larger
 particle packets, independent particle gain/radius, 512/64 light ceilings,
-lazy extra shadow tier and material-normal cache stability changes. The new
-controlled GPU fixture passed four marker groups using the latest retained
+lazy extra shadow tier and material-normal cache stability changes. The historical 019 controlled GPU fixture passed four marker groups using the latest retained
 native pair with owned geometry and state. The other two pairs have exact
 policy/provenance checks, not new geometry execution. ROOT's closure joins
 unchanged 018 components and the unchanged LIGHT_SHADER literal to retained
@@ -33,7 +38,8 @@ permission remain intact; this does not assign an invented open-source license
 to that work. ImGui/ReShade retain their separate dependency licenses.
 
 Actual EQ2 appearance, automatic hook discovery, full beam/particle/normal
-coverage and FPS remain unproved. Sun movement flicker is unresolved. PR4's
-draw-state, per-light-radius and shader-layout changes require a separate
-resolved build; this image does not contain PR4. See
+coverage and FPS remain unproved. Sun movement flicker is unresolved.
+This image contains no PR4 code and uses the standalone 64-byte glow layout.
+The separate local PR4 integration preserves its 80-byte/per-light-far-plane ABI
+and has a different DLL hash; its GPU checks do not become a standalone020 run. See
 [the candidate handoff](../docs/GRAPHICS-1.13.8-HANDOFF.md).
