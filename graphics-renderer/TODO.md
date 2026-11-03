@@ -10,13 +10,15 @@
   alpha-tested this way.
 - **Objects never seen on screen cast nothing.** Casters are cached from the lamp passes and from the light buffer's
   base light, which draws every opaque mesh on screen; an object that has not been on screen yet is unknown. The game's
-  sun shadow maps did not help: in the outdoor capture checked they held only the player's character. A cached object is given to every lamp
-  whose shadow range holds its origin, so a large mesh whose origin lies outside that range casts only once seen in the
-  lamp's own pass. Cached objects near the camera are kept while out of view; one removed from the world is dropped once
-  its spot is seen in view without it, and keeps casting until then. Ground cover (grass tufts, small shrubs) is
-  drawn each frame as one batch of small double-sided quads, from a vertex buffer the CPU rewrites with world positions,
-  alpha-tested at alpha above 0.5. It never appears in a lamp pass, so lamps do not light it and it casts nothing.
-  Casting would mean copying that batch from the main pass each frame into the moving-object maps, with its alpha test.
+  sun shadow maps did not help: in the outdoor capture checked they held only the player's character. A cached object
+  is given to every lamp whose shadow radius (its reach times the fade's extent, or a fallback until the reach is read)
+  reaches its bounds, or its origin until its bounds are read, so a large mesh whose origin lies outside that radius
+  casts only once its bounds are read or it is seen in the lamp's own pass. Cached objects near the camera are kept
+  while out of view; one removed from the world is dropped once its spot is seen in view without it, and keeps casting
+  until then. Ground cover (grass tufts, small shrubs) is drawn each frame as one batch of small double-sided quads,
+  from a vertex buffer the CPU rewrites with world positions, alpha-tested at alpha above 0.5. It never appears in a
+  lamp pass, so lamps do not light it and it casts nothing. Casting would mean copying that batch from the main pass
+  each frame into the moving-object maps, with its alpha test.
 - **Billboards count as moving.** They turn to face the camera, so they go into the per-frame moving-object maps, and
   their shadow is the quad as it faces the camera rather than as it would face the light.
 - **Meshes shared by several moving characters.** A mesh drawn at more than one position in a frame is never marked

@@ -265,17 +265,16 @@ static bool AdditiveSource(const D3D11_BLEND_DESC &b,const D3D11_DEPTH_STENCIL_D
         &&a.DestBlend==D3D11_BLEND_ONE&&a.BlendOp==D3D11_BLEND_OP_ADD&&(a.RenderTargetWriteMask&7)==7
         &&d.DepthEnable&&d.DepthWriteMask==D3D11_DEPTH_WRITE_MASK_ZERO&&mask==0xffffffffu;
 }
-static void Observe(ID3D11DeviceContext *native,const shadowmaps::DrawCall &call,uint64_t vs,uint64_t ps)
+static void Observe(shadowmaps::BoundDraw &bound,uint64_t vs,uint64_t ps)
 {
     if(!glow::Enabled||Probing)return;uint64_t vh=0,ph=0;if(!Profiles(vs,ps,vh,ph))return;
+    auto *native=bound.Context;const shadowmaps::DrawCall &call=bound.Call;
     // These same native shaders also draw ordinary alpha-over fire layers.
     // Those layers are outside this explicitly additive emission domain; they
     // must neither poison a complete additive packet nor be counted as energy.
-    ComPtr<ID3D11BlendState> blend;ComPtr<ID3D11DepthStencilState> depth;UINT mask=0;
-    native->OMGetBlendState(&blend,nullptr,&mask);native->OMGetDepthStencilState(&depth,nullptr);
+    UINT mask=0;const D3D11_BLEND_DESC *blend=bound.GetBlend(&mask);const D3D11_DEPTH_STENCIL_DESC *depth=bound.GetDepth();
     if(!blend||!depth)return;
-    D3D11_BLEND_DESC b{};D3D11_DEPTH_STENCIL_DESC d{};blend->GetDesc(&b);depth->GetDesc(&d);
-    if(!AdditiveSource(b,d,mask))return;
+    if(!AdditiveSource(*blend,*depth,mask))return;
     if(capture::State==capture::Phase::Capturing&&call.Instances==1&&call.Count<=field::Triangles*3)
         capture::SaveGlowBuffers(native,capture::DrawIndex,true);
     emission_policy::Samples.NoteParticle(shadowmaps::FrameNumber);if(!BeginFrame(native))return;
@@ -286,11 +285,12 @@ static void Observe(ID3D11DeviceContext *native,const shadowmaps::DrawCall &call
         ||lightbuffer::CurrentTarget==lightbuffer::LightBuffer.Get()||Frame.scene.Get()!=lightbuffer::LightBuffer.Get()
         ||Frame.target.Get()!=lightbuffer::CurrentTarget){reject();return;}
     D3D11_TEXTURE2D_DESC target{};if(!lightbuffer::IsScreenSized(lightbuffer::CurrentTarget,target)){reject();return;}
-    D3D11_PRIMITIVE_TOPOLOGY topology{};native->IAGetPrimitiveTopology(&topology);if(topology!=D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST){reject();return;}
-    D3D11_VIEWPORT viewport{};UINT views=1;native->RSGetViewports(&views,&viewport);
+    if(bound.GetTopology()!=D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST){reject();return;}
+    UINT views=0;const D3D11_VIEWPORT &viewport=bound.GetViewport(views);
     if(views!=1||viewport.TopLeftX||viewport.TopLeftY||viewport.Width!=target.Width||viewport.Height!=target.Height){reject();return;}
-    XMFLOAT4 rows[shadowmaps::ROW_COUNT];XMMATRIX camera;
-    if(!shadowmaps::ReadDrawRows(native,rows)){reject();return;}
+    XMMATRIX camera;
+    if(!bound.ReadRows()){reject();return;}
+    const auto &rows=bound.Rows;
     for(const auto &row:rows)if(!std::isfinite(row.x)||!std::isfinite(row.y)||!std::isfinite(row.z)||!std::isfinite(row.w)){reject();return;}
     if(!shadowmaps::FindWorldToClip(rows,camera)||!lightbuffer::IsSameCamera(camera,XMLoadFloat4x4(&Frame.cameraMatrix))
         ||shadowmaps::CurrentOffset.x!=Frame.offset.x||shadowmaps::CurrentOffset.y!=Frame.offset.y||shadowmaps::CurrentOffset.z!=Frame.offset.z){reject();return;}
@@ -414,14 +414,14 @@ static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit)
         if(!selected.light||!shadowmaps::Lights.contains(selected.light))selected.light=shadowmaps::NextLightKey++;
         auto &light=shadowmaps::Lights[selected.light];const bool moved=!light.BuiltFrame||shadowmaps::Distance(light.Position,position)>.25f;
         light.Glow=true;light.GlowShown=true;light.GlowHeld=false;light.EmitterKey=selected.light;light.Position=position;
-        light.GlowNormal={};light.GlowArea=1;light.GlowRange=std::clamp(field::CellWidth*4,2.0f,std::max(2.0f,std::min(24.0f,shadowmaps::Range.load())));
+        light.GlowNormal={};light.GlowArea=1;light.GlowRange=std::clamp(field::CellWidth*4,2.0f,24.0f);
         const double strength=std::max(0.0f,glow::Strength.load())/XM_PI*visibility;
         light.GlowColour={float(cell.power.x*strength),float(cell.power.y*strength),float(cell.power.z*strength)};light.LastSeen=shadowmaps::FrameNumber;
         if(moved)
         {
-            light.CasterKeys.clear();unsigned scanned=0;
+            light.CasterKeys.clear();light.Radius=shadowmaps::FindShadowRadius(light);unsigned scanned=0;
             for(const auto &[key,caster]:shadowmaps::Casters){if(++scanned>2048||light.CasterKeys.size()>=128)break;
-                if(caster.FramesSeen>=shadowmaps::CONFIRM_FRAMES&&glow::FindCasterDistance(caster,position)<light.GlowRange)light.CasterKeys.insert(key);}
+                if(caster.FramesSeen>=shadowmaps::CONFIRM_FRAMES&&shadowmaps::FindCasterDistance(caster,position)<light.Radius)light.CasterKeys.insert(key);}
             ++light.Version;light.RedrawNow=true;
         }
         SelectedCells[SelectedCount++]=selected;++Active;

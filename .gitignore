@@ -24,3 +24,10 @@ local-release-receipt.json
 /src/texture_swapper/web/
 
 graphics-addon/out/
+
+# local agent tooling
+.memsearch/
+.serena/
+.claude/
+CLAUDE.md
+*.stackdump

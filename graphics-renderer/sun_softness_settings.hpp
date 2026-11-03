@@ -5,8 +5,8 @@ namespace sun_softness_settings
 {
 constexpr float Spread=0.00465f;
 constexpr float LegacyFactor=(1.0f/3.0f)/Spread;
-constexpr float Default=0.1f*LegacyFactor;
-constexpr float Maximum=2.0f*LegacyFactor;
+constexpr float Default=1.6f;
+constexpr float Maximum=4.0f;
 inline float Clean(float v,float fallback=Default){return std::isfinite(v)&&v>=0?std::min(v,Maximum):fallback;}
 struct Values{float Active=Default,Preference=Default;bool Saved=false;};
 // Old keys remain immutable historical values. A native-unit value always wins,
