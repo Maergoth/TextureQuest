@@ -3387,9 +3387,10 @@ static void DrawDebugSettings()
     ImGui::Text("%zu objects cached, %zu lights seen, %d maps ready", shadowmaps::Casters.size(),
         shadowmaps::Lights.size(), drawn);
     const int frames = std::max(shadowmaps::FramesLastSecond, 1);
-    ImGui::Text("per frame: %d extra lighting draws, %d lamp shader draws, %d character map draws; %zu meshes marked "
-        "moving", shadowmaps::ExtraDrawsLastSecond / frames, shadowmaps::LampShaderDrawsLastSecond / frames,
-        shadowmaps::MovingDrawsLastSecond / frames, shadowmaps::MovingMeshes.size());
+    ImGui::Text("per frame: %d extra lighting draws, %d lamp shader draws, %d character map draws (%d faces); %zu "
+        "meshes marked moving", shadowmaps::ExtraDrawsLastSecond / frames, shadowmaps::LampShaderDrawsLastSecond / frames,
+        shadowmaps::MovingDrawsLastSecond / frames, shadowmaps::MovingFacesLastSecond / frames,
+        shadowmaps::MovingMeshes.size());
     ImGui::Text("%d maps drawn in the last second, %d static caster draws, %d lamp draws with no reach",
         shadowmaps::MapsDrawnLastSecond, shadowmaps::StaticCasterDrawsLastSecond, shadowmaps::NoReachLampsLastSecond);
     ImGui::Text("%zu window maps, %d drawn in the last second", shadowmaps::Windows.size(),

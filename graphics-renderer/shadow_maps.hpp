@@ -16,6 +16,7 @@
 #include <wrl/client.h>
 #include <algorithm>
 #include <atomic>
+#include <bitset>
 #include <cfloat>
 #include <chrono>
 #include <cmath>
@@ -40,6 +41,8 @@ constexpr UINT FACE_SIZES[] = { 1024, 512, 256 };
 constexpr int SIZE_COUNT = 3;
 constexpr UINT MOVING_FACE_SIZE = 512;
 constexpr UINT MAX_MOVING = 256;
+// the moving maps' faces, six for each of the nearest size's slots
+constexpr UINT MOVING_SLICES = SIZE_STARTS[1] * 6;
 constexpr UINT MAX_RECORDS = 4096;
 // constants c[3..13]: object-to-clip rows, world rows, then the light position
 constexpr UINT FIRST_ROW = 3;
@@ -140,6 +143,39 @@ float4 main(float3 position : POSITION) : SV_Position
     float4 p = float4(position, 1);
     float4 w = float4(float3(dot(p, row0), dot(p, row1), dot(p, row2)) - CameraOffset.xyz, 1);
     return float4(dot(w, ViewProjection[0]), dot(w, ViewProjection[1]), dot(w, ViewProjection[2]), dot(w, ViewProjection[3]));
+}
+)";
+
+// draws a moving mesh into every moving-map face it reaches in one instanced draw: instance n draws into the slice at
+// Slices[Index.y + n] (a light's slot times 6 plus the face), with that slice's view-projection rows from FaceRows.
+// SV_InstanceID does not include the draw's start instance, so the list's start comes in Index.y.
+constexpr const char *INSTANCED_CASTER_SHADER = R"(
+cbuffer Caster : register(b0) { uint4 Index; };
+cbuffer Camera : register(b3) { float4 CameraOffset; };
+ByteAddressBuffer Worlds : register(t13);
+StructuredBuffer<float4> FaceRows : register(t14);
+Buffer<uint> Slices : register(t15);
+
+struct Output
+{
+    float4 position : SV_Position;
+    uint slice : SV_RenderTargetArrayIndex;
+};
+
+Output main(float3 position : POSITION, uint instance : SV_InstanceID)
+{
+    uint start = Index.x * 48;
+    float4 row0 = asfloat(Worlds.Load4(start));
+    float4 row1 = asfloat(Worlds.Load4(start + 16));
+    float4 row2 = asfloat(Worlds.Load4(start + 32));
+    float4 p = float4(position, 1);
+    float4 w = float4(float3(dot(p, row0), dot(p, row1), dot(p, row2)) - CameraOffset.xyz, 1);
+    Output output;
+    output.slice = Slices[Index.y + instance];
+    uint row = output.slice * 4;
+    output.position = float4(dot(w, FaceRows[row]), dot(w, FaceRows[row + 1]), dot(w, FaceRows[row + 2]),
+        dot(w, FaceRows[row + 3]));
+    return output;
 }
 )";
 
@@ -411,6 +447,13 @@ static ComPtr<ID3D11DepthStencilView> MovingFaceViews[SIZE_STARTS[1] * 6];
 static ComPtr<ID3D11ShaderResourceView> MovingView, MovingWorldView;
 static ComPtr<ID3D11Buffer> MovingWorldBuffer, MovingConstantsBuffer;
 static ComPtr<ID3D11VertexShader> MovingCasterShader;
+// the instanced moving-map path, all null where the GPU cannot pick the render target slice from the vertex shader,
+// which leaves the per-face drawing: a depth view over every moving face, each face's view-projection rows, the faces
+// each mesh is drawn into, and the draw's constants
+static ComPtr<ID3D11DepthStencilView> MovingArrayView;
+static ComPtr<ID3D11Buffer> MovingFaceRowBuffer, MovingSliceBuffer, InstancedConstantsBuffer;
+static ComPtr<ID3D11ShaderResourceView> MovingFaceRowView, MovingSliceView;
+static ComPtr<ID3D11VertexShader> InstancedCasterShader;
 // moving meshes drawn this frame, with their world rows, uploaded to MovingWorldBuffer before drawing
 // the light buffer's depth and camera-relative world-to-clip transform for this frame, set when the game finishes it
 static ComPtr<ID3D11ShaderResourceView> ProbeDepth;
@@ -525,6 +568,8 @@ static std::atomic<bool> ShowColours;
 static std::atomic<float> PointSoftness = sun_softness_settings::Default;
 static int MapsDrawnThisSecond, MapsDrawnLastSecond, CastersAddedThisSecond, CastersAddedLastSecond;
 static int ExtraDrawsThisSecond, ExtraDrawsLastSecond, MovingDrawsThisSecond, MovingDrawsLastSecond;
+// moving-map faces drawn into, which equals moving draws without instancing
+static int MovingFacesThisSecond, MovingFacesLastSecond;
 static int LampShaderDrawsThisSecond, LampShaderDrawsLastSecond;
 static int StaticCasterDrawsThisSecond, StaticCasterDrawsLastSecond;
 // lamp draws whose constants gave no reach
@@ -754,6 +799,55 @@ static bool CreateCubeArray(ID3D11Device *dev, UINT size, UINT count, ComPtr<ID3
     return SUCCEEDED(dev->CreateShaderResourceView(texture.Get(), &viewDesc, &view));
 }
 
+static void ResetInstancedObjects()
+{
+    MovingArrayView.Reset();
+    MovingFaceRowBuffer.Reset();
+    MovingSliceBuffer.Reset();
+    InstancedConstantsBuffer.Reset();
+    MovingFaceRowView.Reset();
+    MovingSliceView.Reset();
+    InstancedCasterShader.Reset();
+}
+
+// makes the instanced moving-map objects; false where the GPU cannot write the render target slice from the vertex
+// shader or an object cannot be made, which leaves the per-face drawing
+static bool CreateInstancedObjects(ID3D11Device *dev)
+{
+    D3D11_FEATURE_DATA_D3D11_OPTIONS3 options = {};
+    if (FAILED(dev->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS3, &options, sizeof(options)))
+        || !options.VPAndRTArrayIndexFromAnyShaderFeedingRasterizer)
+        return false;
+
+    D3D11_DEPTH_STENCIL_VIEW_DESC arrayDesc = {};
+    arrayDesc.Format = DXGI_FORMAT_D32_FLOAT;
+    arrayDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+    arrayDesc.Texture2DArray = { 0, 0, MOVING_SLICES };
+    if (FAILED(dev->CreateDepthStencilView(MovingTexture.Get(), &arrayDesc, &MovingArrayView)))
+        return false;
+
+    D3D11_BUFFER_DESC rowDesc = { MOVING_SLICES * 4 * 16, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0,
+        D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, 16 };
+    D3D11_BUFFER_DESC sliceDesc = { MAX_MOVING * MOVING_SLICES * 4, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE };
+    D3D11_BUFFER_DESC constantsDesc = { 16, D3D11_USAGE_DEFAULT, D3D11_BIND_CONSTANT_BUFFER };
+    if (FAILED(dev->CreateBuffer(&rowDesc, nullptr, &MovingFaceRowBuffer))
+        || FAILED(dev->CreateBuffer(&sliceDesc, nullptr, &MovingSliceBuffer))
+        || FAILED(dev->CreateBuffer(&constantsDesc, nullptr, &InstancedConstantsBuffer)))
+        return false;
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC rowViewDesc = {};
+    rowViewDesc.Format = DXGI_FORMAT_UNKNOWN;
+    rowViewDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+    rowViewDesc.Buffer = { 0, MOVING_SLICES * 4 };
+    D3D11_SHADER_RESOURCE_VIEW_DESC sliceViewDesc = {};
+    sliceViewDesc.Format = DXGI_FORMAT_R32_UINT;
+    sliceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+    sliceViewDesc.Buffer = { 0, MAX_MOVING * MOVING_SLICES };
+    return SUCCEEDED(dev->CreateShaderResourceView(MovingFaceRowBuffer.Get(), &rowViewDesc, &MovingFaceRowView))
+        && SUCCEEDED(dev->CreateShaderResourceView(MovingSliceBuffer.Get(), &sliceViewDesc, &MovingSliceView))
+        && CreateVertexShader(dev, INSTANCED_CASTER_SHADER, InstancedCasterShader);
+}
+
 static bool CreateMovingObjects(ID3D11Device *dev)
 {
     if (!CreateCubeArray(dev, MOVING_FACE_SIZE, SIZE_STARTS[1], MovingTexture, MovingFaceViews, MovingView))
@@ -773,6 +867,8 @@ static bool CreateMovingObjects(ID3D11Device *dev)
     if (FAILED(dev->CreateShaderResourceView(MovingWorldBuffer.Get(), &worldViewDesc, &MovingWorldView)))
         return false;
 
+    if (!CreateInstancedObjects(dev))
+        ResetInstancedObjects();
     return CreateVertexShader(dev, MOVING_CASTER_SHADER, MovingCasterShader);
 }
 
@@ -890,6 +986,7 @@ static void Reset()
     MovingWorldBuffer.Reset();
     MovingConstantsBuffer.Reset();
     MovingCasterShader.Reset();
+    ResetInstancedObjects();
     ProbeDepth.Reset();
     ProbeBuffer.Reset();
     VisibleBuffer.Reset();
@@ -1911,10 +2008,11 @@ static void WriteState()
     WriteVector(file, CurrentFrame.Camera);
     fprintf(file, " (%d), next light key %llu, create failed %d\n", CurrentFrame.CameraKnown ? 1 : 0,
         static_cast<unsigned long long>(NextLightKey), CreateFailed ? 1 : 0);
-    fprintf(file, "last second: %d frames, %d maps drawn, %d objects added, %d extra draws, %d moving draws, %d lamp "
-        "shader draws, %d static caster draws, %d lamp draws with no reach\n", FramesLastSecond, MapsDrawnLastSecond,
-        CastersAddedLastSecond, ExtraDrawsLastSecond, MovingDrawsLastSecond, LampShaderDrawsLastSecond,
-        StaticCasterDrawsLastSecond, NoReachLampsLastSecond);
+    fprintf(file, "last second: %d frames, %d maps drawn, %d objects added, %d extra draws, %d moving draws (%d faces), "
+        "%d lamp shader draws, %d static caster draws, %d lamp draws with no reach; moving maps instanced %d\n",
+        FramesLastSecond, MapsDrawnLastSecond, CastersAddedLastSecond, ExtraDrawsLastSecond, MovingDrawsLastSecond,
+        MovingFacesLastSecond, LampShaderDrawsLastSecond, StaticCasterDrawsLastSecond, NoReachLampsLastSecond,
+        InstancedCasterShader ? 1 : 0);
     fprintf(file, "cpu ms per frame over the last second (profiling %d): game draws %.3f, pipeline binds, buffer "
         "writes and samplers %.3f, light buffer passes %.3f, lamp and window shadow maps %.3f (static maps %.3f, "
         "moving and window maps %.3f), emissive lights %.3f, end of frame %.3f; shader sorting %.3f ms in the second\n",
@@ -2537,14 +2635,21 @@ static std::vector<uint64_t> AssignSlots()
     return selected;
 }
 
-static void DrawCaster(ID3D11DeviceContext *ctx, const Geometry &mesh)
+static void DrawCaster(ID3D11DeviceContext *ctx, const Geometry &mesh, UINT instances = 1)
 {
     ID3D11Buffer *vertexBuffer = mesh.VertexBuffer.Get();
     ctx->IASetInputLayout(mesh.Layout.Get());
     ctx->IASetVertexBuffers(0, 1, &vertexBuffer, &mesh.Stride, &mesh.VertexOffset);
     ctx->IASetIndexBuffer(mesh.IndexBuffer.Get(), mesh.IndexFormat, mesh.IndexOffset);
     ctx->IASetPrimitiveTopology(mesh.Topology);
-    if (mesh.Call.Indexed)
+    if (instances > 1)
+    {
+        if (mesh.Call.Indexed)
+            ctx->DrawIndexedInstanced(mesh.Call.Count, instances, mesh.Call.First, mesh.Call.BaseVertex, 0);
+        else
+            ctx->DrawInstanced(mesh.Call.Count, instances, mesh.Call.First, 0);
+    }
+    else if (mesh.Call.Indexed)
         ctx->DrawIndexed(mesh.Call.Count, mesh.Call.First, mesh.Call.BaseVertex);
     else
         ctx->Draw(mesh.Call.Count, mesh.Call.First);
@@ -3052,6 +3157,59 @@ static void DrawWindowMaps(ID3D11DeviceContext1 *ctx)
 }
 
 // redraws each light's moving-object map from the moving meshes drawn this frame near that light, and the window maps
+// draws each moving mesh once, into every moving-map face set in its entry of faces, by its index; the faces are
+// cleared already
+static void DrawInstancedMoving(ID3D11DeviceContext1 *ctx, const std::vector<std::bitset<MOVING_SLICES>> &faces,
+    const std::vector<XMFLOAT4X4> &faceRows)
+{
+    std::vector<UINT> slices;
+    for (const MovingCaster &caster : MovingCasters)
+        for (UINT slice = 0; slice < MOVING_SLICES; ++slice)
+            if (faces[caster.Index][slice])
+                slices.push_back(slice);
+    if (slices.empty())
+        return;
+
+    const D3D11_BOX box = { 0, 0, 0, static_cast<UINT>(slices.size() * sizeof(UINT)), 1, 1 };
+    ctx->UpdateSubresource(MovingSliceBuffer.Get(), 0, &box, slices.data(), 0, 0);
+    ctx->UpdateSubresource(MovingFaceRowBuffer.Get(), 0, nullptr, faceRows.data(), 0, 0);
+
+    ComPtr<ID3DDeviceContextState> previous;
+    ctx->SwapDeviceContextState(DrawState.Get(), &previous);
+    const D3D11_VIEWPORT viewport = { 0, 0, MOVING_FACE_SIZE, MOVING_FACE_SIZE, 0, 1 };
+    ctx->RSSetViewports(1, &viewport);
+    ctx->RSSetState(CasterRasterizer.Get());
+    ctx->OMSetDepthStencilState(CasterDepth.Get(), 0);
+    ctx->VSSetShader(InstancedCasterShader.Get(), nullptr, 0);
+    ctx->PSSetShader(nullptr, nullptr, 0);
+    ID3D11Buffer *constants = InstancedConstantsBuffer.Get();
+    ctx->VSSetConstantBuffers(0, 1, &constants);
+    ID3D11Buffer *offset = CameraOffsetBuffer.Get();
+    ctx->VSSetConstantBuffers(3, 1, &offset);
+    ID3D11ShaderResourceView *views[] = { MovingWorldView.Get(), MovingFaceRowView.Get(), MovingSliceView.Get() };
+    ctx->VSSetShaderResources(13, 3, views);
+    ctx->OMSetRenderTargets(0, nullptr, MovingArrayView.Get());
+
+    UINT start = 0;
+    for (const MovingCaster &caster : MovingCasters)
+    {
+        const UINT count = static_cast<UINT>(faces[caster.Index].count());
+        if (!count)
+            continue;
+
+        const uint32_t index[4] = { caster.Index, start, 0, 0 };
+        ctx->UpdateSubresource(InstancedConstantsBuffer.Get(), 0, nullptr, index, 0, 0);
+        DrawCaster(ctx, caster.Mesh, count);
+        start += count;
+        ++MovingDrawsThisSecond;
+        MovingFacesThisSecond += count;
+    }
+
+    // the maps stay bound as depth in the drawing state otherwise, which would unbind them from the shadow pass
+    ctx->OMSetRenderTargets(0, nullptr, nullptr);
+    ctx->SwapDeviceContextState(previous.Get(), nullptr);
+}
+
 static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
 {
     const CpuScope scope(MovingMapCpu);
@@ -3078,6 +3236,10 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
             worldMeshes[caster.Index] = found == WorldMeshes.end() ? nullptr : &found->second;
         }
 
+    // with instancing, each moving mesh's faces to draw into and each face's view-projection rows, drawn after the loop
+    const bool instanced = InstancedCasterShader != nullptr;
+    std::vector<std::bitset<MOVING_SLICES>> faces(instanced ? MovingCasters.size() : 0);
+    std::vector<XMFLOAT4X4> faceRows(instanced ? MOVING_SLICES : 0);
     ComPtr<ID3DDeviceContextState> previous;
     bool swapped = false;
     for (int slot = 0; slot < SIZE_STARTS[1]; ++slot)
@@ -3118,6 +3280,24 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
             continue;
         }
 
+        if (instanced)
+        {
+            const XMVECTOR eye = XMLoadFloat3(&light->second.BuiltPosition);
+            const XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, 1.0f, NEAR_PLANE, light->second.Radius);
+            for (int face = 0; face < 6; ++face)
+            {
+                const UINT slice = static_cast<UINT>(slot * 6 + face);
+                ctx->ClearDepthStencilView(MovingFaceViews[slice].Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+                const XMMATRIX viewMatrix = XMMatrixLookToLH(eye, FACE_DIRECTIONS[face], FACE_UPS[face]);
+                XMStoreFloat4x4(&faceRows[slice], XMMatrixTranspose(XMMatrixMultiply(viewMatrix, projection)));
+                for (const auto &[caster, relative, extent] : nearby)
+                    if (ReachesFace(face, relative, extent))
+                        faces[caster->Index].set(slice);
+            }
+            MovingMapUsed[slot] = true;
+            continue;
+        }
+
         if (!swapped)
         {
             ctx->SwapDeviceContextState(DrawState.Get(), &previous);
@@ -3155,6 +3335,7 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
                 ctx->UpdateSubresource(MovingConstantsBuffer.Get(), 0, nullptr, &constants, 0, 0);
                 DrawCaster(ctx, caster->Mesh);
                 ++MovingDrawsThisSecond;
+                ++MovingFacesThisSecond;
             }
         }
         MovingMapUsed[slot] = true;
@@ -3162,6 +3343,8 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
 
     if (swapped)
         ctx->SwapDeviceContextState(previous.Get(), nullptr);
+    if (instanced)
+        DrawInstancedMoving(ctx, faces, faceRows);
     if (DrawAdditionalMoving) DrawAdditionalMoving(ctx);
     MovingCasters.clear();
     MovingWorlds.clear();
@@ -3296,6 +3479,8 @@ static void EndFrame(ID3D11Device *dev, ID3D11DeviceContext *ctx)
         ExtraDrawsThisSecond = 0;
         MovingDrawsLastSecond = MovingDrawsThisSecond;
         MovingDrawsThisSecond = 0;
+        MovingFacesLastSecond = MovingFacesThisSecond;
+        MovingFacesThisSecond = 0;
         WindowMapsDrawnLastSecond = WindowMapsDrawnThisSecond;
         WindowMapsDrawnThisSecond = 0;
         LampShaderDrawsLastSecond = LampShaderDrawsThisSecond;
