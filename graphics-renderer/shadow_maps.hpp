@@ -281,6 +281,7 @@ struct Light
     bool Glow = false;
     // Independent native particle source; kept in spare glow-shadow constants.
     bool Particle = false;
+    float ParticleSourceRadius=0,BuiltParticleSourceRadius=0;
     // the glowing object's caster key, left out of the light's casters
     uint64_t EmitterKey = 0;
     // the glow's colour times its cell's area over pi
@@ -336,6 +337,8 @@ struct MovingCaster
     Geometry Mesh;
     UINT Index;
 };
+
+#include "particle_source_shadow.hpp"
 
 struct LightTable
 {
@@ -974,6 +977,7 @@ static void StartOver();
 
 static void Reset()
 {
+    particle_source_shadow::Reset();
     particle_moving::Reset();
     CurrentFrame.Rows.clear();
     CurrentFrame.Records.clear();
@@ -2107,6 +2111,9 @@ static void WriteState()
         fprintf(file, "\n");
     }
 
+    fprintf(file,"\nparticle source core depth shader: available %d, failed %d, maximum radius %.3f\n",
+        particle_source_shadow::Single&&particle_source_shadow::Layered&&particle_source_shadow::Constants?1:0,
+        particle_source_shadow::Failed?1:0,particle_source_shadow::MaximumRadius);
     fprintf(file, "\n--- lights: %zu\n", Lights.size());
     for (const auto &[key, light] : Lights)
     {
@@ -2127,6 +2134,8 @@ static void WriteState()
             WriteVector(file, light.GlowColour);
             fprintf(file, ", normal ");
             WriteVector(file, light.GlowNormal);
+            if(light.Particle)fprintf(file,", particle source core current %.4f built %.4f",
+                light.ParticleSourceRadius,light.BuiltParticleSourceRadius);
         }
         fprintf(file, "\n  objects");
         for (uint64_t casterKey : light.CasterKeys)
@@ -2781,11 +2790,13 @@ static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
     ctx->VSSetConstantBuffers(0, 1, &casterBuffer);
 
     light.BuiltPosition = light.Position;
+    light.BuiltParticleSourceRadius=light.Particle?particle_source_shadow::Clean(light.ParticleSourceRadius):0.f;
     const XMVECTOR eye = XMLoadFloat3(&light.BuiltPosition);
     const XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, 1.0f, NEAR_PLANE, light.Radius);
     const float size = static_cast<float>(FACE_SIZES[GetSizeIndex(light.Slot)]);
     const D3D11_VIEWPORT viewport = { 0, 0, size, size, 0, 1 };
     ctx->RSSetViewports(1, &viewport);
+    particle_source_shadow::BindSingle(ctx,light,UINT(size));
     // a frame capture notes the objects close to a lamp and whether each is taken for the lamp's own model
     if (!light.Glow && capture::State == capture::Phase::Capturing && capture::Log)
     {
@@ -2857,6 +2868,7 @@ static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
         }
     }
 
+    particle_source_shadow::Clear(ctx);
     ctx->SwapDeviceContextState(previous.Get(), nullptr);
     std::erase_if(light.CasterKeys, [](uint64_t key) { return !Casters.contains(key); });
     light.BuiltFrame = FrameNumber;
@@ -3211,6 +3223,11 @@ static void DrawInstancedMoving(ID3D11DeviceContext1 *ctx, const std::vector<std
     ctx->OMSetDepthStencilState(CasterDepth.Get(), 0);
     ctx->VSSetShader(InstancedCasterShader.Get(), nullptr, 0);
     ctx->PSSetShader(nullptr, nullptr, 0);
+    particle_source_shadow::ParametersArray sourceParameters{};
+    for(int slot=0;slot<SIZE_STARTS[1];++slot)
+        if(const auto light=Lights.find(SlotLights[slot]);SlotActive[slot]&&light!=Lights.end())
+            sourceParameters[slot]=particle_source_shadow::Parameters(light->second,MOVING_FACE_SIZE);
+    particle_source_shadow::BindLayered(ctx,sourceParameters);
     ID3D11Buffer *constants = InstancedConstantsBuffer.Get();
     ctx->VSSetConstantBuffers(0, 1, &constants);
     ID3D11Buffer *offset = CameraOffsetBuffer.Get();
@@ -3236,6 +3253,7 @@ static void DrawInstancedMoving(ID3D11DeviceContext1 *ctx, const std::vector<std
 
     // the maps stay bound as depth in the drawing state otherwise, which would unbind them from the shadow pass
     ctx->OMSetRenderTargets(0, nullptr, nullptr);
+    particle_source_shadow::Clear(ctx);
     ctx->SwapDeviceContextState(previous.Get(), nullptr);
 }
 
@@ -3347,6 +3365,7 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
             ctx->VSSetShaderResources(13, 1, &worlds);
         }
 
+        particle_source_shadow::BindSingle(ctx,light->second,MOVING_FACE_SIZE);
         MovingConstants constants = {};
         const XMVECTOR eye = XMLoadFloat3(&light->second.BuiltPosition);
         const XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, 1.0f, NEAR_PLANE, light->second.Radius);
@@ -3373,7 +3392,10 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
     }
 
     if (swapped)
+    {
+        particle_source_shadow::Clear(ctx);
         ctx->SwapDeviceContextState(previous.Get(), nullptr);
+    }
     if (instanced)
         DrawInstancedMoving(ctx, faces, faceRows);
     particle_moving::Draw(ctx,worldMeshes);

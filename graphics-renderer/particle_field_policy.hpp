@@ -21,6 +21,11 @@ constexpr float CellWidth=2;
 // their previous shared gain once; both new multipliers otherwise start at 1.
 constexpr float StrengthReference=1.0f;
 constexpr float MaximumStrength=128.0f,MaximumRadiusScale=16.0f,MaximumWorldRadius=128.0f;
+// A particle's shadow source core is independent of its illumination reach.
+// It describes only measured spread between positive-energy sample centroids.
+constexpr float MaximumSourceCoreRadius=.35f;
+inline float CleanSourceCoreRadius(float value)
+{return std::isfinite(value)?std::clamp(value,0.0f,MaximumSourceCoreRadius):0.0f;}
 inline float CleanStrength(float value){return std::isfinite(value)?std::clamp(value,0.0f,MaximumStrength):1.0f;}
 inline float CleanRadius(float value){return std::isfinite(value)?std::clamp(value,.25f,MaximumRadiusScale):1.0f;}
 inline float LightRadius(float scale,float shadowRange)
@@ -37,6 +42,9 @@ struct Cell
     // Observed moments remain exact. Only the separately emitted light pose is
     // filtered; material RGB/power never passes through position history.
     XMFLOAT3 emittedPosition{};bool hasEmittedPosition=false;
+    // Length metadata is retained unchanged while RGB/moments fade. The raw
+    // target and separately filtered core never alter material power.
+    float sourceCoreRadius=0,emittedSourceCoreRadius=0;
 };
 struct Reduction { XMFLOAT4 mean;XMFLOAT4 moment; };
 static_assert(sizeof(Reduction)==32);

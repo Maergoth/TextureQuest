@@ -17,7 +17,7 @@ struct Bank
 struct Mapping
 {
     uint64_t key=0,epoch=0,frame=UINT64_MAX;
-    XMFLOAT3 position{};float radius=0;bool valid=false;
+    XMFLOAT3 position{};float radius=0,sourceRadius=0;bool valid=false;
 };
 static std::array<Bank,Banks> Pool;
 static std::array<Mapping,Capacity> Maps;
@@ -68,7 +68,7 @@ static int Binding(int slot,const Light &light)
         const auto &m=Maps[p];
         if(m.valid&&m.key==SlotLights[slot]&&m.epoch==SourceEpoch&&m.frame+1==FrameNumber
             &&m.position.x==light.BuiltPosition.x&&m.position.y==light.BuiltPosition.y&&m.position.z==light.BuiltPosition.z
-            &&m.radius==light.Radius&&Pool[p/Cubes].view)return static_cast<int>(p);
+            &&m.radius==light.Radius&&m.sourceRadius==light.BuiltParticleSourceRadius&&Pool[p/Cubes].view)return static_cast<int>(p);
     }
     return -1;
 }
@@ -125,6 +125,7 @@ static void Draw(ID3D11DeviceContext1 *ctx,const std::vector<std::optional<const
         const bool wanted=std::any_of(work.begin(),work.end(),[bi](const Work&w){return unsigned(w.physical)/Cubes==bi;});
         if(!wanted){Pool[bi]={};continue;}if(!EnsureBank(dev.Get(),bi))continue;auto &bank=Pool[bi];
         const bool instanced=InstancedCasterShader&&bank.arrayView;
+        particle_source_shadow::ParametersArray sourceParameters{};
         std::vector<std::bitset<Slices>> faces(instanced?MovingCasters.size():0);std::vector<XMFLOAT4X4> rows(instanced?Slices:0);
         ComPtr<ID3DDeviceContextState> previous;ctx->SwapDeviceContextState(DrawState.Get(),&previous);
         ID3D11ShaderResourceView *empty[4]{};ctx->PSSetShaderResources(9,4,empty);
@@ -136,6 +137,8 @@ static void Draw(ID3D11DeviceContext1 *ctx,const std::vector<std::optional<const
         for(auto &w:work)if(unsigned(w.physical)/Cubes==bi)
         {
             const unsigned cube=unsigned(w.physical)%Cubes;const auto &light=*w.light;const XMVECTOR eye=XMLoadFloat3(&light.BuiltPosition);
+            sourceParameters[cube]=particle_source_shadow::Parameters(light,FaceSize);
+            if(!instanced)particle_source_shadow::BindSingle(ctx,light,FaceSize);
             const XMMATRIX projection=XMMatrixPerspectiveFovLH(XM_PIDIV2,1,NEAR_PLANE,light.Radius);
             for(unsigned face=0;face<6;++face)
             {
@@ -148,20 +151,22 @@ static void Draw(ID3D11DeviceContext1 *ctx,const std::vector<std::optional<const
                     else {MovingConstants c{};c.ViewProjection=matrix;c.Index[0]=caster->Index;ctx->UpdateSubresource(MovingConstantsBuffer.Get(),0,nullptr,&c,0,0);DrawCaster(ctx,caster->Mesh);++MeshesDrawn;++FacesDrawn;}
                 }
             }
-            Maps[unsigned(w.physical)]={w.key,SourceEpoch,FrameNumber,light.BuiltPosition,light.Radius,true};++Ready;
+            Maps[unsigned(w.physical)]={w.key,SourceEpoch,FrameNumber,light.BuiltPosition,light.Radius,light.BuiltParticleSourceRadius,true};++Ready;
         }
         if(instanced)
         {
             std::vector<UINT>slices;for(const auto &caster:MovingCasters){if(caster.Index>=faces.size())continue;for(UINT slice=0;slice<Slices;++slice)if(faces[caster.Index][slice])slices.push_back(slice);}
             if(!slices.empty())
             {
+                particle_source_shadow::BindLayered(ctx,sourceParameters);
                 const D3D11_BOX box{0,0,0,UINT(slices.size()*sizeof(UINT)),1,1};ctx->UpdateSubresource(bank.slices.Get(),0,&box,slices.data(),0,0);ctx->UpdateSubresource(bank.rows.Get(),0,nullptr,rows.data(),0,0);
                 ctx->VSSetShader(InstancedCasterShader.Get(),nullptr,0);ID3D11Buffer*c=InstancedConstantsBuffer.Get();ctx->VSSetConstantBuffers(0,1,&c);
                 ID3D11ShaderResourceView*views[]{MovingWorldView.Get(),bank.rowsView.Get(),bank.slicesView.Get()};ctx->VSSetShaderResources(13,3,views);ctx->OMSetRenderTargets(0,nullptr,bank.arrayView.Get());
                 UINT start=0;for(const auto &caster:MovingCasters){if(caster.Index>=faces.size())continue;const UINT count=UINT(faces[caster.Index].count());if(!count)continue;const UINT index[]{caster.Index,start,0,0};ctx->UpdateSubresource(InstancedConstantsBuffer.Get(),0,nullptr,index,0,0);DrawCaster(ctx,caster.Mesh,count);start+=count;++MeshesDrawn;FacesDrawn+=count;}
             }
         }
-        ctx->OMSetRenderTargets(0,nullptr,nullptr);ID3D11ShaderResourceView *none[3]{};ctx->VSSetShaderResources(13,3,none);ctx->SwapDeviceContextState(previous.Get(),nullptr);
+        ctx->OMSetRenderTargets(0,nullptr,nullptr);ID3D11ShaderResourceView *none[3]{};ctx->VSSetShaderResources(13,3,none);
+        particle_source_shadow::Clear(ctx);ctx->SwapDeviceContextState(previous.Get(),nullptr);
     }
 }
 static void WriteState(FILE *file)

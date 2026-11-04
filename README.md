@@ -10,21 +10,22 @@ TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim i
 
 AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,694 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The texture pack keeps the game's models and animations; optional Graphical Effects below change lighting. Some fine detail is newly generated, and results vary by texture.
 
-## 1.13.13 Develop workspace
+## 1.13.14 Develop workspace
 
-This app update adds **What's new**, with the versioned changelog bundled in the
-installer and shared with developers through [CHANGELOG.md](CHANGELOG.md).
-It reuses the 1.13.12 graphics binaries and texture data 1.3.0. Develop source
-updates do not publish a new installer or change the public latest release;
+This graphics candidate adds a small particle-source exclusion core to shadow
+depth sampling, derived from the spread of positive-emission centroids. It
+addresses near-cloud occluders without a global shadow bias. This is a spatial
+rule, not owner detection: unrelated geometry inside the core can also be
+ignored. Focused CPU, strict build and controlled hardware checks passed;
+actual EQ2 appearance and performance remain unconfirmed. See the
+[1.13.14 graphics handoff](docs/GRAPHICS-1.13.14-HANDOFF.md).
+
+Seven other native payloads and texture data 1.3.0 are retained. The installer's
+**What's new** shows the same canonical [changelog](CHANGELOG.md) used here.
+Particle character shadows retain their separate pool for up to 128 eligible
+lights (**Advanced → Particle shadow limit**, requiring **Character shadows**).
+Develop source updates do not publish a binary release or change public latest;
 the download link below continues to point to the published release.
-
-Recent graphics work includes stable particle-source association and filtered
-light positions, cached-light retention, and normal-map replay for verified
-native material profiles. Particle character shadows have a separate pool for
-up to 128 eligible lights (**Advanced → Particle shadow limit**, requiring
-**Character shadows**), alongside the unchanged native 16-light moving pool.
-Controlled tests are not complete in-game appearance, coverage or FPS proof.
-See the [1.13.12 graphics handoff](docs/GRAPHICS-1.13.12-HANDOFF.md) for limits.
 
 ## Graphics setup
 

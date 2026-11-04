@@ -4,6 +4,13 @@ This is the canonical history bundled with the installer. Develop entries are
 development builds, not announcements of public binary releases. Controlled
 checks described here do not establish complete in-game appearance or FPS.
 
+## 1.13.14 — Develop graphics candidate
+
+- Add a bounded, particle-only exclusion core to shadow depth sampling. Its radius is `min(0.35, 0.5 × weighted positive-emission centroid RMS)` world units, with smoothed source metadata.
+- Keep built light position and exclusion core together across static and moving shadow maps, so each path uses the core that produced the static map.
+- This excludes nearby cloud occluders spatially; it does not identify the emitter's owner or apply a global shadow bias. Unrelated geometry inside the small core can also be ignored; blockers outside it remain eligible.
+- Pass 1,381 focused CPU checks, a strict native build and 35 controlled hardware checks. Seven other native payloads, texture data 1.3.0 and saved controls are retained. Actual EQ2 appearance and performance still need comparison; this is not a public binary release or a universal self-shadow fix.
+
 ## 1.13.13 — Develop app update
 
 - Add **What's new** inside the installer, showing this bundled history with the installed app version clearly identified.

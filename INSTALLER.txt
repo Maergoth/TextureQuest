@@ -1,4 +1,4 @@
-TextureQuest 1.13.13 development build — Windows x64
+TextureQuest 1.13.14 development build — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract outside the game folder; keep data beside the EXE.

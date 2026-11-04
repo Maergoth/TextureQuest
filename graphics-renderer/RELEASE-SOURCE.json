@@ -12,8 +12,8 @@
     }
   },
   "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
-  "revision": "TextureQuest030 / non-live Develop1.13.12",
-  "integration_base_commit": "a9f8d5d42419adf5af51a8b7c72f6aec768edad5",
+  "revision": "TextureQuest031/032 / Develop1.13.14",
+  "integration_base_commit": "74ae8673ee3e3bfc6efca267c5831bf47b64d1c7",
   "files": [
     {
       "name": "addon.cpp",
@@ -77,8 +77,8 @@
     },
     {
       "name": "particle_emission.hpp",
-      "bytes": 39190,
-      "sha256": "c9690125ece76a9ab60ef52a0604959bde05e957a6979574bfc4dcbf42b5963f"
+      "bytes": 39796,
+      "sha256": "010d0525d8f1c3ba77e446a51bfc42ec63409d3b3a5f85b0f5b7ae6abfe383f5"
     },
     {
       "name": "particle_emission_policy.hpp",
@@ -87,13 +87,13 @@
     },
     {
       "name": "particle_field_policy.hpp",
-      "bytes": 10188,
-      "sha256": "588534dd12cb2ede75efff04b78e21f237208e091cfa56d3d6673d8b1f5aa9fc"
+      "bytes": 10733,
+      "sha256": "d0e93b08808d52aea7baaf76ad35c624e9c01a7d4aec3b561b70ced95205c97d"
     },
     {
       "name": "particle_moving_shadows.hpp",
-      "bytes": 11737,
-      "sha256": "559c0ee6f49490d950d839be2eb787f0960d357886df1241cf90b29f4d1e1196"
+      "bytes": 12194,
+      "sha256": "cf9fcb33e96eb85faae45e5a97ae9a31c64f19945c0e4c981a91492e218e1e3c"
     },
     {
       "name": "particle_retention_policy.hpp",
@@ -102,8 +102,13 @@
     },
     {
       "name": "particle_source_policy.hpp",
-      "bytes": 14974,
-      "sha256": "35668f8a9f6da0ee10ba6a6f522f176f2f3917539287ce1b69db84e719b9e03d"
+      "bytes": 17200,
+      "sha256": "b21b719504daaa04773757516800c0b9db0af912c266241c26da983ea0f5e966"
+    },
+    {
+      "name": "particle_source_shadow.hpp",
+      "bytes": 3740,
+      "sha256": "c727562647f86c2d62cd601af33bc6658895d8135a9c8441e95e74b5575bbb52"
     },
     {
       "name": "projected_shadow_admission.hpp",
@@ -122,8 +127,8 @@
     },
     {
       "name": "shadow_maps.hpp",
-      "bytes": 165279,
-      "sha256": "838660c6572dddabab33597691025f54bd17c073fce3714a6d419775ce188e97"
+      "bytes": 166674,
+      "sha256": "18ffc7f878b3ccd1f1ed02d7c2510a2b1c8774f1c3369dc7c68f4d5d8b1c3d40"
     },
     {
       "name": "shadows.hpp",
@@ -172,76 +177,102 @@
     }
   ],
   "native_release_asset": {
-    "bytes": 1127936,
-    "sha256": "5ee82fbbc489b8de8c1bad844b8a78c2ee840f0e164d644fb5e11e38f917883a"
+    "bytes": 1135104,
+    "sha256": "3ddafaeea1eea4affa6d0d9868e9371ee5baea8149866d04496983e2e5daa271"
   },
   "build": {
     "exit_code": 0,
     "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes",
     "compile_log": {
-      "bytes": 55508,
-      "sha256": "5400ecbff86e50d7593e009a1501a626908281ed83b88356e3ea3f44250a78e1"
+      "bytes": 55661,
+      "sha256": "1fe3ee4a8aa70f38fdb1f6d97da7ef53d17b84d8194cfc59cd3ffdad2c9e8388"
     }
   },
   "controlled_validation": {
-    "status": "PASS_STRICT_NATIVE_AND_MATCHED_PRODUCTION_TEMPORAL_CHECKS",
-    "focused_cpu": {
-      "bytes": 1440,
-      "sha256": "5deea5dc7bdad37fef58aadb5b7a7d016bf4c92f5615cead082719470565b803"
-    },
-    "focused_cpu_log": {
-      "bytes": 583,
-      "sha256": "ef97297ef84aeb1c4a9519f93719e62993601d9397fd66e4f69214e65cdac503"
-    },
-    "focused_checks": 1271,
+    "status": "PASS_031_CPU_032_CORRECTED_HARDWARE_AND_STRICT_NATIVE",
+    "cpu_checks": 1381,
+    "hardware_checks": 35,
     "final": {
-      "bytes": 9640,
-      "sha256": "9e018aad25b18be6f72c0cdd4268f04add55dac466413d4084bab65c946b9fcd"
+      "bytes": 10059,
+      "sha256": "2b4a5f09b11a967638f8b4fa2914a2daefc0b0616b5a83ddcb3384313a7b4b97"
     },
-    "gpu_executed": false,
-    "scope": "Focused030 grouping/conservation/capacity and actual production temporal ReadFrame/cache/EndFrame CPU checks; no unchanged hardware/alpha/map suite replay."
+    "scope": "One focused source-core scenario; first failure and diagnostic retained, corrected35checks passed; no historical alpha/fullmap replay"
   },
   "prior_metadata": {
-    "revision": "TextureQuest027/028/029 / private local1.13.11",
+    "revision": "TextureQuest030 / non-live Develop1.13.12",
     "native_release_asset": {
-      "bytes": 1094144,
-      "sha256": "397690edf3454db93d4d1472c9ed52599d94d7b462d3ed1b8776c741569fa112"
+      "bytes": 1127936,
+      "sha256": "5ee82fbbc489b8de8c1bad844b8a78c2ee840f0e164d644fb5e11e38f917883a"
     },
     "build": {
       "exit_code": 0,
       "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes",
       "compile_log": {
-        "bytes": 55355,
-        "sha256": "19f8d3b67f93e2fcd14260857eb38e913b6f2a805b0312d11cb1a916724c660d"
+        "bytes": 55508,
+        "sha256": "5400ecbff86e50d7593e009a1501a626908281ed83b88356e3ea3f44250a78e1"
       }
     },
     "controlled_validation": {
-      "status": "PASS",
-      "particle_cpu": {
-        "bytes": 9572,
-        "sha256": "a62ec3b62e417a122b3604e192910f9167824e3a1b05bf6f538efd5d56448671"
+      "status": "PASS_STRICT_NATIVE_AND_MATCHED_PRODUCTION_TEMPORAL_CHECKS",
+      "focused_cpu": {
+        "bytes": 1440,
+        "sha256": "5deea5dc7bdad37fef58aadb5b7a7d016bf4c92f5615cead082719470565b803"
       },
-      "normal_gpu": {
-        "bytes": 1430,
-        "sha256": "22edd8738a791a7639372adf28a49ff812569b48e2b3a206ce0344e2adfea52d"
+      "focused_cpu_log": {
+        "bytes": 583,
+        "sha256": "ef97297ef84aeb1c4a9519f93719e62993601d9397fd66e4f69214e65cdac503"
       },
+      "focused_checks": 1271,
       "final": {
-        "bytes": 9156,
-        "sha256": "5cd1cd757f2c12d4aadf473147eb2938c90eb823110aa5f784fc45f1c1945c1e"
+        "bytes": 9640,
+        "sha256": "9e018aad25b18be6f72c0cdd4268f04add55dac466413d4084bab65c946b9fcd"
+      },
+      "gpu_executed": false,
+      "scope": "Focused030 grouping/conservation/capacity and actual production temporal ReadFrame/cache/EndFrame CPU checks; no unchanged hardware/alpha/map suite replay."
+    },
+    "qualification": "030 replaces centroid-grid identity with deterministic nearest-anchor association and ownership hysteresis, preserving exact current RGB/moments and independent0.20s positional filtering. Published grouping/history/field state commits atomically. Existing0.1unit built-shadow movement threshold and scheduler remain. Identities are spatial inference; ambiguous split/merge/culling histories expire normally. Controlled CPU checks do not prove live shadow stability, all models/offscreen coverage or FPS; adversarial near-coincident anchor states can be costly.",
+    "prior_metadata": {
+      "revision": "TextureQuest027/028/029 / private local1.13.11",
+      "native_release_asset": {
+        "bytes": 1094144,
+        "sha256": "397690edf3454db93d4d1472c9ed52599d94d7b462d3ed1b8776c741569fa112"
+      },
+      "build": {
+        "exit_code": 0,
+        "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes",
+        "compile_log": {
+          "bytes": 55355,
+          "sha256": "19f8d3b67f93e2fcd14260857eb38e913b6f2a805b0312d11cb1a916724c660d"
+        }
+      },
+      "controlled_validation": {
+        "status": "PASS",
+        "particle_cpu": {
+          "bytes": 9572,
+          "sha256": "a62ec3b62e417a122b3604e192910f9167824e3a1b05bf6f538efd5d56448671"
+        },
+        "normal_gpu": {
+          "bytes": 1430,
+          "sha256": "22edd8738a791a7639372adf28a49ff812569b48e2b3a206ce0344e2adfea52d"
+        },
+        "final": {
+          "bytes": 9156,
+          "sha256": "5cd1cd757f2c12d4aadf473147eb2938c90eb823110aa5f784fc45f1c1945c1e"
+        }
+      },
+      "qualification": "Historical1.13.11 scope only. Its029 native base-normal hardware case and027/028 CPU evidence were not rerun as030 GPU proof; current030 checks are recorded separately.",
+      "historical_only": true,
+      "prior_metadata": {
+        "revision": "TextureQuest025/026 / private local1.13.10",
+        "native_release_asset": {
+          "bytes": 1090048,
+          "sha256": "fb4998fe4da008247ee5c402e61108af9aef78df12c744c38127c759a9690887"
+        },
+        "historical_only": true
       }
     },
-    "qualification": "Historical1.13.11 scope only. Its029 native base-normal hardware case and027/028 CPU evidence were not rerun as030 GPU proof; current030 checks are recorded separately.",
-    "historical_only": true,
-    "prior_metadata": {
-      "revision": "TextureQuest025/026 / private local1.13.10",
-      "native_release_asset": {
-        "bytes": 1090048,
-        "sha256": "fb4998fe4da008247ee5c402e61108af9aef78df12c744c38127c759a9690887"
-      },
-      "historical_only": true
-    }
+    "historical_only": true
   },
-  "qualification": "030 replaces centroid-grid identity with deterministic nearest-anchor association and ownership hysteresis, preserving exact current RGB/moments and independent0.20s positional filtering. Published grouping/history/field state commits atomically. Existing0.1unit built-shadow movement threshold and scheduler remain. Identities are spatial inference; ambiguous split/merge/culling histories expire normally. Controlled CPU checks do not prove live shadow stability, all models/offscreen coverage or FPS; adversarial near-coincident anchor states can be costly.",
-  "source_code_commit": "cf775e5cc2d2a270e7b49a1d2cfd6ba501682b98",
-  "publication_note": "Develop source update is authorized. Pushing this source does not publish or upload the1.13.12 DLL or installer, create a release, or update public main/latest. This native image pin identifies the verified local artifact; no asset upload is claimed."
+  "qualification": "A particle-only core=min(0.35,0.5*positive-emission centroid RMS), filtered over time, excludes near-core depth fragments consistently across static/native moving/dedicated maps using built metadata. This is not recovered owner identity; unrelated geometry inside the small core can also be ignored, while outside blockers remain. Full live appearance and performance remain unconfirmed.",
+  "publication_note": "Develop source only; no public main/latest or binary release/upload is implied. Current image pin identifies the verified local candidate."
 }

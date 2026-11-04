@@ -436,10 +436,13 @@ static unsigned ReadyCount(){return glow::ParticlesActive()&&field::CleanStrengt
 static void UpdateLight(shadowmaps::Light &light,const field::Cell &cell,float gain,float radius)
 {
     const auto position=field::LightPosition(cell);
+    const float sourceCore=field::CleanSourceCoreRadius(cell.emittedSourceCoreRadius);
     const bool moved=!light.BuiltFrame||shadowmaps::Distance(light.BuiltPosition,position)>shadowmaps::MOVED_LIGHT_DISTANCE
         ||std::abs(light.GlowRange-radius)>1e-4f;
+    const bool coreChanged=std::abs(light.BuiltParticleSourceRadius-sourceCore)>.015f;
     light.Glow=true;light.Particle=true;light.GlowShown=true;light.GlowHeld=false;light.EmitterKey=0;light.Position=position;
     light.GlowNormal={};light.GlowArea=1;light.GlowRange=radius;
+    light.ParticleSourceRadius=sourceCore;
     const double strength=field::StrengthReference*gain/XM_PI;
     light.GlowColour={float(cell.power.x*strength),float(cell.power.y*strength),float(cell.power.z*strength)};light.LastSeen=shadowmaps::FrameNumber;
     if(moved)
@@ -447,8 +450,8 @@ static void UpdateLight(shadowmaps::Light &light,const field::Cell &cell,float g
         // Use the same complete confirmed-radius query as native/object lights.
         // An unordered prefix can omit a nearby wall even when the light is selected.
         shadowmaps::GatherCasters(light);
-        ++light.Version;light.RedrawNow=true;
     }
+    if(moved||coreChanged){++light.Version;light.RedrawNow=true;}
 }
 static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit,bool allocationReady=true,double now=SecondsNow())
 {
@@ -495,6 +498,9 @@ static void WriteState(FILE *file)
     if(!file)return;
     fprintf(file,"particle observed cache: entries %zu, grace 2.0s, fade 1.0s, hard expiry 3.0s\n",Retained.Size());
     fprintf(file,"particle stable sources: tracked %zu, owner bins %zu, acquire 4.0, retain 6.0, ownership hysteresis 0.75, pose tau 0.20s; inferred identities, native power unfiltered\n",Sources.Size(),Sources.OwnerCount());
+    const auto core=Sources.SummarizeCore();
+    fprintf(file,"particle source cores: tracked %zu, positive centroid samples %zu, max RMS %.6f, max target %.6f, max emitted %.6f, cap 0.35, scale 0.50, tau 0.20s; between-lit-centroid spread only\n",
+        core.groups,core.positiveSamples,core.maximumRms,double(core.maximumTarget),double(core.maximumEmitted));
     fprintf(file,"particle controls: strength %.3f, radius scale %.3f, world radius %.3f\n",field::CleanStrength(Strength.load()),field::CleanRadius(Radius.load()),field::LightRadius(Radius.load(),field::MaximumWorldRadius));
     fprintf(file,"particle field epoch %llu, field %d, cells %zu, selected %u, visibility %.3f; packet frame %llu epoch %llu draws %u triangles %u complete %d collecting %d busy %d\n",
         static_cast<unsigned long long>(Epoch),HasField?1:0,Cells.size(),SelectedCount,Visibility(),

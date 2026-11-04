@@ -34,7 +34,10 @@ struct Group
 {
     field::Key key{};DirectX::XMFLOAT3 anchor{},emitted{};
     double observed=0,poseTime=0;
+    float coreTarget=0,coreEmitted=0;double centroidRms=0;size_t positiveSamples=0;
 };
+struct CoreSummary
+{size_t groups=0,positiveSamples=0;double maximumRms=0;float maximumTarget=0,maximumEmitted=0;};
 struct Owner {field::Key spatial{},source{};double weight=0;};
 struct Prepared
 {
@@ -54,6 +57,17 @@ public:
     void Clear(){groups_.clear();owners_.clear();epoch_=nextId_=0;lastObservation_=-1;}
     size_t Size()const{return groups_.size();}
     size_t OwnerCount()const{return owners_.size();}
+    // Explicit capture diagnostics only; no observation/pose clock is advanced.
+    CoreSummary SummarizeCore()const
+    {
+        CoreSummary result;result.groups=groups_.size();
+        for(const auto&g:groups_)
+        {
+            result.positiveSamples+=g.positiveSamples;result.maximumRms=std::max(result.maximumRms,g.centroidRms);
+            result.maximumTarget=std::max(result.maximumTarget,g.coreTarget);result.maximumEmitted=std::max(result.maximumEmitted,g.coreEmitted);
+        }
+        return result;
+    }
     // Prepare is transactional. Failed native packets cannot change identity,
     // ownership, observation time or a previously committed emitted pose.
     bool Prepare(std::vector<Sample> samples,const std::vector<field::Key>&held,uint64_t epoch,
@@ -76,7 +90,7 @@ public:
                 <std::tie(b.position.x,b.position.y,b.position.z,b.power.x,b.power.y,b.power.z);});
         Prepared next;next.epoch=epoch;next.nextId=epoch_==epoch?nextId_:0;next.observed=observed;next.superseded=superseded;
         const bool sameEpoch=epoch_==epoch;
-        struct Work {Group group;field::Cell cell;double gx=0,gy=0,gz=0;size_t count=0;bool newborn=false;};
+        struct Work {Group group;field::Cell cell;double gx=0,gy=0,gz=0,spreadMoment=0;size_t count=0,positiveSamples=0;bool newborn=false;};
         std::vector<Work> work;work.reserve((sameEpoch?groups_.size():0)+samples.size());
         std::unordered_map<field::Key,std::vector<size_t>,Hash> index;
         index.reserve((sameEpoch?groups_.size():0)+samples.size());
@@ -179,7 +193,23 @@ public:
                 born.observed=observed;born.poseTime=now;best=insert(born,true);
                 previousBest=best;previousDistance=0;
             }
-            auto&w=work[best];field::Add(w.cell.power,s.power);const double weight=field::Luma(s.power);
+            auto&w=work[best];const double weight=field::Luma(s.power);
+            if(weight>0)
+            {
+                // Weighted Welford/merge increment about the DOUBLE raw mean,
+                // avoiding subtraction of large absolute-world second moments.
+                // Zero-power geometry never expands a measured source core.
+                const double oldWeight=w.cell.weight;
+                if(oldWeight>0)
+                {
+                    const double x=double(s.position.x)-w.cell.mx/oldWeight;
+                    const double y=double(s.position.y)-w.cell.my/oldWeight;
+                    const double z=double(s.position.z)-w.cell.mz/oldWeight;
+                    w.spreadMoment+=oldWeight*weight/(oldWeight+weight)*(x*x+y*y+z*z);
+                }
+                ++w.positiveSamples;
+            }
+            field::Add(w.cell.power,s.power);
             w.cell.weight+=weight;w.cell.mx+=weight*s.position.x;w.cell.my+=weight*s.position.y;w.cell.mz+=weight*s.position.z;
             w.gx+=s.position.x;w.gy+=s.position.y;w.gz+=s.position.z;++w.count;
             ownership.push_back({spatial,w.group.key,weight});
@@ -191,8 +221,13 @@ public:
             {
                 w.group.anchor=w.cell.weight>0?field::Position(w.cell):DirectX::XMFLOAT3{
                     float(w.gx/w.count),float(w.gy/w.count),float(w.gz/w.count)};
-                if(w.newborn)w.group.emitted=w.group.anchor;
+                if(!std::isfinite(w.spreadMoment)||w.spreadMoment<0)return false;
+                w.group.centroidRms=w.cell.weight>0?std::sqrt(w.spreadMoment/w.cell.weight):0;
+                w.group.positiveSamples=w.positiveSamples;
+                w.group.coreTarget=float(std::min(double(field::MaximumSourceCoreRadius),.5*w.group.centroidRms));
+                if(w.newborn){w.group.emitted=w.group.anchor;w.group.coreEmitted=w.group.coreTarget;}
                 w.group.observed=observed;w.cell.emittedPosition=w.group.emitted;w.cell.hasEmittedPosition=true;
+                w.cell.sourceCoreRadius=w.group.coreTarget;w.cell.emittedSourceCoreRadius=w.group.coreEmitted;
                 if(!field::Good(w.cell.power)||!field::Finite(w.group.anchor)||!field::Finite(w.group.emitted)
                     ||std::max({w.cell.power.x,w.cell.power.y,w.cell.power.z})>1e20)return false;
                 next.cells.push_back(w.cell);next.groups.push_back(w.group);
@@ -237,9 +272,11 @@ public:
                 const double alpha=-std::expm1(-(now-g.poseTime)/PoseSeconds);
                 g.emitted={float(g.emitted.x+alpha*(double(g.anchor.x)-g.emitted.x)),
                     float(g.emitted.y+alpha*(double(g.anchor.y)-g.emitted.y)),float(g.emitted.z+alpha*(double(g.anchor.z)-g.emitted.z))};
+                g.coreEmitted=float(g.coreEmitted+alpha*(double(g.coreTarget)-g.coreEmitted));
                 g.poseTime=now;
             }
             cell.emittedPosition=g.emitted;cell.hasEmittedPosition=true;
+            cell.sourceCoreRadius=g.coreTarget;cell.emittedSourceCoreRadius=g.coreEmitted;
         }
     }
 };
