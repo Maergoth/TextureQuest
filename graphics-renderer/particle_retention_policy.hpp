@@ -38,17 +38,25 @@ class Cache
 public:
     void Clear(){entries_.clear();epoch_=0;lastObservation_=-1;}
     size_t Size()const{return entries_.size();}
+    std::vector<field::Key> Keys(uint64_t epoch,double now)const
+    {
+        std::vector<field::Key> result;
+        if(epoch_==epoch)for(const auto&e:entries_)if(Visibility(now-e.observed)>0)result.push_back(e.cell.key);
+        return result;
+    }
     // Incoming cells are the sorted unique result of one proven native packet.
-    bool Observe(const std::vector<field::Cell>&cells,uint64_t epoch,double observed,double now,const DirectX::XMFLOAT3&receiver)
+    bool Observe(const std::vector<field::Cell>&cells,uint64_t epoch,double observed,double now,const DirectX::XMFLOAT3&receiver,
+        const std::vector<field::Key>&superseded={})
     {
         if(!epoch||!std::isfinite(observed)||!std::isfinite(now)||observed<0||now<observed
             ||now-observed>field::CaptureSeconds||!field::Finite(receiver))return false;
-        if(epoch_!=epoch){Clear();epoch_=epoch;}
-        if(observed<lastObservation_)return false;
+        if(epoch_==epoch&&observed<lastObservation_)return false;
+        for(size_t i=1;i<superseded.size();++i)if(!(superseded[i-1]<superseded[i]))return false;
         for(size_t i=0;i<cells.size();++i)
             if(!field::Good(cells[i].power)||!field::Finite(field::Position(cells[i]))
-                ||!std::isfinite(cells[i].weight)||cells[i].weight<0
+                ||!field::Finite(field::LightPosition(cells[i]))||!std::isfinite(cells[i].weight)||cells[i].weight<0
                 ||(i&&!(cells[i-1].key<cells[i].key)))return false;
+        if(epoch_!=epoch){Clear();epoch_=epoch;}
         std::vector<Entry> next;next.reserve(Capacity);
         const auto offer=[&](Entry entry){
             entry.priority=Priority(entry.cell,receiver);
@@ -57,6 +65,9 @@ public:
         };
         for(const auto&entry:entries_)
         {
+            // Only an explicit, proven identity retirement may bypass expiry.
+            // A nearby different visible source is never sufficient evidence.
+            if(std::binary_search(superseded.begin(),superseded.end(),entry.cell.key))continue;
             const auto fresh=std::lower_bound(cells.begin(),cells.end(),entry.cell.key,[](const field::Cell&c,const field::Key&k){return c.key<k;});
             if((fresh==cells.end()||fresh->key!=entry.cell.key)&&Visibility(now-entry.observed)>0)offer(entry);
         }

@@ -31,7 +31,13 @@ inline float LightRadius(float scale,float shadowRange)
 constexpr double CaptureSeconds=.5,HoldSeconds=.20,ExpireSeconds=.70;
 struct Key { int x=0,y=0,z=0; auto operator<=>(const Key&)const=default; };
 struct Power { double x=0,y=0,z=0; };
-struct Cell { Key key;Power power;double mx=0,my=0,mz=0,weight=0; };
+struct Cell
+{
+    Key key;Power power;double mx=0,my=0,mz=0,weight=0;
+    // Observed moments remain exact. Only the separately emitted light pose is
+    // filtered; material RGB/power never passes through position history.
+    XMFLOAT3 emittedPosition{};bool hasEmittedPosition=false;
+};
 struct Reduction { XMFLOAT4 mean;XMFLOAT4 moment; };
 static_assert(sizeof(Reduction)==32);
 inline bool Finite(const XMFLOAT3 &p){return std::isfinite(p.x)&&std::isfinite(p.y)&&std::isfinite(p.z);}
@@ -119,6 +125,8 @@ inline void Collapse(std::vector<Cell> &parts)
 }
 inline XMFLOAT3 Position(const Cell &c)
 {return c.weight>0?XMFLOAT3{float(c.mx/c.weight),float(c.my/c.weight),float(c.mz/c.weight)}:XMFLOAT3{};}
+inline XMFLOAT3 LightPosition(const Cell &c)
+{return c.hasEmittedPosition?c.emittedPosition:Position(c);}
 inline std::array<size_t,Lit> Pick(const std::vector<Cell>&cells,const std::array<Key,Lit>&old,unsigned oldCount,
     const XMFLOAT3&receiver={},unsigned limit=emission_policy::DefaultParticleLimit)
 {
@@ -130,7 +138,7 @@ inline std::array<size_t,Lit> Pick(const std::vector<Cell>&cells,const std::arra
         for(size_t i=0;i<cells.size();++i)
         {
             if(std::find(chosen.begin(),chosen.begin()+n,i)!=chosen.begin()+n)continue;
-            const auto &c=cells[i];const auto p=Position(c);
+            const auto &c=cells[i];const auto p=LightPosition(c);
             const double dx=double(p.x)-receiver.x,dy=double(p.y)-receiver.y,dz=double(p.z)-receiver.z;
             // Approximate expected receiver contribution using world distance,
             // never screen coverage/view angle. This affects allocation only;

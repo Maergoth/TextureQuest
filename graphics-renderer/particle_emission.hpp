@@ -3,6 +3,7 @@
 #include "particle_emission_policy.hpp"
 #include "particle_field_policy.hpp"
 #include "particle_coalescing_policy.hpp"
+#include "particle_source_policy.hpp"
 #include "particle_retention_policy.hpp"
 
 // Observational native material replay: complete independent native draws form
@@ -46,6 +47,7 @@ static std::chrono::steady_clock::time_point FieldTime{};
 static ComPtr<ID3D11Resource> FieldScene;
 static bool HasField=false;
 static particle_retention_policy::Cache Retained;
+static particle_source_policy::Groups Sources;
 static double Seconds(std::chrono::steady_clock::time_point time){return std::chrono::duration<double>(time.time_since_epoch()).count();}
 static double SecondsNow(){return Seconds(std::chrono::steady_clock::now());}
 static std::vector<field::Cell> VisibleCells(double now=SecondsNow())
@@ -138,7 +140,7 @@ static void RemoveLights()
 {for(auto &s:SelectedCells){if(s.light)shadowmaps::Lights.erase(s.light);s={};}SelectedCount=Active=0;}
 static void InvalidateScene()
 {
-    RemoveLights();Cells.clear();Retained.Clear();HasField=false;FieldScene.Reset();++Epoch;
+    RemoveLights();Cells.clear();Retained.Clear();Sources.Clear();HasField=false;FieldScene.Reset();++Epoch;
     shadowmaps::particle_moving::Request(false,Epoch);
     // Do not reuse or release the in-flight packet here. Its event fence and
     // epoch are retired nonblocking in ReadFrame, even across master-off.
@@ -373,7 +375,7 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
                 if(mapped==DXGI_ERROR_WAS_STILL_DRAWING){Pending=1;return;}positionMapped=SUCCEEDED(mapped);valid=positionMapped;}
             if(valid){const auto mapped=ctx->Map(Frame.reducedRead.Get(),0,D3D11_MAP_READ,D3D11_MAP_FLAG_DO_NOT_WAIT,&material);
                 if(mapped==DXGI_ERROR_WAS_STILL_DRAWING){ctx->Unmap(Frame.read.Get(),0);Pending=1;return;}materialMapped=SUCCEEDED(mapped);valid=materialMapped;}
-            std::vector<field::Cell> candidate;if(valid)candidate.reserve(field::Triangles*8);
+            std::vector<particle_source_policy::Sample> candidate;if(valid)candidate.reserve(field::Triangles);
             if(valid)
             {
                 domain.inspected=true;
@@ -396,25 +398,28 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
                         }
                         if(std::max({energy.x,energy.y,energy.z})>1e20){sourceValid=false;break;}
                         ++domain.included;
-                        if(!field::Splat(candidate,location,energy)){sourceValid=false;break;}
+                        // One exact area-integrated sample per accepted native
+                        // triangle. Keep dark geometry observed too: a real
+                        // zero-power animation must replace cached brightness.
+                        if(candidate.size()>=particle_source_policy::MaximumSamples){sourceValid=false;break;}
+                        candidate.push_back({location,energy});
                     }
                     if(!sourceValid){candidate.resize(start);++domain.invalidDraws;}
                     else ++domain.acceptedDraws;
                 }
             }
             if(materialMapped)ctx->Unmap(Frame.reducedRead.Get(),0);if(positionMapped)ctx->Unmap(Frame.read.Get(),0);
-            if(valid)
-            {
-                field::Collapse(candidate);
-                valid=particle_coalescing_policy::Coalesce(candidate);
-                for(const auto &cell:candidate)if(!field::Good(cell.power)||!field::Finite(field::Position(cell))
-                    ||std::max({cell.power.x,cell.power.y,cell.power.z})>1e20){valid=false;break;}
-            }
             if(valid&&!domain.acceptedDraws)valid=false;
-            if(valid)valid=field::Publish(Cells,std::move(candidate),Frame.ledger,Epoch,
+            const auto publication=std::chrono::steady_clock::now();
+            particle_source_policy::Prepared prepared;
+            if(valid)valid=Sources.Prepare(std::move(candidate),Retained.Keys(Epoch,Seconds(publication)),Epoch,
+                Seconds(Frame.time),Seconds(publication),prepared);
+            auto nextRetained=Retained;
+            if(valid)valid=nextRetained.Observe(prepared.cells,Epoch,Seconds(Frame.time),Seconds(publication),Frame.camera,prepared.superseded);
+            if(valid)valid=field::Publish(Cells,std::move(prepared.cells),Frame.ledger,Epoch,
                 std::chrono::duration<double>(std::chrono::steady_clock::now()-Frame.time).count());
-            if(valid){HasField=true;FieldTime=std::chrono::steady_clock::now();FieldScene=Frame.scene;
-                Retained.Observe(Cells,Epoch,Seconds(Frame.time),Seconds(FieldTime),Frame.camera);++CompleteFrames;}
+            if(valid){Sources.Commit(std::move(prepared));Retained=std::move(nextRetained);
+                HasField=true;FieldTime=publication;FieldScene=Frame.scene;++CompleteFrames;}
             else {++IncompleteFrames;++RejectedBounds;}
             domain.published=valid;LastDomain=domain;
             Frame.busy=false;Frame.scene.Reset();Frame.target.Reset();
@@ -430,7 +435,7 @@ static unsigned ReadyCount(){return glow::ParticlesActive()&&field::CleanStrengt
     ?std::min(unsigned(VisibleCells().size()),emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())):0;}
 static void UpdateLight(shadowmaps::Light &light,const field::Cell &cell,float gain,float radius)
 {
-    const auto position=field::Position(cell);
+    const auto position=field::LightPosition(cell);
     const bool moved=!light.BuiltFrame||shadowmaps::Distance(light.BuiltPosition,position)>shadowmaps::MOVED_LIGHT_DISTANCE
         ||std::abs(light.GlowRange-radius)>1e-4f;
     light.Glow=true;light.Particle=true;light.GlowShown=true;light.GlowHeld=false;light.EmitterKey=0;light.Position=position;
@@ -445,11 +450,11 @@ static void UpdateLight(shadowmaps::Light &light,const field::Cell &cell,float g
         ++light.Version;light.RedrawNow=true;
     }
 }
-static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit,bool allocationReady=true)
+static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit,bool allocationReady=true,double now=SecondsNow())
 {
     shadowmaps::particle_moving::Request(glow::ParticlesActive()&&shadowmaps::MovingShadows,Epoch);
     if(!glow::ParticlesActive()){if(HasField||SelectedCount)Hide();return;}
-    const auto visible=VisibleCells();const float gain=field::CleanStrength(Strength.load());
+    auto visible=VisibleCells(now);Sources.Filter(visible,Epoch,now);const float gain=field::CleanStrength(Strength.load());
     const float radius=field::LightRadius(Radius.load(),field::MaximumWorldRadius);
     if(!allocationReady)
     {
@@ -489,6 +494,7 @@ static void WriteState(FILE *file)
 {
     if(!file)return;
     fprintf(file,"particle observed cache: entries %zu, grace 2.0s, fade 1.0s, hard expiry 3.0s\n",Retained.Size());
+    fprintf(file,"particle stable sources: tracked %zu, owner bins %zu, acquire 4.0, retain 6.0, ownership hysteresis 0.75, pose tau 0.20s; inferred identities, native power unfiltered\n",Sources.Size(),Sources.OwnerCount());
     fprintf(file,"particle controls: strength %.3f, radius scale %.3f, world radius %.3f\n",field::CleanStrength(Strength.load()),field::CleanRadius(Radius.load()),field::LightRadius(Radius.load(),field::MaximumWorldRadius));
     fprintf(file,"particle field epoch %llu, field %d, cells %zu, selected %u, visibility %.3f; packet frame %llu epoch %llu draws %u triangles %u complete %d collecting %d busy %d\n",
         static_cast<unsigned long long>(Epoch),HasField?1:0,Cells.size(),SelectedCount,Visibility(),
