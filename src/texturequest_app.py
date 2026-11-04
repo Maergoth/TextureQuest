@@ -24,6 +24,7 @@ from texturequest_shortcut import normalize as shortcut_spec,label as shortcut_l
 from texturequest_version import APP_VERSION
 import texturequest_components as components
 from texturequest_version_check import check_updates as check_versions, texture_version, pack_identity, saved_manifest
+from texturequest_changelog import load_changelog, show_changelog
 
 LOADER_IMPORT_ERROR = ""
 try:
@@ -379,6 +380,8 @@ class TextureQuestApp:
         tools.grid(row=0, column=1, sticky="e")
         self.version_label = self.label(tools, "App " + self.app_version, size=9, color=MUTED)
         self.version_label.pack(side="left", padx=(0, 15))
+        self.changelog_button = self.button(tools, "What's new", self.open_changelog, track=False)
+        self.changelog_button.pack(side="left", padx=(0, 8))
         self.menu_button = tk.Menubutton(tools, text="Settings  ▾", bg=BUTTON, fg=INK,
             activebackground=HOVER, activeforeground=INK, relief="flat", cursor="hand2",
             font=("Segoe UI", 9), padx=12, pady=7, highlightthickness=0)
@@ -744,6 +747,27 @@ class TextureQuestApp:
             "Install downloads and prepares everything automatically." if not self.prepared else
             "Ready. Close EQ2, then install. " + shortcut_label(self.shortcut) + " switches Original/Upscaled."))
         self.menu.entryconfigure(0, state="normal" if game and not self.busy else "disabled")
+
+    def open_changelog(self):
+        dialog = getattr(self, "changelog_dialog", None)
+        if dialog is not None and dialog.winfo_exists():
+            dialog.lift()
+            return dialog
+        try:
+            try:
+                from texturequest_build_pin import CHANGELOG_SHA256
+            except ImportError:
+                if getattr(sys, "frozen", False):
+                    raise ValueError("Installer is missing its changelog build pin")
+                CHANGELOG_SHA256 = None
+            text, digest = load_changelog(resource("CHANGELOG.md"), self.app_version, CHANGELOG_SHA256)
+            self.changelog_dialog = show_changelog(self.root, self.app_version, text,
+                                                  self.update_check.get("installer"))
+            self.changelog_dialog.changelog_sha256 = digest
+            return self.changelog_dialog
+        except (OSError, UnicodeError, ValueError) as error:
+            self.set_message("Couldn't open the bundled changelog: " + str(error), error=True)
+            return None
 
     def open_app_update(self):
         if self.busy:
@@ -1393,7 +1417,8 @@ def finish_app_update_startup(app, request, nonce, *, failed=False, smoke_test=F
         else:
             acknowledge_startup(request, nonce, app_dir=Path(sys.executable).resolve().parent,
                 data_dir=app.state_dir, version=app.app_version)
-            app.set_message("App updated to " + app.app_version + ". Your saved textures and settings were kept.")
+            app.set_message("App updated to " + app.app_version + ". Your saved textures and settings were kept. "
+                            "Open What's new for this app's changes.")
             if not smoke_test:
                 app.post_update_setup = True
                 app.root.after(200, app.check_updates)
@@ -1473,7 +1498,19 @@ def main(argv=None):
             assert 24.9 < overall_install < 25.1 and "Overall install" in app.overall_label.cget("text")
             assert str(app.progress.cget("mode")) == "determinate"
             app.busy = None
+            assert app.changelog_button.cget("state") != "disabled"
+            app.changelog_button.invoke()
+            notes = app.changelog_dialog
+            assert notes.winfo_exists() and notes.changelog_text.cget("state") == "disabled"
+            notes_text = notes.changelog_text.get("1.0", "end-1c")
+            assert "## " + app.app_version in notes_text and root.grab_current() is None
+            changelog_smoke = {"version": app.app_version, "sha256": notes.changelog_sha256,
+                "current_entry": "## " + app.app_version, "title": notes.title(),
+                "button": app.changelog_button.cget("text"), "read_only": True,
+                "scrollable": bool(notes.changelog_text.cget("yscrollcommand")), "nonmodal": True}
+            notes.destroy()
             receipt = {"version": app.app_version, "texture_version": texture_version(app.release),
+                       "changelog": changelog_smoke,
                        "app_update_status": app.app_update_label.cget("text"), "texture_update_status": app.pack_update_label.cget("text"),
                        "title": root.title(), "game": app.game.get(),
                        "install_enabled": app.install_button.cget("state") != "disabled", "download_button": app.download_button.cget("text"),

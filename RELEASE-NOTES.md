@@ -1,17 +1,23 @@
-TextureQuest 1.13.9 — private Develop/local candidate
+# TextureQuest 1.13.13 — Develop
 
-- Raise the particle-light ceiling to 128, intensity to 128× and radius control to 16× / 128 world units.
-- Admit bounded independent particle draws: an oversized or unsupported draw no longer discards later fitting draws. Scene/epoch/event/map failures still fail closed; excluded-only observations do not refresh old energy.
-- Correct WORLD shadow caster gathering and particle shadow lookup. Moving character shadows remain limited to the nearest 16 eligible lights, not all 128 particles.
+**What's new** now shows the installer's bundled changelog, labeled with the
+installed app version. GitHub and the app use the same canonical
+[CHANGELOG.md](CHANGELOG.md), including the backfilled 1.13.10–1.13.12 history.
+Installer builds require an entry for their current app version.
 
-The capture remains bounded to 512 draws / 32,768 triangles and can be partial;
-draw order and native culling can affect source coverage. The exact production
-CPU checks and one focused actual-D3D11 run passed. No historical alpha/full-suite
-replay or new test trees were added. These checks do not prove all game coverage,
-appearance or FPS; Sun movement flicker remains unresolved.
+This is an app-only Develop update. All native binaries remain at 1.13.12 and
+texture data stays at 1.3.0. A Develop source push does not publish a new binary
+release or change public main/latest.
 
-Saved controls and texture data 1.3.0 remain. Provider/AIO/NVIDIA and the other
-seven native payloads retain their installed combined1.13.8 bytes; only the
-renderer changes. The old1.13.8 normal update is consumed. This is a fresh private
-package for local use and Develop review, with no public tag/release or main
-update. The generator remains paused.
+The retained 1.13.12 renderer uses stable inferred particle-source identities
+and a separate time-filtered light position while preserving current native
+energy and dark pulses. It retains cached-light service-gap handling, the
+optional dedicated particle character-shadow pool, and verified base-material
+normal replay from earlier development builds. These are inherited fixes,
+not new native changes in 1.13.13.
+
+The existing shadow movement threshold, native-culling limits and source
+association ambiguities remain. Controlled CPU/hardware cases and package
+checks do not prove every model, shadow, offscreen effect or game FPS. See the
+[graphics handoff](docs/GRAPHICS-1.13.12-HANDOFF.md) for the detailed scope and
+[developer workflow](docs/CHANGELOG-WORKFLOW.md) for future changelog entries.

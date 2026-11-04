@@ -4,20 +4,27 @@
 
 **More detail. The EverQuest II you remember.**
 
+**[Changelog / What's new](CHANGELOG.md)** · [Developer changelog workflow](docs/CHANGELOG-WORKFLOW.md)
+
 TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim is to retain the game's original style, recognizable designs and art direction while bringing out the detail in armor, creatures, signs, buildings and terrain.
 
-AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,694 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The game's models, animations and lighting remain unchanged. Some fine detail is newly generated, and results vary by texture.
+AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,694 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The texture pack keeps the game's models and animations; optional Graphical Effects below change lighting. Some fine detail is newly generated, and results vary by texture.
 
-## 1.13.9 development workspace
+## 1.13.13 Develop workspace
 
-This is the private development/local candidate. Public main/latest remain
-unchanged; no1.13.9tag/release is being published. The new renderer raises the
-particle cap to128, intensity to128× and radius control to16× /128world units,
-keeps later fitting particle draws after overload/unsupported input, and fixes
-WORLD caster gathering/particle shadow lookup. Moving character shadows remain
-limited to the nearest16eligible lights. Controlled checks are not complete
-in-game coverage, appearance or FPS proof. See
-[the development handoff](docs/GRAPHICS-1.13.9-HANDOFF.md).
+This app update adds **What's new**, with the versioned changelog bundled in the
+installer and shared with developers through [CHANGELOG.md](CHANGELOG.md).
+It reuses the 1.13.12 graphics binaries and texture data 1.3.0. Develop source
+updates do not publish a new installer or change the public latest release;
+the download link below continues to point to the published release.
+
+Recent graphics work includes stable particle-source association and filtered
+light positions, cached-light retention, and normal-map replay for verified
+native material profiles. Particle character shadows have a separate pool for
+up to 128 eligible lights (**Advanced → Particle shadow limit**, requiring
+**Character shadows**), alongside the unchanged native 16-light moving pool.
+Controlled tests are not complete in-game appearance, coverage or FPS proof.
+See the [1.13.12 graphics handoff](docs/GRAPHICS-1.13.12-HANDOFF.md) for limits.
 
 ## Graphics setup
 

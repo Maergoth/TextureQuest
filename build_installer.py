@@ -38,10 +38,15 @@ def version_metadata(app_version, manifest, manifest_hash):
             "installer_name": f"TextureQuest-Installer-{app_version}-windows-x64.zip"}
 
 
-def build_pin(app_version, manifest, manifest_hash):
+def build_pin(app_version, manifest, manifest_hash, changelog_hash=None):
     metadata = version_metadata(app_version, manifest, manifest_hash)
-    return (f'MANIFEST_SHA256 = "{manifest_hash}"\nAPP_VERSION = "{metadata["app_version"]}"\n'
-            f'TEXTURE_VERSION = "{metadata["texture_version"]}"\nVERSION = APP_VERSION\n')
+    pin = (f'MANIFEST_SHA256 = "{manifest_hash}"\nAPP_VERSION = "{metadata["app_version"]}"\n'
+           f'TEXTURE_VERSION = "{metadata["texture_version"]}"\nVERSION = APP_VERSION\n')
+    if changelog_hash is not None:
+        if not re.fullmatch(r"[0-9a-f]{64}", changelog_hash):
+            raise ValueError("Invalid changelog build pin")
+        pin += f'CHANGELOG_SHA256 = "{changelog_hash}"\n'
+    return pin
 
 
 def sha(path):
@@ -50,6 +55,14 @@ def sha(path):
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def stage_changelog(source, destination, app_version):
+    from texturequest_changelog import validate_changelog
+    raw = source.read_bytes()
+    validate_changelog(raw, app_version)
+    destination.write_bytes(raw)
+    return hashlib.sha256(raw).hexdigest()
 
 
 def graphics_runtime_pins(manager, graphics, runtime_dir):
@@ -118,14 +131,18 @@ def main():
         source_hashes[source.relative_to(ROOT).as_posix()] = sha(source)
     bundled_manifest = stage / "release-manifest.json"
     shutil.copy2(manifest, bundled_manifest)
+    bundled_changelog = stage / "CHANGELOG.md"
+    changelog_hash = stage_changelog(ROOT / "CHANGELOG.md", bundled_changelog, args.version)
+    source_hashes["CHANGELOG.md"] = changelog_hash
     (stage / "texturequest_build_pin.py").write_text(
-        build_pin(args.version, release, manifest_hash), encoding="utf-8")
+        build_pin(args.version, release, manifest_hash, changelog_hash), encoding="utf-8")
     env = dict(os.environ, TEMP=str(BUILD / "tmp"), TMP=str(BUILD / "tmp"),
                PYINSTALLER_CONFIG_DIR=str(BUILD / "pyinstaller-cache"),
                PYTHONNOUSERSITE="1", PYTHONDONTWRITEBYTECODE="1")
     command = [sys.executable, "-B", "-m", "PyInstaller", "--noconfirm", "--onedir", "--windowed", "--noupx",
                "--name", NAME, "--paths", str(stage), "--distpath", str(DEST), "--workpath", str(BUILD / "pyinstaller"),
-               "--specpath", str(BUILD), "--add-data", str(bundled_manifest) + ":."]
+               "--specpath", str(BUILD), "--add-data", str(bundled_manifest) + ":.",
+               "--add-data", str(bundled_changelog) + ":."]
     if loader is not None:
         resources = BUILD / "loader-resources"
         # A build never mutates the admitted native input tree.
@@ -162,6 +179,7 @@ def main():
     command += [str(stage / "texturequest_app.py")]
     subprocess.run(command, cwd=ROOT, env=env, check=True)
     if (sha(manifest) != manifest_hash or sha(bundled_manifest) != manifest_hash
+            or sha(bundled_changelog) != changelog_hash
             or any(sha(ROOT / name) != expected for name, expected in source_hashes.items())):
         raise RuntimeError("Source changed during build")
     if loader is not None:
@@ -169,6 +187,8 @@ def main():
         if fresh != loader or admit_portable_payload(resources) != staged_loader:
             raise RuntimeError("Loader resources changed during build")
     folder = DEST / NAME
+    if sha(folder / "_internal/CHANGELOG.md") != changelog_hash:
+        raise RuntimeError("Packaged changelog differs from its canonical source")
     if graphics:
         for name, expected in graphics_pins.items():
             if (sha(args.graphics_runtime_dir / name) != expected or sha(resources_graphics / name) != expected or

@@ -1,9 +1,14 @@
-TextureQuest 1.13.3 private preview — Windows x64
+TextureQuest 1.13.13 development build — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract outside the game folder; keep data beside the EXE.
 3. Select your game folder and components, then Install graphics hook.
 4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
+
+Click What's new in TextureQuest to read the versioned changelog, including
+the recent graphics fixes. The same CHANGELOG.md is bundled with the app.
+Developers can read the same history on GitHub:
+https://github.com/Maergoth/TextureQuest/blob/Develop/CHANGELOG.md
 
 Textures are required. Graphical Effects (experimental) includes lighting,
 shadows, AO, filtering, DLSS and Reflex on supported hardware.
