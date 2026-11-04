@@ -2590,7 +2590,7 @@ static void OnPresent(command_queue *queue, swapchain *chain, const rect *, cons
     particle_emission::ReadFrame(reinterpret_cast<ID3D11DeviceContext *>(queue->get_native()));
     glow::EndFrame(reinterpret_cast<ID3D11Device *>(queue->get_device()->get_native()),
         reinterpret_cast<ID3D11DeviceContext *>(queue->get_native()),particle_emission::ReadyCount());
-    particle_emission::EndFrame(reinterpret_cast<ID3D11DeviceContext *>(queue->get_native()),glow::ParticleSlots);
+    particle_emission::EndFrame(reinterpret_cast<ID3D11DeviceContext *>(queue->get_native()),glow::ParticleSlots,glow::ParticleAllocationReady);
     shadowmaps::EndFrame(reinterpret_cast<ID3D11Device *>(queue->get_device()->get_native()),
         reinterpret_cast<ID3D11DeviceContext *>(queue->get_native()));
 }

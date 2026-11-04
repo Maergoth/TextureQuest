@@ -640,6 +640,7 @@ static uint64_t MeasuredKeys[READ_LATENCY];
 static uint64_t MeasuredTickets[READ_LATENCY], NextTicket=1;
 static bool MeasuredPainted[READ_LATENCY];
 static unsigned ParticleSlots=0;
+static bool ParticleAllocationReady=false;
 static XMFLOAT4X4 MeasuredClipToWorld[READ_LATENCY];
 static XMFLOAT3 MeasuredOffset[READ_LATENCY];
 static bool MeasuredPlaced[READ_LATENCY];
@@ -1756,6 +1757,7 @@ static void PickLights(unsigned particleDemand)
     for (const auto &[casterKey, emitter] : Emitters)
         for (uint64_t key : emitter.ShownLights)
             if(shadowmaps::Lights[key].LastSeen==shadowmaps::FrameNumber)shadowmaps::Lights[key].GlowShown = true;
+    ParticleAllocationReady=true;
 }
 
 // the screen rectangle that holds the cube of this half-width about an absolute position, or the whole screen when it
@@ -2122,7 +2124,7 @@ static void Reset(bool keepShapeBuffers = false)
     }
     std::fill(std::begin(MeasuredKeys), std::end(MeasuredKeys), 0);
     std::fill(std::begin(MeasuredTickets),std::end(MeasuredTickets),0);
-    ParticleSlots=0;emission_policy::Samples.Clear();
+    ParticleSlots=0;ParticleAllocationReady=false;emission_policy::Samples.Clear();
     MeasureTexture.Reset();
     MeasureDepth.Reset();
     for (auto &readback : MeasureReadback)
@@ -2422,7 +2424,7 @@ static void RetireObjects()
 static void EndFrame(ID3D11Device *dev, ID3D11DeviceContext *ctx,unsigned particleDemand=0)
 {
     const shadowmaps::CpuScope scope(shadowmaps::GlowCpu);
-    ParticleSlots=0;
+    ParticleSlots=0;ParticleAllocationReady=false;
     if (capture::State == capture::Phase::Capturing) WriteState();
     if (PaintedDestination) CompositePainted(ctx);
     if (!ObjectsActive()) RetireObjects();

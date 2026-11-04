@@ -2,6 +2,7 @@
 #include "glow.hpp"
 #include "particle_emission_policy.hpp"
 #include "particle_field_policy.hpp"
+#include "particle_coalescing_policy.hpp"
 #include "particle_retention_policy.hpp"
 
 // Observational native material replay: complete independent native draws form
@@ -405,6 +406,7 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
             if(valid)
             {
                 field::Collapse(candidate);
+                valid=particle_coalescing_policy::Coalesce(candidate);
                 for(const auto &cell:candidate)if(!field::Good(cell.power)||!field::Finite(field::Position(cell))
                     ||std::max({cell.power.x,cell.power.y,cell.power.z})>1e20){valid=false;break;}
             }
@@ -426,34 +428,58 @@ static float Visibility()
 {const double now=SecondsNow();return float(std::max(Retained.Strongest(Epoch,now),HasField&&!Cells.empty()?double(field::Visibility(now-Seconds(FieldTime))):0));}
 static unsigned ReadyCount(){return glow::ParticlesActive()&&field::CleanStrength(Strength.load())>0
     ?std::min(unsigned(VisibleCells().size()),emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())):0;}
-static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit)
+static void UpdateLight(shadowmaps::Light &light,const field::Cell &cell,float gain,float radius)
+{
+    const auto position=field::Position(cell);
+    const bool moved=!light.BuiltFrame||shadowmaps::Distance(light.BuiltPosition,position)>shadowmaps::MOVED_LIGHT_DISTANCE
+        ||std::abs(light.GlowRange-radius)>1e-4f;
+    light.Glow=true;light.Particle=true;light.GlowShown=true;light.GlowHeld=false;light.EmitterKey=0;light.Position=position;
+    light.GlowNormal={};light.GlowArea=1;light.GlowRange=radius;
+    const double strength=field::StrengthReference*gain/XM_PI;
+    light.GlowColour={float(cell.power.x*strength),float(cell.power.y*strength),float(cell.power.z*strength)};light.LastSeen=shadowmaps::FrameNumber;
+    if(moved)
+    {
+        // Use the same complete confirmed-radius query as native/object lights.
+        // An unordered prefix can omit a nearby wall even when the light is selected.
+        shadowmaps::GatherCasters(light);
+        ++light.Version;light.RedrawNow=true;
+    }
+}
+static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit,bool allocationReady=true)
 {
     shadowmaps::particle_moving::Request(glow::ParticlesActive()&&shadowmaps::MovingShadows,Epoch);
     if(!glow::ParticlesActive()){if(HasField||SelectedCount)Hide();return;}
     const auto visible=VisibleCells();const float gain=field::CleanStrength(Strength.load());
-    const float radius=field::LightRadius(Radius.load(),field::MaximumWorldRadius);std::array<field::Key,field::Lit> prior{};
+    const float radius=field::LightRadius(Radius.load(),field::MaximumWorldRadius);
+    if(!allocationReady)
+    {
+        // A skipped camera/allocation service is not a proven zero budget. Keep
+        // only committed identities, refreshing their actual retained energy;
+        // no new light or expired observation can be admitted by this path.
+        const auto old=SelectedCells;SelectedCells={};SelectedCount=Active=0;
+        const unsigned limit=gain>0?emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load()):0;
+        for(const auto &selected:old)if(selected.light)
+        {
+            const auto cell=std::lower_bound(visible.begin(),visible.end(),selected.cell,
+                [](const field::Cell &value,const field::Key &key){return value.key<key;});
+            auto light=shadowmaps::Lights.find(selected.light);
+            if(SelectedCount<limit&&cell!=visible.end()&&cell->key==selected.cell&&light!=shadowmaps::Lights.end())
+            {UpdateLight(light->second,*cell,gain,radius);SelectedCells[SelectedCount++]=selected;++Active;}
+            else shadowmaps::Lights.erase(selected.light);
+        }
+        return;
+    }
+    std::array<field::Key,field::Lit> prior{};
     for(unsigned i=0;i<SelectedCount;++i)prior[i]=SelectedCells[i].cell;
     const unsigned wanted=gain>0?std::min({allowance,field::Lit,
         emission_policy::ClampParticleLimit(glow::ParticleLightLimit.load())}):0;
     const auto picks=field::Pick(visible,prior,SelectedCount,shadowmaps::Camera,wanted);auto old=SelectedCells;SelectedCells={};const unsigned oldCount=SelectedCount;SelectedCount=Active=0;
     for(unsigned i=0;i<wanted&&picks[i]!=SIZE_MAX;++i)
     {
-        const auto &cell=visible[picks[i]];const auto position=field::Position(cell);Selected selected{cell.key,0};
+        const auto &cell=visible[picks[i]];Selected selected{cell.key,0};
         for(unsigned j=0;j<oldCount;++j)if(old[j].cell==cell.key){selected.light=old[j].light;old[j].light=0;break;}
         if(!selected.light||!shadowmaps::Lights.contains(selected.light))selected.light=shadowmaps::NextLightKey++;
-        auto &light=shadowmaps::Lights[selected.light];const bool moved=!light.BuiltFrame||shadowmaps::Distance(light.BuiltPosition,position)>shadowmaps::MOVED_LIGHT_DISTANCE
-            ||std::abs(light.GlowRange-radius)>1e-4f;
-        light.Glow=true;light.Particle=true;light.GlowShown=true;light.GlowHeld=false;light.EmitterKey=0;light.Position=position;
-        light.GlowNormal={};light.GlowArea=1;light.GlowRange=radius;
-        const double strength=field::StrengthReference*gain/XM_PI;
-        light.GlowColour={float(cell.power.x*strength),float(cell.power.y*strength),float(cell.power.z*strength)};light.LastSeen=shadowmaps::FrameNumber;
-        if(moved)
-        {
-            // Use the same complete confirmed-radius query as native/object lights.
-            // An unordered prefix can omit a nearby wall even when the light is selected.
-            shadowmaps::GatherCasters(light);
-            ++light.Version;light.RedrawNow=true;
-        }
+        UpdateLight(shadowmaps::Lights[selected.light],cell,gain,radius);
         SelectedCells[SelectedCount++]=selected;++Active;
     }
     for(auto &s:old)if(s.light)shadowmaps::Lights.erase(s.light);

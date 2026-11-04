@@ -12,8 +12,8 @@
     }
   },
   "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
-  "revision": "TextureQuest025/026 / private local1.13.10",
-  "integration_base_commit": "26c29e188f80597cc10b604ea5c7e0fb4e2fbdc8",
+  "revision": "TextureQuest027/028/029 / private local1.13.11",
+  "integration_base_commit": "b0de849dcd7658e79172441300bdd4b6b9612b5d",
   "files": [
     {
       "name": "addon.cpp",
@@ -37,8 +37,8 @@
     },
     {
       "name": "glow.hpp",
-      "bytes": 123852,
-      "sha256": "6d546dfb8b10af9e3758c08c20d156029e761a37bb8ffa453ff460adb918b2ec"
+      "bytes": 123991,
+      "sha256": "b6a81ac3e9400adf4afa545b773d3cd94bdeeca9a8306efe1a4baa6413e758fe"
     },
     {
       "name": "lamp_holder_policy.hpp",
@@ -52,8 +52,8 @@
     },
     {
       "name": "material_normal_replay.hpp",
-      "bytes": 19044,
-      "sha256": "aba02b924128c4885b34c1a97c9ae9f73eff6124e96ea716b75171fe7bcd381d"
+      "bytes": 19761,
+      "sha256": "2d39fd6e45e35b2522e2d3b5f4b376316ce445a8a3879206571887cc343f9175"
     },
     {
       "name": "offscreen_lamp_policy.hpp",
@@ -71,9 +71,14 @@
       "sha256": "fbbb721ce84d6900a0c98def338301c8a8a8fef53c5d6f4430491903f3dca723"
     },
     {
+      "name": "particle_coalescing_policy.hpp",
+      "bytes": 1628,
+      "sha256": "bf1a062b95ce2a24de09ea5864f5fd85aa69d23a99b277623cb5d8bb106801a0"
+    },
+    {
       "name": "particle_emission.hpp",
-      "bytes": 37046,
-      "sha256": "2bbe4b687604d6df5ca468c675697b144f7ed18a9ba12f715e85c9408fcf10e5"
+      "bytes": 38380,
+      "sha256": "458ce61bc85591bc5fb90fc09d6020de6b9e19a39844a19ea488050727eb4638"
     },
     {
       "name": "particle_emission_policy.hpp",
@@ -117,8 +122,8 @@
     },
     {
       "name": "shadows.hpp",
-      "bytes": 192376,
-      "sha256": "4615bfdafcb4feebc31ea6314a765b3eba6c168e7d84bd2cb07f31e45aeddbb1"
+      "bytes": 192406,
+      "sha256": "6ce5ca3a3f09275bd21e1be183389c092cb467de827cea16f92cccf8607c9bd1"
     },
     {
       "name": "sun_direction_policy.hpp",
@@ -162,38 +167,39 @@
     }
   ],
   "native_release_asset": {
-    "bytes": 1090048,
-    "sha256": "fb4998fe4da008247ee5c402e61108af9aef78df12c744c38127c759a9690887"
+    "bytes": 1094144,
+    "sha256": "397690edf3454db93d4d1472c9ed52599d94d7b462d3ed1b8776c741569fa112"
   },
   "build": {
     "exit_code": 0,
     "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes",
     "compile_log": {
-      "bytes": 55198,
-      "sha256": "7891f32a5d4d26c9c5e96f8fb2925898f1588a4e443e7b23fa97fe9e8aa31a8a"
+      "bytes": 55355,
+      "sha256": "19f8d3b67f93e2fcd14260857eb38e913b6f2a805b0312d11cb1a916724c660d"
     }
   },
-  "controlled_gpu": {
+  "controlled_validation": {
     "status": "PASS",
-    "markers": {
-      "PASS025 actual retained character shadows particle at native slot33; native16x512 pool/depth/state preserved": true,
-      "PASS025 actual shadow strength0-half-full and modern softness0-2-4 edge response": true,
-      "PASS025 moving pose, light pose, epoch and CharacterShadows-off retire stale maps": true,
-      "PASS025 all128 banked maps and lower stable quantity; unused/off resources retired": true,
-      "PASS025 focused new moving-map behavior complete": true
+    "particle_cpu": {
+      "bytes": 9572,
+      "sha256": "a62ec3b62e417a122b3604e192910f9167824e3a1b05bf6f538efd5d56448671"
     },
-    "result": {
-      "bytes": 9882,
-      "sha256": "6a7372b05273746d4da72be572e4d0e10ca87a1c174e06780cdc115c4be973e4"
+    "normal_gpu": {
+      "bytes": 1430,
+      "sha256": "22edd8738a791a7639372adf28a49ff812569b48e2b3a206ce0344e2adfea52d"
+    },
+    "final": {
+      "bytes": 9156,
+      "sha256": "5cd1cd757f2c12d4aadf473147eb2938c90eb823110aa5f784fc45f1c1945c1e"
     }
   },
   "prior_metadata": {
-    "revision": "PR4 + TextureQuest023 / private Develop1.13.9",
+    "revision": "TextureQuest025/026 / private local1.13.10",
     "native_release_asset": {
-      "bytes": 1043968,
-      "sha256": "e7254c08925b523c42fd02fd54707d0884e4e80593ceb5366f62d30e96e9c538"
+      "bytes": 1090048,
+      "sha256": "fb4998fe4da008247ee5c402e61108af9aef78df12c744c38127c759a9690887"
     },
     "historical_only": true
   },
-  "qualification": "Local only; no GitHub push. Dedicated particle character maps1-128; bounded2s hold/1s fade for observed sources. Captured base-only normal convention rejected in favor of depth fallback. Controlled GPU checks do not prove all game coverage/appearance/FPS; character-section seams need live verification."
+  "qualification": "Local only; GitHub held. Preserves committed particle map identities on unavailable allocation; groups native contributions by4-unit world region before retention. Exact known native base shader pairs now replay their weighted T0 normals; unknown shaders keep fallback. Controlled tests do not establish all game models, offscreen coverage or FPS."
 }
