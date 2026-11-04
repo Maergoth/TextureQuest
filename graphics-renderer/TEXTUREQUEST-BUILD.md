@@ -1,24 +1,34 @@
-# Renderer 1.13.11 local development build
+# Renderer 1.13.12 development build
 
-This local build fixes particle allocation-service gaps that erased cached
-light/map identities. Existing committed lights still fade and expire, while
-a valid zero budget, explicit Off and scene resets retain their meaning.
+030 stabilizes inferred particle source identities with deterministic world
+anchor association and ownership hysteresis. Bins accelerate lookup rather
+than define identity. Current RGB energy and moments remain exact; a separate
+elapsed-time position filter uses a0.20second time constant. Grouping, history
+and field publication commit together. Existing service-gap retention, Off,
+scene reset and observation-time fade/expiry behavior remain.
 
-Particle contributions are grouped into4-unit world regions before retention,
-conserving RGB energy and weighted centroids. The203439 selected-light capture
-simulation reduces128lights to15groups; this is not a measured FPS promise.
-The native/dedicated shadow layouts and light HLSL remain unchanged from1.13.10.
+The strict/W4/WX build passed with31 root native inputs, joined to source-code
+commit cf775e5cc2d2a270e7b49a1d2cfd6ba501682b98. The verified renderer is
+1127936bytes, SHA256
+5ee82fbbc489b8de8c1bad844b8a78c2ee840f0e164d644fb5e11e38f917883a.
+RELEASE-SOURCE.json records the exact source, compile-log and focused-check pins.
+The seven other native payloads and texture data1.3.0 remain unchanged.
 
-Verified base PS ebfb1c1d07ad558d with VS92f68ad8f88a96b3 or4780c178ee4ee3ea
-uses the native weighted T0 normal recipe. Admitted opaque draws now use that
-existing material-normal shader path, preserving smooth basis interpolation.
-Unknown, alpha-tested or unsupported draws retain the geometric fallback.
+The focused fixture passed1271 policy and actual production temporal
+ReadFrame/cache/EndFrame CPU checks, including boundary movement, same-group
+centroid changes, zero pulses, conservation, service gaps and expiry. No new
+hardware/alpha/map suite was replayed. The1.13.11 base-normal GPU result is
+retained as explicitly historical component evidence, not a030 hardware pass.
 
-Final strict/W4/WX native build passed. Focused production CPU checks passed
-for allocation/selection/slots(70) and grouping/readback/cache(54). One new
-actual hardware-D3D11 normal case passed native base floor orientation, smooth
-interpolation, weighting/refusal guards and native state/data preservation.
-No previous128-map/alpha/full suite was replayed. RELEASE-SOURCE.json records
-the compiled image and30root native inputs. Existing dependency permission and
-licenses remain unchanged; captured game shaders/native outputs are not added
-to source control. See docs/GRAPHICS-1.13.11-HANDOFF.md.
+Source association is spatial inference, not recovered native emitter identity.
+Ambiguous split/merge/culling histories expire normally. Shadow maps retain the
+existing0.1unit movement threshold and normal rebuild scheduler. Adversarial
+capacity fixtures remain costly, including111.5ms for an injected32768
+near-coincident old-anchor state; CPU fixture timing is not game FPS. Live
+shadow stability and universal offscreen/model coverage are not established.
+
+Develop source updates are authorized. Pushing this source does not upload or
+publish the1.13.12 DLL/installer, create a release, or change public main/latest.
+No binary asset upload is claimed. Existing permission and dependency licenses
+remain unchanged; captured game shaders and native outputs stay outside Git.
+See docs/GRAPHICS-1.13.12-HANDOFF.md for feature and package context.

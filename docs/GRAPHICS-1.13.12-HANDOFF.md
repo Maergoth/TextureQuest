@@ -1,6 +1,9 @@
 # TextureQuest 1.13.12 local handoff
 
-Local only; GitHub publication remains held. Texture data stays1.3.0. The seven
+The maintainer authorized pushing this source to Develop after the local build
+was verified. Main and public binary releases remain unchanged; this source
+push does not publish the private1.13.12 installer or renderer asset.
+Texture data stays1.3.0. The seven
 non-renderer native payloads, saved controls and existing shadow banks stay at
 the installed1.13.11 versions. Generation remains paused.
 
