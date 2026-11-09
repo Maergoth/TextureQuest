@@ -1,5 +1,17 @@
 # EQ2 Graphics
 
+## TextureQuest 1.13.15 integration
+
+Press **Home** to show or hide settings, then choose **TextureQuest**. The public
+adapter starts AO on, and point/emissive/Sun/softening/smooth-text work off.
+Existing explicit feature choices and numeric settings are kept. Shadow quality
+uses Low/Med/Max budgets10/50/512, with particle character shadows10/50/128.
+Light quality uses emissive16/64/512 and particle16/64/128. Both share the shadow
+pool; native lamps take priority. Custom numeric controls remain in Advanced.
+The sections below describe the upstream techniques; the current integration,
+coverage limits and default policy are in [the graphics guide](../docs/GRAPHICS_FEATURES.md).
+
+
 A ReShade add-on for EverQuest II (Direct3D 11) that adds shadows, light and filtering the game does not have. Every
 feature has a switch and settings in the add-on's panel in the ReShade overlay.
 
@@ -45,7 +57,7 @@ Emissive surfaces such as lava light the area around them, with soft shadows.
 
 The game only paints a faint glow around emissive meshes. The add-on treats emissive meshes as area lights: each is
 read back once and split into cells on a grid fixed to the world. Cells that together cover every emissive mesh near
-the camera, smaller nearer it, become up to 64 point lights, each lighting as a small glowing disc of the cell's area,
+the camera, smaller nearer it, become a bounded set of point lights, each lighting as a small glowing disc of the cell's area,
 so the whole surface's light reaches the scene. They are drawn into the light buffer from depth (deferred, screen-space
 lighting) with cube map shadows, softened by percentage-closer filtering (PCF) over a Poisson disc, and the game's
 painted glow is dimmed where they reach. Each light also adds a soft, unshadowed bounce, nearly even across a cave's

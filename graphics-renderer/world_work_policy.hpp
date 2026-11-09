@@ -8,17 +8,14 @@ enum WorldFeature : std::uint32_t { PointWork=1, AOWork=2, SunWork=4, CaptureWor
 constexpr std::uint32_t EffectWork=PointWork|AOWork|SunWork|SurfaceWork;
 struct WorldSelection { bool point=false, ao=false, sun=false, surface=false; };
 struct SunSelectionInput {
-    bool explicitSun=false, sun=true;
+    bool explicitSun=false, sun=false;
     bool savedPoint=false, point=true, savedAO=false, ao=true;
     bool savedSoftness=false; float softness=0.1f;
     bool savedDirection=false, savedIndoor=false;
 };
 constexpr bool InitialSunSelection(SunSelectionInput input)noexcept {
-    if(input.explicitSun)return input.sun;
-    // An old explicit all-off layout must not acquire new hidden sun work.
-    const bool oldOff=input.savedPoint&&!input.point&&input.savedAO&&!input.ao
-        &&input.savedSoftness&&input.softness<=0&&!input.savedDirection&&!input.savedIndoor;
-    return !oldOff;
+    // Sun work is opt-in. Saved child tweaks alone must not enable it.
+    return input.explicitSun&&input.sun;
 }
 constexpr std::uint32_t WorldMask(WorldSelection selected,bool master,bool capture) noexcept {
     return (master?((selected.point?PointWork:0u)|(selected.ao?AOWork:0u)|(selected.sun?SunWork:0u)

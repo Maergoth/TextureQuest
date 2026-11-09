@@ -9,15 +9,20 @@ inline bool Valid(const TextureQuestAIOControlsV2 &c) {
  (c.FrameMultiplier>=2&&c.FrameMultiplier<=4)&&
  c.NrModel>=1&&c.NrModel<=3&&c.NrPasses>=1&&c.NrPasses<=3&&c.Reserved==0;
 }
+// Keep ABI2's historical shape and accept older callers, but never admit its
+// retired Super Resolution bit or processing-size preset in this profile.
+inline TextureQuestAIOControlsV2 Supported(TextureQuestAIOControlsV2 c) {
+ c.EnabledMask &= ~uint32_t(TQAIO_SR);c.SrMode=TQAIO_SR_Current;return c;
+}
 inline uint32_t Pack(const TextureQuestAIOControlsV2&c){return c.EnabledMask|(c.SrMode<<3)|(c.FrameMultiplier<<6)|(c.NrModel<<9)|(c.NrPasses<<11);}
 inline TextureQuestAIOControlsV2 Unpack(uint64_t t){const auto p=uint32_t(t);return {2,32,p&7,(p>>3)&7,(p>>6)&7,(p>>9)&3,(p>>11)&3,0};}
 class Mailbox {
  std::atomic<uint64_t> requested_{0},applied_{0};std::atomic<bool>loaded_{false};
 public:
- void Initialize(const TextureQuestAIOControlsV2 &c){const uint64_t t=(uint64_t(1)<<32)|Pack(c);applied_.store(t);requested_.store(t);loaded_.store(true,std::memory_order_release);}
+ void Initialize(const TextureQuestAIOControlsV2 &c){const uint64_t t=(uint64_t(1)<<32)|Pack(Supported(c));applied_.store(t);requested_.store(t);loaded_.store(true,std::memory_order_release);}
  bool Request(const TextureQuestAIOControlsV2&c,bool&changed){
   changed=false;if(!Valid(c)||!loaded_.load(std::memory_order_acquire))return false;
-  auto old=requested_.load(std::memory_order_acquire);const auto p=Pack(c);
+  auto old=requested_.load(std::memory_order_acquire);const auto p=Pack(Supported(c));
   while(uint32_t(old)!=p){const auto n=(((old>>32)+1)<<32)|p;if(requested_.compare_exchange_weak(old,n,std::memory_order_acq_rel)){changed=true;break;}}
   return true;
  }

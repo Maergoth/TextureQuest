@@ -52,8 +52,9 @@ using TextureQuestAIOGetControlsFn = int32_t (__cdecl *)(uint32_t abi,void *outp
 // Atomic request only; current master remains authoritative. Owner Present drains
 // admitted jobs, applies and persists via normal ReShade config, then readmits.
 // Get returns96bytes with copied atomic requested/applied controls and generations.
-// SR Current uses native capture; lower modes downsample ONLY the captured image
-// before SR. They do not lower game rendering cost. MaskSR off makes NO NGX SR call.
+// Since TextureQuest 1.13.15 SR is retired: its bit and mode enum remain in ABI2
+// for compatibility, but the managed provider clears MaskSR and uses native
+// capture regardless of older saved settings or control requests. No NGX SR call.
 // MaskFG off bypasses FG;selected2/3/4 request one/two/three intermediates. Actual
 // runtime support/evaluations/status must prove4x; request alone is not evidence.
 // NR model1..3/pass1..3 retain upstream style/pass contracts.

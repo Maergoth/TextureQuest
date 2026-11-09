@@ -49,7 +49,7 @@ static std::mutex Lock;
 static std::unordered_map<uint64_t, ReplacedSampler> Samplers;
 static std::atomic<bool> AnisotropyEnabled = true;
 static std::atomic<int> AnisotropyLevel = ANISOTROPY_LEVELS - 1;
-static std::atomic<bool> BilinearEnabled = true;
+static std::atomic<bool> BilinearEnabled = false;
 
 // the point-filtered sampler's filter with bilinear minification and magnification
 static filter_mode FindBilinearFilter(filter_mode filter)
@@ -216,7 +216,7 @@ static void LoadSettings()
 
     AnisotropyLevel = ANISOTROPY_LEVELS - 1;
 
-    bool bilinear = true;
+    bool bilinear = false;
     reshade::get_config_value(nullptr, CONFIG_SECTION, "SmoothInterfaceText", bilinear);
     BilinearEnabled = bilinear;
 }

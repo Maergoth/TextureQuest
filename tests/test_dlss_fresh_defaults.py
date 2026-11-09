@@ -93,5 +93,48 @@ class FreshDLSSDefaults(unittest.TestCase):
             settings.restore_dlss_config(after, old_schema)
 
 
+class PublicGraphicsDefaults(unittest.TestCase):
+    def test_fresh_public_defaults_and_conditional_restore(self):
+        raw = b'; original\r\n[Foreign]\r\nKeep=1\r\n'
+        after, lease = settings.prepare_dlss_config(raw, profile='graphics-world-aio-defaults')
+        self.assertTrue(lease['schema'].endswith('-v2'))
+        for key in ('FrameGeneration', 'ManagedSrEnabled', 'NeuralRendering',
+                    'PointLightShadows', 'EmissiveLights', 'SmoothInterfaceText', 'SunLighting', 'SunSoftness'):
+            self.assertIn((key + '=0\r\n').encode(), after)
+        self.assertIn(b'AmbientOcclusion=1\r\n', after)
+        self.assertNotIn(b'ReflexLowLatency', after)
+        self.assertIn(b'ShadowedLights=50\r\n', after)
+        self.assertIn(b'ParticleShadowLimit=50\r\n', after)
+        self.assertIn(b'EmissiveLightLimit=64\r\n', after)
+        self.assertIn(b'ParticleLightLimit=64\r\n', after)
+        self.assertEqual(settings.restore_dlss_config(after, lease), (raw, ()))
+        edited = after.replace(b'PointLightShadows=0', b'PointLightShadows=1')
+        restored, conflicts = settings.restore_dlss_config(edited, lease)
+        self.assertIn(b'PointLightShadows=1', restored)
+        self.assertIn('EQ2Graphics.PointLightShadows', conflicts)
+
+    def test_saved_choices_are_not_reset_by_new_defaults(self):
+        raw = (b'[EQ2Graphics]\r\nPointLightShadows=1\r\nEmissiveLights=1\r\n'
+               b'AmbientOcclusion=0\r\nSunLighting=1\r\nSunSoftness=2.5\r\n'
+               b'SmoothInterfaceText=1\r\nShadowedLights=27\r\nParticleLightLimit=37\r\n'
+               b'[Standalone.DLSSNR]\r\nFrameGeneration=1\r\nNeuralRendering=1\r\n'
+               b'[TextureQuest]\r\nReflexLowLatency=1\r\n')
+        after, lease = settings.prepare_dlss_config(raw, profile='graphics-world-aio-defaults')
+        for line in raw.splitlines(keepends=True):
+            self.assertIn(line, after)
+        self.assertEqual(settings.restore_dlss_config(after, lease), (raw, ()))
+        repeated, journal = settings.prepare_dlss_config(after, profile='graphics-world-aio-defaults')
+        self.assertEqual(repeated, after)
+        self.assertEqual(journal['changes'], [])
+
+    def test_genuine_v1_defaults_lease_still_restores_exactly(self):
+        fixture = json.loads((Path(__file__).parent / 'fixtures/graphics-defaults-v1-lease.json').read_text())
+        raw, after = bytes.fromhex(fixture['raw_hex']), bytes.fromhex(fixture['after_hex'])
+        self.assertTrue(fixture['journal']['schema'].endswith('-v1'))
+        self.assertIn(b'ReflexLowLatency=1', after)
+        self.assertIn(b'SunLighting=1', after)
+        self.assertEqual(settings.restore_dlss_config(after, fixture['journal']), (raw, ()))
+
+
 if __name__ == '__main__':
     unittest.main()

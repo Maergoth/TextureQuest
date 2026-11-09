@@ -1094,8 +1094,8 @@ struct SunConstants
 };
 
 // Sun softness uses real-Sun angular-radius multiples.
-static std::atomic<bool> SunEnabled = true; // Visible umbrella; child settings remain saved while off.
-static std::atomic<float> SunSoftness = sun_softness_settings::Default;
+static std::atomic<bool> SunEnabled = false; // Visible umbrella; child settings remain saved while off.
+static std::atomic<float> SunSoftness = 0.0f;
 // what a sun shadow takes off: all the light from before the lamps (Full), only the sun's share of it (Split), or the
 // sun's share after part of the ambient light is taken off the geometry before the lamps (DarkerAmbient)
 enum class SunMode { Full, Split, DarkerAmbient };
@@ -1110,7 +1110,7 @@ static std::atomic<bool> SmoothIndoorTransition = true;
 // tangent of its angular radius of about 0.27 degrees
 constexpr float SUN_SPREAD_PER_SOFTNESS = 0.00465f;
 static std::atomic<bool> OcclusionEnabled = true;
-static std::atomic<float> OcclusionRadius = 0.35f;
+static std::atomic<float> OcclusionRadius = 0.66f;
 static std::atomic<float> OcclusionStrength = 1.25f;
 // Retained upstream dependency, deliberately disabled in this managed build.
 static std::atomic<float> SurfaceSaturation = 0.0f;

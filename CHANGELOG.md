@@ -4,6 +4,16 @@ This is the canonical history bundled with the installer. Develop entries are
 development builds, not announcements of public binary releases. Controlled
 checks described here do not establish complete in-game appearance or FPS.
 
+## 1.13.15 — Graphics release
+
+- Bring the Develop particle grouping, retained-source, material-normal replay and bounded self-shadow work into the public installer. Texture data remains 1.3.0; no unfinished generations are included.
+- Show **Graphical Effects / DLSS (experimental)** in the launcher and clearly explain that **Home** shows or hides settings.
+- Default ambient occlusion on. Default frame generation, neural rendering, smooth interface text, point lights, emissive lights, sun lighting and sun shadow softening off. Preserve saved choices and numeric customizations for retained features.
+- Remove Upscaling and Reflex driver mode from the controls and active runtime paths. Ignore legacy SR enable requests; retain the binary API layout for compatibility.
+- Add **Low, Med, Max** Shadow quality and Light quality presets, including particle shadow/light budgets. Keep custom numeric controls under Advanced and explain the shared shadow-pool limit.
+- Version the installer's default-settings leases so old installations can still restore their exact owned settings without adopting the new defaults.
+- Sun-direction movement flicker, unsupported material/particle paths and sources the game never submits remain limitations. The latest source-core visual improvement is scene-dependent; no universal appearance or FPS improvement is claimed.
+
 ## 1.13.14 — Develop graphics candidate
 
 - Add a bounded, particle-only exclusion core to shadow depth sampling. Its radius is `min(0.35, 0.5 × weighted positive-emission centroid RMS)` world units, with smoothed source metadata.

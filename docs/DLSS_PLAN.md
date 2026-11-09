@@ -1,3 +1,7 @@
+> Historical design notes. Current 1.13.15 removes Upscaling and Reflex driver mode;
+> Frame Generation and Neural Rendering remain optional and default off.
+> See [the current graphics guide](GRAPHICS_FEATURES.md).
+
 # DLSS neural rendering and frame generation plan
 
 Plan for improving the DLSS stack (`graphics-dlss/`, driven by `graphics-addon/aio_controller.hpp`) together with the world renderer (`graphics-renderer/`).

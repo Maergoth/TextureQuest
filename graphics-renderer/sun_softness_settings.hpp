@@ -8,7 +8,7 @@ constexpr float LegacyFactor=(1.0f/3.0f)/Spread;
 constexpr float Default=1.6f;
 constexpr float Maximum=2.0f*LegacyFactor;
 inline float Clean(float v,float fallback=Default){return std::isfinite(v)&&v>=0?std::min(v,Maximum):fallback;}
-struct Values{float Active=Default,Preference=Default;bool Saved=false;};
+struct Values{float Active=0,Preference=Default;bool Saved=false;};
 // Old keys remain immutable historical values. A native-unit value always wins,
 // even without our version marker (an upstream install may have written it).
 template<class Get,class Set> Values Load(Get get,Set set)
@@ -17,7 +17,7 @@ template<class Get,class Set> Values Load(Get get,Set set)
     const bool old=get("SunShadowSize",legacy);
     const bool modern=get("SunSoftness",native);
     v.Saved=old||modern;
-    v.Active=modern?Clean(native):(old?Clean(legacy*LegacyFactor):Default);
+    v.Active=modern?Clean(native):(old?Clean(legacy*LegacyFactor):0);
     const bool nativePreference=get("TextureQuestSunSoftnessPreferenceRealSun",preference);
     if(nativePreference)v.Preference=Clean(preference);
     else if(get("TextureQuestSunSoftnessPreference",preference))v.Preference=Clean(preference*LegacyFactor);

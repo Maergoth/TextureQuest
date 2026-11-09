@@ -448,7 +448,7 @@ class TextureQuestApp:
         self.component_controls = {}
         for key, caption, variable, hint in [
             ('textures', 'Textures (required)', self.component_textures, 'Our generated textures. The in-game toggle switches them off too.'),
-            ('effects', 'Graphical Effects (experimental)', self.component_graphics, 'Lighting, shadows, AO, filtering, DLSS and Reflex on supported hardware. Press Home to open settings, then choose TextureQuest. The texture shortcut switches all selected features off/on.')]:
+            ('effects', 'Graphical Effects / DLSS (experimental)', self.component_graphics, 'Lighting, shadows, ambient occlusion, filtering, DLSS frame generation and neural rendering on supported hardware. Press Home to show or hide settings, then choose TextureQuest. Ambient occlusion starts on; added lights and sun effects start off. Frame generation and neural rendering are optional and start off. The texture shortcut switches all selected features off/on.')]:
             row = tk.Frame(component_area, bg=WHITE)
             row.pack(fill='x')
             row.columnconfigure(0, weight=1)
@@ -460,7 +460,7 @@ class TextureQuestApp:
             info = self.label(row, 'ⓘ', size=10, color=GREEN, cursor='question_arrow', takefocus=True)
             info.grid(row=0, column=1, padx=(4, 0))
             HoverInfo(info, hint)
-        self.graphics_settings_note = self.label(component_area, 'Press Home to open settings.',
+        self.graphics_settings_note = self.label(component_area, 'Press Home to show or hide settings. Choose TextureQuest.',
             size=9, color=MUTED, wraplength=500, justify='left')
         self.graphics_settings_note.pack(fill='x', pady=(4, 0))
 

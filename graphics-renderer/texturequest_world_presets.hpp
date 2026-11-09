@@ -11,6 +11,21 @@ inline int ShadowPresetIndex(int limit, int supported) {
         if (limit == ShadowPresetLimit(i, supported)) return i;
     return -1;
 }
+inline int ShadowQualityIndex(int lights, int particles, int supported, int supportedParticles) {
+    for (int i = 0; i < 3; ++i)
+        if (lights == ShadowPresetLimit(i, supported)
+            && particles == ShadowPresetLimit(i, supportedParticles)) return i;
+    return -1;
+}
+inline int LightPresetLimit(int preset, int supported) {
+    return std::clamp(preset == 0 ? 16 : preset == 1 ? 64 : supported, 1, supported);
+}
+inline int LightQualityIndex(int lights, int particles, int supported, int supportedParticles) {
+    for (int i = 0; i < 3; ++i)
+        if (lights == LightPresetLimit(i, supported)
+            && particles == LightPresetLimit(i, supportedParticles)) return i;
+    return -1;
+}
 struct PresetValues {
     float ShadowStrength, ShadowSoftness, AORadius, AOStrength;
     int ShadowedLights, Anisotropy;

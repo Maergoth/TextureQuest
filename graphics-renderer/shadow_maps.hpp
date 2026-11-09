@@ -503,7 +503,7 @@ struct HeldMesh
     uint64_t LastDrawn = 0;
 };
 static std::unordered_map<uint64_t, HeldMesh> HeldMeshes;
-static std::atomic<int> ParticleShadowLimit=emission_policy::ParticleLimit;
+static std::atomic<int> ParticleShadowLimit=50;
 static int CleanParticleShadowLimit(int value){return std::clamp(value,1,int(emission_policy::ParticleLimit));}
 static bool MovingMapUsed[MAX_LIGHTS];
 namespace particle_moving { static void Reset();static void Request(bool,uint64_t);static void WriteState(FILE *); }

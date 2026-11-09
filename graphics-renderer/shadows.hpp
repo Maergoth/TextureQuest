@@ -1025,7 +1025,7 @@ constexpr size_t LAMP_SHADER_COUNT = std::size(LAMP_SHADERS);
 
 enum class LightPass { None, Alpha, SinglePass };
 
-static std::atomic<bool> Enabled = true;
+static std::atomic<bool> Enabled = false;
 // draws lamps whose pixel shader has a replacement with that replacement, which applies the shadow in the same draw
 static std::atomic<bool> OwnLampShaders = false;
 static pipeline LampPixelShaders[LAMP_SHADER_COUNT];
@@ -3153,9 +3153,10 @@ static void DrawSettings()
         reshade::set_config_value(nullptr, CONFIG_SECTION, "PointLightShadows", enabled);
     }
     ImGui::BeginDisabled(!enabled);
-    constexpr const char* presets[] = {"Min (10)", "Med (50)", "Max"};
-    const int selected = tq_world::ShadowPresetIndex(shadowmaps::LightLimit.load(), shadowmaps::MAX_LIGHTS);
-    if (ImGui::BeginCombo("Shadowed lights", selected < 0 ? "Custom (Advanced)" : presets[selected]))
+    constexpr const char* presets[] = {"Low", "Med", "Max"};
+    const int selected = tq_world::ShadowQualityIndex(shadowmaps::LightLimit.load(),
+        shadowmaps::ParticleShadowLimit.load(), shadowmaps::MAX_LIGHTS, int(emission_policy::ParticleLimit));
+    if (ImGui::BeginCombo("Shadow quality", selected < 0 ? "Custom (Advanced)" : presets[selected]))
     {
         for (int i = 0; i < 3; ++i)
             if (ImGui::Selectable(presets[i], selected == i))
@@ -3163,11 +3164,14 @@ static void DrawSettings()
                 const int limit = tq_world::ShadowPresetLimit(i, shadowmaps::MAX_LIGHTS);
                 shadowmaps::LightLimit = limit;
                 reshade::set_config_value(nullptr, CONFIG_SECTION, "ShadowedLights", limit);
+                const int particles = tq_world::ShadowPresetLimit(i, int(emission_policy::ParticleLimit));
+                shadowmaps::ParticleShadowLimit = particles;
+                reshade::set_config_value(nullptr, CONFIG_SECTION, "ParticleShadowLimit", particles);
             }
         ImGui::EndCombo();
     }
     if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Max uses all %d renderer-supported shadow maps. Eligible lights still apply.", shadowmaps::MAX_LIGHTS);
+        ImGui::SetTooltip("Low: 10 shared maps / 10 particle character shadows. Med: 50 / 50. Max: %d / %u. Native and emissive lights share the map pool; eligible sources still apply.", shadowmaps::MAX_LIGHTS, emission_policy::ParticleLimit);
     bool moving = shadowmaps::MovingShadows;
     if (ImGui::Checkbox("Character shadows", &moving))
     {
@@ -3190,6 +3194,24 @@ static void DrawSettings()
     bool emissiveObjects=glow::ObjectsEnabled;
     if (ImGui::Checkbox("Objects",&emissiveObjects))
     {glow::ObjectsEnabled=emissiveObjects;reshade::set_config_value(nullptr,CONFIG_SECTION,"EmissiveObjects",emissiveObjects);}
+    const int lightQuality = tq_world::LightQualityIndex(glow::LightLimit.load(), glow::ParticleLightLimit.load(),
+        glow::MAX_GLOW_LIGHTS, int(emission_policy::ParticleLimit));
+    if (ImGui::BeginCombo("Light quality", lightQuality < 0 ? "Custom (Advanced)" : presets[lightQuality]))
+    {
+        for (int i = 0; i < 3; ++i)
+            if (ImGui::Selectable(presets[i], lightQuality == i))
+            {
+                const int total = tq_world::LightPresetLimit(i, glow::MAX_GLOW_LIGHTS);
+                const int particles = tq_world::LightPresetLimit(i, int(emission_policy::ParticleLimit));
+                glow::LightLimit = total;
+                glow::ParticleLightLimit = particles;
+                reshade::set_config_value(nullptr, CONFIG_SECTION, "EmissiveLightLimit", total);
+                reshade::set_config_value(nullptr, CONFIG_SECTION, "ParticleLightLimit", particles);
+            }
+        ImGui::EndCombo();
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Low: 16 emissive lights / up to 16 particles. Med: 64 / 64. Max: %d / %u. The shared Shadow quality map limit also applies; native lamps take priority.", glow::MAX_GLOW_LIGHTS, emission_policy::ParticleLimit);
     ImGui::EndDisabled();ImGui::Unindent();
     ImGui::EndDisabled();
     if (emissive)
@@ -3590,7 +3612,7 @@ static void LoadSettings()
     int particleLimit=emission_policy::DefaultParticleLimit;
     reshade::get_config_value(nullptr,CONFIG_SECTION,"ParticleLightLimit",particleLimit);
     glow::ParticleLightLimit=static_cast<int>(emission_policy::ClampParticleLimit(particleLimit));
-    int particleShadows=128;
+    int particleShadows=50;
     reshade::get_config_value(nullptr,CONFIG_SECTION,"ParticleShadowLimit",particleShadows);
     shadowmaps::ParticleShadowLimit=shadowmaps::CleanParticleShadowLimit(particleShadows);
 
@@ -3618,20 +3640,8 @@ static void LoadSettings()
     reshade::get_config_value(nullptr, CONFIG_SECTION, "PaintedEmissionKept", paintedKept);
     glow::PaintedKept = paintedKept;
 
-    int anisotropy = 16;
-    reshade::get_config_value(nullptr, CONFIG_SECTION, "Anisotropy", anisotropy);
-    float presetSoftness = 0.15f;
-    reshade::get_config_value(nullptr, CONFIG_SECTION, "ShadowSoftness", presetSoftness);
-    tq_world::PresetValues presets{shadowmaps::Strength.load(), presetSoftness,
-        lightbuffer::OcclusionRadius.load(), lightbuffer::OcclusionStrength.load(),
-        shadowmaps::LightLimit.load(), anisotropy};
-    tq_world::MigratePresets(
-        [](const char* key, auto& value) { return reshade::get_config_value(nullptr, CONFIG_SECTION, key, value); },
-        [](const char* key, auto value) { reshade::set_config_value(nullptr, CONFIG_SECTION, key, value); }, presets);
-    shadowmaps::Strength = presets.ShadowStrength;
-    lightbuffer::OcclusionRadius = presets.AORadius;
-    lightbuffer::OcclusionStrength = presets.AOStrength;
-    shadowmaps::LightLimit = presets.ShadowedLights;
+    // Defaults above fill absent settings only. Older preset markers and saved
+    // numeric tweaks remain intact; opening this version never reapplies a preset.
     // Filtering is intentionally fixed at16x whenever its checkbox is enabled.
     reshade::set_config_value(nullptr, CONFIG_SECTION, "Anisotropy", 16);
 }

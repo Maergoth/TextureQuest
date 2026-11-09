@@ -1,18 +1,24 @@
-# TextureQuest 1.13.14 — Develop candidate
+# TextureQuest 1.13.15
 
-Particle shadow sampling gains a bounded exclusion core around the light
-source: `min(0.35, 0.5 × weighted positive-emission centroid RMS)` world units.
-Source metadata is smoothed, and built light position and exclusion core stay
-matched across static and moving shadow paths.
+The Develop graphics work is now packaged for the public installer with simpler
+quality presets and safer new-install defaults. Texture data remains 1.3.0.
 
-The core excludes nearby cloud occluders by distance. It does not identify an
-emitter's owner, exclude whole models or change global shadow bias. Unrelated
-geometry inside the small core can also be ignored; geometry outside it
-remains eligible to block light. This is not a universal self-shadow cure.
+**Press Home to show or hide settings**, then choose **TextureQuest**.
 
-Focused CPU, strict build and controlled hardware checks passed. Actual EQ2
-appearance and performance remain unconfirmed. Seven other native payloads, texture data
-1.3.0, the bundled **What's new** history and saved controls are retained.
-Develop source updates do not publish binaries or change public main/latest.
-See the [canonical changelog](CHANGELOG.md) and
-[graphics handoff](docs/GRAPHICS-1.13.14-HANDOFF.md) for scope and limits.
+- Ambient occlusion starts on. Point/emissive lights, sun lighting/softening,
+  smooth interface text, frame generation and neural rendering start off.
+- Upscaling and Reflex driver mode are removed from the active runtime and controls.
+- Shadow quality and Light quality offer Low / Med / Max. Advanced retains manual
+  budgets and tuning; existing users' saved settings are kept.
+- Includes stable particle groups, short-lived light retention, supported model-normal
+  replay, particle character shadows up to 128 lights and bounded self-occlusion reduction.
+- Keeps the later F10/menu compatibility fix and unchanged texture preparation reuse.
+
+Update through Get app update with EQ2 closed. Keep your portable data folder.
+No texture dataset download is required when the existing texture preparation is unchanged.
+
+Sun-direction movement flicker remains unresolved. Particle coverage, unsupported
+model shaders and sources the game never submits retain their documented limits.
+Controlled checks do not establish universal in-game appearance or FPS improvements.
+
+See [the changelog](CHANGELOG.md) and [graphics guide](docs/GRAPHICS_FEATURES.md).

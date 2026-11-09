@@ -608,7 +608,7 @@ struct Candidate
     int Size;
 };
 
-static std::atomic<bool> Enabled = true;
+static std::atomic<bool> Enabled = false;
 // Saved choices; the existing world/master gate determines effective work.
 static std::atomic<bool> ObjectsEnabled = true, ParticlesEnabled = true;
 static bool ObjectsActive(){return Enabled && ObjectsEnabled && tq_world::Work.Point();}

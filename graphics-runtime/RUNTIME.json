@@ -8,8 +8,8 @@
   "files": [
     {
       "name": "TextureQuest.addon64",
-      "bytes": 486400,
-      "sha256": "09254adae712b942c215914cea30319aae54101445ef230676a795c31f786851"
+      "bytes": 475648,
+      "sha256": "26521272e3b27aff0362a28ea3957b006d5f6b4615eaa5fa6366abb6923db166"
     },
     {
       "name": "ReShade64.dll",
@@ -215,6 +215,11 @@
       "name": "licenses/TextureQuest-11314-DEVELOPMENT.txt",
       "bytes": 731,
       "sha256": "b4c26a4973632f1be623928be64b4eaceaa66fb64c560f5c089e060dbde582a8"
+    },
+    {
+      "name": "licenses/TextureQuest-11315-PUBLIC.txt",
+      "bytes": 1028,
+      "sha256": "1c7e59bde7cec1d1052dd3091db7a93366acdbb1b19b16310efd8562ff138a3d"
     }
   ],
   "dlss": {
@@ -244,8 +249,8 @@
       {
         "role": "aio",
         "name": "dlss/standalone-dlssnr.addon64",
-        "bytes": 317952,
-        "sha256": "96771d0ff93e8aa752702df1eac81d9affe80c5f3f1d4cc0237d3212f96d779e"
+        "bytes": 314368,
+        "sha256": "867747ff65d70113f8f810cc3505fa41f7181bd21017f78195663c5d7d8cf188"
       },
       {
         "role": "bridge",
@@ -275,8 +280,8 @@
     "files": [
       {
         "name": "renderer/EQ2Graphics.addon64",
-        "bytes": 1135104,
-        "sha256": "3ddafaeea1eea4affa6d0d9868e9371ee5baea8149866d04496983e2e5daa271"
+        "bytes": 1133568,
+        "sha256": "6c0662c1032332ba602fd8d45cb61e3c7abfc924b0fa0bbb03218151b8b70584"
       }
     ]
   }

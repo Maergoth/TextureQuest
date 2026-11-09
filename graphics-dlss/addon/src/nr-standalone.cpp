@@ -49,9 +49,9 @@ static tq_packet_cadence::Estimator g_tq_packet_cadence;
 
 #define ADDON_VERSION "2.2.3"
 
-extern "C" __declspec(dllexport) const char *NAME = "Standalone DLSS-NR + SR " ADDON_VERSION;
+extern "C" __declspec(dllexport) const char *NAME = "TextureQuest DLSS " ADDON_VERSION;
 extern "C" __declspec(dllexport) const char *DESCRIPTION =
-    "Standalone D3D9/D3D11/D3D12/Vulkan DLSS Neural Rendering, Super Resolution, and Frame Generation.";
+    "TextureQuest managed DLSS Neural Rendering and Frame Generation.";
 
 static HMODULE g_self;
 // Set by the 64-bit carrier used for 32-bit games. The ReShade runtime lives
@@ -72,12 +72,15 @@ static std::atomic<unsigned int> g_input_height{0};
 static bool g_enabled = true;
 static TextureQuestAioGate g_tq_gate;
 static tq_aio_v2::Mailbox g_tq_controls;
-static uint32_t g_tq_sr_mode=1, g_tq_frame_multiplier=2;
-static bool g_tq_sr_enabled=true;
+// The retired SR ABI fields stay native/off even when an older INI or client
+// requests them. Const state also prevents another live control path enabling SR.
+static constexpr uint32_t g_tq_sr_mode=TQAIO_SR_Current;
+static constexpr bool g_tq_sr_enabled=false;
+static uint32_t g_tq_frame_multiplier=2;
 static std::atomic<bool> g_tq_mfg_cap_known{false};
 static std::atomic<uint32_t> g_tq_mfg_cap_max{0},g_tq_mfg_effective_multiplier{1};
 static std::atomic<unsigned long long> g_tq_completed_frames{0};
-static std::atomic<bool> g_tq_any_processing{true};
+static std::atomic<bool> g_tq_any_processing{false};
 static std::atomic<bool> g_tq_user_enabled{true};
 static bool TQEffectiveEnabled() { return g_tq_user_enabled.load(std::memory_order_acquire) && g_tq_any_processing.load(std::memory_order_acquire) && g_tq_gate.Effective(); }
 static SHORT TQNoBuiltinKey(int) { return 0; } // No built-in key polling.
@@ -682,7 +685,7 @@ static ULONGLONG g_nvof_watchdog_last_log_tick;
 static unsigned long long g_nvof_watchdog_saturated_sequence;
 static bool g_nr_rejection_mask_enabled = false;
 static float g_nr_rejection_mask_strength = 1.0f;
-static bool g_nr_enabled = true;
+static bool g_nr_enabled = false;
 static unsigned int g_nr_pass_count = 1;
 static bool g_nr_second_pass_failed = false;
 static bool g_nr_third_pass_failed = false;
@@ -1048,7 +1051,7 @@ static bool IsNearNativeWindowedSurface(UINT input_width, UINT input_height,
 
 static const char *SrModeName()
 {
-    return IsDlaaMode() ? "DLAA" : "DLSS SR";
+    return "native"; // Managed profile no longer runs SR or DLAA.
 }
 
 static const SourceResolutionChoice &RequestedSourceResolution()
@@ -3006,15 +3009,17 @@ static bool InitializeNgx()
     Log("NR snippet Init_Ext = 0x%08X (%s)", static_cast<unsigned int>(result), ResultName(result));
     if (NVSDK_NGX_FAILED(result)) { Fail("NR snippet Init_Ext", static_cast<unsigned int>(result)); return false; }
 
-    g_dlss_module = LoadLibraryExW(dlss_path, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
-    auto dlss_init = g_dlss_module ? reinterpret_cast<NgxSnippetInitD3D12Ext>(GetProcAddress(g_dlss_module, "NVSDK_NGX_D3D12_Init_Ext")) : nullptr;
-    g_sr_create = g_dlss_module ? reinterpret_cast<NgxCreateFeature>(GetProcAddress(g_dlss_module, "NVSDK_NGX_D3D12_CreateFeature")) : nullptr;
-    g_sr_evaluate = g_dlss_module ? reinterpret_cast<NgxEvaluateFeature>(GetProcAddress(g_dlss_module, "NVSDK_NGX_D3D12_EvaluateFeature")) : nullptr;
-    g_sr_release = g_dlss_module ? reinterpret_cast<NgxReleaseFeature>(GetProcAddress(g_dlss_module, "NVSDK_NGX_D3D12_ReleaseFeature")) : nullptr;
-    if (!dlss_init || !g_sr_create || !g_sr_evaluate || !g_sr_release) { Fail("DLSS SR snippet exports", static_cast<unsigned int>(GetLastError())); return false; }
-    result = bridge_init(dlss_init, kGenericCustomCoreId, dlss_path, g_neural_device.Get(), NVSDK_NGX_Version_API, nullptr);
-    Log("DLSS SR snippet Init_Ext = 0x%08X (%s)", static_cast<unsigned int>(result), ResultName(result));
-    if (NVSDK_NGX_FAILED(result)) { Fail("DLSS SR snippet Init_Ext", static_cast<unsigned int>(result)); return false; }
+    if constexpr (g_tq_sr_enabled) {
+        g_dlss_module = LoadLibraryExW(dlss_path, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+        auto dlss_init = g_dlss_module ? reinterpret_cast<NgxSnippetInitD3D12Ext>(GetProcAddress(g_dlss_module, "NVSDK_NGX_D3D12_Init_Ext")) : nullptr;
+        g_sr_create = g_dlss_module ? reinterpret_cast<NgxCreateFeature>(GetProcAddress(g_dlss_module, "NVSDK_NGX_D3D12_CreateFeature")) : nullptr;
+        g_sr_evaluate = g_dlss_module ? reinterpret_cast<NgxEvaluateFeature>(GetProcAddress(g_dlss_module, "NVSDK_NGX_D3D12_EvaluateFeature")) : nullptr;
+        g_sr_release = g_dlss_module ? reinterpret_cast<NgxReleaseFeature>(GetProcAddress(g_dlss_module, "NVSDK_NGX_D3D12_ReleaseFeature")) : nullptr;
+        if (!dlss_init || !g_sr_create || !g_sr_evaluate || !g_sr_release) { Fail("DLSS SR snippet exports", static_cast<unsigned int>(GetLastError())); return false; }
+        result = bridge_init(dlss_init, kGenericCustomCoreId, dlss_path, g_neural_device.Get(), NVSDK_NGX_Version_API, nullptr);
+        Log("DLSS SR snippet Init_Ext = 0x%08X (%s)", static_cast<unsigned int>(result), ResultName(result));
+        if (NVSDK_NGX_FAILED(result)) { Fail("DLSS SR snippet Init_Ext", static_cast<unsigned int>(result)); return false; }
+    }
 
     g_dlssg_module = have_dlssg ? LoadLibraryExW(dlssg_path, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH) : nullptr;
     auto dlssg_init = g_dlssg_module ? reinterpret_cast<NgxSnippetInitD3D12Ext>(GetProcAddress(g_dlssg_module, "NVSDK_NGX_D3D12_Init_Ext")) : nullptr;
@@ -3312,55 +3317,61 @@ static bool CreateFeatures()
         g_nr_third_feature = nullptr;
         g_nr_second_stage.Reset();
         g_nr_third_stage.Reset();
-        Log("CreateFeature(feature=18) skipped: Neural Rendering is disabled; SR + FG-only mode");
+        Log("CreateFeature(feature=18) skipped: Neural Rendering is disabled");
     }
 
-    const int automatic_quality = AutomaticDlssQuality();
-    const int quality = automatic_quality;
-    int render_preset = static_cast<int>(g_dlss_render_preset);
-    auto create_sr = [&](int attempt_preset) -> bool
-    {
-        g_ngx_params->Reset();
-        g_ngx_params->Set("CreationNodeMask", 1u); g_ngx_params->Set("VisibilityNodeMask", 1u);
-        g_ngx_params->Set("Width", g_resource_input_width); g_ngx_params->Set("Height", g_resource_input_height);
-        g_ngx_params->Set("OutWidth", g_resource_output_width); g_ngx_params->Set("OutHeight", g_resource_output_height);
-        g_ngx_params->Set("PerfQualityValue", quality);
-        SetDlssRenderPresetHints(attempt_preset);
-        g_ngx_params->Set("DLSS.Feature.Create.Flags", FeatureFlags());
-        g_ngx_params->Set("DLSS.Enable.Output.Subrects", 0);
-        if (!BeginNeuralCommands(kInitializationGpuWaitMs, true)) return false;
-        exception = 0;
-        result = SafeCreate(false, &exception);
-        if (exception)
+    if constexpr (g_tq_sr_enabled) {
+        const int automatic_quality = AutomaticDlssQuality();
+        const int quality = automatic_quality;
+        int render_preset = static_cast<int>(g_dlss_render_preset);
+        auto create_sr = [&](int attempt_preset) -> bool
         {
-            NeuralCommandList()->Close();
-            Fail("DLSS SR feature creation exception", exception);
-            return false;
-        }
-        if (!SubmitNeuralCommands(true)) return false;
-        Log("CreateFeature(feature=SuperSampling) = 0x%08X (%s), handle=%p mode=%s quality=%d (%s) render_preset=%s(%d)",
-            static_cast<unsigned int>(result), ResultName(result), g_sr_feature, SrModeName(),
-            quality, DlssQualityName(quality),
-            DlssRenderPresetName(static_cast<DlssRenderPreset>(attempt_preset)), attempt_preset);
-        return true;
-    };
-    if (!create_sr(render_preset)) return false;
-    if ((NVSDK_NGX_FAILED(result) || !g_sr_feature) && render_preset != 0)
-    {
-        if (g_sr_feature)
-        {
-            DWORD release_exception = 0;
-            SafeRelease(g_sr_release, g_sr_feature, &release_exception);
-            g_sr_feature = nullptr;
-        }
-        Log("DLSS render preset %s was rejected; retrying NVIDIA default",
-            DlssRenderPresetName(static_cast<DlssRenderPreset>(render_preset)));
-        render_preset = 0;
+            g_ngx_params->Reset();
+            g_ngx_params->Set("CreationNodeMask", 1u); g_ngx_params->Set("VisibilityNodeMask", 1u);
+            g_ngx_params->Set("Width", g_resource_input_width); g_ngx_params->Set("Height", g_resource_input_height);
+            g_ngx_params->Set("OutWidth", g_resource_output_width); g_ngx_params->Set("OutHeight", g_resource_output_height);
+            g_ngx_params->Set("PerfQualityValue", quality);
+            SetDlssRenderPresetHints(attempt_preset);
+            g_ngx_params->Set("DLSS.Feature.Create.Flags", FeatureFlags());
+            g_ngx_params->Set("DLSS.Enable.Output.Subrects", 0);
+            if (!BeginNeuralCommands(kInitializationGpuWaitMs, true)) return false;
+            exception = 0;
+            result = SafeCreate(false, &exception);
+            if (exception)
+            {
+                NeuralCommandList()->Close();
+                Fail("DLSS SR feature creation exception", exception);
+                return false;
+            }
+            if (!SubmitNeuralCommands(true)) return false;
+            Log("CreateFeature(feature=SuperSampling) = 0x%08X (%s), handle=%p mode=%s quality=%d (%s) render_preset=%s(%d)",
+                static_cast<unsigned int>(result), ResultName(result), g_sr_feature, SrModeName(),
+                quality, DlssQualityName(quality),
+                DlssRenderPresetName(static_cast<DlssRenderPreset>(attempt_preset)), attempt_preset);
+            return true;
+        };
         if (!create_sr(render_preset)) return false;
+        if ((NVSDK_NGX_FAILED(result) || !g_sr_feature) && render_preset != 0)
+        {
+            if (g_sr_feature)
+            {
+                DWORD release_exception = 0;
+                SafeRelease(g_sr_release, g_sr_feature, &release_exception);
+                g_sr_feature = nullptr;
+            }
+            Log("DLSS render preset %s was rejected; retrying NVIDIA default",
+                DlssRenderPresetName(static_cast<DlssRenderPreset>(render_preset)));
+            render_preset = 0;
+            if (!create_sr(render_preset)) return false;
+        }
+        if (NVSDK_NGX_FAILED(result) || !g_sr_feature) { Fail("DLSS SR feature creation", static_cast<unsigned int>(result)); return false; }
+        g_active_dlss_quality = quality;
+        g_active_dlss_render_preset = static_cast<DlssRenderPreset>(render_preset);
+    } else {
+        g_sr_feature = nullptr;
+        g_active_dlss_quality = -1;
+        g_active_dlss_render_preset = DlssRenderPreset::Default;
     }
-    if (NVSDK_NGX_FAILED(result) || !g_sr_feature) { Fail("DLSS SR feature creation", static_cast<unsigned int>(result)); return false; }
-    g_active_dlss_quality = quality;
-    g_active_dlss_render_preset = static_cast<DlssRenderPreset>(render_preset);
 
     if (!g_framegen_failed && EffectiveFramegenEnabled())
     {
@@ -3414,7 +3425,7 @@ static bool CreateFeatures()
 
 static bool RecreateFeatures()
 {
-    if (!g_neural_ready || !g_sr_feature) return false;
+    if (!g_neural_ready) return false;
     if (!WaitForNeuralGpu(0, false, "pipeline switch GPU fence"))
         return false;
     if (!AsyncFgGpuIdle())
@@ -3435,14 +3446,16 @@ static bool RecreateFeatures()
         }
         g_fg_feature = nullptr;
     }
-    NVSDK_NGX_Result sr_result = SafeRelease(g_sr_release, g_sr_feature, &exception);
-    if (exception || NVSDK_NGX_FAILED(sr_result))
-    {
-        Fail(exception ? "DLSS SR release exception" : "DLSS SR release",
-            exception ? exception : static_cast<unsigned int>(sr_result));
-        return false;
+    if (g_sr_feature) {
+        const NVSDK_NGX_Result sr_result = SafeRelease(g_sr_release, g_sr_feature, &exception);
+        if (exception || NVSDK_NGX_FAILED(sr_result))
+        {
+            Fail(exception ? "DLSS SR release exception" : "DLSS SR release",
+                exception ? exception : static_cast<unsigned int>(sr_result));
+            return false;
+        }
+        g_sr_feature = nullptr;
     }
-    g_sr_feature = nullptr;
     if (g_nr_third_feature)
     {
         NVSDK_NGX_Result third_result = SafeRelease(
@@ -11901,13 +11914,13 @@ static bool TQApplyControls()
     if(diagnostic)Log("TextureQuest controls apply begin: master_token=%llu control_generation=%llu old_NR=%u old_SR=%u old_FG=%u old_mode=%u old_multiplier=%u new_mask=%u new_mode=%u new_multiplier=%u model=%u passes=%u ready=%u capture=%ux%u work=%ux%u fmt=%u",diagnostic_epoch,token>>32,UINT(g_nr_enabled),UINT(g_tq_sr_enabled),UINT(g_framegen_enabled),g_tq_sr_mode,g_tq_frame_multiplier,c.EnabledMask,c.SrMode,c.FrameMultiplier,c.NrModel,c.NrPasses,UINT(g_neural_ready),g_resource_capture_width,g_resource_capture_height,g_resource_input_width,g_resource_input_height,UINT(g_resource_input_format));
     const bool featureChange=g_nr_enabled!=bool(c.EnabledMask&TQAIO_NR)||g_framegen_enabled!=bool(c.EnabledMask&TQAIO_FG);
     if(g_neural_failed||g_proxy_failed)return false;
-    const bool sizeChange=g_tq_sr_enabled!=bool(c.EnabledMask&TQAIO_SR)||g_tq_sr_mode!=c.SrMode||g_tq_frame_multiplier!=c.FrameMultiplier||g_framegen_enabled!=bool(c.EnabledMask&TQAIO_FG);
+    const bool sizeChange=g_tq_frame_multiplier!=c.FrameMultiplier||g_framegen_enabled!=bool(c.EnabledMask&TQAIO_FG);
     if(sizeChange&&g_neural_ready) {
         if(!RetireResolutionDependentResources(g_resource_capture_width,g_resource_capture_height,g_resource_input_format))return false;
         g_feature_recreate_requested=false;
     }
     g_nr_enabled=bool(c.EnabledMask&TQAIO_NR);g_framegen_enabled=bool(c.EnabledMask&TQAIO_FG);
-    g_tq_sr_mode=c.SrMode;g_tq_frame_multiplier=c.FrameMultiplier;g_tq_sr_enabled=bool(c.EnabledMask&TQAIO_SR);
+    g_tq_frame_multiplier=c.FrameMultiplier;
     SelectNrModel(int(c.NrModel),"TextureQuest panel");
     SelectNrPassCount(c.NrPasses,"TextureQuest panel");
     if(featureChange&&g_neural_ready)g_feature_recreate_requested=true;
@@ -13627,7 +13640,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
         read_setting("NvidiaOpticalFlowMotionRepair", "1.0", value, sizeof(value)); g_nvof_motion_repair_strength = std::clamp(static_cast<float>(atof(value)), 0.0f, 1.0f);
         read_setting("NvidiaOpticalFlowSubmitDepth", "0", value, sizeof(value)); g_nvof_submit_depth = strcmp(value, "0") != 0;
         read_setting("VortGuides", "0", value, sizeof(value)); g_vort_guides_enabled = strcmp(value, "0") != 0;
-        read_setting("NeuralRendering", "1", value, sizeof(value)); g_nr_enabled = strcmp(value, "0") != 0;
+        read_setting("NeuralRendering", "0", value, sizeof(value)); g_nr_enabled = strcmp(value, "0") != 0;
         // Multi-pass NR is deliberately session-only. Never inherit a risky
         // 2x/3x selection after a crash or normal restart.
         g_nr_pass_count = 1;
@@ -13705,8 +13718,10 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
         if (g_startup_recovery_forced)
             Log("serialized safe startup forced before first Present: reason=F8 held during launch state=%s",
                 g_startup_recovery_path[0] != '\0' ? g_startup_recovery_path : "marker unavailable");
-        read_setting("ManagedSrMode","1",value,sizeof(value));g_tq_sr_mode=uint32_t(std::clamp(atoi(value),1,5));
-        read_setting("ManagedSrEnabled","1",value,sizeof(value));g_tq_sr_enabled=strcmp(value,"0")!=0;
+        // Do not read legacy SR opt-ins. Retire their saved values through the
+        // normal ReShade config API; explicit NR/FG choices remain untouched.
+        reshade::set_config_value(nullptr,section,"ManagedSrMode","1");
+        reshade::set_config_value(nullptr,section,"ManagedSrEnabled","0");
         read_setting("ManagedFrameMultiplier","2",value,sizeof(value));
         g_tq_frame_multiplier=strcmp(value,"4")==0?4u:strcmp(value,"3")==0?3u:2u;
         read_setting("ManagedNrPasses","1",value,sizeof(value));g_nr_pass_count=uint32_t(std::clamp(atoi(value),1,3));
