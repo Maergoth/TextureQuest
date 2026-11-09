@@ -114,8 +114,7 @@ static void RenderMaps(ID3D11DeviceContext1 *ctx)
     { Invalidate(); return; }
     bool wanted=false;
     for (const auto &r:Requests.values) wanted=wanted || r.seen==shadowmaps::FrameNumber;
-    float extent=0;
-    if (!wanted || !policy::Extent(shadowmaps::Range.load(),extent)) { Invalidate();return; }
+    if (!wanted) { Invalidate();return; }
     ComPtr<ID3D11Device> dev;ctx->GetDevice(&dev);
     if (!Create(dev.Get())) { Invalidate();return; }
     ComPtr<ID3DDeviceContextState> previous;
@@ -133,7 +132,7 @@ static void RenderMaps(ID3D11DeviceContext1 *ctx)
         if (record.seen!=shadowmaps::FrameNumber) continue;
         const auto d=record.direction;
         shadowmaps::MovingConstants data{};
-        if (!policy::MakeRows(d,shadowmaps::Camera.x,shadowmaps::Camera.y,shadowmaps::Camera.z,extent,data.ViewProjection)) continue;
+        if (!policy::MakeRows(d,shadowmaps::Camera.x,shadowmaps::Camera.y,shadowmaps::Camera.z,policy::Extent,data.ViewProjection)) continue;
         ctx->ClearDepthStencilView(Targets[i].Get(),D3D11_CLEAR_DEPTH,1,0);
         ctx->OMSetRenderTargets(0,nullptr,Targets[i].Get());
         for (const auto &caster:shadowmaps::MovingCasters)
@@ -141,7 +140,7 @@ static void RenderMaps(ID3D11DeviceContext1 *ctx)
             data.Index[0]=caster.Index;ctx->UpdateSubresource(constants,0,nullptr,&data,0,0);
             shadowmaps::DrawCaster(ctx,caster.Mesh);
         }
-        BuiltRows[i]=data.ViewProjection;BuiltExtent[i]=extent;record.built=shadowmaps::FrameNumber;record.valid=true;++MapsLastFrame;
+        BuiltRows[i]=data.ViewProjection;BuiltExtent[i]=policy::Extent;record.built=shadowmaps::FrameNumber;record.valid=true;++MapsLastFrame;
     }
     // Do not retain borrowed game geometry in the private context-state cache.
     ID3D11Buffer *none=nullptr;ID3D11ShaderResourceView *noView=nullptr;UINT zero=0;

@@ -1,22 +1,10 @@
 {
-  "revision": "TextureQuest AIOV9 / 1.13.6 two absent FG defaults off",
+  "revision": "TextureQuest 1.13.15 public graphics controls/defaults",
   "upstream": "https://github.com/kibblerz/DLSS5-Reshade-AIO",
   "upstream_commit": "09301f5528e619e8b9ec17c257d167e2985f53b0",
-  "source_manifest": {
-    "bytes": 20122,
-    "sha256": "9479efe2adde36415c46185c26ebdc6526af946a0a1a17c69cc4dacd20a3112e"
-  },
-  "author_handoff": {
-    "bytes": 2628,
-    "sha256": "da87f58dbe783b68bc833038b5fd02547385b8f913cd2eb04af199933615c136"
-  },
-  "snapshot_manifest": {
-    "bytes": 10883,
-    "sha256": "e9a390c9350c58a415bd5b230b91dd541697b4f45ea19c54d0c38b8a7c10fc70"
-  },
   "native_release_asset": {
-    "bytes": 317952,
-    "sha256": "96771d0ff93e8aa752702df1eac81d9affe80c5f3f1d4cc0237d3212f96d779e"
+    "bytes": 314368,
+    "sha256": "867747ff65d70113f8f810cc3505fa41f7181bd21017f78195663c5d7d8cf188"
   },
   "dependencies": [
     {
@@ -38,8 +26,8 @@
   "files": [
     {
       "name": "addon/include/aio-menu-schema.hpp",
-      "bytes": 11353,
-      "sha256": "9d9d123141c3274ebd57d9d352890ddccbb98278cc770206cd101e0e59edb2ba"
+      "bytes": 11359,
+      "sha256": "baec3b3226b9d2e7784ba68e9f9910cb8af768622bc4e5fdfe951c22bbbb694c"
     },
     {
       "name": "addon/include/nvof-motion-provider.hpp",
@@ -58,23 +46,18 @@
     },
     {
       "name": "addon/include/texturequest_aio_api.h",
-      "bytes": 3640,
-      "sha256": "a892d0a0f53dc612a8c9aaa4d635e974412561f2f2d2718568cc0a8cf03cb85c"
+      "bytes": 3715,
+      "sha256": "6c861849ccabd7783edf2fedd2a8d7f4f6b754ff6cdefa7fa173c289045aac04"
     },
     {
       "name": "addon/include/texturequest_aio_controls.hpp",
-      "bytes": 2685,
-      "sha256": "b1243f804f573ccfc15b9a5ad2e5e0e7ada1bfa4e8807ffe72280941a70ae9bf"
+      "bytes": 3015,
+      "sha256": "78d9a972953623e0751229d749d4692bdf239112ac462e5071af78aa1defbdc0"
     },
     {
       "name": "addon/include/texturequest_aio_gate.hpp",
       "bytes": 2089,
       "sha256": "0ea9d3b2b22528442797ad2dea7f9e4e5076af5d14773e5edc4a4a3f9eb99e47"
-    },
-    {
-      "name": "addon/include/texturequest_aio_menu.hpp",
-      "bytes": 7837,
-      "sha256": "43302f9c5812fe04a092dced2c86bbd327717ddc6458d9f7059aad73ec6caf72"
     },
     {
       "name": "addon/include/texturequest_aio_overlay.hpp",
@@ -122,24 +105,9 @@
       "sha256": "4f1fbfefc43d3263bae84e0b2533e5e9deb754cc4fdbe4b2384c90f0ec92723f"
     },
     {
-      "name": "addon/shaders/DLSS5_AIO_Feed.fx",
-      "bytes": 4118,
-      "sha256": "0710e17eeafa1933af18489bfb7d7a1d71bd6204d65d337474f835749fd6de58"
-    },
-    {
-      "name": "addon/shaders/ReShade.fxh",
-      "bytes": 4250,
-      "sha256": "6dabfbbaf968c3871905d2ea17f96572ff7b1cec01310b5d0e5252b66b30174f"
-    },
-    {
-      "name": "addon/shaders/StandaloneBoundary.fx",
-      "bytes": 1104,
-      "sha256": "e261760a83f1bdd407dda106ed61b7a7165acaf56915b7993216348dadb3d824"
-    },
-    {
       "name": "addon/src/nr-standalone.cpp",
-      "bytes": 710208,
-      "sha256": "354107dbff8ab834b7cea4143d416caf244a8a8816e8501a9c3ed4d3bf8fe189"
+      "bytes": 710855,
+      "sha256": "547835e08e3deda14631bdb7efb03ee0b665323f052cc7ccdf40af69fb2690ad"
     },
     {
       "name": "addon/src/nvof-motion-provider.cpp",
@@ -173,25 +141,27 @@
     "addon/src/nvngx-bridge.cpp"
   ],
   "changes": [
-    "Static startup FrameGeneration value is false",
-    "Missing FrameGeneration INI key falls back to0"
+    "Keep absent FrameGeneration and NeuralRendering defaults off",
+    "Disable SR at config/runtime and ABI mailbox ingress",
+    "Do not initialize/create/evaluate SR; NR/FG-only feature recreation accepts a null SR handle"
   ],
-  "saved_settings": "Explicit saved0/1 values retain the normal unchanged configuration precedence",
+  "saved_settings": "Explicit retained FrameGeneration/NeuralRendering choices survive. Legacy SR enable requests normalize off/native without changing ABI layout.",
   "build": {
     "exit_code": 0,
-    "warnings": 14,
     "command": {
-      "bytes": 2039,
-      "sha256": "827b69f39ec71b21abfbf7b4f9ba4e5284a85a704aa089456329dabeaa84403a"
+      "bytes": 1594,
+      "sha256": "7406d5d37b3eb9a6503a79c6f8b2d802b4350972ccb1fd72f18951c64fc079c1"
     },
     "log": {
-      "bytes": 2876,
-      "sha256": "67b7b74bf3764939c9eb8b7df4ff7735616fdbf5ecb20bb567b8670bf2e6de36"
+      "bytes": 179059,
+      "sha256": "e360512b442f1634c905eb36f09b70ddf080c1ed05496d02661de2841371be9e"
     },
-    "actual_showIncludes": false,
-    "source_join_qualification": "This existing AIO build did not enable /showIncludes. These are exact snapshot-to-current code/shader/header joins and explicit command targets, not a fabricated actual-include manifest. The exact build script separately records pinned external dependency inputs."
+    "actual_showIncludes": true,
+    "toolchain": "VS18 x64/MSVC14.50.35717",
+    "warnings": 14,
+    "compilation_roster": "Explicit translation units plus project headers actually recorded by /showIncludes. External dependencies retain their pinned commit identities."
   },
-  "qualification": "No new GPU/real-game behavior result is claimed for this two-default correction. Other AIO/runtime compatibility IDs and dependency payloads retain their existing roles.",
+  "qualification": "Settings/defaults and retired-feature changes; no new shader algorithm, GPU benchmark or real-game visual result is claimed. Existing controlled lighting evidence remains historical and was not rerun.",
   "previous_release": {
     "revision": "TextureQuest AIOV9",
     "native_release_asset": {
@@ -203,5 +173,31 @@
       "sha256": "6a02fbf81fffedc970039ecc185783782628c185a18cdb4ca361bc9493515188"
     },
     "historical_only": true
-  }
+  },
+  "integration_base_commit": "3ca6da05ea6bdf896bb548e09fef4ccf9fc0e293",
+  "previous_evidence": {
+    "revision": "TextureQuest AIOV9 / 1.13.6 two absent FG defaults off",
+    "native_release_asset": {
+      "bytes": 317952,
+      "sha256": "96771d0ff93e8aa752702df1eac81d9affe80c5f3f1d4cc0237d3212f96d779e"
+    },
+    "metadata": {
+      "bytes": 7357,
+      "sha256": "5b5f126b76305f5ab0235c5119bcb3e4431d131bb7fd810cd38d1be529fb5698"
+    },
+    "historical_only": true,
+    "author_handoff": {
+      "bytes": 2628,
+      "sha256": "da87f58dbe783b68bc833038b5fd02547385b8f913cd2eb04af199933615c136"
+    },
+    "source_manifest": {
+      "bytes": 20122,
+      "sha256": "9479efe2adde36415c46185c26ebdc6526af946a0a1a17c69cc4dacd20a3112e"
+    },
+    "snapshot_manifest": {
+      "bytes": 10883,
+      "sha256": "e9a390c9350c58a415bd5b230b91dd541697b4f45ea19c54d0c38b8a7c10fc70"
+    }
+  },
+  "publication_note": "Built for requested public1.13.15 release. This source metadata does not itself assert a GitHub upload or publication."
 }

@@ -1,56 +1,57 @@
-TextureQuest 1.13.3 private preview — Windows x64
+TextureQuest 1.13.15 — Windows x64
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract outside the game folder; keep data beside the EXE.
 3. Select your game folder and components, then Install graphics hook.
 4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
-Textures are required. Graphical Effects (experimental) includes lighting,
-shadows, AO, filtering, DLSS and Reflex on supported hardware.
-Press Home to open settings, then choose TextureQuest for individual controls.
-DLSS starts off on new installs; enable its controls there. Updates keep saved choices.
-Reflex driver mode is a separate default-off NVIDIA control. It adds no Boost or
-extra FPS cap. Original mode removes TextureQuest's low-latency request.
-This includes feature checkboxes and Min/Med/Max shadowed lights.
-Advanced opens further tweaks. AF uses 16x. Numpad * switches
-textures and graphics Original/Upscaled without changing your choices. Use
-Shortcut to change the key. Apply changes with EQ2 closed.
-DLSS (Experimental) has three controls in Home → TextureQuest:
-- Frame Generation: checkbox on/off, then 2x / 3x / 4x on supported hardware.
-- Upscaling: checkbox on/off, then Native/DLAA or a quality preset.
-- Neural Rendering: checkbox on/off, presets and Advanced model/pass controls.
-Unchecking keeps your preset. These choices can change while playing.
-Lower upscaling presets reduce DLSS processing resolution, not EQ2's original
-rendering cost. Frame generation includes bounded capture-ahead and pacing fixes.
-Motion is estimated; image quality, HUD and FPS still need game testing.
-Your TextureQuest shortcut controls everything. Extra AIO hotkeys are disabled.
+PRESS HOME TO SHOW OR HIDE SETTINGS. Choose the TextureQuest tab.
+Numpad * switches textures and graphics Original/TextureQuest without changing
+individual choices. Use Shortcut to change that key.
 
-Defaults: shadow strength 1; character softness 0.15; AO radius 0.35/strength 1.25.
-Shadowed lights: Min 10, Med 50, Max all supported lights.
-Emissive lighting is experimental: supported glowing objects and particles only.
-Some effects are not yet supported. No detected sources means no effect.
+Textures are required. Graphical Effects / DLSS (experimental) includes lighting,
+shadows, ambient occlusion, filtering, optional frame generation and neural
+rendering on supported hardware.
 
-Keep native lighting, material shaders and GPU shadows enabled. A game cap near
-60 FPS can help frame-generation pacing. Native game INIs are unchanged. Lamp lighting is
-preserved by default; rebuilt lamp lighting is an Advanced experiment. It replaces our old
-AO/contact shaders. Bloom, screen-color bounce and edge smoothing stay removed.
-Your own ReShade effects retain their state. Other ReShade hotkeys are disabled.
+New-install defaults:
+- Ambient occlusion: on.
+- Point-light shadows and emissive lights: off.
+- Sun lighting and sun shadow softening: off.
+- Smooth interface text: off.
+- Frame generation and neural rendering: off.
+Upscaling and Reflex driver mode have been removed. Updates preserve saved
+choices for the retained features. Retired controls cannot reactivate from old settings.
 
-About 17.7 GB downloads: only our generated/corrected channels and metadata.
-The app builds about 27.8 GB locally using your game files for protected channels,
-DDS headers and tails. Keep data. No game PAK changes or background watcher.
+Shadow quality and Light quality have Low, Med and Max presets. Advanced contains
+numeric tweaks. The shared shadow pool can limit active lights. Character shadows
+must be enabled for moving particle shadows. Emissive Particles and Objects can
+be selected separately after enabling the parent controls. AF uses 16x.
 
-Get app update verifies, replaces and restarts the app, preserving data, then
-refreshes the owned hook through normal setup. Verified cached textures are reused.
-After a game patch, Verify / Update textures refreshes the stock matching map.
+Frame Generation offers 2x / 3x / 4x where supported. Neural Rendering has presets
+and Advanced model/pass controls. Higher settings cost GPU time; motion is estimated.
+A game cap near 60 FPS can help frame pacing. Home never pauses enabled processing.
+Keep native lighting, material shaders and GPU shadows enabled. Native game INIs
+and the game's bloom setting are unchanged. Other ReShade effects are preserved.
+
+Click What's new for the versioned changelog bundled with the installer.
+Developers can read the same history on GitHub:
+https://github.com/Maergoth/TextureQuest/blob/Develop/CHANGELOG.md
+
+Texture data remains 1.3.0: about 17.7 GB downloads and 27.8 GB local DDS.
+The app reconstructs protected channels, headers and tails from your game files.
+Keep data. No game PAK changes or background watcher. The unfinished generation
+batch is not included.
+
+Get app update verifies, replaces and restarts the app while preserving data,
+then refreshes the owned hook through normal setup. Unchanged texture preparation
+is reused. After a game patch, Verify / Update textures rebuilds stock matching.
 Changed or unavailable assets remain original with a coverage report.
 
 Close EQ2 before install, update or uninstall. Uninstall removes only unchanged
-owned files. Later user settings and unknown files are preserved. The included
-provider is a private ReShade 6.8 source build with a keyboard compatibility fix;
-existing compatible ReShade is reused. Third-party notices are included.
+owned files. Later user settings and unknown files are preserved. The bundled
+ReShade provider includes the keyboard/menu compatibility fix. Existing compatible
+ReShade is reused; third-party notices and modified source are included.
 
-This includes a private adapter of Sichii's EQ2 Graphics renderer. See the
-included notices. It is a local test, not a public release. Appearance, HUD
-compatibility and performance still need the EQ2 test. Graphics hooks have no official
-approval. The unfinished texture generation batch is not included.
+Experimental lighting still has coverage limits. Sun-direction movement flicker
+is unresolved. Cached particles cannot reveal sources the game never submits.
+Graphics hooks have no official approval; see the graphics guide for limitations.

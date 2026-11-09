@@ -1,5 +1,71 @@
 # Changelog
 
+This is the canonical history bundled with the installer. Develop entries are
+development builds, not announcements of public binary releases. Controlled
+checks described here do not establish complete in-game appearance or FPS.
+
+## 1.13.15 — Graphics release
+
+- Bring the Develop particle grouping, retained-source, material-normal replay and bounded self-shadow work into the public installer. Texture data remains 1.3.0; no unfinished generations are included.
+- Show **Graphical Effects / DLSS (experimental)** in the launcher and clearly explain that **Home** shows or hides settings.
+- Default ambient occlusion on. Default frame generation, neural rendering, smooth interface text, point lights, emissive lights, sun lighting and sun shadow softening off. Preserve saved choices and numeric customizations for retained features.
+- Remove Upscaling and Reflex driver mode from the controls and active runtime paths. Ignore legacy SR enable requests; retain the binary API layout for compatibility.
+- Add **Low, Med, Max** Shadow quality and Light quality presets, including particle shadow/light budgets. Keep custom numeric controls under Advanced and explain the shared shadow-pool limit.
+- Version the installer's default-settings leases so old installations can still restore their exact owned settings without adopting the new defaults.
+- Sun-direction movement flicker, unsupported material/particle paths and sources the game never submits remain limitations. The latest source-core visual improvement is scene-dependent; no universal appearance or FPS improvement is claimed.
+
+## 1.13.14 — Develop graphics candidate
+
+- Add a bounded, particle-only exclusion core to shadow depth sampling. Its radius is `min(0.35, 0.5 × weighted positive-emission centroid RMS)` world units, with smoothed source metadata.
+- Keep built light position and exclusion core together across static and moving shadow maps, so each path uses the core that produced the static map.
+- This excludes nearby cloud occluders spatially; it does not identify the emitter's owner or apply a global shadow bias. Unrelated geometry inside the small core can also be ignored; blockers outside it remain eligible.
+- Pass 1,381 focused CPU checks, a strict native build and 35 controlled hardware checks. Seven other native payloads, texture data 1.3.0 and saved controls are retained. Actual EQ2 appearance and performance still need comparison; this is not a public binary release or a universal self-shadow fix.
+
+## 1.13.13 — Develop app update
+
+- Add **What's new** inside the installer, showing this bundled history with the installed app version clearly identified.
+- Bundle and pin the same canonical changelog used on GitHub. Require an entry for the app's current version when building the installer.
+- Backfill the 1.13.10–1.13.12 graphics history and document how developers keep future entries current.
+- App-only update: retain the 1.13.12 renderer, all other native payloads and texture data 1.3.0. No new native graphics fix or public binary release is claimed by this entry.
+
+## 1.13.12 — Develop graphics update
+
+- Replace centroid-grid particle identities with deterministic world-anchor association and ownership hysteresis, reducing identity changes at grid boundaries.
+- Filter the representative light position over time while retaining current RGB energy, exact observed moments and native dark pulses. Commit grouping, history and field state together.
+- Preserve the existing two-second hold, one-second fade and service-gap behavior. Shadow maps keep their 0.1-unit movement threshold and normal rebuild scheduler; continuous shadow updates are not claimed.
+- Pass a strict native build and 1,271 focused CPU checks. Fixture timings are not game FPS; ambiguous source histories, native culling and costly adversarial cases remain limitations. Seven other native payloads and texture data 1.3.0 are unchanged.
+
+## 1.13.11 — Develop graphics update
+
+- Preserve committed particle light and map identities when allocation service is unavailable, while still honoring real zero budgets, fade, expiry, reduced limits, zero strength, Off and scene resets.
+- Group nearby particle contributions before selection to reduce duplicated fine-cell lights. The fixed voxel identity rule introduced here is replaced by stable association in 1.13.12.
+- Restore weighted T0 material-normal replay for two verified opaque native base shader pairs, retaining smooth basis interpolation. Unknown, alpha-tested and unsupported paths keep geometric fallback.
+- Pass focused production CPU checks and a targeted hardware normal-replay case. These checks do not establish every model seam, offscreen effect or FPS; unchanged hardware suites were not replayed. Other seven native payloads and texture data 1.3.0 remain unchanged.
+
+## 1.13.10 — Develop graphics update
+
+- Add a dedicated particle character-shadow pool, independent of the nearest 16 native moving-shadow slots. **Advanced → Particle shadow limit** selects up to 128 eligible particle lights when **Character shadows** is enabled.
+- Apply the existing shadow strength and softness controls to emissive shadows, preserving the saved legacy softness convention. The native 16 × 512-pixel pool remains; the new 256-pixel banks allocate up to 192 MiB of depth storage.
+- Retain previously observed particle cells for two seconds, then fade them for one second, in a bounded 256-entry cache. Held observations do not refresh their timestamps or create unseen sources.
+- Temporarily use geometric fallback for base-pass normals instead of unverified replay; 1.13.11 restores the verified normal-mapped base profiles. Targeted hardware/cache checks passed, with live appearance and performance still requiring comparison.
+
+## 1.13.9 — private Develop candidate
+
+- Raise particle-light limit to 128, intensity ceiling to 128×, and radius-control ceiling to 16× / 128 world units.
+- Keep later fitting particle draws when another draw exceeds bounded capture capacity or has unsupported data. Isolate per-draw failures while retaining global scene/epoch/readback failure guards.
+- Correct particle WORLD shadow caster gathering and lookup. Moving character shadow maps retain nearest-16-light coverage; higher particle limits do not expand that coverage.
+- Preserve saved controls, texture data 1.3.0 and the other seven native payloads. Focused controlled checks passed; full game appearance and FPS remain unproved. No public tag/release or main update.
+
+## 1.13.8 — graphics candidate
+
+- Increase complete particle capture capacity to 512 draws / 32,768 triangles for the captured combat workload. Add independent particle-light strength and radius controls.
+- Raise emissive and particle light ceilings to 512 and 64, retaining absent defaults of 64 and 4. Shadow maps above 256 allocate on demand and can add 384 MiB of GPU memory.
+- Apply Painted emission kept as a constant share on strictly qualified native world passes, independent of optional emitter measurement and the camera-dependent light mask.
+- Increase the supported material-normal draw cache to 512 and allow better material records to replace base records even when full.
+- Preserve an original keyboard hook's handled F10 result, addressing the demonstrated redundant Windows menu activation path. Keep Home and existing Alt handling.
+- Reconcile the selected Graphical Effects group with all available bundles during normal refresh, including legacy effects-only selections that omitted the DLSS panel.
+- Preserve texture data 1.3.0 and the AIO/DLSS native payloads. Actual game behavior, complete beam coverage and FPS remain unproved; see the 1.13.8 handoff. This candidate is not a new public release.
+
 ## 1.13.7
 
 - Reuse the committed texture preparation during app and graphics-hook updates when the texture version and preparation identity are unchanged. Avoid rescanning every DDS file during setup, hook activation and cache cleanup.

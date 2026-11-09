@@ -1,39 +1,24 @@
-TextureQuest 1.13.6
+# TextureQuest 1.13.15
 
-- Cache SHA-verified loose DDS session bytes within a 16-object/64 MiB reader cache, avoiding repeated disk reads and full hashes on cache hits.
-- Restore optional world-surface saturation controls and attempt supported material/normal routing. Normal coverage remains partial.
-- Share compiled shader results between lighting and material normals; material setup returns immediately while compilation is pending.
-- Add tunable emissive and particle light limits: 1–256 and 1–32, with absent defaults of 64 and 4. They share the Shadowed lights pool; native lamps take priority.
-- Keep finite remote or oversized particle primitives from invalidating the whole emission packet and suppressing nearby light. Existing alpha and radial behavior is retained.
-- Exclude invalid Sun gather lanes from shadow contribution while retaining the original tap count, treating unavailable samples as unshadowed. Controlled border cases pass; Sun movement/shadow-direction flicker remains unresolved.
-- Present both shadow-softness controls on a 1–10 scale while retaining stored appearance until a control is adjusted.
-- Set both absent frame-generation startup defaults off in the compiled AIO. Explicit saved settings and the normal app update/settings-preservation flow retain precedence.
+The Develop graphics work is now packaged for the public installer with simpler
+quality presets and safer new-install defaults. Texture data remains 1.3.0.
 
-Press Home for graphics settings. Textures remain required; Graphical Effects
-is optional and experimental. Numpad * switches TextureQuest textures and effects
-together. Native bloom remains the player's choice. Keep native lighting and
-GPU shadows enabled when using renderer features that depend on those inputs.
+**Press Home to show or hide settings**, then choose **TextureQuest**.
 
-Texture data remains 1.3.0. Only generated texture channels are distributed;
-the installed game supplies untouched data. No game PAK replacement is used.
+- Ambient occlusion starts on. Point/emissive lights, sun lighting/softening,
+  smooth interface text, frame generation and neural rendering start off.
+- Upscaling and Reflex driver mode are removed from the active runtime and controls.
+- Shadow quality and Light quality offer Low / Med / Max. Advanced retains manual
+  budgets and tuning; existing users' saved settings are kept.
+- Includes stable particle groups, short-lived light retention, supported model-normal
+  replay, particle character shadows up to 128 lights and bounded self-occlusion reduction.
+- Keeps the later F10/menu compatibility fix and unchanged texture preparation reuse.
 
-These are fix attempts for Tenri/Sichii's continued review, published before
-local installation. No 1.13.6 in-world result or performance gain is claimed;
-controlled tests have limited coverage. See [the collaborator handoff](https://github.com/Maergoth/TextureQuest/blob/v1.13.6/docs/GRAPHICS-1.13.6-HANDOFF.md)
-for the exact behavior and remaining visual issues.
+Update through Get app update with EQ2 closed. Keep your portable data folder.
+No texture dataset download is required when the existing texture preparation is unchanged.
 
-Thanks to Sichii for EQ2 Graphics and permission to include it. Third-party
-components retain their respective licences and notices; runtime profile IDs
-and retained private labels remain compatibility/history tokens.
+Sun-direction movement flicker remains unresolved. Particle coverage, unsupported
+model shaders and sources the game never submits retain their documented limits.
+Controlled checks do not establish universal in-game appearance or FPS improvements.
 
-Controlled-test qualifications retained with this release:
-
-- Controlled source/component GPU evidence only; no1.13.6 local game installation, appearance or FPS approval.
-- Material/normal path is limited to128 current-frame known-profile draws; unsupported records retain depth-normal fallback and enabled atlas/replay has unmeasured cost.
-- Sun border/sentinel controlled cases pass; actual outdoor box removal and moving sun-direction flicker remain unconfirmed, and direction-history additions are diagnostic only.
-- Particle finite-domain poisoning is corrected; visible square causes, emitter discovery, camera/distance/occlusion continuity and flicker remain in-world follow-up.
-- The prior combined test exited124 after three successful budget markers; partial component evidence is preserved, never reported as an overall pass or replayed.
-- DDS cache ownership is16objects/64MiB; active handoff references may retain evicted bytes. Cache hits are verified session bytes, not current-disk verification. Physical symlink creation was denied, separately injected reparse rejection was tested.
-- Frame generation/upscaling/Reflex performance and latency remain unmeasured; FG startup default is off, explicit saved choices win.
-
-Published before local installation under the current user direction. No 1.13.6 local game result is claimed.
+See [the changelog](CHANGELOG.md) and [graphics guide](docs/GRAPHICS_FEATURES.md).

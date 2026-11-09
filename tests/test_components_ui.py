@@ -25,8 +25,8 @@ class ComponentUI(GraphicsOnlyUI):
         self.assertFalse(self.ui.component_graphics.get())
         self.assertEqual(self.ui.component_controls['textures'].cget('state'), 'disabled')
         self.assertEqual(set(self.ui.component_controls), {'textures', 'effects'})
-        self.assertEqual(self.ui.component_controls['effects'].cget('text'), 'Graphical Effects (experimental)')
-        self.assertEqual(self.ui.graphics_settings_note.cget('text'), 'Press Home to open settings.')
+        self.assertEqual(self.ui.component_controls['effects'].cget('text'), 'Graphical Effects / DLSS (experimental)')
+        self.assertEqual(self.ui.graphics_settings_note.cget('text'), 'Press Home to show or hide settings. Choose TextureQuest.')
         self.assertEqual(self.ui.component_controls['effects'].cget('state'), 'normal')
 
     def test_saved_choice_is_per_game_and_not_installed_capability(self):

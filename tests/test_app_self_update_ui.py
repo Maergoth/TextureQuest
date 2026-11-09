@@ -40,6 +40,9 @@ def fake_app(folder):
     # Current graphics-only controls use these fields even while an app-only
     # worker is active. Keep normal refresh_controls/cache guards under test.
     app.mode_controls=[Widget()];app.install_mode=types.SimpleNamespace(get=lambda:'graphics')
+    app.component_controls={'textures':Widget(),'effects':Widget()}
+    app.component_graphics=types.SimpleNamespace(get=lambda:False)
+    app.component_error=''
     app.shortcut={'vk':106,'modifiers':0};app.dds_source=None;app.initial_pack=None
     app.loader_error='';app.loader_status_unknown=False;app.cache_guard=None
     app.legacy_uninstall_index=0;app.post_update_setup=False

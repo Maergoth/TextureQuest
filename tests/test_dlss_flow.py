@@ -133,7 +133,7 @@ class DLSSFlow(unittest.TestCase):
                 self.ui.graphics_manager.preflight_components.assert_called_with(str(game), expected)
                 self.ui.dds_store.verify.assert_called_with(self.ui.prepared, full=True)
 
-    def test_automatic_upgrade_keeps_legacy_flags_without_expanding_bundle(self):
+    def test_automatic_upgrade_reconciles_legacy_flags_with_selected_group(self):
         self.ui.update_check = {}; self.ui.release = {}
         self.ui.downloads_in_use = Mock(); self.ui.report_overall = Mock()
         self.ui.pause = types.SimpleNamespace(is_set=lambda: False)
@@ -147,8 +147,11 @@ class DLSSFlow(unittest.TestCase):
                 with patch.object(app, 'resource', return_value=choices), \
                      patch('texturequest_setup.prepare_graphics', return_value=({}, {'texture_version': '1.3.0'})) as prepare:
                     app.TextureQuestApp._download_latest(self.ui, auto_install=True, upgrading=True)
-                self.assertEqual(prepare.call_args.kwargs['components'], legacy)
-                self.assertEqual(components.load(self.ui.state_dir, self.game), before)
+                expected = dict(components.normalize(), effects=True, dlss=True)
+                self.assertEqual(prepare.call_args.kwargs['components'], expected)
+                after = components.load(self.ui.state_dir, self.game)
+                self.assertEqual(after['selection'], expected)
+                self.assertNotEqual(after['record_sha256'], before['record_sha256'])
 
     def test_unchecking_saved_missing_bundles_keeps_required_textures(self):
         self.ui.load_components()
@@ -189,7 +192,7 @@ class DLSSFlow(unittest.TestCase):
         state = self.root / 'setup-data'; state.mkdir()
         prepared = dict(distribution='generated-channels-only')
         store = Mock(); store.prepare.return_value = prepared
-        store.verify.side_effect = lambda *a, **kw: order.append('verified-textures')
+        store.verify_for_install.side_effect = lambda *a, **kw: order.append('verified-textures')
         graphics = Mock(); graphics.status.return_value = dict(self.status)
         if failure: graphics.preflight_components.side_effect = ValueError('optional profile changed')
         else: graphics.preflight_components.side_effect = lambda *a: order.append('verified-dlss')

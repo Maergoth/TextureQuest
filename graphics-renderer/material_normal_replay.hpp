@@ -1,7 +1,7 @@
 #pragma once
 // Included inside shadows after the existing kept-draw and shader helpers.
 // This cache contains current-frame native references, never texture byte copies.
-constexpr size_t MATERIAL_DRAW_LIMIT=128;
+constexpr size_t MATERIAL_DRAW_LIMIT=512;
 struct MaterialDraw { KeptDraw draw;std::vector<std::pair<uint64_t,uint64_t>> buffers;D3D11_RECT scissor{}; };
 struct MaterialStats
 {
@@ -24,7 +24,7 @@ static ID3D11Resource *MaterialSource=nullptr;
 static DirectX::XMFLOAT4X4 MaterialCamera{};
 static DirectX::XMFLOAT3 MaterialOffset{};
 static bool MaterialActive()
-{return tq_world::Work.Point()&&Enabled&&glow::Enabled&&!shadowmaps::ShowColours;}
+{return tq_world::Work.Point()&&Enabled&&glow::SourcesActive()&&!shadowmaps::ShowColours;}
 static void BeginMaterialFrame()
 {
     MaterialDraws.clear();{std::lock_guard guard(MaterialVersionLock);MaterialBufferVersions.clear();}MaterialFrame=UINT64_MAX;MaterialSource=nullptr;
@@ -54,12 +54,26 @@ static bool MaterialUniform(const std::vector<DirectX::XMFLOAT4>&rows)
     }
     return true;
 }
-static void KeepMaterialDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall&call,bool base,size_t shader)
+static bool MaterialBaseNormalProfile(ID3D11VertexShader*vertex,ID3D11PixelShader*pixel,int repeated)
 {
+    if(repeated<0||repeated>=int(std::size(REPEATED_VERTEX_SHADERS)))return false;
+    // This exact native base PS decodes the material vector from T0 with
+    // pixel c0.w, just like the retained diffuse lamp profiles. Its vertex
+    // variants differ only in which input provides tangent-frame Y.
+    const auto hash=REPEATED_VERTEX_SHADERS[repeated].Hash;
+    if(hash!=0x92f68ad8f88a96b3&&hash!=0x4780c178ee4ee3ea)return false;
+    std::lock_guard guard(capture::Lock);
+    const auto vs=capture::Shaders.find(reinterpret_cast<uint64_t>(vertex));
+    const auto ps=capture::Shaders.find(reinterpret_cast<uint64_t>(pixel));
+    return vs!=capture::Shaders.end()&&ps!=capture::Shaders.end()
+        &&vs->second.Hash==hash&&ps->second.Hash==0xebfb1c1d07ad558d;
+}
+static void KeepMaterialDraw(shadowmaps::BoundDraw &bound,bool base,size_t shader)
+{
+    auto *ctx=bound.Context;const shadowmaps::DrawCall &call=bound.Call;
     if(!MaterialActive()||!lightbuffer::LightBuffer||lightbuffer::CurrentTarget!=lightbuffer::LightBuffer.Get()||call.Instances!=1||call.FirstInstance)return;
     MaterialCounts.frame=shadowmaps::FrameNumber;
-    {std::lock_guard guard(Lock);if(!RepeatedShaders.contains(capture::VertexShader)){++MaterialCounts.unsupported;return;}}
-    if(MaterialDraws.size()>=MATERIAL_DRAW_LIMIT){++MaterialCounts.capacity;return;}
+    if(capture::VertexClass.Repeated<0){++MaterialCounts.unsupported;return;}
     ComPtr<ID3D11DeviceContext1> ctx1;if(FAILED(ctx->QueryInterface(IID_PPV_ARGS(&ctx1))))return;
     ComPtr<ID3D11GeometryShader> geometryStage;ComPtr<ID3D11HullShader> hull;ComPtr<ID3D11DomainShader> domain;
     ctx1->GSGetShader(&geometryStage,nullptr,nullptr);ctx1->HSGetShader(&hull,nullptr,nullptr);ctx1->DSGetShader(&domain,nullptr,nullptr);
@@ -68,6 +82,8 @@ static void KeepMaterialDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall
     if(geometryStage||hull||domain||vertexClasses||pixelClasses){++MaterialCounts.unsupported;return;}
     MaterialDraw candidate;if(!KeepDraw(ctx1.Get(),call,candidate.draw))return;
     auto&draw=candidate.draw;draw.Base=base;draw.LampShader=shader;
+    if(base&&!MaterialBaseNormalProfile(draw.VertexShader.Get(),pixelStage.Get(),draw.Repeated))
+    {++MaterialCounts.unsupported;return;}
     D3D11_RASTERIZER_DESC raster{};if(draw.Rasterizer)draw.Rasterizer->GetDesc(&raster);
     if(raster.ScissorEnable)
     {
@@ -77,7 +93,7 @@ static void KeepMaterialDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall
     else candidate.scissor={0,0,LONG(draw.Viewport.Width),LONG(draw.Viewport.Height)};
     if(draw.Repeated<0||draw.Repeated>=int(std::size(REPEATED_VERTEX_SHADERS))||!draw.VertexShader
         ||draw.Constants[0].size()<(REPEATED_VERTEX_SHADERS[draw.Repeated].MovedTexture?24u:15u)
-        ||draw.Constants[1].size()<11||draw.Constants[3].size()<11||(!base&&draw.Constants[2].empty())){++MaterialCounts.unsupported;return;}
+        ||draw.Constants[1].size()<11||draw.Constants[3].size()<11||draw.Constants[2].empty()){++MaterialCounts.unsupported;return;}
     if(!MaterialUniform(draw.Constants[0])){++MaterialCounts.transform;return;}
     for(const auto &binding:draw.Constants)for(const auto&r:binding)
         if(!std::isfinite(r.x)||!std::isfinite(r.y)||!std::isfinite(r.z)||!std::isfinite(r.w))return;
@@ -85,9 +101,8 @@ static void KeepMaterialDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall
     // coverage. Do not infer its holes from coincident depth on another mesh.
     if(draw.Constants[3][0].x>.5f){++MaterialCounts.unsupported;return;}
     ComPtr<ID3D11Resource> materialResource;
-    if(!base)
     {
-        if(shader>=SINGLE_PASS_SHADERS||!draw.Views[0]||!draw.Samplers[0]||draw.Constants[3][1].x>=.5f)
+        if((!base&&shader>=SINGLE_PASS_SHADERS)||!draw.Views[0]||!draw.Samplers[0]||draw.Constants[3][1].x>=.5f)
         {++MaterialCounts.unsupported;return;}
         D3D11_SHADER_RESOURCE_VIEW_DESC d{};draw.Views[0]->GetDesc(&d);
         if(d.ViewDimension!=D3D11_SRV_DIMENSION_TEXTURE2D){++MaterialCounts.unsupported;return;}
@@ -102,9 +117,11 @@ static void KeepMaterialDraw(ID3D11DeviceContext *ctx,const shadowmaps::DrawCall
     DirectX::XMFLOAT4 rows[shadowmaps::ROW_COUNT];
     std::copy_n(draw.Constants[0].begin()+shadowmaps::FIRST_ROW,shadowmaps::ROW_COUNT,rows);
     if(!IsLightBufferDraw(rows)){++MaterialCounts.camera;return;}
-    const auto geometry=FindDrawnMesh(ctx,call);draw.Mesh=geometry.Key;
+    const auto &geometry=bound.GetMesh();draw.Mesh=geometry.Key;
     const uint64_t key=FindCopyKey(geometry.Key,rows);
     if(auto old=MaterialDraws.find(key);old!=MaterialDraws.end()&&(!old->second.draw.Base||base))return;
+    // Existing base records may upgrade at full cache capacity.
+    if(!MaterialDraws.contains(key)&&MaterialDraws.size()>=MATERIAL_DRAW_LIMIT){++MaterialCounts.capacity;return;}
     const auto remember=[&](ID3D11Buffer*buffer)
     {
         if(!buffer)return true;
@@ -185,7 +202,7 @@ static void DrawMaterialNormals(ID3D11DeviceContext*ctx)
             ctx1->UpdateSubresource(MaterialConstants[n].Get(),0,nullptr,copy.data(),0,0);
         }
         const auto&profile=REPEATED_VERTEX_SHADERS[draw.Repeated];AddedLampConstants parameters{};
-        parameters.Header={0,0,profile.MovedTexture?1.f:0.f,draw.Base?0.f:1.f};parameters.Range={0,profile.NormalInNormal?1.f:0.f,0,0};
+        parameters.Header={0,0,profile.MovedTexture?1.f:0.f,1.f};parameters.Range={0,profile.NormalInNormal?1.f:0.f,0,0};
         ctx1->UpdateSubresource(MaterialParameters.Get(),0,nullptr,&parameters,0,0);
         ID3D11Buffer*vc[]{MaterialConstants[0].Get(),MaterialConstants[1].Get()};ID3D11Buffer*pc[]{MaterialConstants[2].Get(),MaterialConstants[3].Get()};
         ctx1->VSSetConstantBuffers(0,2,vc);ctx1->PSSetConstantBuffers(0,2,pc);ID3D11Buffer*params=MaterialParameters.Get();

@@ -1,11 +1,12 @@
 # Building the TextureQuest add-on
 
-The 1.13.6 main005 image was built with the existing VS18 x64 toolchain, MSVC
-14.50.35717, from an isolated frozen copy. Its exact 486400-byte native image is
-SHA256 `09254adae712b942c215914cea30319aae54101445ef230676a795c31f786851`.
+The 1.13.15 core image was built with VS18 x64/MSVC14.50.35717 from
+this release source. Its 475648-byte image is SHA256
+`26521272e3b27aff0362a28ea3957b006d5f6b4615eaa5fa6366abb6923db166`.
 `RELEASE-NATIVE-SOURCE.json` records the actual local translation units and
-headers from that build's `/showIncludes` log. Documentation, metadata and
-uncompiled selfchecks are excluded from that compiled-input roster.
+headers captured by `/showIncludes`. The core no longer instantiates or calls
+Reflex driver control, and its menu exposes only optional FG/NR controls.
+Historical low-latency helper files are not compilation inputs.
 
 For a separate rebuild, use an x64 developer prompt and an isolated output
 directory. The release command used `/Brepro /std:c++20 /O2 /MT /EHsc /W4

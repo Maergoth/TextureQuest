@@ -8,13 +8,13 @@
   "files": [
     {
       "name": "TextureQuest.addon64",
-      "bytes": 486400,
-      "sha256": "09254adae712b942c215914cea30319aae54101445ef230676a795c31f786851"
+      "bytes": 475648,
+      "sha256": "26521272e3b27aff0362a28ea3957b006d5f6b4615eaa5fa6366abb6923db166"
     },
     {
       "name": "ReShade64.dll",
       "bytes": 5410816,
-      "sha256": "78ef670bd7baf3688f8570294cf793050f9fd8f2751fa7b3086c93ae5eb14fd1"
+      "sha256": "af45413c73384ec412930efd2daba2523f8d04003ff8e89d2cf86e1141ab7d9e"
     },
     {
       "name": "licenses/ReShade-d3d12.txt",
@@ -185,6 +185,41 @@
       "name": "licenses/TextureQuest-1136-EXPERIMENTAL.txt",
       "bytes": 1451,
       "sha256": "ae81dab96207937436a3e2ca8d813bdcf29ba9979593ca4f4928409e36b936b9"
+    },
+    {
+      "name": "licenses/TextureQuest-1138-COMBINED-LOCAL.txt",
+      "bytes": 1115,
+      "sha256": "f78fba887946a5ccea5178a9c0b210e703802192623b7d14792b4f7cc7010acf"
+    },
+    {
+      "name": "licenses/TextureQuest-1139-DEVELOPMENT.txt",
+      "bytes": 1017,
+      "sha256": "19fbdfe712ae478a2626afc45c628d3b47fa740f4c484c5a47c78b0e67c5f802"
+    },
+    {
+      "name": "licenses/TextureQuest-11310-DEVELOPMENT.txt",
+      "bytes": 611,
+      "sha256": "4faff1a7c0241df17c7dff4f30003cfa85c13d62bbe2b6cc75afcc028235117f"
+    },
+    {
+      "name": "licenses/TextureQuest-11311-DEVELOPMENT.txt",
+      "bytes": 791,
+      "sha256": "40940b2a5f65bd5dd56a79fe8143f8484869995fbe104dc8698e00cd1512ff22"
+    },
+    {
+      "name": "licenses/TextureQuest-11312-DEVELOPMENT.txt",
+      "bytes": 581,
+      "sha256": "1ea9c3683698dc23bc879fd80d6cee2e9b54a552b7ee4b2744d3c5113c907036"
+    },
+    {
+      "name": "licenses/TextureQuest-11314-DEVELOPMENT.txt",
+      "bytes": 731,
+      "sha256": "b4c26a4973632f1be623928be64b4eaceaa66fb64c560f5c089e060dbde582a8"
+    },
+    {
+      "name": "licenses/TextureQuest-11315-PUBLIC.txt",
+      "bytes": 1028,
+      "sha256": "1c7e59bde7cec1d1052dd3091db7a93366acdbb1b19b16310efd8562ff138a3d"
     }
   ],
   "dlss": {
@@ -214,8 +249,8 @@
       {
         "role": "aio",
         "name": "dlss/standalone-dlssnr.addon64",
-        "bytes": 317952,
-        "sha256": "96771d0ff93e8aa752702df1eac81d9affe80c5f3f1d4cc0237d3212f96d779e"
+        "bytes": 314368,
+        "sha256": "867747ff65d70113f8f810cc3505fa41f7181bd21017f78195663c5d7d8cf188"
       },
       {
         "role": "bridge",
@@ -245,8 +280,8 @@
     "files": [
       {
         "name": "renderer/EQ2Graphics.addon64",
-        "bytes": 1005056,
-        "sha256": "6ed81ea023473c201d94be5c99fe8640b4c6da802031d7deb2bff029ff69d748"
+        "bytes": 1133568,
+        "sha256": "6c0662c1032332ba602fd8d45cb61e3c7abfc924b0fa0bbb03218151b8b70584"
       }
     ]
   }

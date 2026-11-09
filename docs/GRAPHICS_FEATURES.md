@@ -1,132 +1,98 @@
-# Private graphics preview
+# Graphical Effects / DLSS
 
-Select **Graphical Effects (experimental)**, close EQ2 and click **Apply changes**.
-Launch normally. **Press Home to open settings**, then choose **TextureQuest**.
-Textures are required. The graphics checkbox includes lighting, shadows, AO,
-filtering and DLSS on supported hardware; individual feature choices are kept.
-DLSS starts off on new installs. Enable its controls in **Home → TextureQuest**;
-updates preserve your saved NR, upscaling and frame-generation choices.
+Select **Graphical Effects / DLSS (experimental)**, close EQ2 and click **Apply changes**.
+Launch normally. **Press Home to show or hide settings**, then choose **TextureQuest**.
+Opening Home does not pause selected processing. Updates keep saved choices.
 
-The graphics component uses [Sichii's EQ2 Graphics renderer](https://github.com/Sichii/Eq2GraphicsAddonRS),
-with a small private adapter for TextureQuest's master toggle and menu. It works
-in EQ2's world rendering passes before the HUD, replacing our old screen-space
-AO/contact implementation.
+The component integrates [Sichii's EQ2 Graphics](https://github.com/Sichii/Eq2GraphicsAddonRS)
+into EQ2's world passes before the HUD. Textures remain required.
 
-| Control | Function |
+| Feature | New-install default |
 | --- | --- |
-| Point-light shadows | Adds shadows while preserving native lamp lighting by default |
-| Character shadows | Moving-character shadows from supported point and window lights |
-| Emissive lights | Lights nearby surfaces from supported glowing objects and particles |
-| Sun lighting | Enables sun softness, direction and indoor-transition corrections |
-| Ambient occlusion | Darkens nearby occlusion in ambient world lighting |
-| Anisotropic filtering | 16x filtering on eligible world samplers when enabled |
-| Smooth interface text | Bilinear filtering for interface text; not scene antialiasing |
-| Reflex driver mode (experimental) | Requests NVIDIA driver low-latency mode for EQ2's DX11 device |
+| Ambient occlusion | On |
+| Anisotropic filtering | On, 16x |
+| Point-light shadows | Off |
+| Emissive lights | Off |
+| Sun lighting | Off |
+| Sun shadow softening | Off |
+| Smooth interface text | Off |
+| Frame Generation | Off |
+| Neural Rendering | Off |
 
-Character and emissive lighting depend on the point-light parent control. Emissive
-lighting is an approximation, not a full multi-bounce lighting engine.
+Upscaling and Reflex driver mode are removed. Old SR enable requests cannot
+reactivate upscaling. TextureQuest no longer requests driver low-latency mode.
 
-The private window-light extension preserves the captured native projection and
-adds character occlusion to that light contribution. Unsupported projected-light
-shaders remain native. It does not replace EQ2's directional shadow system.
-The preview also includes upstream fixes for off-screen lamps and smoother
-indoor lighting transitions. Off-screen lamp rebuilding remains opt-in under
-Advanced; native lamp lighting is still the default.
+## Shadow and light quality
 
-The main panel has feature checkboxes and shadowed lights **Min (10), Med (50),
-Max (all supported; currently 256)**. Detailed controls and diagnostics are under
-**Advanced**. Defaults are shadow strength **1**, softness **0.15**, AO radius
-**0.35** and strength **1.25**. The first update backs up prior numeric values;
-later Advanced edits are kept. The former 0.05 softness default moves to 0.15;
-other custom values are retained. Feature checkbox choices are preserved.
+The main panel offers **Low, Med, Max**. Fresh budgets are Med while parent
+features are off. Numeric controls remain under **Advanced**. Saved mixed
+values display **Custom (Advanced)** until a preset is chosen.
 
-**Rebuild lamp lighting (experimental)** changes the game's lamp falloff and can
-darken rooms. It is off by default; shadows still work with native lamp lighting.
-Emissive lighting is experimental. Some effects are not yet supported; the new
-particle paths still need in-game validation. Very small particles can be missed.
-With no eligible sources detected, the toggle adds no lighting.
-Its status distinguishes
-no detected emitters, no active draws and observed light draws; checking it does
-not prove that the current scene has eligible emitters.
+| Quality | Shadow-map pool / particle character shadows | Emissive / particle lights |
+| --- | --- | --- |
+| Low | 10 / 10 | 16 / 16 |
+| Med | 50 / 50 | 64 / 64 |
+| Max | 512 / 128 | 512 / 128 |
 
-**Numpad \*** (or your shortcut) switches textures and all selected graphics
-off/on. Original preserves each checkbox and strength. Changes apply at a frame
-boundary; work already submitted to the GPU finishes normally. Settings are kept
-in ReShade.ini under `[EQ2Graphics]` and survive reinstall.
+Lighting shares the shadow-map pool; native lamps take priority. Lower shadow
+quality can constrain higher light quality. These are capacity limits, not a
+promise of complete scene coverage. Higher settings cost CPU/GPU time and memory.
 
-Uncheck **Point-light shadows**, **Ambient occlusion** and **Sun lighting** to stop
-the world renderer's light/depth checks, scene copies and rendering work. Character
-and emissive controls are children of Point-light shadows. Filtering, text and
-textures work independently.
+**Point-light shadows** preserves native lamp lighting. **Character shadows**
+includes supported point and projected window lights, with a separate particle
+character-shadow pool up to 128. **Emissive lights** requires Point-light shadows;
+its **Particles** and **Objects** choices can be selected separately. Its status
+reports observed emitters and draws rather than assuming every scene is supported.
 
-The bundled hook also stops depth detection and backup copies when no enabled
-effect or DLSS guide needs them. Other ReShade effects can keep depth active;
-unrecognised add-ons retain it for compatibility. Re-enabling waits for fresh
-depth before using it. An existing third-party ReShade installation is preserved
-and may not support this idle path. Hook callbacks and texture switching still
-have some overhead; this does not promise the same FPS as removing the hook.
+Previously seen particle sources remain for two seconds, then fade for one second.
+The cache cannot discover sources the game never submits. Persistent inferred
+groups and smoothed positions reduce abrupt changes; ambiguous groups can still
+move differently from individual particles. A small bounded source core reduces
+near-source self-occlusion spatially. It does not identify the emitter's owner;
+unrelated geometry inside the small core can also be ignored.
 
-Keep native lighting, material shaders and GPU shadows enabled. The renderer
-needs their inputs. This preview changes no native EQ2 INI settings. The existing
-backup/restore manager remains available for future verified overrides.
-Bloom, screen-color bounce, contact-only shaders and edge smoothing are retired.
-Unrelated ReShade effects and settings are preserved.
+Supported opaque shader pairs replay material normals. Unknown or unsupported
+paths retain geometric fallback, so not every model seam or faceted surface is fixed.
 
-## Experimental Reflex
+**Ambient occlusion** adjusts ambient world lighting. Sun lighting and its separate
+softening control start off. Sun-direction movement flicker remains unresolved.
+**Rebuild lamp lighting** is an Advanced experiment that changes falloff/brightness;
+it stays off by default. Keep native lighting, material shaders and GPU shadows
+enabled. Native EQ2 INIs and the game's bloom setting remain unchanged.
 
-**Home → TextureQuest → Reflex driver mode** starts off and keeps its choice
-across restarts. It works independently of DLSS. Original mode removes
-TextureQuest's request; switching back reapplies it. There is no Boost, added
-frame cap, driver-profile change or depth processing dependency.
+## Optional DLSS processing
 
-This uses NVIDIA's installed driver API on the native game DX11 device. It does
-not call an extra Sleep at Present or invent input/simulation timing markers.
-NVIDIA supports this driver mode with less optimal wait placement than a full
-engine integration. The panel reports driver acceptance/activity, not measured
-input latency or a guaranteed FPS gain. [NVAPI documentation](https://docs.nvidia.com/nvapi/group__dx.html).
-
-After first use, the installed NVIDIA API stays initialized and loaded until
-EQ2 exits. Turning Reflex off removes TextureQuest's device request and stops its
-status checks. It keeps the library resident because ReShade's unload callbacks
-run before the final native-device release. Hot unloading/reloading the add-on
-can retain one initialization reference per load; process exit reclaims them.
-No driver DLL is distributed or removed by TextureQuest.
-
-An already-enabled external low-latency mode is left untouched. The public API
-cannot recover every prior request parameter or coordinate arbitrary concurrent
-writers. TextureQuest releases only the device request it accepted ownership of;
-it does not claim to reconstruct hidden foreign caps or Boost settings.
-
-## Experimental DLSS
-
-**Home → TextureQuest** has independent checkboxes; unchecking keeps the preset:
-
-- **Frame Generation:** 2x / 3x / 4x on supported hardware.
-- **Upscaling:** Native/DLAA, Quality, Balanced, Performance or Ultra Performance.
-- **Neural Rendering:** model presets and Advanced model/pass controls.
-
-Lower presets reduce the captured image's processing resolution. They do not
-reduce the rendering work EQ2 already performed, so a performance gain is not
-guaranteed. Motion is estimated from images. More neural passes cost GPU time.
-Capture queues at most one frame ahead while active consumers finish. GPU
-completion checks, newest-frame selection and resource ownership remain enforced.
-A game cap near 60 FPS can help pacing; your saved cap is preserved. Synthetic
-accepted Presents do not establish EQ2 performance, monitor scanout or smoothness.
-
-Home does not pause selected processing. Original bypasses it, allowing submitted
-work to drain. Model allocations may remain in memory. Extra AIO hotkeys and game
-window/input virtualization are disabled.
-The private output window ignores Windows menu activation, including F10.
-EQ2's own F10 UI toggle is unchanged.
+**Frame Generation** offers 2x / 3x / 4x on supported hardware. **Neural Rendering**
+has model presets and Advanced pass controls. Both start off. Explicit saved
+opt-ins survive updates; unchecking retains the preset. Motion is estimated.
+More neural passes cost GPU time. A game cap near 60 FPS can help pacing.
+These features do not reduce the work EQ2 already rendered.
 
 **Show FPS** reports rendered Game frames and accepted compositor Output frames,
-including generated frames. Output is not measured monitor scanout.
-Output hides when processing is off and reads zero during a genuine output stall
-or initialization wait; it is never replaced with a guessed multiplied rate.
+including generated frames. Output is not measured monitor scanout. It hides when
+processing is off and can show zero during a genuine stall or initialization wait;
+a guessed multiplied rate is never substituted.
 
-This is a private local candidate, not a public release. SDK/CPU tests do not
-establish real EQ2 visuals, compatibility or performance. The renderer's upstream
-source basis is `4a656a9492584c10ab38f30391b7e99538475f87`, with fixes through
-`1116b1f5ece249567857001800495f015ebe36d0`; its author has
-not supplied a top-level redistribution license, so it must not be included in
-a public TextureQuest release without permission.
+Extra AIO hotkeys and window/input virtualization are disabled. The bundled
+provider retains the later F10/menu fix; EQ2's own F10 UI toggle remains.
+Complete appearance, coverage and performance depend on the scene and hardware.
+
+## Switching off and updating
+
+**Numpad \*** or your shortcut switches textures and selected graphics off/on
+without losing choices. Original bypasses processing; already submitted GPU work
+finishes normally. Model allocations may remain in memory.
+
+Uncheck Point-light shadows, Ambient occlusion and Sun lighting to stop world
+lighting/depth work. Filtering and textures are independent. Other ReShade effects
+or add-ons may still require depth. Unknown add-ons retain it for compatibility.
+Some hook overhead remains; this is not a promise of native FPS.
+
+The installer seeds only absent defaults and versions its settings leases so older
+installations can restore their exact owned settings. Later edits are retained.
+The [changelog](../CHANGELOG.md) is also bundled in **What's new**.
+
+Redistribution permission for Sichii's renderer was confirmed by the maintainer;
+dependency licenses and upstream notices are included separately. This does not
+claim a new upstream open-source license. Historical graphics handoffs document
+earlier experiments and their validation limits.

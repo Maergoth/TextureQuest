@@ -1,27 +1,19 @@
 {
-  "revision": "main005 DDS verified session cache / controller003 retained",
-  "author_handoff": {
-    "bytes": 4410,
-    "sha256": "241ed59b02cd64cea5a93ff95008666efc9ce5423d2a44016f564f1b763e1daf"
-  },
-  "source_manifest": {
-    "bytes": 27127,
-    "sha256": "bf90f3bb5126d1ad5178c0eef2be71a0921db1b512ff7452ce738e0b2bd5aa55"
-  },
+  "revision": "TextureQuest 1.13.15 public graphics controls/defaults",
   "native_release_asset": {
-    "bytes": 486400,
-    "sha256": "09254adae712b942c215914cea30319aae54101445ef230676a795c31f786851"
+    "bytes": 475648,
+    "sha256": "26521272e3b27aff0362a28ea3957b006d5f6b4615eaa5fa6366abb6923db166"
   },
   "actual_compiled_files": [
     {
       "name": "addon.cpp",
-      "bytes": 49520,
-      "sha256": "8c81c3cf925873556872e9f779d8ba2fd40ee22af6037062a8706149d4557c1f"
+      "bytes": 46074,
+      "sha256": "545f40bf3f042a13088cf238980a3d096a5bafef4b38fce6e84fb6f8a3acab1f"
     },
     {
       "name": "aio_controller.hpp",
-      "bytes": 3231,
-      "sha256": "c0c9ea8a3b41891bfd3d9b3ed36ba237cd8acd292e8bcbcf54d4faee512c274c"
+      "bytes": 3300,
+      "sha256": "7c7e243c2be32fedaba510e17b6a5ba29bb83b35a3b2bbd1c20716d873061875"
     },
     {
       "name": "config.hpp",
@@ -170,23 +162,23 @@
     },
     {
       "name": "depth_demand_v1.hpp",
-      "bytes": 1152,
-      "sha256": "62f314817eead16bd21205a3ab1c8f93f3758a1e683500758637bcacdb3a4dc3"
+      "bytes": 1174,
+      "sha256": "b9a671f78496c39ad32f0b0320860206f2c5218b632e245e9ad504223ce1dc3b"
     },
     {
       "name": "dlss_controller.hpp",
-      "bytes": 7925,
-      "sha256": "6cc66ca89a26fd08eeb112db9102ad6c825eaf454a5fb7a4a5609e84aa7da24d"
+      "bytes": 8090,
+      "sha256": "95100b88c35441212b413032e38f1a1c23706d65b5de9e4b3afba454c94eb937"
     },
     {
       "name": "effects_controller.hpp",
-      "bytes": 9708,
-      "sha256": "c946a2014cda57e3484e60203e176a5b8ff03da0354605f750e957328d95ef7e"
+      "bytes": 9912,
+      "sha256": "89efd340c5fbd9252700253efb95dc9d9972a70279eb4c5c6a015251804c3029"
     },
     {
       "name": "fps_counter.hpp",
-      "bytes": 2545,
-      "sha256": "ae04479e2d20df394fd1eaed8299a8385a86faa727870c26869b2b058e627d77"
+      "bytes": 2608,
+      "sha256": "4a8e857fc0b6b45b511ffb264ee42fcaeea60ace70232e9065f6c0e4ce6dbe54"
     },
     {
       "name": "layout.hpp",
@@ -194,29 +186,9 @@
       "sha256": "710b520939b840fabc8019e74b6a771f370288534d7f758b8746df418ff18f84"
     },
     {
-      "name": "nvapi_reflex_types.hpp",
-      "bytes": 2880,
-      "sha256": "f5d877d9784b6b3777cae03ce7b82ec70c53d5fc8520db4425d889e6bf2a66ab"
-    },
-    {
-      "name": "reflex_driver.hpp",
-      "bytes": 4577,
-      "sha256": "f473b1e01b16f567d22a0cd435ba335e9e8608c32a6e01ddd9acff42bb7486d2"
-    },
-    {
-      "name": "reflex_policy.hpp",
-      "bytes": 8151,
-      "sha256": "a7a4dc59a807901b435fc4c406274213a51d1a9bad15f90be67c4b22c1a4cbc7"
-    },
-    {
-      "name": "reflex_primary.hpp",
-      "bytes": 2813,
-      "sha256": "9528276369d81d3bc70d8ef44cb7bf95e948f858db0ea77857d4c257a4059215"
-    },
-    {
       "name": "renderer_binding_probe.hpp",
-      "bytes": 13453,
-      "sha256": "504e803bf0a7bc65afbb5c31a17e170b99ed67927a8cd19778466e14e28c8470"
+      "bytes": 13613,
+      "sha256": "41ae8691c0b9074346459504810a867bdeeb130aed599f9a330768fa3b7b1f5a"
     },
     {
       "name": "shortcut.hpp",
@@ -240,18 +212,18 @@
     },
     {
       "name": "texturequest_aio_api.h",
-      "bytes": 3640,
-      "sha256": "a892d0a0f53dc612a8c9aaa4d635e974412561f2f2d2718568cc0a8cf03cb85c"
+      "bytes": 3715,
+      "sha256": "6c861849ccabd7783edf2fedd2a8d7f4f6b754ff6cdefa7fa173c289045aac04"
     },
     {
       "name": "world_graphics_api.hpp",
-      "bytes": 765,
-      "sha256": "6929d814bee45a1796dc935cb037441ea975a8371611d6c72bd58e2e90f2220a"
+      "bytes": 790,
+      "sha256": "a1ea0fbd1678b95d0625ab715e83562319dd1982c71213822b96d560e2e6ab21"
     },
     {
       "name": "world_graphics_controller.hpp",
-      "bytes": 1473,
-      "sha256": "d9dc177d882ec59b0406625f91ce7a31c95fc7c0b88de308d90caae21111b78d"
+      "bytes": 1513,
+      "sha256": "3e49d6a6824611381b153bd4db7862ecefea4c941b7c4635b58894479217901b"
     }
   ],
   "already_in_app_source": [
@@ -506,28 +478,18 @@
   ],
   "build": {
     "exit_code": 0,
-    "exit_code_basis": "ROOT observed the existing completed full build exit 0; this seal does not rerun it",
     "command": {
-      "bytes": 1249,
-      "sha256": "c2662f9302d55c4fb2845c7f1ac17ad24abfbf830f100967854a36f3efbf0de5"
+      "bytes": 1331,
+      "sha256": "28b2d3afdd185b03cb9ad8a2970871afab46bd31d768a4a6708082180b505ef7"
     },
     "log": {
-      "bytes": 71466,
-      "sha256": "63faec44c133aa053db098df420c79b31bb4de3248e8655f736c5e65d461d8ad"
+      "bytes": 69908,
+      "sha256": "dc894d41df28b23150eb40739d53701fff19a1b65a8d54681348ff80ad8eb643"
     },
-    "toolchain": "Existing VS18 x64/MSVC14.50.35717",
     "actual_showIncludes": true,
-    "compilation_roster": "Six explicit command translation units plus local headers actually recorded by /showIncludes; no documentation or uncompiled selfchecks"
-  },
-  "cache_fixture": {
-    "author_handoff": {
-      "bytes": 3846,
-      "sha256": "7c67b0eee54c460f693c89ac436e4c808707240441f433a8a56cd006aa4c3155"
-    },
-    "checks": 185,
-    "actual_instrumented_Reader_SHA_calls": 47,
-    "symlink_case": "OS denied physical symlink creation with1314; skipped",
-    "reparse_attribute_case": "Separate injected flag on real opened-file metadata; passed"
+    "toolchain": "VS18 x64/MSVC14.50.35717",
+    "warnings": 0,
+    "compilation_roster": "Explicit translation units plus project headers actually recorded by /showIncludes. External dependencies retain their pinned commit identities."
   },
   "cache_policy": {
     "cache_owned_bytes": 67108864,
@@ -537,7 +499,7 @@
     "active_pins": "Thread handoff pins can temporarily retain evicted buffers beyond cache-owned bounds",
     "admission": "Full SHA256, identity/link/reparse/length checks on disk admission; geometry and overflow-safe pixel range on every read"
   },
-  "qualification": "Correctness/build evidence only; no EQ2 FPS/load-time result. Distinct ROOT review and package admission are recorded separately.",
+  "qualification": "Settings/defaults and retired-feature changes; no new shader algorithm, GPU benchmark or real-game visual result is claimed. Existing controlled lighting evidence remains historical and was not rerun.",
   "previous_release": {
     "revision": "main004/controller003",
     "native_release_asset": {
@@ -550,5 +512,42 @@
     },
     "historical_only": true
   },
-  "nvapi": "Loads the installed System32 NVAPI dynamically; no nvapi64.dll is distributed. Successful initialization/module reference deliberately remains process-resident; owned mode is neutralized while the game device is valid. Active driver mode and latency improvement are not established by a source check."
+  "integration_base_commit": "3ca6da05ea6bdf896bb548e09fef4ccf9fc0e293",
+  "previous_evidence": {
+    "revision": "main005 DDS verified session cache / controller003 retained",
+    "native_release_asset": {
+      "bytes": 486400,
+      "sha256": "09254adae712b942c215914cea30319aae54101445ef230676a795c31f786851"
+    },
+    "metadata": {
+      "bytes": 19373,
+      "sha256": "19ff2db46b965b083e1bb0fdecd5bb4674e7ae6273815d8d5163380210624148"
+    },
+    "historical_only": true,
+    "author_handoff": {
+      "bytes": 4410,
+      "sha256": "241ed59b02cd64cea5a93ff95008666efc9ce5423d2a44016f564f1b763e1daf"
+    },
+    "source_manifest": {
+      "bytes": 27127,
+      "sha256": "bf90f3bb5126d1ad5178c0eef2be71a0921db1b512ff7452ce738e0b2bd5aa55"
+    },
+    "cache_fixture": {
+      "author_handoff": {
+        "bytes": 3846,
+        "sha256": "7c67b0eee54c460f693c89ac436e4c808707240441f433a8a56cd006aa4c3155"
+      },
+      "checks": 185,
+      "actual_instrumented_Reader_SHA_calls": 47,
+      "symlink_case": "OS denied physical symlink creation with1314; skipped",
+      "reparse_attribute_case": "Separate injected flag on real opened-file metadata; passed"
+    },
+    "nvapi": "Loads the installed System32 NVAPI dynamically; no nvapi64.dll is distributed. Successful initialization/module reference deliberately remains process-resident; owned mode is neutralized while the game device is valid. Active driver mode and latency improvement are not established by a source check."
+  },
+  "publication_note": "Built for requested public1.13.15 release. This source metadata does not itself assert a GitHub upload or publication.",
+  "changes": [
+    "Remove active Reflex driver integration and UI",
+    "Remove Upscaling UI; keep Frame Generation and Neural Rendering opt-in",
+    "Show Home toggle hint and distinguish texture switching from retired SR"
+  ]
 }

@@ -1,0 +1,262 @@
+{
+  "state": "ROOT_ADMITTED_BUILD_GPU_PENDING_INSTALL_BLOCKED",
+  "utc": "2026-11-03T03:38:26.044464+00:00",
+  "source": "D:\\eq2 paks\\work\\texturequest_graphics_suite_20261101\\comparison\\pr4-integration-001\\source",
+  "git_head": "7d41180e82d3894a19b6c1866b449dc872f64c4d",
+  "dirty_source_is_not_head_alone": true,
+  "source_worktree_patch": {
+    "bytes": 161345,
+    "sha256": "6241a541fcf09e375da96b5c618f5c483e71a271407e7bca2ff78841a5c96367"
+  },
+  "source_snapshot": {
+    "bytes": 7673,
+    "sha256": "63da183e8c19b43f9fcfa8abcf1f4e3bad27c82adf0850658a5faaec6c5e51ec"
+  },
+  "all45_snapshot_files_joined_before_metadata": true,
+  "compiled_source_joins": [
+    {
+      "name": "addon.cpp",
+      "bytes": 15190,
+      "sha256": "04441cfdf26c36da643678edb950bbf892751feb0fdd65360472967b233bad19"
+    },
+    {
+      "name": "deps/imgui/imconfig.h",
+      "bytes": 12289,
+      "sha256": "fb8e32b9af9aa7dad5ec5c5bc862537f5624cb39a814e6d3b36b4629a50b6599"
+    },
+    {
+      "name": "deps/reshade/include/reshade_events.hpp",
+      "bytes": 126479,
+      "sha256": "5b1f8b8144589712584cc8f2e8b6cf7c2aff05fc1c570b7867cfa1ee841296b7"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api.hpp",
+      "bytes": 58876,
+      "sha256": "db19051ef285a7a1a3721f2711de973be8805d4ca39a38fbadade7fd22100a17"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_device.hpp",
+      "bytes": 89369,
+      "sha256": "8492cb9a4352ab9a25140828226a411be36c480c23d53d0fcc806a0515076212"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_pipeline.hpp",
+      "bytes": 50915,
+      "sha256": "2c592013e46e72c62119c0652786ac21c6536a29a1bad30973a6069d1d7f7351"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_resource.hpp",
+      "bytes": 29552,
+      "sha256": "cae6d40cbd37e314e5ce5fc2cd22e77d7042892284212972bd986ffabb96363e"
+    },
+    {
+      "name": "deps/reshade/include/reshade_api_format.hpp",
+      "bytes": 18738,
+      "sha256": "d5fcdf598a9adbd18db6ccd0d15133d08c4dfa4909ec8335f76edaf735ae39cf"
+    },
+    {
+      "name": "deps/reshade/include/reshade_overlay.hpp",
+      "bytes": 96000,
+      "sha256": "771f0cdde2dacd21cfe04664e1aaaddae43114a1abb51bb63af5645a88c217a6"
+    },
+    {
+      "name": "texturequest_world_guard.hpp",
+      "bytes": 1242,
+      "sha256": "47ca552980908f82c5045808836284fdb3b57ca4cab558240e29d1128752abcf"
+    },
+    {
+      "name": "texturequest_world_master.hpp",
+      "bytes": 1174,
+      "sha256": "99aa71da2a872d44617e7e3b3052aa7f4ae659208d654c36d04b63175aea1ca8"
+    },
+    {
+      "name": "world_work_policy.hpp",
+      "bytes": 2324,
+      "sha256": "b5151f161280533a3c517e10df9d1ef929f7ad913b965039f68d59efc102cfeb"
+    },
+    {
+      "name": "depth_demand_v1.hpp",
+      "bytes": 1152,
+      "sha256": "62f314817eead16bd21205a3ab1c8f93f3758a1e683500758637bcacdb3a4dc3"
+    },
+    {
+      "name": "capture.hpp",
+      "bytes": 45353,
+      "sha256": "2b289edec2135bc3e4a8ecbac740e03e9916561b9f7c3347aaaeeb43556b16dd"
+    },
+    {
+      "name": "shadows.hpp",
+      "bytes": 191433,
+      "sha256": "6d5996ae391c257e9e338ce4e001f5c7309e79740103aa647d018b09ad4cd9dd"
+    },
+    {
+      "name": "texturequest_world_presets.hpp",
+      "bytes": 2460,
+      "sha256": "2d201fa2c16526ef1a020fa2955ced82e1a323e542891a3a48d784fa782f672c"
+    },
+    {
+      "name": "shadow_maps.hpp",
+      "bytes": 164704,
+      "sha256": "980abe39339e0d5295986d06b3794b88abf4a2f335bda7ebdb894497e6f1cea1"
+    },
+    {
+      "name": "lamp_holder_policy.hpp",
+      "bytes": 2804,
+      "sha256": "13feaf4b64f1a066c0b90f5bf10489be6acca3d9d5fe9f98264c482fe1bc2e8f"
+    },
+    {
+      "name": "emission_policy.hpp",
+      "bytes": 3134,
+      "sha256": "c53deb80cf90d80c208a87144da0b7684141d01fca8b671d2f492b2f882eb116"
+    },
+    {
+      "name": "sun_softness_settings.hpp",
+      "bytes": 1940,
+      "sha256": "c9c332cc931ae5272352b782978823f16b11719ba28e23f1545cbb7af99f23f6"
+    },
+    {
+      "name": "light_buffer.hpp",
+      "bytes": 157668,
+      "sha256": "b91a783c4f602a6fbed76673d71ca9c7baf74cdc9c50124cf7853383f4869603"
+    },
+    {
+      "name": "sun_direction_policy.hpp",
+      "bytes": 4388,
+      "sha256": "28fc0c2912a715c9f7fd040fb94e600b7e56c64e7f557f36e7b14dfbed6cc193"
+    },
+    {
+      "name": "sun_source_policy.hpp",
+      "bytes": 1164,
+      "sha256": "70be4793b63cbe820be3dec3f14ce60f15f4774741c8adf77173d0f6e7304cc4"
+    },
+    {
+      "name": "sun_state_policy.hpp",
+      "bytes": 1941,
+      "sha256": "2d3e87a19b430e8431bd88efe2d18ff0a127698938f962b8724d17f1fdf5f740"
+    },
+    {
+      "name": "owned_sun_constants.hpp",
+      "bytes": 2951,
+      "sha256": "9fc1e1718c4056b5189a8170a2b0d6fcfdecb47a9111752e5d66bf350e6c886f"
+    },
+    {
+      "name": "glow.hpp",
+      "bytes": 120503,
+      "sha256": "c73e12a3048efa321a067de5f8ad42d508f466c162ef455506df3fb884779bf7"
+    },
+    {
+      "name": "painted_emission_policy.hpp",
+      "bytes": 921,
+      "sha256": "fbbb721ce84d6900a0c98def338301c8a8a8fef53c5d6f4430491903f3dca723"
+    },
+    {
+      "name": "projected_shadows.hpp",
+      "bytes": 12604,
+      "sha256": "bf6527fd509a35bad218013ccf8431d7ed33f7b4c6f7f707bcdd324ee18c3447"
+    },
+    {
+      "name": "projected_shadow_policy.hpp",
+      "bytes": 2593,
+      "sha256": "15c5f1cac2aed0833545d04ef0f8d9f1282eb622b02d4251de67ca4cb567594d"
+    },
+    {
+      "name": "projected_shadow_admission.hpp",
+      "bytes": 891,
+      "sha256": "6334770538b3ca0e39347e2ce90764201ccc86e3b6776a9900e136621463b723"
+    },
+    {
+      "name": "particle_emission.hpp",
+      "bytes": 33995,
+      "sha256": "e993115842ce54f1395cb1f7cc61c7b6a48cf7f541ad866599729865d0c561d1"
+    },
+    {
+      "name": "particle_emission_policy.hpp",
+      "bytes": 3363,
+      "sha256": "673071bd509518154372d26cd1a2f7d599d0ee4302169d840467392c0066a782"
+    },
+    {
+      "name": "particle_field_policy.hpp",
+      "bytes": 8858,
+      "sha256": "6e50755cfce71bfad4e2eb469decefb8f1cbcf56c808aac26cc395aa6d5e6e96"
+    },
+    {
+      "name": "offscreen_lamp_policy.hpp",
+      "bytes": 237,
+      "sha256": "2360225259461cf1ba4bdb3af0efc1a5117f210a374e98aface546f1144fa6dc"
+    },
+    {
+      "name": "material_normal_replay.hpp",
+      "bytes": 18764,
+      "sha256": "eeb4c306c718e5686b1818653b07f3b8e9f4a178abebf96b1ddeacd1d656181b"
+    }
+  ],
+  "native_build": {
+    "bytes": 1285,
+    "sha256": "d4e7db81a1a79f7e562ac393325cefa3c5beaec055baca64c8a7f2e2e75ec71e"
+  },
+  "gpu_handoff": {
+    "bytes": 3000,
+    "sha256": "b956128941b3e1bc0e1eea80a30d25d8e068590b3131ec9b2c6f9d416511e2a2"
+  },
+  "runtime": {
+    "bytes": 8491,
+    "sha256": "1944f780675dd9e25168a5d9633e0100028afb7cd61ce0d37548696255796a6f"
+  },
+  "native_payloads": [
+    {
+      "name": "TextureQuest.addon64",
+      "bytes": 486400,
+      "sha256": "09254adae712b942c215914cea30319aae54101445ef230676a795c31f786851"
+    },
+    {
+      "name": "ReShade64.dll",
+      "bytes": 5410816,
+      "sha256": "af45413c73384ec412930efd2daba2523f8d04003ff8e89d2cf86e1141ab7d9e"
+    },
+    {
+      "role": "nr",
+      "name": "dlss/nvngx_dlssnr.dll",
+      "bytes": 165840496,
+      "sha256": "e16bcf15e16e13f527491cdf7845b2fe6521a738d8f7c9c721866a8496e1fc8e"
+    },
+    {
+      "role": "sr",
+      "name": "dlss/nvngx_dlss.dll",
+      "bytes": 58956912,
+      "sha256": "d00b5b0ab29c3ca101b70c3a5ecb3a01b7ef33766a3383a28a18623083e6123e"
+    },
+    {
+      "role": "fg",
+      "name": "dlss/nvngx_dlssg.dll",
+      "bytes": 7506544,
+      "sha256": "8d59d49b36410dd6b62fef2503a5871d347415bd85d943fa0848563a95dd50c7"
+    },
+    {
+      "role": "aio",
+      "name": "dlss/standalone-dlssnr.addon64",
+      "bytes": 317952,
+      "sha256": "96771d0ff93e8aa752702df1eac81d9affe80c5f3f1d4cc0237d3212f96d779e"
+    },
+    {
+      "role": "bridge",
+      "name": "dlss/nvngx.dll",
+      "bytes": 9216,
+      "sha256": "1bcf9b46e0fd0eca027b8827e91db828820ab18d48d992be72bdd34c0efdb8c6"
+    },
+    {
+      "name": "renderer/EQ2Graphics.addon64",
+      "bytes": 1041408,
+      "sha256": "554bb0ab2d48a35a808b061694f825866410a2f1c4e1fd9b3ef862a5bbe6e53a"
+    }
+  ],
+  "replaced_payloads": [
+    "ReShade64.dll",
+    "renderer/EQ2Graphics.addon64"
+  ],
+  "texture_manifest": {
+    "bytes": 469,
+    "sha256": "a9057b253d6006fc317f801466ce1f55b9d4a27d0baf5e3227863a1cf9e6924c"
+  },
+  "local_install": false,
+  "public_release": false
+}

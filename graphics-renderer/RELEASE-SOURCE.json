@@ -1,29 +1,29 @@
 {
-  "revision": "TextureQuest renderer017 / 1.13.6",
   "upstream": "https://github.com/Sichii/Eq2GraphicsAddonRS",
   "upstream_commit": "3752e0b97a87c5def22c9f8d6cabfd369d5817cb",
-  "author_handoff": {
-    "bytes": 2183,
-    "sha256": "ac06f5f0df6c0060bf3fd6d7fd71b80158c85b51e2590ecfa9d262126d98e310"
+  "dependency_licenses": {
+    "deps/imgui/LICENSE.txt": {
+      "bytes": 1104,
+      "sha256": "55e058cc5899e6077a819ad1005d6d1f4528f65ae100795c9692f9fa6525a8ce"
+    },
+    "deps/reshade/LICENSE.md": {
+      "bytes": 1490,
+      "sha256": "d2bb5eb908e9aa7ac2f7f4cf6441d62e1f6ac1256cf22bb5289516c9f30e5f0a"
+    }
   },
-  "source_manifest": {
-    "bytes": 20699,
-    "sha256": "1037c1a98a96f8a508b6bcf42d6cee02493bfc086264ad2bbec9245b903d0b9d"
-  },
-  "native_release_asset": {
-    "bytes": 1005056,
-    "sha256": "6ed81ea023473c201d94be5c99fe8640b4c6da802031d7deb2bff029ff69d748"
-  },
+  "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
+  "revision": "TextureQuest 1.13.15 public graphics controls/defaults",
+  "integration_base_commit": "3ca6da05ea6bdf896bb548e09fef4ccf9fc0e293",
   "files": [
     {
       "name": "addon.cpp",
-      "bytes": 15190,
-      "sha256": "04441cfdf26c36da643678edb950bbf892751feb0fdd65360472967b233bad19"
+      "bytes": 15192,
+      "sha256": "e92271080e20aecdafcd2b7e9b47daffa762a96ea6bb69681611d920769efa2d"
     },
     {
       "name": "capture.hpp",
-      "bytes": 41983,
-      "sha256": "625fb1966307efa6efe978380fed13b16f9aafa515f581f015d77fd542e03865"
+      "bytes": 45353,
+      "sha256": "2b289edec2135bc3e4a8ecbac740e03e9916561b9f7c3347aaaeeb43556b16dd"
     },
     {
       "name": "deps/imgui/imconfig.h",
@@ -82,13 +82,13 @@
     },
     {
       "name": "emission_policy.hpp",
-      "bytes": 3054,
-      "sha256": "e1bc901effe4cea70553465f31077a4de52971cfe73eec9ea16018b4d0829ce1"
+      "bytes": 3136,
+      "sha256": "0326d9d91b7150a9aae0920179762cfdc061cb2a417f2f79c5351899e67b4ef7"
     },
     {
       "name": "glow.hpp",
-      "bytes": 101507,
-      "sha256": "8db136de35e8ea2efaa23fedb424137b10887a3aeb09be7ab349608c45bfbfd0"
+      "bytes": 123992,
+      "sha256": "ee5e0e6e7f872f36d4ed7e9f821fb0e7bd0c06b82d0180403aa9654ba9069c07"
     },
     {
       "name": "lamp_holder_policy.hpp",
@@ -97,13 +97,13 @@
     },
     {
       "name": "light_buffer.hpp",
-      "bytes": 159287,
-      "sha256": "4aeaa596d4756626b77ca1365a3508302ec3494339b84a161db30539822abd3e"
+      "bytes": 157643,
+      "sha256": "e566d371cc485686baa85dbb232a96f49d3e21cb49a75f58223e8a9baa7c9fae"
     },
     {
       "name": "material_normal_replay.hpp",
-      "bytes": 18423,
-      "sha256": "c268fe37db9da4bbe1c588e0537ff668286e9fd76e9aca3fd272caf5149b1e7d"
+      "bytes": 19761,
+      "sha256": "2d39fd6e45e35b2522e2d3b5f4b376316ce445a8a3879206571887cc343f9175"
     },
     {
       "name": "offscreen_lamp_policy.hpp",
@@ -116,9 +116,19 @@
       "sha256": "9fc1e1718c4056b5189a8170a2b0d6fcfdecb47a9111752e5d66bf350e6c886f"
     },
     {
+      "name": "painted_emission_policy.hpp",
+      "bytes": 921,
+      "sha256": "fbbb721ce84d6900a0c98def338301c8a8a8fef53c5d6f4430491903f3dca723"
+    },
+    {
+      "name": "particle_coalescing_policy.hpp",
+      "bytes": 1628,
+      "sha256": "bf1a062b95ce2a24de09ea5864f5fd85aa69d23a99b277623cb5d8bb106801a0"
+    },
+    {
       "name": "particle_emission.hpp",
-      "bytes": 33587,
-      "sha256": "d22f82f5eb09b243659573eaf8a50d402b6b09c17d6b5113f8b4aa7ca57eb9b3"
+      "bytes": 39796,
+      "sha256": "010d0525d8f1c3ba77e446a51bfc42ec63409d3b3a5f85b0f5b7ae6abfe383f5"
     },
     {
       "name": "particle_emission_policy.hpp",
@@ -127,8 +137,28 @@
     },
     {
       "name": "particle_field_policy.hpp",
-      "bytes": 8059,
-      "sha256": "96c0b76fa88a2f1138667a5657c2448f6b4039f6f7bd7641dfec74d41eb7b76a"
+      "bytes": 10733,
+      "sha256": "d0e93b08808d52aea7baaf76ad35c624e9c01a7d4aec3b561b70ced95205c97d"
+    },
+    {
+      "name": "particle_moving_shadows.hpp",
+      "bytes": 12194,
+      "sha256": "cf9fcb33e96eb85faae45e5a97ae9a31c64f19945c0e4c981a91492e218e1e3c"
+    },
+    {
+      "name": "particle_retention_policy.hpp",
+      "bytes": 5271,
+      "sha256": "8bd9a2a47d9f41d49ba27b8a54cb0acd9d9c16354b30d6d010cbaf6bd10ee081"
+    },
+    {
+      "name": "particle_source_policy.hpp",
+      "bytes": 17200,
+      "sha256": "b21b719504daaa04773757516800c0b9db0af912c266241c26da983ea0f5e966"
+    },
+    {
+      "name": "particle_source_shadow.hpp",
+      "bytes": 3740,
+      "sha256": "c727562647f86c2d62cd601af33bc6658895d8135a9c8441e95e74b5575bbb52"
     },
     {
       "name": "projected_shadow_admission.hpp",
@@ -137,23 +167,23 @@
     },
     {
       "name": "projected_shadow_policy.hpp",
-      "bytes": 2671,
-      "sha256": "9b9b49e4795001419010d24a2105a9ff5d2b4c3be2e787f3fa1c5bb84921d7be"
+      "bytes": 2593,
+      "sha256": "15c5f1cac2aed0833545d04ef0f8d9f1282eb622b02d4251de67ca4cb567594d"
     },
     {
       "name": "projected_shadows.hpp",
-      "bytes": 12660,
-      "sha256": "f30b0ca586dce31a2fc7787a055649eac4f91daa0dd46500ed67c676079df383"
+      "bytes": 12604,
+      "sha256": "bf6527fd509a35bad218013ccf8431d7ed33f7b4c6f7f707bcdd324ee18c3447"
     },
     {
       "name": "shadow_maps.hpp",
-      "bytes": 122470,
-      "sha256": "08d87b4bcd1fdb7090e016c07b74bc0a60bd9bd5e8c14020085d19f0adef8233"
+      "bytes": 166646,
+      "sha256": "4f2b58ec627896ae141fb14feb4d5295407e7be5acf737d005a89a865252b5f5"
     },
     {
       "name": "shadows.hpp",
-      "bytes": 186667,
-      "sha256": "76f7fb78be7d652b2971274f392f7b443a7b2a0f7bef94d615fee60467843b38"
+      "bytes": 193329,
+      "sha256": "38e7f55d8fe08d7cf5137a2120302f85f2eaa4a4bf780006594aa10aee68d080"
     },
     {
       "name": "sun_direction_policy.hpp",
@@ -162,8 +192,8 @@
     },
     {
       "name": "sun_softness_settings.hpp",
-      "bytes": 1953,
-      "sha256": "58938d52f9bed5fa121b786e64dfa0390c95e666ad81f71c4a1fcf48c549fe51"
+      "bytes": 1928,
+      "sha256": "c152ee17a0dd8e7a7ffe22edcb7088b2f7bccb4c892a90faac1fe984c510edcf"
     },
     {
       "name": "sun_source_policy.hpp",
@@ -182,73 +212,144 @@
     },
     {
       "name": "texturequest_world_master.hpp",
-      "bytes": 1130,
-      "sha256": "857b787275ac2e424ddee0eecd516669a179996f9d1ca886f5be416b6ea066b8"
+      "bytes": 1174,
+      "sha256": "99aa71da2a872d44617e7e3b3052aa7f4ae659208d654c36d04b63175aea1ca8"
     },
     {
       "name": "texturequest_world_presets.hpp",
-      "bytes": 2460,
-      "sha256": "2d201fa2c16526ef1a020fa2955ced82e1a323e542891a3a48d784fa782f672c"
+      "bytes": 3179,
+      "sha256": "c5d671929eeca3323e14443f0496de17c1d2749ffc8c0312107efcd223e3a226"
     },
     {
       "name": "world_work_policy.hpp",
-      "bytes": 2324,
-      "sha256": "b5151f161280533a3c517e10df9d1ef929f7ad913b965039f68d59efc102cfeb"
+      "bytes": 2127,
+      "sha256": "00f03b2d2a400ca4910b657394355331a88ca372ae95cd0ed02b51c143fdd21b"
     }
   ],
+  "native_release_asset": {
+    "bytes": 1133568,
+    "sha256": "6c0662c1032332ba602fd8d45cb61e3c7abfc924b0fa0bbb03218151b8b70584"
+  },
+  "build": {
+    "exit_code": 0,
+    "command": {
+      "bytes": 575,
+      "sha256": "8ff462ac3426f902ef3d7478356fed5181dc7998a7a1d2f715274a9628a397f3"
+    },
+    "log": {
+      "bytes": 54459,
+      "sha256": "138ef16f8f9325a2a24b59a50883ed83164f6c2a16407b455c62550cb65780a5"
+    },
+    "actual_showIncludes": true,
+    "toolchain": "VS18 x64/MSVC14.50.35717",
+    "warnings": 0,
+    "compilation_roster": "Explicit translation units plus project headers actually recorded by /showIncludes. External dependencies retain their pinned commit identities."
+  },
+  "prior_metadata": {
+    "revision": "TextureQuest030 / non-live Develop1.13.12",
+    "native_release_asset": {
+      "bytes": 1127936,
+      "sha256": "5ee82fbbc489b8de8c1bad844b8a78c2ee840f0e164d644fb5e11e38f917883a"
+    },
+    "build": {
+      "exit_code": 0,
+      "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes",
+      "compile_log": {
+        "bytes": 55508,
+        "sha256": "5400ecbff86e50d7593e009a1501a626908281ed83b88356e3ea3f44250a78e1"
+      }
+    },
+    "controlled_validation": {
+      "status": "PASS_STRICT_NATIVE_AND_MATCHED_PRODUCTION_TEMPORAL_CHECKS",
+      "focused_cpu": {
+        "bytes": 1440,
+        "sha256": "5deea5dc7bdad37fef58aadb5b7a7d016bf4c92f5615cead082719470565b803"
+      },
+      "focused_cpu_log": {
+        "bytes": 583,
+        "sha256": "ef97297ef84aeb1c4a9519f93719e62993601d9397fd66e4f69214e65cdac503"
+      },
+      "focused_checks": 1271,
+      "final": {
+        "bytes": 9640,
+        "sha256": "9e018aad25b18be6f72c0cdd4268f04add55dac466413d4084bab65c946b9fcd"
+      },
+      "gpu_executed": false,
+      "scope": "Focused030 grouping/conservation/capacity and actual production temporal ReadFrame/cache/EndFrame CPU checks; no unchanged hardware/alpha/map suite replay."
+    },
+    "qualification": "030 replaces centroid-grid identity with deterministic nearest-anchor association and ownership hysteresis, preserving exact current RGB/moments and independent0.20s positional filtering. Published grouping/history/field state commits atomically. Existing0.1unit built-shadow movement threshold and scheduler remain. Identities are spatial inference; ambiguous split/merge/culling histories expire normally. Controlled CPU checks do not prove live shadow stability, all models/offscreen coverage or FPS; adversarial near-coincident anchor states can be costly.",
+    "prior_metadata": {
+      "revision": "TextureQuest027/028/029 / private local1.13.11",
+      "native_release_asset": {
+        "bytes": 1094144,
+        "sha256": "397690edf3454db93d4d1472c9ed52599d94d7b462d3ed1b8776c741569fa112"
+      },
+      "build": {
+        "exit_code": 0,
+        "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes",
+        "compile_log": {
+          "bytes": 55355,
+          "sha256": "19f8d3b67f93e2fcd14260857eb38e913b6f2a805b0312d11cb1a916724c660d"
+        }
+      },
+      "controlled_validation": {
+        "status": "PASS",
+        "particle_cpu": {
+          "bytes": 9572,
+          "sha256": "a62ec3b62e417a122b3604e192910f9167824e3a1b05bf6f538efd5d56448671"
+        },
+        "normal_gpu": {
+          "bytes": 1430,
+          "sha256": "22edd8738a791a7639372adf28a49ff812569b48e2b3a206ce0344e2adfea52d"
+        },
+        "final": {
+          "bytes": 9156,
+          "sha256": "5cd1cd757f2c12d4aadf473147eb2938c90eb823110aa5f784fc45f1c1945c1e"
+        }
+      },
+      "qualification": "Historical1.13.11 scope only. Its029 native base-normal hardware case and027/028 CPU evidence were not rerun as030 GPU proof; current030 checks are recorded separately.",
+      "historical_only": true,
+      "prior_metadata": {
+        "revision": "TextureQuest025/026 / private local1.13.10",
+        "native_release_asset": {
+          "bytes": 1090048,
+          "sha256": "fb4998fe4da008247ee5c402e61108af9aef78df12c744c38127c759a9690887"
+        },
+        "historical_only": true
+      }
+    },
+    "historical_only": true
+  },
+  "qualification": "Settings/defaults and retired-feature changes; no new shader algorithm, GPU benchmark or real-game visual result is claimed. Existing controlled lighting evidence remains historical and was not rerun.",
+  "publication_note": "Built for requested public1.13.15 release. This source metadata does not itself assert a GitHub upload or publication.",
+  "previous_evidence": {
+    "revision": "TextureQuest031/032 / Develop1.13.14",
+    "native_release_asset": {
+      "bytes": 1135104,
+      "sha256": "3ddafaeea1eea4affa6d0d9868e9371ee5baea8149866d04496983e2e5daa271"
+    },
+    "metadata": {
+      "bytes": 10779,
+      "sha256": "4d1139c297204fae792cecd8fe0adde46c7c90e8d787ffd1cec0926856c67fe4"
+    },
+    "historical_only": true,
+    "controlled_validation": {
+      "status": "PASS_031_CPU_032_CORRECTED_HARDWARE_AND_STRICT_NATIVE",
+      "cpu_checks": 1381,
+      "hardware_checks": 35,
+      "final": {
+        "bytes": 10059,
+        "sha256": "2b4a5f09b11a967638f8b4fa2914a2daefc0b0616b5a83ddcb3384313a7b4b97"
+      },
+      "scope": "One focused source-core scenario; first failure and diagnostic retained, corrected35checks passed; no historical alpha/fullmap replay"
+    }
+  },
   "compile_targets": [
     "addon.cpp"
   ],
-  "original_snapshot": {
-    "bytes": 7453,
-    "sha256": "97b1c34427ac0486291f40eb131c95302b80230b9292e445eebb6f5639abdfc4"
-  },
-  "snapshot_files": 44,
-  "actual_local_compilation_inputs": 36,
-  "documentation_not_compiled": [
-    "README.md",
-    "TEXTUREQUEST-BUILD.md",
-    "RELEASE-SOURCE.json",
-    "TODO.md",
-    "build.cmd"
-  ],
-  "build": {
-    "exit_code": 0,
-    "exit_code_basis": "ROOT observed existing frozen full build /W4 /WX /showIncludes exit0; seal does not rerun it",
-    "toolchain": "Existing VS18 x64/MSVC14.50.35717",
-    "warnings_as_errors": true,
-    "actual_showIncludes": true,
-    "command": {
-      "bytes": 909,
-      "sha256": "85d12e7cda420344abea24fdb2fe63f830857cc9813ed7fba7cf400eb7869df3"
-    },
-    "log": {
-      "bytes": 54200,
-      "sha256": "5459d4f6f9cdbecf493b00c17248253270b9277fdb29b325480d28c109538d82"
-    }
-  },
-  "dependency_licenses": {
-    "deps/imgui/LICENSE.txt": {
-      "bytes": 1104,
-      "sha256": "55e058cc5899e6077a819ad1005d6d1f4528f65ae100795c9692f9fa6525a8ce"
-    },
-    "deps/reshade/LICENSE.md": {
-      "bytes": 1490,
-      "sha256": "d2bb5eb908e9aa7ac2f7f4cf6441d62e1f6ac1256cf22bb5289516c9f30e5f0a"
-    }
-  },
-  "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
-  "qualification": "Current actual compiled-source roster only. GPU closure and distinct ROOT review are recorded separately; no full-world visual or performance approval follows from this native build.",
-  "previous_metadata_record": {
-    "revision": "TextureQuest renderer017 / 1.13.6",
-    "native_release_asset": {
-      "bytes": 1005056,
-      "sha256": "f5e6bf98b073d13ed594e006fd2396595aa8dcdc95841a389f31b25487617943"
-    },
-    "source_manifest": {
-      "bytes": 20699,
-      "sha256": "c2fffc407fa57c7d6faa6695ebb771d8bb58b2dd35c0c52fd535b85c74439c95"
-    },
-    "historical_only": true
-  }
+  "changes": [
+    "AO on; point/emissive/Sun/softening/smooth-text defaults off",
+    "Low/Med/Max paired light and shadow budgets; Advanced custom controls retained",
+    "No forced legacy numeric preset reset"
+  ]
 }

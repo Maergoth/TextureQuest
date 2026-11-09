@@ -43,33 +43,51 @@ AIO2_VALUES.update({('Standalone.DLSSNR', key): '0'
 AIO_CONTROL_KEYS = {('Standalone.DLSSNR', key) for key in
                     ('NeuralRendering', 'FrameGeneration', 'ManagedSrEnabled', 'SourceResolutionOverride')}
 
-# Human-selected November2 defaults. Only absent keys are seeded; historical
-# preset backup values and foreign sections never enter this allowlist.
-GRAPHICS_CORE_DEFAULTS = {('TextureQuest', 'ReflexLowLatency'): '1'}
-GRAPHICS_WORLD_DEFAULTS = {('EQ2Graphics', key): value for key, value in {
+# Retain the exact v1 lease authority so an older install can still restore its
+# owned settings. New installs use v2 defaults below; saved choices stay intact.
+LEGACY_GRAPHICS_CORE_DEFAULTS = {('TextureQuest', 'ReflexLowLatency'): '1'}
+LEGACY_GRAPHICS_WORLD_DEFAULTS = {('EQ2Graphics', key): value for key, value in {
     'AmbientKept': '0.5', 'AmbientOcclusion': '1', 'AnisotropicFiltering': '1',
     'Anisotropy': '16', 'CharacterShadows': '1', 'EmissiveLights': '1',
     'EmissiveLightStrength': '15.59', 'OcclusionRadius': '0.66', 'OcclusionStrength': '1.25',
     'OwnLampShaders': '0', 'PaintedEmissionKept': '0.5', 'PaintedEmissionLight': '0.5',
-    'PointLightShadows': '1', 'ShadowedLights': '256', 'ShadowRange': '200',
-    'ShadowSoftness': '0.14', 'ShadowStrength': '1', 'SmoothIndoorTransition': '1',
+    'PointLightShadows': '1', 'ShadowedLights': '256',
+    'PointShadowSoftness': '1.6', 'ShadowStrength': '1', 'SmoothIndoorTransition': '1',
     'SmoothInterfaceText': '1', 'SunLighting': '1', 'SunShadowDirectionFix': '0',
-    'SunShadowMode': '2', 'SunShadowSize': '1.05', 'TextureQuestSunSoftnessPreference': '1.05',
+    'SunShadowMode': '2', 'SunSoftness': '1.6', 'TextureQuestSunSoftnessPreferenceRealSun': '1.6',
     'TextureQuestPresetVersion': '2',
 }.items()}
 GRAPHICS_AIO_DEFAULTS = {('Standalone.DLSSNR', key): value for key, value in {
     'FrameGeneration': '0', 'ManagedSrEnabled': '0', 'NeuralRendering': '0',
     'ManagedFrameMultiplier': '2', 'Model': '3', 'ManagedSrMode': '1', 'ManagedNrPasses': '1',
 }.items()}
-GRAPHICS_DEFAULT_PROFILES = {
-    name: ('texturequest-' + name + '-settings-v1', dict(GRAPHICS_CORE_DEFAULTS)) for name in ('graphics-core-defaults', 'graphics-world-defaults',
+GRAPHICS_CORE_DEFAULTS = {}
+GRAPHICS_WORLD_DEFAULTS = dict(LEGACY_GRAPHICS_WORLD_DEFAULTS)
+GRAPHICS_WORLD_DEFAULTS.update({('EQ2Graphics', key): value for key, value in {
+    'PointLightShadows': '0', 'EmissiveLights': '0', 'SmoothInterfaceText': '0',
+    'AmbientOcclusion': '1', 'SunLighting': '0', 'SunSoftness': '0',
+    'ShadowedLights': '50', 'ParticleShadowLimit': '50',
+    'EmissiveLightLimit': '64', 'ParticleLightLimit': '64',
+}.items()})
+_GRAPHICS_PROFILE_NAMES = ('graphics-core-defaults', 'graphics-world-defaults',
                            'graphics-aio-defaults', 'graphics-world-aio-defaults')
+LEGACY_GRAPHICS_DEFAULT_PROFILES = {
+    name: ('texturequest-' + name + '-settings-v1', dict(LEGACY_GRAPHICS_CORE_DEFAULTS))
+    for name in _GRAPHICS_PROFILE_NAMES
 }
-for _profile in GRAPHICS_DEFAULT_PROFILES:
-    _schema, _values = GRAPHICS_DEFAULT_PROFILES[_profile]
-    if '-world' in _profile: _values.update(GRAPHICS_WORLD_DEFAULTS)
-    if '-aio' in _profile: _values.update(GRAPHICS_AIO_DEFAULTS)
-GRAPHICS_DEFAULT_SCHEMAS = {schema: values for schema, values in GRAPHICS_DEFAULT_PROFILES.values()}
+GRAPHICS_DEFAULT_PROFILES = {
+    name: ('texturequest-' + name + '-settings-v2', dict(GRAPHICS_CORE_DEFAULTS))
+    for name in _GRAPHICS_PROFILE_NAMES
+}
+for _profiles, _world in ((LEGACY_GRAPHICS_DEFAULT_PROFILES, LEGACY_GRAPHICS_WORLD_DEFAULTS),
+                          (GRAPHICS_DEFAULT_PROFILES, GRAPHICS_WORLD_DEFAULTS)):
+    for _profile in _profiles:
+        _schema, _values = _profiles[_profile]
+        if '-world' in _profile: _values.update(_world)
+        if '-aio' in _profile: _values.update(GRAPHICS_AIO_DEFAULTS)
+GRAPHICS_DEFAULT_SCHEMAS = {schema: values
+    for profiles in (LEGACY_GRAPHICS_DEFAULT_PROFILES, GRAPHICS_DEFAULT_PROFILES)
+    for schema, values in profiles.values()}
 
 
 def _profile_values(profile):
@@ -114,7 +132,8 @@ def _value(key, before, values=VALUES):
 
 def _preserved_graphics_defaults(lines, values):
     """Keep the renderer's effective old names and explicit legacy sun-off."""
-    aliases = {'EmissiveLights': 'GlowLights', 'EmissiveLightStrength': 'GlowLightStrength',
+    aliases = {'PointShadowSoftness': 'ShadowSoftness',
+               'EmissiveLights': 'GlowLights', 'EmissiveLightStrength': 'GlowLightStrength',
                'PaintedEmissionKept': 'PaintedGlowKept'}
     names = {('EQ2Graphics', key): None for key in (*aliases.values(), 'SunSoftness')}
     names.update(values)

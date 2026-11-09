@@ -1,0 +1,210 @@
+{
+  "raw_hex": "3b206265666f72652064656661756c74730d0a5b466f726569676e5d0d0a556e746f75636865643d310d0a",
+  "after_hex": "3b206265666f72652064656661756c74730d0a5b466f726569676e5d0d0a556e746f75636865643d310d0a5b5465787475726551756573745d0d0a5265666c65784c6f774c6174656e63793d310d0a5b45513247726170686963735d0d0a416d6269656e744b6570743d302e350d0a416d6269656e744f63636c7573696f6e3d310d0a416e69736f74726f70696346696c746572696e673d310d0a416e69736f74726f70793d31360d0a436861726163746572536861646f77733d310d0a456d6973736976654c69676874733d310d0a456d6973736976654c69676874537472656e6774683d31352e35390d0a4f63636c7573696f6e5261646975733d302e36360d0a4f63636c7573696f6e537472656e6774683d312e32350d0a4f776e4c616d70536861646572733d300d0a5061696e746564456d697373696f6e4b6570743d302e350d0a5061696e746564456d697373696f6e4c696768743d302e350d0a506f696e744c69676874536861646f77733d310d0a536861646f7765644c69676874733d3235360d0a506f696e74536861646f77536f66746e6573733d312e360d0a536861646f77537472656e6774683d310d0a536d6f6f7468496e646f6f725472616e736974696f6e3d310d0a536d6f6f7468496e74657266616365546578743d310d0a53756e4c69676874696e673d310d0a53756e536861646f77446972656374696f6e4669783d300d0a53756e536861646f774d6f64653d320d0a53756e536f66746e6573733d312e360d0a54657874757265517565737453756e536f66746e657373507265666572656e63655265616c53756e3d312e360d0a54657874757265517565737450726573657456657273696f6e3d320d0a5b5374616e64616c6f6e652e444c53534e525d0d0a4672616d6547656e65726174696f6e3d300d0a4d616e616765645372456e61626c65643d300d0a4e657572616c52656e646572696e673d300d0a4d616e616765644672616d654d756c7469706c6965723d320d0a4d6f64656c3d330d0a4d616e6167656453724d6f64653d310d0a4d616e616765644e725061737365733d310d0a",
+  "journal": {
+    "schema": "texturequest-graphics-world-aio-defaults-settings-v1",
+    "changes": [
+      {
+        "section": "TextureQuest",
+        "key": "ReflexLowLatency",
+        "before": null,
+        "after": "ReflexLowLatency=1\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "AmbientKept",
+        "before": null,
+        "after": "AmbientKept=0.5\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "AmbientOcclusion",
+        "before": null,
+        "after": "AmbientOcclusion=1\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "AnisotropicFiltering",
+        "before": null,
+        "after": "AnisotropicFiltering=1\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "Anisotropy",
+        "before": null,
+        "after": "Anisotropy=16\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "CharacterShadows",
+        "before": null,
+        "after": "CharacterShadows=1\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "EmissiveLights",
+        "before": null,
+        "after": "EmissiveLights=1\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "EmissiveLightStrength",
+        "before": null,
+        "after": "EmissiveLightStrength=15.59\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "OcclusionRadius",
+        "before": null,
+        "after": "OcclusionRadius=0.66\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "OcclusionStrength",
+        "before": null,
+        "after": "OcclusionStrength=1.25\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "OwnLampShaders",
+        "before": null,
+        "after": "OwnLampShaders=0\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "PaintedEmissionKept",
+        "before": null,
+        "after": "PaintedEmissionKept=0.5\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "PaintedEmissionLight",
+        "before": null,
+        "after": "PaintedEmissionLight=0.5\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "PointLightShadows",
+        "before": null,
+        "after": "PointLightShadows=1\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "ShadowedLights",
+        "before": null,
+        "after": "ShadowedLights=256\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "PointShadowSoftness",
+        "before": null,
+        "after": "PointShadowSoftness=1.6\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "ShadowStrength",
+        "before": null,
+        "after": "ShadowStrength=1\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "SmoothIndoorTransition",
+        "before": null,
+        "after": "SmoothIndoorTransition=1\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "SmoothInterfaceText",
+        "before": null,
+        "after": "SmoothInterfaceText=1\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "SunLighting",
+        "before": null,
+        "after": "SunLighting=1\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "SunShadowDirectionFix",
+        "before": null,
+        "after": "SunShadowDirectionFix=0\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "SunShadowMode",
+        "before": null,
+        "after": "SunShadowMode=2\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "SunSoftness",
+        "before": null,
+        "after": "SunSoftness=1.6\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "TextureQuestSunSoftnessPreferenceRealSun",
+        "before": null,
+        "after": "TextureQuestSunSoftnessPreferenceRealSun=1.6\r\n"
+      },
+      {
+        "section": "EQ2Graphics",
+        "key": "TextureQuestPresetVersion",
+        "before": null,
+        "after": "TextureQuestPresetVersion=2\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "FrameGeneration",
+        "before": null,
+        "after": "FrameGeneration=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "ManagedSrEnabled",
+        "before": null,
+        "after": "ManagedSrEnabled=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "NeuralRendering",
+        "before": null,
+        "after": "NeuralRendering=0\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "ManagedFrameMultiplier",
+        "before": null,
+        "after": "ManagedFrameMultiplier=2\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "Model",
+        "before": null,
+        "after": "Model=3\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "ManagedSrMode",
+        "before": null,
+        "after": "ManagedSrMode=1\r\n"
+      },
+      {
+        "section": "Standalone.DLSSNR",
+        "key": "ManagedNrPasses",
+        "before": null,
+        "after": "ManagedNrPasses=1\r\n"
+      }
+    ],
+    "created_sections": [
+      "TextureQuest",
+      "EQ2Graphics",
+      "Standalone.DLSSNR"
+    ],
+    "tail_bridge": null,
+    "before_sha256": "dce07646019961a835a2bb2c1dac6996ae6448090ca995c24f4f8fe03485e5a9",
+    "after_sha256": "5ca9d039f1f96d36b5a211f94ce088bbfc349cc3a04a180775dd4f59e012d9c3",
+    "record_sha256": "03f7eed178a6a48ae99bdfe7bff903199d54bd031a2e642c56abde19145d1fa8"
+  }
+}
