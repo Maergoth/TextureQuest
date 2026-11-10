@@ -95,7 +95,7 @@ template<class Visitor> void VisitFreshDefaults(Visitor visit) {
     visit("AmbientKept", 1.0f);
     visit("TextureQuestSunSoftnessPreferenceRealSun", 1.6f);
     visit("TextureQuestSunSoftnessUnits", 1);
-    visit("ParticleLightStrengthV2", 1.0f);
-    visit("ParticleLightStrengthUnits", 2);
+    visit("ParticleLightStrengthV3", 1.0f);
+    visit("ParticleLightStrengthUnits", 3);
 }
 } // namespace tq_quality

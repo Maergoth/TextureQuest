@@ -1,0 +1,3 @@
+TextureQuest 1.13.22 local particle-baseline update.
+Particle light strength 1x now matches 0.5x in 1.13.21. Saved brightness and the physical maximum are retained; presets do not change this preference.
+All other lighting, texture content and native EQ2 settings are unchanged. Dependency licenses and permissions remain unchanged.

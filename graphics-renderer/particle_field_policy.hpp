@@ -18,7 +18,7 @@ namespace particle_field_policy
 using DirectX::XMFLOAT3;using DirectX::XMFLOAT4;
 constexpr unsigned Triangles=32768,Draws=512,Tile=8,AtlasWidth=1024,AtlasHeight=2048,Samples=28,Lit=emission_policy::ParticleLimit;
 constexpr float CellWidth=2;
-// New 1x particle gain is the previous 5x. Saved preferences migrate separately;
+// New 1x particle gain is V2 0.5x (original 2.5x). Saved preferences migrate separately;
 // the maximum physical gain and all object-emission units remain unchanged.
 constexpr float StrengthReference=particle_strength_settings::Reference;
 constexpr float MaximumStrength=particle_strength_settings::Maximum,MaximumRadiusScale=16.0f,MaximumWorldRadius=128.0f;

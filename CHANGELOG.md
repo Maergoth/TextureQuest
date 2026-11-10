@@ -4,6 +4,12 @@ This is the canonical history bundled with the installer. Develop entries are
 development builds, not announcements of public binary releases. Controlled
 checks described here do not establish complete in-game appearance or FPS.
 
+## 1.13.22 — Particle light baseline
+
+- Set particle light strength 1× to the brightness of 0.5× in 1.13.21. Fresh installations start at this gentler 1× baseline.
+- Preserve existing brightness when converting saved values: 0.5× becomes 1×, 1× becomes 2×, and zero stays off. The displayed maximum becomes 51.2× with the same physical ceiling. Quality presets continue to preserve this appearance preference.
+- Keep object emission, particle radius, shadows, texture data 1.3.0 and native EQ2 settings unchanged.
+
 ## 1.13.21 — Particle shadow motion and independent visual preferences
 
 - Publish the finer particle-shadow updates tested locally in 1.13.20. The source and its shadow map now follow smaller movements together, with a bounded extra update budget and conservative caster-list reuse. The local in-game report confirms substantially less snapping; busy scenes and source reassignment remain limitations. The failed shadow crossfade stays removed.

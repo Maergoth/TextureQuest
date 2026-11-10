@@ -97,7 +97,7 @@ class PublicGraphicsDefaults(unittest.TestCase):
     def test_fresh_public_defaults_and_conditional_restore(self):
         raw = b'; original\r\n[Foreign]\r\nKeep=1\r\n'
         after, lease = settings.prepare_dlss_config(raw, profile='graphics-world-aio-defaults')
-        self.assertTrue(lease['schema'].endswith('-v4'))
+        self.assertTrue(lease['schema'].endswith('-v5'))
         for key in ('FrameGeneration', 'ManagedSrEnabled', 'NeuralRendering',
                     'SmoothInterfaceText', 'SunLighting'):
             self.assertIn((key + '=0\r\n').encode(), after)
@@ -107,6 +107,9 @@ class PublicGraphicsDefaults(unittest.TestCase):
         self.assertIn(b'ParticleShadowLimit=8\r\n', after)
         self.assertIn(b'EmissiveLightLimit=32\r\n', after)
         self.assertIn(b'ParticleLightLimit=16\r\n', after)
+        self.assertIn(b'ParticleLightStrengthV3=1.0\r\n', after)
+        self.assertIn(b'ParticleLightStrengthUnits=3\r\n', after)
+        self.assertNotIn(b'ParticleLightStrengthV2=', after)
         self.assertEqual(settings.restore_dlss_config(after, lease), (raw, ()))
         edited = after.replace(b'PointLightShadows=1', b'PointLightShadows=0')
         restored, conflicts = settings.restore_dlss_config(edited, lease)
@@ -134,6 +137,42 @@ class PublicGraphicsDefaults(unittest.TestCase):
         self.assertIn(b'ReflexLowLatency=1', after)
         self.assertIn(b'SunLighting=1', after)
         self.assertEqual(settings.restore_dlss_config(after, fixture['journal']), (raw, ()))
+
+    def test_particle_defaults_defer_to_saved_older_units_and_preserve_partial_current_saves(self):
+        for saved, has_current in (
+            ('ParticleLightStrength=0\n', False),
+            ('ParticleLightStrength=2.5\n', False),
+            ('ParticleLightStrengthV2=0.5\nParticleLightStrengthUnits=2\n', False),
+            ('particlelightstrengthv2=0\n', False),
+            ('ParticleLightStrengthV2=0.5\nParticleLightStrength=25\n', False),
+            ('ParticleLightStrengthV3=0\n', True),
+            ('ParticleLightStrengthV3=1\nParticleLightStrengthV2=8\nParticleLightStrengthUnits=2\n', True),
+        ):
+            with self.subTest(saved=saved):
+                raw = ('[eq2graphics]\n' + saved).encode()
+                after, lease = settings.prepare_dlss_config(raw, profile='graphics-world-defaults')
+                for line in raw.splitlines(keepends=True):
+                    self.assertIn(line, after)
+                if not has_current:
+                    self.assertNotIn(b'ParticleLightStrengthV3=', after)
+                    if 'ParticleLightStrengthUnits=' not in saved:
+                        self.assertNotIn(b'ParticleLightStrengthUnits=', after)
+                elif 'ParticleLightStrengthUnits=' not in saved:
+                    self.assertIn(b'ParticleLightStrengthUnits=3\n', after)
+                self.assertEqual(settings.prepare_dlss_config(after, profile='graphics-world-defaults')[0], after)
+                self.assertEqual(settings.restore_dlss_config(after, lease), (raw, ()))
+
+    def test_genuine_v4_defaults_lease_retains_its_original_strength_authority(self):
+        fixture = json.loads((Path(__file__).parent / 'fixtures/graphics-defaults-v4-lease.json').read_text())
+        raw, after = bytes.fromhex(fixture['raw_hex']), bytes.fromhex(fixture['after_hex'])
+        self.assertTrue(fixture['journal']['schema'].endswith('-v4'))
+        self.assertIn(b'ParticleLightStrengthV2=1.0', after)
+        self.assertIn(b'ParticleLightStrengthUnits=2', after)
+        self.assertEqual(settings.restore_dlss_config(after, fixture['journal']), (raw, ()))
+        edited = after.replace(b'ParticleLightStrengthV2=1.0', b'ParticleLightStrengthV2=0.5')
+        restored, conflicts = settings.restore_dlss_config(edited, fixture['journal'])
+        self.assertIn(b'ParticleLightStrengthV2=0.5', restored)
+        self.assertIn('EQ2Graphics.ParticleLightStrengthV2', conflicts)
 
 
 if __name__ == '__main__':
