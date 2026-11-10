@@ -1,0 +1,99 @@
+{
+  "version": "1.13.21",
+  "built_commit": "87c91cbeb2bbfe8c334e23f46d5e7efe249fbb3b",
+  "texture_version": "1.3.0",
+  "native_builds": {
+    "core": {
+      "bytes": 477184,
+      "sha256": "acb72186eb948353495c53b6897422fc7870ecfbbb7ed66f7e8702b222e7cea4"
+    },
+    "renderer": {
+      "bytes": 1286656,
+      "sha256": "75c6753227d5d2d63f58ee9316231aa61611fa840465a74e4b79e86a7ce4929f"
+    }
+  },
+  "runtime_sha256": "45c31c42d7b7b18c5b594556f72dbbb986836f5614bfc9c65d1c5fa1eda43cb2",
+  "archive_sha256": "15684ecb932fe38fb2a0c3254bcac551a7fb1d5dae4d6b1fa7ef09a8d53349bd",
+  "strength_migration_checks": 80,
+  "preset_ini_checks": 254,
+  "production_preset_bridge_checks": 310,
+  "native_launcher_parity": [
+    "Low",
+    "Medium",
+    "High",
+    "Max"
+  ],
+  "independent_partial_profile_checks": 83,
+  "existing_test_executions_passed": 104,
+  "known_inherited_test_failure": "Two executions of the same legacy1.7 migration case fail on the unchanged legacy hook in-use guard, reproduced from the previous source. No guard bypass or legacy migration redesign included.",
+  "sun_compatibility": {
+    "status": "PRODUCTION_SUN_VARIANTS_WARP_PASS",
+    "cases": 72,
+    "rgb_channels": 1990656,
+    "max_abs_error_vs_original_native_bytecode": 0.0,
+    "wrong_variant_alignment_error": 0.0801590364,
+    "softness_1_to_10_max_output_change": 0.0324715227,
+    "compiled_full_and_half_entries": 6,
+    "shader_warnings": 0,
+    "limits": "Synthetic mask/depth/fog/cascade inputs on software WARP; direct softness response exercised. Half entrypoints compiled, without a separate half-to-full render fixture. Does not prove native world-shadow stability while moving or hardware performance."
+  },
+  "packaged_ui": {
+    "presets": {
+      "label": "Quality preset",
+      "choices": [
+        "Low",
+        "Medium",
+        "High",
+        "Max",
+        "Custom"
+      ],
+      "selected": "Low",
+      "fresh_default": "Low",
+      "custom_means": "Effective settings differ from all four presets",
+      "applies_only_on_install_or_apply": true,
+      "contract_sha256": "35a45e7aaa3b400ae2a7a78d86f589ec9e09d64b39bf151f9aba2b0e6351cd17"
+    },
+    "changelog": {
+      "version": "1.13.21",
+      "sha256": "2d7d01c704fbb8ba89c1ae5118faa15e3f0b0aeef316530fe2666c3c79ce304c",
+      "current_entry": "## 1.13.21",
+      "title": "What's new \u2014 App 1.13.21 (installed)",
+      "button": "What's new",
+      "read_only": true,
+      "scrollable": true,
+      "nonmodal": true
+    }
+  },
+  "limitations": [
+    "No new physical GPU benchmark. Supplied scene contains only one or two emitted lights and no A/B baseline.",
+    "Local1.13.20 shadow motion approved; new migrations/presets/sun variants validated under controlled conditions.",
+    "Native tree-shadow instability while moving is not established as fixed. Latest install preserved native EQ2 INIs.",
+    "Sun half-resolution entrypoints compiled; no separate new half-to-full rendering fixture."
+  ],
+  "evidence": {
+    "particle-strength-001/RESULT.json": {
+      "bytes": 2184,
+      "sha256": "4618e1401c4134912cf42ca3e45b35384ed9a511eabedbe7359339598db11c0f"
+    },
+    "quality-validation/appearance-results.json": {
+      "bytes": 1180,
+      "sha256": "ca446f2669a302f7f982160f0302e0f7c2c9be1124ede76b4882ed6838edb2fc"
+    },
+    "quality-validation/native-results.json": {
+      "bytes": 483,
+      "sha256": "268fde26f0e11d333ae15fac1beb8c3e043d338f37bee5463f70aa8d1e183586"
+    },
+    "sun-variants-003/RESULT.json": {
+      "bytes": 3236,
+      "sha256": "9ba7c987f83be8d48202c9466ddda5fbd65e65cae751f30b24beea230c2fe8fa"
+    },
+    "independent-review-001/REVIEW.md": {
+      "bytes": 3225,
+      "sha256": "9fcd50c9434d26259ef6a3e2798e0ae3d3837bee243c20d2f02079bec657e96f"
+    },
+    "native-shadow-audit-001/REPORT.md": {
+      "bytes": 7740,
+      "sha256": "2f401cc4c82d091344297fb881f20aa22079e0570aca13ad0de4bddbc2f8db42"
+    }
+  }
+}

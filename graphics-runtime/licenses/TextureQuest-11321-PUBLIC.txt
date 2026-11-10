@@ -1,0 +1,6 @@
+TextureQuest 1.13.21 public release candidate, built from Develop.
+This current notice supersedes development-only/publication-hold wording in older dated TextureQuest modification notices. Those historical files remain unchanged for attribution and revision history; dependency licenses, upstream permissions, profile compatibility tokens and third-party obligations are unchanged.
+Press Home to toggle the ReShade settings, then select TextureQuest.
+Low is the fresh default. Shared Low/Medium/High/Max presets configure feature and light/shadow budgets plus 16x AF while preserving appearance preferences. Frame Gen and Neural Rendering stay independent and default off; updates preserve saved custom settings. Finer particle shadow-map motion is active; the failed crossfade remains removed. New particle strength 1x equals former 5x; saved brightness migrates unchanged. Upscaling and Reflex driver mode remain removed. GPU targets are starting budgets, not measured FPS guarantees.
+The source changelog and release notes describe exact scope and known limitations. This staging notice alone does not establish publication, live game validation or performance gains.
+Texture data remains 1.3.0. No generation control or game installation is part of runtime staging.
