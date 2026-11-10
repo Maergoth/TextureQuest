@@ -1,0 +1,63 @@
+{
+  "version": "1.13.19",
+  "built_commit": "3a2693cdac81222396524ceb4b85b38b4ebff858",
+  "texture_version": "1.3.0",
+  "strict_native_builds": {
+    "core": {
+      "bytes": 477184,
+      "sha256": "70a412241f79746970f7ef0930ec81cc3f97e772a0c4a16d3eb00b9da9837151"
+    },
+    "renderer": {
+      "bytes": 1271296,
+      "sha256": "74f53150f4767c220cf6b8f9600a26545f6ed38ed7d650a10b239865d579f9a5"
+    }
+  },
+  "runtime_sha256": "9c65ef4ad9ce2b7f23c52d0073e9ac71cba22e2922de35bd61f20494cfaff2ca",
+  "archive_sha256": "3221fd14113aabae1428bd2bd4c5b434dfd046941f272763119e94f9d97d5a8e",
+  "quality_contract_sha256": "edcd12da490a54c92423086c309dfbd842ba349b2ee3639c9a9f4080a7837ba2",
+  "launcher_tests": 67,
+  "native_api_checks": 38,
+  "preset_checks": 487,
+  "diagnostics_checks": 30,
+  "transport": {
+    "status": "PASS_CPU_WARP_ONLY",
+    "channels_checked": 98664,
+    "worst_rgb_error": 6.15834e-05,
+    "budget": 0.000488281,
+    "baseline_threshold_jump": 0.343308,
+    "candidate_threshold_jump": 0.00121932,
+    "software_vendor": 5140,
+    "debug_layer": false,
+    "debug_warnings_observed": 0,
+    "explicit_retained_binding_checks": true,
+    "list_indices_and_mask_checked": true,
+    "lazy_low_count_and_failure_reset_checked": true,
+    "timing_includes_list_dispatch": true,
+    "target_format": "R32G32B32A32_FLOAT",
+    "no_hardware_fps_claim": true
+  },
+  "packaged_ui_smoke": {
+    "presets": {
+      "label": "Quality preset",
+      "choices": [
+        "Low",
+        "Medium",
+        "High",
+        "Max",
+        "Custom"
+      ],
+      "selected": "Low",
+      "fresh_default": "Low",
+      "custom_means": "Effective settings differ from all four presets",
+      "applies_only_on_install_or_apply": true,
+      "contract_sha256": "edcd12da490a54c92423086c309dfbd842ba349b2ee3639c9a9f4080a7837ba2"
+    },
+    "changelog_version": "1.13.19"
+  },
+  "limitations": [
+    "No physical GPU benchmark or new live-game visual approval.",
+    "Five inherited HLSL X4000 filter-helper warnings; both strict C++ native builds have zero warnings.",
+    "Particle source smoothing remains quantized by shadow-map refresh thresholds; no claim of continuous shadow motion.",
+    "Low reduces work, not the approximately 1 GiB fixed base shadow allocation."
+  ]
+}
