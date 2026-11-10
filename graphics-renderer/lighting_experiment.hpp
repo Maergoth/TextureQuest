@@ -54,7 +54,7 @@ struct Distribution
 };
 struct Results
 {
-    Distribution Gpu, Present, Lights;
+    Distribution Gpu, Present, Lights, Transitions;
     UINT Width = 0, Height = 0;
     uint64_t Fallbacks = 0, Unavailable = 0;
 };
@@ -90,7 +90,7 @@ public:
         const auto path = folder / name;
         if (_wfopen_s(&File, path.c_str(), L"wx") != 0 || !File) { Error = "Cannot create comparison CSV"; return false; }
         Path = path.string(); LastFlush = Clock::now();
-        Buffer = "utc,elapsed_ms,event,mode,epoch,frame,warmup,valid,gpu_lighting_ms,present_interval_ms,light_count,width,height,fallback,dropped_log_rows,settings_id\n";
+        Buffer = "utc,elapsed_ms,event,mode,epoch,frame,warmup,valid,gpu_lighting_ms,present_interval_ms,light_count,width,height,fallback,dropped_log_rows,settings_id,transition_lights\n";
         Buffer.reserve(256 * 1024);
         return true;
     }
@@ -130,17 +130,18 @@ inline bool Warming()
 }
 
 inline void Log(const char *event, bool candidate, uint64_t epoch, uint64_t frame, bool warm,
-    bool valid, double gpu, double present, UINT lights, UINT width, UINT height, bool fallback, uint64_t settings = SettingsId)
+    bool valid, double gpu, double present, UINT lights, UINT width, UINT height, bool fallback, uint64_t settings = SettingsId,
+    UINT transitions = 0)
 {
     if (!Recording) return;
     SYSTEMTIME utc{}; GetSystemTime(&utc);
     const double elapsed = std::chrono::duration<double, std::milli>(Clock::now() - SessionStart).count();
     char line[512]{};
-    sprintf_s(line, "%04u-%02u-%02uT%02u:%02u:%02u.%03uZ,%.3f,%s,%s,%llu,%llu,%d,%d,%.6f,%.6f,%u,%u,%u,%d,%llu,%016llx\n",
+    sprintf_s(line, "%04u-%02u-%02uT%02u:%02u:%02u.%03uZ,%.3f,%s,%s,%llu,%llu,%d,%d,%.6f,%.6f,%u,%u,%u,%d,%llu,%016llx,%u\n",
         utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond, utc.wMilliseconds,
         elapsed, event, candidate ? "candidate" : "baseline", static_cast<unsigned long long>(epoch),
         static_cast<unsigned long long>(frame), warm ? 1 : 0, valid ? 1 : 0, gpu, present, lights, width, height,
-        fallback ? 1 : 0, static_cast<unsigned long long>(Writer.Lost()), static_cast<unsigned long long>(settings));
+        fallback ? 1 : 0, static_cast<unsigned long long>(Writer.Lost()), static_cast<unsigned long long>(settings), transitions);
     Writer.Push(line);
 }
 
@@ -149,7 +150,7 @@ struct Query
     ComPtr<ID3D11Query> Disjoint, Begin, End;
     bool Pending = false, Candidate = false, Warm = false, Fallback = false;
     uint64_t ModeEpoch = 0, SampleFrame = 0, SampleGeneration = 0, Settings = 0;
-    UINT Lights = 0, Width = 0, Height = 0;
+    UINT Lights = 0, Width = 0, Height = 0, Transitions = 0;
 };
 inline std::array<Query, 8> Queries;
 inline int ActiveQuery = -1;
@@ -175,13 +176,14 @@ inline void Poll(ID3D11DeviceContext *ctx)
             std::lock_guard lock(ResultsLock);
             auto &result = Modes[query.Candidate ? 1 : 0];
             result.Gpu.Add(ms); result.Lights.Add(query.Lights);
+            result.Transitions.Add(query.Transitions);
             result.Width = query.Width; result.Height = query.Height;
         }
         Log("gpu", query.Candidate, query.ModeEpoch, query.SampleFrame, query.Warm, valid,
-            ms, -1, query.Lights, query.Width, query.Height, query.Fallback, query.Settings);
+            ms, -1, query.Lights, query.Width, query.Height, query.Fallback, query.Settings, query.Transitions);
     }
 }
-inline void BeginPass(ID3D11DeviceContext *ctx, bool candidate, UINT lights, UINT width, UINT height)
+inline void BeginPass(ID3D11DeviceContext *ctx, bool candidate, UINT lights, UINT width, UINT height, UINT transitions = 0)
 {
     if (!Recording || ActiveQuery >= 0 || ctx->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE) return;
     Poll(ctx);
@@ -201,6 +203,7 @@ inline void BeginPass(ID3D11DeviceContext *ctx, bool candidate, UINT lights, UIN
         query.ModeEpoch = CurrentEpoch(); query.SampleFrame = Frame; query.SampleGeneration = Generation;
         query.Settings = SettingsId;
         query.Lights = lights; query.Width = width; query.Height = height;
+        query.Transitions = transitions;
         ctx->Begin(query.Disjoint.Get()); ctx->End(query.Begin.Get());
         ActiveQuery = static_cast<int>(i); return;
     }
@@ -225,18 +228,18 @@ inline void SaveSummary()
     FILE *file = nullptr;
     if (_wfopen_s(&file, path.c_str(), L"w") != 0 || !file)
     { Writer.Error = "Cannot save comparison summary CSV"; return; }
-    fputs("mode,settings_id,window_samples,gpu_total_samples,gpu_mean_ms,gpu_p95_ms,present_samples,present_mean_ms,present_p95_ms,mean_lights,width,height,fallbacks,unavailable_queries,dropped_log_rows\n", file);
+    fputs("mode,settings_id,window_samples,gpu_total_samples,gpu_mean_ms,gpu_p95_ms,present_samples,present_mean_ms,present_p95_ms,mean_lights,width,height,fallbacks,unavailable_queries,dropped_log_rows,mean_transition_lights\n", file);
     std::lock_guard lock(ResultsLock);
     for (size_t i = 0; i < Modes.size(); ++i)
     {
         const auto &r = Modes[i];
-        fprintf(file, "%s,%016llx,%zu,%llu,%.6f,%.6f,%zu,%.6f,%.6f,%.3f,%u,%u,%llu,%llu,%llu\n",
+        fprintf(file, "%s,%016llx,%zu,%llu,%.6f,%.6f,%zu,%.6f,%.6f,%.3f,%u,%u,%llu,%llu,%llu,%.3f\n",
             i ? "candidate" : "baseline", static_cast<unsigned long long>(SettingsId), r.Gpu.Count,
             static_cast<unsigned long long>(r.Gpu.Total), r.Gpu.Count ? r.Gpu.Mean() : -1,
             r.Gpu.Count ? r.Gpu.P95() : -1, r.Present.Count, r.Present.Count ? r.Present.Mean() : -1,
             r.Present.Count ? r.Present.P95() : -1, r.Lights.Count ? r.Lights.Mean() : -1, r.Width, r.Height,
             static_cast<unsigned long long>(r.Fallbacks), static_cast<unsigned long long>(r.Unavailable),
-            static_cast<unsigned long long>(Writer.Lost()));
+            static_cast<unsigned long long>(Writer.Lost()), r.Transitions.Count ? r.Transitions.Mean() : -1);
     }
     if (ferror(file)) Writer.Error = "Cannot write comparison summary CSV";
     if (fclose(file) != 0) Writer.Error = "Cannot finish comparison summary CSV";
@@ -327,8 +330,8 @@ inline void DrawSettings()
 {
     ImGui::SeparatorText("Lighting comparison");
     bool candidate = Requested.load();
-    if (ImGui::Checkbox("Test lighting improvements", &candidate)) Request(candidate);
-    ImGui::TextWrapped("Unchecked: current 1.13.16 lighting. Checked: candidate source and lighting changes. Switches at the next frame; caches rebuild. Selection resets when the game closes.");
+    if (ImGui::Checkbox("Experimental improvements", &candidate)) Request(candidate);
+    ImGui::TextWrapped("Unchecked: current 1.13.16 lighting. Checked: experimental source fixes, lighting and short shadow transitions. Switches at the next frame; caches rebuild. Selection resets when the game closes.");
     bool record = RecordRequested.load();
     if (ImGui::Checkbox("Record comparison performance (CSV)", &record)) RecordRequested = record;
     if (ImGui::Button("Clear comparison results")) ResetRequested = true;
@@ -352,6 +355,7 @@ inline void DrawSettings()
         row("Game Present mean / p95 (ms)", [](const Results &r) { if (r.Present.Count) ImGui::Text("%.3f / %.3f", r.Present.Mean(), r.Present.P95()); else ImGui::TextUnformatted("--"); });
         row("GPU samples (total)", [](const Results &r) { ImGui::Text("%llu", static_cast<unsigned long long>(r.Gpu.Total)); });
         row("Mean submitted lights", [](const Results &r) { if (r.Lights.Count) ImGui::Text("%.1f", r.Lights.Mean()); else ImGui::TextUnformatted("--"); });
+        row("Mean transitioning lights", [](const Results &r) { if (r.Transitions.Count) ImGui::Text("%.1f", r.Transitions.Mean()); else ImGui::TextUnformatted("--"); });
         row("Lighting resolution", [](const Results &r) { ImGui::Text("%u x %u", r.Width, r.Height); });
         row("Fallbacks / unavailable queries", [](const Results &r) { ImGui::Text("%llu / %llu", static_cast<unsigned long long>(r.Fallbacks), static_cast<unsigned long long>(r.Unavailable)); });
         ImGui::EndTable();

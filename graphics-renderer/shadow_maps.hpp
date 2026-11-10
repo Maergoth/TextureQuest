@@ -30,6 +30,8 @@
 #include "emission_policy.hpp"
 #include "sun_softness_settings.hpp"
 #include "shadow_face_culling.hpp"
+#include "lighting_experiment.hpp"
+#include "shadow_transition_policy.hpp"
 
 namespace shadowmaps
 {
@@ -507,7 +509,11 @@ static std::unordered_map<uint64_t, HeldMesh> HeldMeshes;
 static std::atomic<int> ParticleShadowLimit=50;
 static int CleanParticleShadowLimit(int value){return std::clamp(value,1,int(emission_policy::ParticleLimit));}
 static bool MovingMapUsed[MAX_LIGHTS];
-namespace particle_moving { static void Reset();static void Request(bool,uint64_t);static void WriteState(FILE *); }
+namespace particle_moving {
+static void Reset();static void Request(bool,uint64_t);static void WriteState(FILE *);
+static bool Snapshot(int,const Light &,uint64_t,ID3D11Texture2D *&,UINT &);
+}
+namespace transitions { static void Reset(); static void Invalidate(); }
 
 // a moving mesh whose world rows are the identity at the world origin, so its vertices are already world positions and
 // its origin says nothing about where it is, with the buffers it is drawn from; an entry is made when its bounds are
@@ -978,6 +984,7 @@ static void StartOver();
 
 static void Reset()
 {
+    transitions::Reset();
     particle_source_shadow::Reset();
     particle_moving::Reset();
     CurrentFrame.Rows.clear();
@@ -1079,6 +1086,8 @@ static float Distance(const XMFLOAT3 &a, const XMFLOAT3 &b)
     const float dz = a.z - b.z;
     return std::sqrt(dx * dx + dy * dy + dz * dz);
 }
+
+#include "shadow_transition_history.hpp"
 
 // finds the key of the cached object for a mesh at this absolute position. The offset error can put a sighting in a
 // neighbouring grid cell, so those are searched before a new key is made.
@@ -1744,6 +1753,7 @@ static uint64_t FindLight(const XMFLOAT3 &position, const XMFLOAT3 &hue)
 
 static void StartOver()
 {
+    transitions::Invalidate();
     Windows.clear();
     if(SceneEpochChanged)SceneEpochChanged();
     Casters.clear();
@@ -2207,6 +2217,7 @@ static void WriteState()
         fprintf(file, "\n");
     }
     particle_moving::WriteState(file);
+    transitions::WriteState(file);
     fclose(file);
 }
 
@@ -2645,6 +2656,7 @@ static std::vector<uint64_t> AssignSlots()
         if (slot < 0)
             continue;
 
+        transitions::ForgetSlot(slot);
         if (auto owner = Lights.find(SlotLights[slot]); owner != Lights.end())
         {
             owner->second.Slot = -1;
@@ -2653,6 +2665,7 @@ static std::vector<uint64_t> AssignSlots()
         }
         if (light.Slot >= 0)
         {
+            transitions::ForgetSlot(light.Slot);
             SlotLights[light.Slot] = 0;
             light.SlotChanged = true;
         }
@@ -2782,6 +2795,11 @@ static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
     const auto siblingHolders=FindSiblingHolders(light);
     ComPtr<ID3DDeviceContextState> previous;
     ctx->SwapDeviceContextState(DrawState.Get(), &previous);
+    if (lighting_experiment::Enabled.load())
+    {
+        ctx->OMSetRenderTargets(0, nullptr, nullptr);
+        transitions::BeforeDraw(ctx, light);
+    }
 
     ctx->RSSetState(CasterRasterizer.Get());
     ctx->OMSetDepthStencilState(CasterDepth.Get(), 0);
@@ -2879,6 +2897,7 @@ static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
     light.BuiltVersion = light.Version;
     light.RedrawNow = false;
     light.SlotChanged = false;
+    if (lighting_experiment::Enabled.load()) transitions::AfterDraw(light);
     ++MapsDrawnThisSecond;
 }
 
@@ -3404,6 +3423,7 @@ static void DrawMovingMaps(ID3D11DeviceContext1 *ctx)
         DrawInstancedMoving(ctx, faces, faceRows);
     particle_moving::Draw(ctx,worldMeshes);
     if (DrawAdditionalMoving) DrawAdditionalMoving(ctx);
+    if (lighting_experiment::Enabled.load()) transitions::CommitMovingFrame();
     MovingCasters.clear();
     MovingWorlds.clear();
     MovingThisFrame.clear();
@@ -3438,6 +3458,7 @@ static void UploadLightTable(ID3D11DeviceContext *ctx)
 static void EndFrame(ID3D11Device *dev, ID3D11DeviceContext *ctx)
 {
     const shadowmaps::CpuScope scope(shadowmaps::MapCpu);
+    transitions::Sync();
     if (CreateFailed)
         return;
     if (!DrawState && !CreateObjects(dev))

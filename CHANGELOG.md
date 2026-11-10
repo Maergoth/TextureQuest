@@ -4,6 +4,14 @@ This is the canonical history bundled with the installer. Develop entries are
 development builds, not announcements of public binary releases. Controlled
 checks described here do not establish complete in-game appearance or FPS.
 
+## 1.13.18 — Local experimental shadow transitions (not published)
+
+- Rename the existing Advanced comparison checkbox to **Experimental improvements**. It still starts unchecked each launch, preserves saved graphics preferences, and retains the same current/candidate comparison and opt-in CSV logging.
+- Blend compatible old/current emissive-shadow endpoints over 150 ms when the same light keeps its owner and shadow-pool slot. Each endpoint pairs its static map with the moving-caster snapshot and source position/metadata actually used. Keep current animated light colour rather than fading old emission colour.
+- Require valid same-owner/same-slot history. Ranking or slot turnover remains current-only; missing, partial or incompatible history uses valid current shadowing. Reassignment, invalid history and settings/epoch/zone changes abort the fade. A frozen moving silhouette can briefly trail or double during the 150 ms blend. Retain normal map updates, resolution, filtering and limits; six logical transitions share lazy history pools capped at 84 MiB.
+- Add `transition_lights` to comparison CSV, `mean_transition_lights` to summaries and a mean transitioning-lights row in the UI. Retain the 1.13.17 candidate's qualified object/particle source observations and independent visibility. The unchecked path remains current 1.13.16 lighting.
+- This is a private comparison candidate. Controlled validation and final renderer provenance are required before packaging; live EQ2 appearance and hardware performance remain to be compared. Texture data remains 1.3.0, with saved settings and unchanged texture preparation reused by the normal updater.
+
 ## 1.13.17 — Local lighting comparison candidate (not published)
 
 - Add **Home → TextureQuest → Advanced → Test lighting improvements**. Unchecked retains the current 1.13.16 renderer; checked selects the candidate. Changes commit at frame boundaries and rebuild source caches. The experiment starts off each launch and does not overwrite saved graphics preferences.

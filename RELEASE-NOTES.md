@@ -1,3 +1,37 @@
+# TextureQuest 1.13.18 — Private comparison candidate
+
+Press **Home**, select **TextureQuest**, then open **Advanced**. The existing
+comparison switch is now **Experimental improvements**. It starts off each launch;
+unchecked keeps the current 1.13.16 lighting path. Existing graphics settings remain.
+
+The candidate blends valid same-owner/same-slot emissive-shadow endpoints over
+150 ms, pairing each
+static map with its actual moving-caster snapshot and matching source metadata.
+Current animated light colour is retained. Missing, partial or incompatible history
+uses valid current shadowing; reassignment and settings/epoch/zone changes abort
+the fade. Six logical transitions share lazy history pools capped at 84 MiB.
+Ranking or shadow-slot turnover remains current-only. A frozen moving silhouette
+can briefly trail or double during the 150 ms fade; this is not motion reprojection.
+The 1.13.17 source observations and independent visibility remain. Map resolution,
+filtering and normal update/light budgets are preserved.
+
+Comparison logs include transition_lights; summaries and the UI show the mean
+number of transitioning lights.
+
+Use **Record comparison performance (CSV)** to compare the same scene and camera.
+Allow at least three seconds and 180 frames after switching, and let caches settle.
+Logs and summaries are under `EQ2Graphics-captures/lighting-comparisons`. GPU lighting
+timings exclude source observations and shadow-map rendering. No hardware FPS or
+universal visual improvement is claimed by this private candidate.
+
+Use the normal updater with all EQ2 clients and TextureQuest closed. Keep portable
+data. Texture data stays 1.3.0; unchanged preparation is reused without DDS/map
+verification or texture scanning. This is not a public release.
+
+See [the changelog](CHANGELOG.md) and [comparison handoff](docs/GRAPHICS-1.13.18-HANDOFF.md).
+
+---
+
 # TextureQuest 1.13.15
 
 The Develop graphics work is now packaged for the public installer with simpler

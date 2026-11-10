@@ -1,12 +1,15 @@
 # EQ2 Graphics
 
-## TextureQuest 1.13.17 local comparison
+## TextureQuest 1.13.18 local comparison
 
-Advanced offers **Test lighting improvements** and opt-in CSV recording, with the
-current 1.13.16 path retained by default. The candidate changes qualified source
-measurement and independent shadow visibility. See the
-[comparison handoff](../docs/GRAPHICS-1.13.17-HANDOFF.md) for usage, timing scope,
-controlled evidence and limitations. This is not a public release.
+Advanced offers **Experimental improvements** and opt-in CSV recording. The same
+unsaved comparison switch retains current 1.13.16 lighting by default. The candidate
+adds 150 ms matched emissive static/moving shadow handoffs with bounded history,
+alongside qualified source observations and independent shadow visibility.
+See the [comparison handoff](../docs/GRAPHICS-1.13.18-HANDOFF.md) for scope and limits.
+Only same-owner/same-slot lights transition; ranking turnover remains current-only.
+Moving silhouettes may briefly trail or double. This is not a public release or a
+hardware-performance claim.
 
 ## Inherited public defaults
 

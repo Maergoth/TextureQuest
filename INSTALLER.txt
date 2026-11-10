@@ -1,7 +1,9 @@
-TextureQuest 1.13.17 — Windows x64
+TextureQuest 1.13.18 — Windows x64
 
-Local comparison build: Advanced > Test lighting improvements switches between
-current and candidate lighting. Record comparison performance (CSV) saves
+Local comparison build: Advanced > Experimental improvements switches between
+current and candidate lighting, including short matched shadow transitions.
+Only stable-owner/slot emissive lights transition; moving shadows can briefly
+trail during the fade. The experiment starts off each launch. CSV recording saves
 timings and a summary under EQ2Graphics-captures/lighting-comparisons.
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.

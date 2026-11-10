@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <utility>
+#include "glow_transition_shader.hpp"
 
 // Candidate-only transport. The baseline shader and its resources are never rewritten.
 namespace glow_transport
@@ -130,7 +131,10 @@ void cs_transport(uint3 group : SV_GroupID, uint3 thread : SV_GroupThreadID, uin
     float3 low = float3(UnorderedFloat(RegionLow.x), UnorderedFloat(RegionLow.y), UnorderedFloat(RegionLow.z));
     float3 high = float3(UnorderedFloat(RegionHigh.x), UnorderedFloat(RegionHigh.y), UnorderedFloat(RegionHigh.z));
     [loop] for (uint i = local; i < count; i += 256)
-        LightUpper[i] = Counts.w > 0 ? 0 : saturate(Counts.z) * ShadowUpper(Lights[i], low, high);
+        // A transitioning light can illuminate its old footprint outside the new
+        // receiver bound. Keep it in every list until the handoff completes.
+        LightUpper[i] = HasTransition(i) ? 3.402823466e+38
+            : Counts.w > 0 ? 0 : saturate(Counts.z) * ShadowUpper(Lights[i], low, high);
     GroupMemoryBarrierWithGroupSync();
     if (local == 0)
     {
@@ -199,8 +203,8 @@ inline bool Sources(const char *baseline, std::string &pixel, std::string &compu
     pixel.insert(0, Declarations);
     const auto constantsEnd = original.find("static const float2 POISSON");
     if (constantsEnd == std::string::npos) return false;
-    compute = std::string(Declarations) + original.substr(0, constantsEnd) + ComputeShader;
-    return true;
+    compute = std::string(glow_transition_shader::Declarations) + Declarations + original.substr(0, constantsEnd) + ComputeShader;
+    return glow_transition_shader::Apply(pixel);
 }
 
 inline bool Compile(const std::string &source, const char *entry, const char *profile, ComPtr<ID3DBlob> &code)
@@ -228,7 +232,8 @@ inline bool IndependentSources(const char *baseline, std::string &source)
     source.replace(begin, end - begin, "    [loop] for (uint j = 0; j < (uint)Counts.x; ++j)\n    {\n");
     return Replace(source, "    float3 bounce, direct;\n    float total = FindTotal(world, normal, mask, bounce, direct, position.xy);",
             "    float3 bounce;\n    float total = FindTotal(world, normal, mask, bounce);")
-        && Replace(source, "    output.Light = float4(bounce + direct, cameraDistance);", "    output.Light = float4(bounce, cameraDistance);");
+        && Replace(source, "    output.Light = float4(bounce + direct, cameraDistance);", "    output.Light = float4(bounce, cameraDistance);")
+        && glow_transition_shader::PatchTotal(source);
 }
 
 inline ID3D11PixelShader *Shader(UINT count)
@@ -285,7 +290,8 @@ inline bool Prepare(ID3D11Device *device, const char *baseline, UINT width, UINT
 }
 
 inline void Build(ID3D11DeviceContext *context, ID3D11Buffer *frame, ID3D11Buffer *lights,
-    ID3D11Buffer *camera, ID3D11ShaderResourceView *depth, UINT width, UINT height, UINT count = MaxLights)
+    ID3D11Buffer *camera, ID3D11ShaderResourceView *depth, UINT width, UINT height, UINT count = MaxLights,
+    ID3D11Buffer *transitions = nullptr)
 {
     ID3D11ShaderResourceView *noPixelViews[] = { nullptr, nullptr };
     context->PSSetShaderResources(13, 2, noPixelViews);
@@ -295,6 +301,7 @@ inline void Build(ID3D11DeviceContext *context, ID3D11Buffer *frame, ID3D11Buffe
     context->UpdateSubresource(Parameters.Get(), 0, nullptr, grid, 0, 0);
     ID3D11Buffer *buffers[] = { frame, lights, Parameters.Get(), camera };
     context->CSSetConstantBuffers(0, 4, buffers);
+    context->CSSetConstantBuffers(4, 1, &transitions);
     context->CSSetShaderResources(0, 1, &depth);
     ID3D11UnorderedAccessView *targets[] = { IndexTarget.Get(), HeaderTarget.Get() };
     context->CSSetUnorderedAccessViews(0, 2, targets, nullptr);
@@ -307,6 +314,8 @@ inline void Build(ID3D11DeviceContext *context, ID3D11Buffer *frame, ID3D11Buffe
     context->CSSetShader(nullptr, nullptr, 0);
     ID3D11Buffer *noComputeBuffers[] = { nullptr, nullptr, nullptr, nullptr };
     context->CSSetConstantBuffers(0, 4, noComputeBuffers);
+    ID3D11Buffer *noTransitions = nullptr;
+    context->CSSetConstantBuffers(4, 1, &noTransitions);
     context->PSSetConstantBuffers(2, 1, buffers + 2);
     ID3D11ShaderResourceView *views[] = { IndexView.Get(), HeaderView.Get() };
     context->PSSetShaderResources(13, 2, views);

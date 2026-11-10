@@ -285,8 +285,10 @@ static uint64_t TQLightingSettingsIdentity()
 }
 static void TQWorldBoundary(command_queue*queue,swapchain*,const rect*,const rect*,uint32_t,const rect*) {
     const auto comparisonSettings = lighting_experiment::RecordRequested.load() || lighting_experiment::Recording
+        || lighting_experiment::Enabled.load() || lighting_experiment::Requested.load()
         ? TQLightingSettingsIdentity() : lighting_experiment::SettingsId;
     lighting_experiment::Boundary(reinterpret_cast<ID3D11DeviceContext*>(queue->get_native()), comparisonSettings);
+    shadowmaps::transitions::SyncSettings(comparisonSettings);
     const bool wanted=tq_world::Managed.Requested(),was=tq_world::Managed.Enabled();
     static bool samplerRetry=false;
     static std::uint32_t lastFiltering=0;

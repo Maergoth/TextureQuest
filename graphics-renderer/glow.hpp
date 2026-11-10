@@ -697,6 +697,12 @@ struct GlowLightConstants
     XMFLOAT4 Position, Colour, Normal, Moving, Shadow;
 };
 
+struct GlowTransitionConstants
+{
+    XMFLOAT4 OldPosition, StaticMap, MovingMap;
+};
+static_assert(sizeof(GlowTransitionConstants) == 48);
+
 struct LightConstants
 {
     XMFLOAT4 Counts, FaceSizes;
@@ -793,6 +799,7 @@ static ComPtr<ID3D11PixelShader> ReducedLightShader, UpsampleShader, SmoothUpsam
 static ComPtr<ID3D11BlendState> LightBlend, PaintedCompositeBlend;
 static ComPtr<ID3D11RasterizerState> LightRasterizer;
 static ComPtr<ID3D11Buffer> FrameBuffer, LightConstantsBuffer;
+static ComPtr<ID3D11Buffer> TransitionConstantsBuffer;
 // how much glow lights reach each pixel this frame, written with the lights
 static ComPtr<ID3D11Texture2D> MaskTexture;
 static ComPtr<ID3D11RenderTargetView> MaskTarget;
@@ -2096,6 +2103,8 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
     XMFLOAT4X4 worldToClip;
     XMStoreFloat4x4(&worldToClip, lightbuffer::WorldToClip);
     LightConstants constants = {};
+    std::array<GlowTransitionConstants, MAX_GLOW_LIGHTS> transitions{};
+    UINT transitionCount = 0;
     constants.FaceSizes = { static_cast<float>(shadowmaps::FACE_SIZES[0]), static_cast<float>(shadowmaps::FACE_SIZES[1]),
         static_cast<float>(shadowmaps::FACE_SIZES[2]), static_cast<float>(shadowmaps::MOVING_FACE_SIZE) };
     D3D11_RECT area = { LONG_MAX, LONG_MAX, LONG_MIN, LONG_MIN };
@@ -2107,17 +2116,36 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
         auto it = shadowmaps::Lights.find(shadowmaps::SlotLights[slot]);
         D3D11_RECT rect;
         if (!shadowmaps::SlotActive[slot] || it == shadowmaps::Lights.end() || !it->second.GlowShown || !it->second.BuiltFrame
-            || (Emitters.contains(it->second.EmitterKey) ? !ObjectsActive() : !ParticlesActive())
-            || !FindLightRect(worldToClip, it->second.BuiltPosition, shadowmaps::FindShadowRadius(it->second) * BOUNCE_REACH,
-                desc.Width, desc.Height, rect))
+            || (Emitters.contains(it->second.EmitterKey) ? !ObjectsActive() : !ParticlesActive()))
             continue;
 
         const shadowmaps::Light &light = it->second;
         const float reach = shadowmaps::FindShadowRadius(light);
+        bool visible = FindLightRect(worldToClip, light.BuiltPosition, reach * BOUNCE_REACH, desc.Width, desc.Height, rect);
+        shadowmaps::transitions::Endpoint history{};
+        const bool transitioning = transportRequested && shadowmaps::transitions::Get(it->first, light, history);
+        if (transitioning)
+        {
+            D3D11_RECT oldRect;
+            if (FindLightRect(worldToClip, history.Position, reach * BOUNCE_REACH, desc.Width, desc.Height, oldRect))
+            {
+                rect = visible ? D3D11_RECT{ std::min(rect.left, oldRect.left), std::min(rect.top, oldRect.top),
+                    std::max(rect.right, oldRect.right), std::max(rect.bottom, oldRect.bottom) } : oldRect;
+                visible = true;
+            }
+        }
+        if (!visible) continue;
         const int size = shadowmaps::GetSizeIndex(slot);
         // full-size slots also have a moving-object map, whose cube is the slot's place in its array
         const int particleMap=shadowmaps::particle_moving::Binding(slot,light);
         const bool movingUsed = particleMap<0 && slot < shadowmaps::SIZE_STARTS[1] && shadowmaps::MovingMapUsed[slot];
+        if (transitioning)
+        {
+            transitions[count] = { { history.Position.x, history.Position.y, history.Position.z, history.NewWeight },
+                { float(history.Tier), float(history.Cube), float(history.FaceSize), history.Radius },
+                { float(history.MovingTier), float(history.MovingCube), float(history.MovingFaceSize), history.MovingFaceSize ? 1.0f : 0.0f } };
+            ++transitionCount;
+        }
         constants.Lights[count++] = { { light.BuiltPosition.x, light.BuiltPosition.y, light.BuiltPosition.z, static_cast<float>(size) },
             { light.GlowColour.x, light.GlowColour.y, light.GlowColour.z, reach },
             { light.GlowNormal.x, light.GlowNormal.y, light.GlowNormal.z, static_cast<float>(slot - shadowmaps::SIZE_STARTS[size]) },
@@ -2175,15 +2203,37 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
         shadowmaps::particle_moving::Pool[0].view.Get(),shadowmaps::particle_moving::Pool[1].view.Get(),
         shadowmaps::particle_moving::Pool[2].view.Get(),shadowmaps::particle_moving::Pool[3].view.Get() };
     lightbuffer::StartTimer(ctx1.Get(), lightbuffer::GlowTimer);
-    lighting_experiment::BeginPass(ctx1.Get(), transportRequested, UINT(count), reducedWidth, reducedHeight);
+    lighting_experiment::BeginPass(ctx1.Get(), transportRequested, UINT(count), reducedWidth, reducedHeight, transitionCount);
+    ID3D11Buffer *transitionBuffer = nullptr;
+    if (transitionCount)
+    {
+        const D3D11_BUFFER_DESC transitionDesc = { UINT(sizeof(transitions)), D3D11_USAGE_DEFAULT, D3D11_BIND_CONSTANT_BUFFER };
+        if (TransitionConstantsBuffer || SUCCEEDED(dev->CreateBuffer(&transitionDesc, nullptr, &TransitionConstantsBuffer)))
+        {
+            ctx1->UpdateSubresource(TransitionConstantsBuffer.Get(), 0, nullptr, transitions.data(), 0, 0);
+            transitionBuffer = TransitionConstantsBuffer.Get();
+        }
+        else
+        {
+            shadowmaps::transitions::Invalidate();
+            lighting_experiment::RecordFallback();
+        }
+    }
     bool transportCandidate = false;
     if (transportRequested)
     {
         transportCandidate = glow_transport::Prepare(dev.Get(), LIGHT_SHADER, reducedWidth, reducedHeight, UINT(count));
         if (transportCandidate)
             glow_transport::Build(ctx1.Get(), FrameBuffer.Get(), LightConstantsBuffer.Get(), offset,
-                lightbuffer::DepthCopyView.Get(), reducedWidth, reducedHeight, UINT(count));
+                lightbuffer::DepthCopyView.Get(), reducedWidth, reducedHeight, UINT(count), transitionBuffer);
         else lighting_experiment::RecordFallback();
+    }
+    if (transportCandidate)
+    {
+        ctx1->PSSetConstantBuffers(4, 1, &transitionBuffer);
+        ID3D11ShaderResourceView *historyViews[] = { shadowmaps::transitions::View(0),
+            shadowmaps::transitions::View(1), shadowmaps::transitions::View(2) };
+        ctx1->PSSetShaderResources(15, 3, historyViews);
     }
     // texels outside the lights' rectangle are left unlit
     ctx1->ClearRenderTargetView(ReducedLightTarget.Get(), clear);
@@ -2210,7 +2260,14 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
     ctx1->OMSetBlendState(LightBlend.Get(), nullptr, 0xffffffff);
     ctx1->PSSetShaderResources(0, 13, views);
     ctx1->Draw(3, 0);
-    if (transportCandidate) glow_transport::Unbind(ctx1.Get());
+    if (transportCandidate)
+    {
+        glow_transport::Unbind(ctx1.Get());
+        ID3D11ShaderResourceView *noHistoryViews[3]{};
+        ctx1->PSSetShaderResources(15, 3, noHistoryViews);
+        ID3D11Buffer *noTransitionBuffer = nullptr;
+        ctx1->PSSetConstantBuffers(4, 1, &noTransitionBuffer);
+    }
     lighting_experiment::EndPass(ctx1.Get());
     lightbuffer::StopTimer(ctx1.Get(), lightbuffer::GlowTimer);
     LightsDrawnThisFrame = count;
@@ -2424,6 +2481,7 @@ static void Reset(bool keepShapeBuffers = false)
     LightRasterizer.Reset();
     FrameBuffer.Reset();
     LightConstantsBuffer.Reset();
+    TransitionConstantsBuffer.Reset();
     MaskTexture.Reset();
     MaskTarget.Reset();
     MaskView.Reset();
