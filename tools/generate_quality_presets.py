@@ -40,7 +40,26 @@ def render(contract):
                 raise ValueError('Preset values must be finite typed scalars')
             lines.append(f'        visit("{key}", {literal});')
         lines.append('        return true;')
-    lines += ['    default: return false;', '    }', '}', '} // namespace tq_quality', '']
+    lines += ['    default: return false;', '    }', '}']
+    fresh = contract.get('fresh_defaults', {})
+    if set(fresh) != {'EQ2Graphics'}:
+        raise ValueError('Fresh defaults must cover world graphics appearance settings')
+    if set(fresh['EQ2Graphics']) & keys:
+        raise ValueError('Fresh appearance defaults must be independent of preset ownership')
+    lines.append('template<class Visitor> void VisitFreshDefaults(Visitor visit) {')
+    for key, value in fresh['EQ2Graphics'].items():
+        if not key.isascii() or not key.isalnum():
+            raise ValueError('Invalid fresh setting key')
+        if type(value) is bool:
+            literal = 'true' if value else 'false'
+        elif type(value) is int:
+            literal = str(value)
+        elif type(value) is float and math.isfinite(value):
+            literal = repr(value) + 'f'
+        else:
+            raise ValueError('Fresh values must be finite typed scalars')
+        lines.append(f'    visit("{key}", {literal});')
+    lines += ['}', '} // namespace tq_quality', '']
     return '\n'.join(lines).encode('utf-8')
 
 

@@ -4,6 +4,22 @@ This is the canonical history bundled with the installer. Develop entries are
 development builds, not announcements of public binary releases. Controlled
 checks described here do not establish complete in-game appearance or FPS.
 
+## 1.13.21 — Particle shadow motion and independent visual preferences
+
+- Publish the finer particle-shadow updates tested locally in 1.13.20. The source and its shadow map now follow smaller movements together, with a bounded extra update budget and conservative caster-list reuse. The local in-game report confirms substantially less snapping; busy scenes and source reassignment remain limitations. The failed shadow crossfade stays removed.
+- Make particle light strength **1× equal the former 5×**. Migrate explicit saved values once to preserve their actual brightness, including zero. New installations start at the stronger 1× baseline. The maximum becomes 25.6×, retaining the former physical maximum.
+- Make Low/Medium/High/Max own performance features and light/shadow capacities. Selecting a preset now preserves light strength, radius, shadow strength/softness, colour, painted-emission balance, AO tuning and compatibility choices. Those preferences no longer mark a matching performance preset Custom. Sun-softening enable follows the preset while its saved amount is retained.
+- Separate fresh-install defaults from preset application. Preserve historical installer settings leases and existing custom values. Keep the same preset budgets, 16x AF, independent Frame Gen/Neural Rendering choices, Home settings shortcut and bundled changelog.
+- Restore sun-shadow softness for three captured native shader variants, preserving each variant's filter alignment. Older GPU-shadow support remains intact. Controlled native-shader comparisons pass; this does not claim to fix the separate native tree-shadow instability while moving.
+- Keep texture data 1.3.0 and reuse unchanged texture preparation. No texture-content or native EQ2 INI changes.
+
+## 1.13.20 — Local particle-shadow motion candidate (not published)
+
+- Let particle shadows follow smaller movements of the already-smoothed light source. Previously, a shadow map could hold its old position until the source moved 0.1 world units, hiding much of that smoothing and then jumping.
+- Add a bounded allowance for finer particle-shadow updates after normal required updates. Reuse conservative particle caster lists while valid to reduce repeated CPU searches. This trades extra shadow rendering for smoother motion; crowded scenes and source reassignment can still step.
+- Keep the failed 150 ms shadow fade removed. A controlled software-rendered scene shows smaller shadow-position errors and jumps, but actual EQ2 appearance and GPU cost still need comparison.
+- Retain the shared Low/Medium/High/Max presets, 16x anisotropic filtering, existing custom settings and textures 1.3.0. No texture re-download or unchanged DDS/map scan is required.
+
 ## 1.13.19 — Lighting quality presets
 
 - Promote the qualified object/particle source observations, independent per-light shadow visibility and conservative receiver-tile lighting work from the local comparison builds. Remove the comparison checkbox. Retain optional surface-light smoothing under Advanced.

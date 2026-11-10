@@ -39,7 +39,7 @@ class QualitySettings(unittest.TestCase):
     def test_fresh_defaults_match_low_old_v2_leases_still_restore_and_custom_stays(self):
         fresh, lease = dlss.prepare_dlss_config(b'', profile='graphics-world-defaults')
         self.assertEqual(quality.detect(fresh), 'Low')
-        self.assertTrue(lease['schema'].endswith('-v3'))
+        self.assertTrue(lease['schema'].endswith('-v4'))
         custom = quality.apply(b'', 'Max').replace(b'Anisotropy=16', b'Anisotropy=4')
         refreshed, _ = dlss.prepare_dlss_config(custom, profile='graphics-world-defaults')
         self.assertIn(b'Anisotropy=4', refreshed)

@@ -12,18 +12,18 @@
     }
   },
   "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
-  "revision": "TextureQuest 1.13.19 public quality presets and promoted lighting",
-  "integration_base_commit": "3842bbd0cdc58acdd7bf9af10ca51991b56f8aea",
+  "revision": "TextureQuest 1.13.21 particle shadow motion, independent preferences and native sun-filter compatibility",
+  "integration_base_commit": "0a08af610cfd15c3cab3b365a182b88a671ff2b6",
   "files": [
     {
       "name": "addon.cpp",
-      "bytes": 24155,
-      "sha256": "06cf9dea92656a2c7173a3f0a0477ba8fd98030d44de6992ab1dfb4c6f157814"
+      "bytes": 25921,
+      "sha256": "b8478df7e2e9a45786e683a63ffe53f3e83ab603095b80c0412331ffdc58673c"
     },
     {
       "name": "capture.hpp",
-      "bytes": 45353,
-      "sha256": "2b289edec2135bc3e4a8ecbac740e03e9916561b9f7c3347aaaeeb43556b16dd"
+      "bytes": 45473,
+      "sha256": "efffc6db88508e883d1708914ad1d3d1cb5fba685acf0ac029da118f296990a3"
     },
     {
       "name": "deps/imgui/imconfig.h",
@@ -87,8 +87,8 @@
     },
     {
       "name": "glow.hpp",
-      "bytes": 144231,
-      "sha256": "7d3a3ea6d372c538e7a8e55131353e276e941284b47a8e8bed982ee2bab101ea"
+      "bytes": 144517,
+      "sha256": "ce7c262d22ac01607f918789fde6783f2a089c4c91fdd324798e5eb4fca6ce74"
     },
     {
       "name": "glow_transport.hpp",
@@ -102,13 +102,13 @@
     },
     {
       "name": "light_buffer.hpp",
-      "bytes": 157643,
-      "sha256": "e566d371cc485686baa85dbb232a96f49d3e21cb49a75f58223e8a9baa7c9fae"
+      "bytes": 159307,
+      "sha256": "86b6e6dab6d7173970915fde44b56076c14857f9c6e9a1c4b4ca2fc7b18e26fe"
     },
     {
       "name": "lighting_diagnostics.hpp",
-      "bytes": 16915,
-      "sha256": "f4489c48ce97a9a41f86df3cbb9bb13799f49ec573d4071be12022dab5c1ee42"
+      "bytes": 19369,
+      "sha256": "7cb189209b68a55bec0dceb354420beb9cb5635b44e5b05100726317887d1843"
     },
     {
       "name": "material_normal_replay.hpp",
@@ -147,8 +147,8 @@
     },
     {
       "name": "particle_emission.hpp",
-      "bytes": 48677,
-      "sha256": "7e19cadd4f00138a9e3d5d2e9dc1dbfe75a53d7ab131d4f8e33e6ea5e1899c78"
+      "bytes": 49526,
+      "sha256": "c4d685051fe9b00b08fafe0601b37d78cc47da283af29bc93e7b3e503fd96c46"
     },
     {
       "name": "particle_emission_policy.hpp",
@@ -157,8 +157,8 @@
     },
     {
       "name": "particle_field_policy.hpp",
-      "bytes": 11209,
-      "sha256": "ac8e1aa9ada77980dca473047a68981b8a80d75e27d44aae330d0e2a863b4c86"
+      "bytes": 11291,
+      "sha256": "6a7264b0a75f08211f37725e01c1c037474fb91fdb33ac4fd0f98928fae3af77"
     },
     {
       "name": "particle_moving_shadows.hpp",
@@ -171,6 +171,11 @@
       "sha256": "8bd9a2a47d9f41d49ba27b8a54cb0acd9d9c16354b30d6d010cbaf6bd10ee081"
     },
     {
+      "name": "particle_shadow_motion_policy.hpp",
+      "bytes": 3499,
+      "sha256": "720828c84d0f536961e8bc7be4df408367c70b958a72f7eda3230ecd3d9ae113"
+    },
+    {
       "name": "particle_source_policy.hpp",
       "bytes": 17200,
       "sha256": "b21b719504daaa04773757516800c0b9db0af912c266241c26da983ea0f5e966"
@@ -179,6 +184,11 @@
       "name": "particle_source_shadow.hpp",
       "bytes": 3740,
       "sha256": "c727562647f86c2d62cd601af33bc6658895d8135a9c8441e95e74b5575bbb52"
+    },
+    {
+      "name": "particle_strength_settings.hpp",
+      "bytes": 1659,
+      "sha256": "e98fe61e888a6998afb871ec34365da8b8d1769e9c530a0d42656c93bfdcaa52"
     },
     {
       "name": "projected_shadow_admission.hpp",
@@ -197,8 +207,8 @@
     },
     {
       "name": "quality_presets.hpp",
-      "bytes": 6143,
-      "sha256": "82acd21bbb4cee2703f1ea4fdd382b1b647bdaf4da2f74dfae09b404824792a9"
+      "bytes": 3846,
+      "sha256": "f691fa4a70db10070c34aa58e9a03d73f95c66266f4e34633a3de26338f5fa88"
     },
     {
       "name": "shadow_face_culling.hpp",
@@ -207,13 +217,13 @@
     },
     {
       "name": "shadow_maps.hpp",
-      "bytes": 167042,
-      "sha256": "b798e2b9216967ce719eca0331e557728155972fe179b6f4da5b09ffe8874075"
+      "bytes": 178092,
+      "sha256": "d46fb67b19397288fff04646933374776eebf08d2dbe5e3f8cdddd9965224ecc"
     },
     {
       "name": "shadows.hpp",
-      "bytes": 191446,
-      "sha256": "40b93f799c7dd12572b88ccf9c60e5ee99bbeb1c1f2016d69728194c8636129e"
+      "bytes": 191338,
+      "sha256": "bdf120d39e259c6913cd66a54066528baf569fd0c36ffcc14f3a8bd166696685"
     },
     {
       "name": "sun_direction_policy.hpp",
@@ -257,8 +267,8 @@
     }
   ],
   "native_release_asset": {
-    "bytes": 1271296,
-    "sha256": "74f53150f4767c220cf6b8f9600a26545f6ed38ed7d650a10b239865d579f9a5"
+    "bytes": 1286656,
+    "sha256": "75c6753227d5d2d63f58ee9316231aa61611fa840465a74e4b79e86a7ce4929f"
   },
   "compile_targets": [
     "addon.cpp"
@@ -266,71 +276,70 @@
   "build": {
     "exit_code": 0,
     "command": {
-      "bytes": 602,
-      "sha256": "5d22a2af7fab4e9b4e8217f76aa6e29c38bd19a5bdc60d7400261d3ff14dc05e"
+      "bytes": 596,
+      "sha256": "8e5772b45548b8cfde9e2e2dc62d4be1c4228788c107ce4e32604d1fb4a167cf"
     },
     "log": {
-      "bytes": 55723,
-      "sha256": "444a1fd077ceb3056440fb15cf3d134e5456d0ade321df0939d73da6e3084695"
+      "bytes": 55766,
+      "sha256": "18d006a01b407480d3b3e44cef4e2d40fc9fc53f47125fd1d888ed1898bc1f3b"
     },
     "actual_showIncludes": true,
     "warnings": 0,
     "included_inputs_unchanged_during_build": true,
-    "toolchain": "VS18 x64/MSVC14.50.35717",
-    "compilation_roster": "Explicit translation unit plus actual /showIncludes project/dependency inputs, unchanged during compilation."
+    "toolchain": "VS18 x64/MSVC14.50.35717"
   },
-  "qualification": "Qualified native source observations and independent visibility are now active. Shadow crossfade/history allocation from1.13.18 is removed after the local visual comparison. Presets provide shared engineering budgets, not measured GPU performance guarantees. Existing particle grouping/source smoothing and normal map refresh thresholds remain; source reassociation, unknown native profiles and game-culled sources are not claimed solved. Strict C++ compilation and focused final shader, diagnostics and preset checks passed; controlled evidence is recorded below.",
-  "publication_note": "Prepared for requested public1.13.19 release. This metadata alone does not establish publication, a game installation or hardware benchmark.",
+  "qualification": "Bounded extra particle-map pose updates follow the existing 0.20-second source filter. CPU scheduling and software-rendered shadow trajectories passed; local game quality and physical-GPU cost remain unverified. Required legacy refresh work is preserved. Dense demand, source identity turnover and very close blockers can still produce visible changes. No shadow history blending, quality/resolution reduction or RGB animation filtering.",
+  "publication_note": "Local candidate only. This metadata establishes neither installation nor publication.",
   "changes": [
-    "Promote qualified whole-object triangle and pre-screen-cap particle observations without an A/B gate.",
-    "Use independent per-light shadow visibility with conservative receiver admission; retain source-profile fallbacks and exact bounce.",
-    "Remove the150ms shadow transition implementation, retained cube pools and transition telemetry.",
-    "Replace comparison controls with Debug-only performance capture for the active renderer.",
-    "Apply/query canonical Low Medium High Max presets through additive ABI1 exports; keep Advanced and Debug panel contents separate.",
-    "Default fresh settings toLow and force16xAF in each preset; preserve existing custom settings unless a preset is selected.",
-    "Keep Frame Gen and Neural Rendering outside the graphics preset contract and remove active experimental labels."
+    "Refine selected particle maps after 0.005 world units of motion, after all legacy required refreshes; retain the 0.1-unit mandatory threshold.",
+    "Cap extra refreshes at eight cubes and 64 normalized face-area units per frame; deterministic oldest-first service.",
+    "Reuse conservative expanded caster candidates while retaining exact map far planes and coherent source/map origins.",
+    "Invalidate particle coverage on geometry changes and include unknown/stale bounds conservatively.",
+    "Expose refinement/caster-cache diagnostics and separate shadow-map performance snapshots.",
+    "Retain public1.13.19 presets, active lighting improvements and removal of rejected shadow fade."
   ],
   "controlled_validation": {
-    "status": "STRICT_NATIVE_PRESETS_DIAGNOSTICS_AND_PROMOTED_TRANSPORT_PASS",
+    "status": "STRICT_NATIVE_CPU_POLICY_AND_WARP_TRAJECTORY_PASS",
     "evidence": [
       {
         "name": "native-renderer-002/PROVENANCE.json",
-        "bytes": 8530,
-        "sha256": "c62ba0fd643d592a671b2507ba0edf940f62d1148f0d6bb2785cbb514d482bd9"
+        "bytes": 8698,
+        "sha256": "6d738e6e3eafecc80a8fb6be12af31d693ba872e1df82e2c10c1390bb19a829f"
       },
       {
-        "name": "renderer-validation-001/RESULT.json",
-        "bytes": 1791,
-        "sha256": "7d711e793459ee350e2a320e5dd2c518c4fec2f946f0da5d0a9c8cd017fecbdb"
+        "name": "motion-policy-001/RESULT.json",
+        "bytes": 1486,
+        "sha256": "f36eef00cdc86c71e92c195fb17a9a497b1caf67e5620734e78bf7bbecd836e7"
       },
       {
-        "name": "renderer-validation-001/PRESETS-RESULT.json",
-        "bytes": 1616,
-        "sha256": "86c81a962b41b1188c4b2eaf4e1961d2d9d29d81a0d4118d9a0bfe3e34194319"
+        "name": "motion-warp-001/RESULT.json",
+        "bytes": 2445,
+        "sha256": "3f855f4db589f3d2a402e139d4c91ed971427d9928efca3dedf0a9d47fd0c33d"
       },
       {
-        "name": "renderer-transport-001/RESULT.json",
-        "bytes": 2931,
-        "sha256": "641945c47eeb76ba983fc56508440aafca6906ef7b60d7d2b43a482c7d29abca"
+        "name": "motion-cache-001/RESULT.json",
+        "bytes": 2243,
+        "sha256": "1c4bc7d6ecf33c95e66831e2aa990e489ac84a90b42a7595d683d52e70fa6e8c"
+      },
+      {
+        "name": "map-diagnostics-001/RESULT.json",
+        "bytes": 1786,
+        "sha256": "1c747c40bc852d515fa28a26e8fce64dcd47b2045d330545729702abfb928723"
+      },
+      {
+        "name": "shader-inheritance-001/RESULT.json",
+        "bytes": 3332,
+        "sha256": "1f0cfb618dd5417416aff752665a4bff041b5adec3e2ac215e7098aa2a156ebf"
       }
     ],
-    "checks": {
-      "native_preset_bridge": 487,
-      "diagnostics_and_csv": 30,
-      "diagnostic_csv_rows": 8,
-      "transport_rgb_channels": 98664,
-      "transport_quality_cases": 9
-    },
-    "transport_worst_rgb_error": 6.15834e-05,
-    "transport_rgb_error_budget": 0.000488281,
     "physical_gpu_executed": false,
     "real_game_tested": false,
-    "shader_warnings": "Five inherited D3DCompile X4000 filter-helper warnings match the1.13.17 fixture; no new shader warnings. Native C++ /W4 /WX haszero warnings.",
-    "scope": "Actual native compiled source graph; all canonical preset apply/query/persistence fields with invalid/fresh/legacy cases; production diagnostics query/CSV lifecycle; actual promoted independent and tiled lighting shaders with binding/fallback checks on software WARP. No hardware FPS or game visual validation. D3D11 debug layer unavailable; explicit binding checks passed."
+    "scope": "Sparse and dense scheduling, fairness and caps, real production source filter and shadow raster/filter on WARP. These timings do not establish hardware gains."
   },
   "prior_metadata": {
-    "bytes": 26760,
-    "sha256": "a0b1058056d8f2c4f46b9146a2a7cd89e02248dd566b3ba1434f332aaffa8a0e"
+    "bytes": 40308,
+    "sha256": "d670b39524c1acaf94245943bbd5d7c73f18581ba1562831ec0d85e0082eae92",
+    "source_version": "1.13.19"
   },
   "previous_local_evidence": {
     "upstream": "https://github.com/Sichii/Eq2GraphicsAddonRS",
@@ -947,5 +956,15 @@
       ]
     },
     "historical_only": true
+  },
+  "release_1_13_21": {
+    "strict_native_build": {
+      "warnings": 0,
+      "actual_showIncludes": true,
+      "immutable_inputs": true
+    },
+    "scope": "Retain 1.13.20 particle map refinements; migrate particle strength to fivefold reference; preserve appearance during preset changes; support three captured sun-filter variants with their native alignment.",
+    "game_validation": "Particle shadow motion approved in local 1.13.20; new preset/migration/filter changes have controlled validation, not new live-game approval.",
+    "hardware_benchmark": false
   }
 }

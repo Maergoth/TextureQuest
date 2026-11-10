@@ -570,12 +570,9 @@ static void UpdateLight(shadowmaps::Light &light,const field::Cell &cell,float g
     light.ParticleSourceRadius=sourceCore;
     const double strength=field::StrengthReference*gain/XM_PI;
     light.GlowColour={float(cell.power.x*strength),float(cell.power.y*strength),float(cell.power.z*strength)};light.LastSeen=shadowmaps::FrameNumber;
-    if(moved)
-    {
-        // Use the same complete confirmed-radius query as native/object lights.
-        // An unordered prefix can omit a nearby wall even when the light is selected.
-        shadowmaps::GatherCasters(light);
-    }
+    // Reuse the complete conservative candidate envelope while the filtered
+    // source stays inside it, including small steps between map refreshes.
+    shadowmaps::EnsureParticleCasters(light);
     if(moved||coreChanged){++light.Version;light.RedrawNow=true;}
 }
 static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit,bool allocationReady=true,double now=SecondsNow())
@@ -621,6 +618,12 @@ static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit,bool al
 static void WriteState(FILE *file)
 {
     if(!file)return;
+    fprintf(file,"particle caster envelopes: queries %llu, reuses %llu since scene reset; expanded candidates, committed map radius unchanged until rebuild\n",
+        static_cast<unsigned long long>(shadowmaps::ParticleCasterQueries),static_cast<unsigned long long>(shadowmaps::ParticleCasterReuses));
+    fprintf(file,"particle motion refinement waits for bounds: %u unmeasured/stale confirmed casters in last map pass; required map updates unaffected\n",shadowmaps::ParticleMotionUnknownCasters);
+    fprintf(file,"particle shadow motion (last completed map pass): candidates %u, extra maps %u/8, pixel units %u/64 (256-face units), maximum committed pose error %.6f; legacy mandatory updates retained\n",
+        shadowmaps::ParticleMotionCandidates,shadowmaps::ParticleMotionRefinements,shadowmaps::ParticleMotionPixelUnits,
+        double(shadowmaps::ParticleMotionResidual));
     fprintf(file,"particle pre-cap geometry: active %d, cache epoch %llu, qualified draws %u, geometry used %u, unsupported/unsafe %u, decoder/resource failures %u; native atlas unchanged, unsupported draws use native geometry\n",
         1,static_cast<unsigned long long>(ObservationEpoch),PrecapQualified,PrecapPublished,PrecapRejected,PrecapFailures);
     fprintf(file,"particle observed cache: entries %zu, grace 2.0s, fade 1.0s, hard expiry 3.0s\n",Retained.Size());

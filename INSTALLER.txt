@@ -1,4 +1,6 @@
-TextureQuest 1.13.19 — Windows x64
+TextureQuest 1.13.21 — Windows x64
+
+Smoother particle shadows; quality presets preserve visual preferences.
 
 PRESS HOME TO SHOW OR HIDE SETTINGS. Choose the TextureQuest tab.
 Show FPS, Frame Gen and Quality Presets are at the top. Individual controls are
@@ -21,14 +23,16 @@ Quality presets are available in this installer and in the in-game panel:
   and sun processing.
 - Max: RTX 5090 starting point; 512 / 512 / 128 / 128, full supported capacities.
 All presets enable 16x anisotropic filtering, AO, point/character shadows and
-particle emission. Light strength/radius and softness do not escalate with tier.
+particle emission. Presets preserve light strength/radius and shadow softness.
 These are starting budgets, not measured FPS guarantees. A busy scene or higher
 resolution can need a lower tier. Custom shows when manual settings differ.
 
-Selecting a preset explicitly applies its lighting profile. Existing settings
-are otherwise preserved. Frame Gen and Neural Rendering remain independent and
-start off on fresh installs. Smooth interface text, rebuilt lamp lighting and
-the corrective sun-direction option remain off in presets.
+Selecting a preset applies performance features and capacities. Brightness,
+radius, shadow softness/strength, colour and other appearance settings survive.
+Particle strength 1x equals the former 5x; saved values migrate without changing
+their brightness. Frame Gen and Neural Rendering remain independent and start
+off. Smooth text, rebuilt lamps and corrective sun direction start off on fresh
+profiles; presets preserve their existing choices.
 
 Frame Gen offers 2x / 3x / 4x where supported. Neural Rendering is under Advanced.
 Motion is estimated; more processing costs GPU time. A game cap near 60 FPS can
@@ -38,9 +42,12 @@ material shaders and GPU shadows enabled. Native game INIs and bloom are unchang
 Numpad * switches textures and graphics Original/TextureQuest without changing
 individual choices. Use Shortcut to change that key. Other ReShade effects remain.
 
-The recent qualified source and visibility improvements are active. The 150 ms
-shadow fade is removed; it did not solve source/group movement. Offscreen history
-cannot discover game-culled sources; unsupported model shaders retain fallback.
+The recent qualified source and visibility improvements remain active. This
+release lets particle shadows follow smaller movements of the already-smoothed
+light source, with a bounded allowance for extra shadow-map updates. The failed
+150 ms shadow fade stays removed. Crowded scenes and source reassignment can
+still step; this is not a measured FPS improvement. Offscreen history cannot
+discover game-culled sources; unsupported model shaders retain fallback.
 
 Click What's new for the changelog bundled with the installer. Developers can
 read the same history on GitHub:

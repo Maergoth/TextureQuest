@@ -179,7 +179,8 @@ static void OnPushDescriptors(command_list *cmd, shader_stage stages, pipeline_l
 }
 
 // Presets are generated from the installer's canonical JSON. Read actual state,
-// rather than a saved preset name, so any Advanced edit is reported as Custom.
+// rather than a saved preset name. Only performance edits change the tier;
+// appearance controls are initialized separately for genuinely fresh profiles.
 template<class T>
 static bool TQPresetSetting(const char *name, T &value, bool apply)
 {
@@ -209,6 +210,7 @@ static bool TQPresetSetting(const char *name, T &value, bool apply)
     if (key == "EmissiveObjects") return live(glow::ObjectsEnabled);
     if (key == "EmissiveLightStrength") return live(glow::Strength);
     if (key == "ParticleLightStrength") return live(particle_emission::Strength);
+    if (key == "ParticleLightStrengthV2") return live(particle_emission::Strength);
     if (key == "ParticleLightRadius") return live(particle_emission::Radius);
     if (key == "PaintedEmissionLight") return live(glow::PaintedLight);
     if (key == "PaintedEmissionKept") return live(glow::PaintedKept);
@@ -224,12 +226,27 @@ static bool TQPresetSetting(const char *name, T &value, bool apply)
         return true;
     }
     if (key == "SunLighting") return live(lightbuffer::SunEnabled);
+    if (key == "SunShadowSoftening") {
+        const float active = lightbuffer::SunSoftness.load();
+        if (!apply) { value = static_cast<T>(active > 0); return true; }
+        const bool enabled = value != 0;
+        const auto settings = sun_softness_settings::Load(
+            [](const char *key, auto &current) { return reshade::get_config_value(nullptr, CONFIG_SECTION, key, current); },
+            [](const char *key, auto current) { reshade::set_config_value(nullptr, CONFIG_SECTION, key, current); });
+        const float preference = !enabled && active > 0 ? active : settings.Preference;
+        const float selected = enabled ? (active > 0 ? active : preference) : 0.0f;
+        lightbuffer::SunSoftness = selected;
+        sun_softness_settings::Store(selected, preference,
+            [](const char *key, auto current) { reshade::set_config_value(nullptr, CONFIG_SECTION, key, current); });
+        return true;
+    }
     if (key == "SunSoftness") return live(lightbuffer::SunSoftness);
     if (key == "SunShadowMode") return live(lightbuffer::SunShadowMode);
     if (key == "SunShadowDirectionFix") return live(lightbuffer::SunDirectionFix);
     if (key == "SmoothIndoorTransition") return live(lightbuffer::SmoothIndoorTransition);
     if (key == "AmbientKept") return live(lightbuffer::AmbientKept);
-    if (key == "TextureQuestSunSoftnessPreferenceRealSun" || key == "TextureQuestSunSoftnessUnits") {
+    if (key == "TextureQuestSunSoftnessPreferenceRealSun" || key == "TextureQuestSunSoftnessUnits"
+        || key == "ParticleLightStrengthUnits") {
         if (!apply) reshade::get_config_value(nullptr, CONFIG_SECTION, name, value);
         return true;
     }
@@ -238,7 +255,6 @@ static bool TQPresetSetting(const char *name, T &value, bool apply)
 
 extern "C" __declspec(dllexport) int32_t TextureQuestWorldGraphicsQualityPreset()
 {
-    if (shadowmaps::LegacyPointSoftness.load()) return -1;
     for (unsigned index = 0; index < tq_quality::Count; ++index) {
         bool matches = true;
         tq_quality::VisitSettings(index, [&](const char *name, auto expected) {
@@ -263,11 +279,22 @@ extern "C" __declspec(dllexport) uint32_t TextureQuestApplyWorldGraphicsQualityP
     }) || !known) return 0;
     tq_quality::VisitSettings(index, [&](const char *name, auto value) {
         TQPresetSetting(name, value, true);
+        // The logical toggle stores the existing native softness/preferences;
+        // never persist an independent boolean that can become stale.
+        if (std::string_view(name) != "SunShadowSoftening")
+            reshade::set_config_value(nullptr, CONFIG_SECTION, name, value);
+    });
+    reshade::set_config_value(nullptr, CONFIG_SECTION, "TextureQuestQualityPreset", tq_quality::Names[index]);
+    return 1;
+}
+
+static void TQApplyFreshWorldDefaults()
+{
+    tq_quality::VisitFreshDefaults([](const char *name, auto value) {
+        TQPresetSetting(name, value, true);
         reshade::set_config_value(nullptr, CONFIG_SECTION, name, value);
     });
     shadowmaps::LegacyPointSoftness = false;
-    reshade::set_config_value(nullptr, CONFIG_SECTION, "TextureQuestQualityPreset", tq_quality::Names[index]);
-    return 1;
 }
 
 static bool TQHasExistingWorldSettings()
@@ -280,8 +307,9 @@ static bool TQHasExistingWorldSettings()
     };
     bool existing = false;
     tq_quality::VisitSettings(0, [&](const char *key, auto) { existing = present(key) || existing; });
+    tq_quality::VisitFreshDefaults([&](const char *key, auto) { existing = present(key) || existing; });
     constexpr const char *legacy[] = {
-        "GlowLights", "GlowLightStrength", "PaintedGlowKept", "ShadowSoftness", "SunShadowSize",
+        "GlowLights", "GlowLightStrength", "PaintedGlowKept", "ShadowSoftness", "SunShadowSize", "ParticleLightStrength",
         "TextureQuestSunSoftnessPreference", "TextureQuestPresetVersion", "TextureQuestQualityPreset",
         "TextureQuestPreset2PreviousShadowSoftness", "TextureQuestPreset1PreviousShadowStrength",
         "TextureQuestPreset1PreviousShadowSoftness", "TextureQuestPreset1PreviousOcclusionRadius",
@@ -471,7 +499,10 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
         reshade::register_event<reshade::addon_event::push_descriptors>(&tq_world::Guard<&OnPushDescriptors>::Call);
         capture::Register();
         shadows::Register();
-        if (freshWorldSettings) TextureQuestApplyWorldGraphicsQualityPreset(0);
+        if (freshWorldSettings) {
+            TQApplyFreshWorldDefaults();
+            TextureQuestApplyWorldGraphicsQualityPreset(0);
+        }
         // Register after upstream frame cleanup; same pinned provider dispatch
         // order also releases the owner after its module/device cleanup.
         reshade::register_event<reshade::addon_event::present>(&tq_world::Guard<&TQWorldBoundary>::Call);

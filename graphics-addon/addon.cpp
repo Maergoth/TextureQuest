@@ -798,7 +798,7 @@ void OnTextureQuestOverlay(effect_runtime* runtime) {
     ImGui::EndDisabled();
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
         ImGui::SetTooltip(presetsReady ?
-            "Applies a complete lighting and shadow profile. Manual edits appear as Custom.\nFrame Gen and Neural Rendering remain independent. Advanced contains individual controls." :
+            "Sets lighting features and light/shadow limits for your performance budget.\nKeeps your brightness, radius, color and softness settings. Changes to preset-controlled options show Custom.\nFrame Gen and Neural Rendering remain independent. Advanced contains individual controls." :
             "Quality presets require the current managed EQ2 Graphics add-on. See Debug for details.");
 
     ImGui::Separator();

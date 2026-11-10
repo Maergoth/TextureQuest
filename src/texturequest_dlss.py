@@ -85,19 +85,64 @@ for _profiles, _world in ((LEGACY_GRAPHICS_DEFAULT_PROFILES, LEGACY_GRAPHICS_WOR
         _schema, _values = _profiles[_profile]
         if '-world' in _profile: _values.update(_world)
         if '-aio' in _profile: _values.update(GRAPHICS_AIO_DEFAULTS)
-from texturequest_quality import values as _quality_values
-GRAPHICS_WORLD_DEFAULTS = dict(GRAPHICS_WORLD_DEFAULTS)
-GRAPHICS_WORLD_DEFAULTS.update(_quality_values('Low'))
-GRAPHICS_DEFAULT_PROFILES = {
+# Freeze the exact v3 lease authority; changing presets must not change the
+# values an older installation is allowed to restore.
+V3_GRAPHICS_WORLD_DEFAULTS = {('EQ2Graphics', key): value for key, value in {
+    'AmbientKept': '1.0',
+    'AmbientOcclusion': '1',
+    'AnisotropicFiltering': '1',
+    'Anisotropy': '16',
+    'CharacterShadows': '1',
+    'EmissiveLights': '1',
+    'EmissiveLightStrength': '1.0',
+    'OcclusionRadius': '0.35',
+    'OcclusionStrength': '1.25',
+    'OwnLampShaders': '0',
+    'PaintedEmissionKept': '1.0',
+    'PaintedEmissionLight': '0.25',
+    'PointLightShadows': '1',
+    'ShadowedLights': '64',
+    'PointShadowSoftness': '1.6',
+    'ShadowStrength': '1.0',
+    'SmoothIndoorTransition': '1',
+    'SmoothInterfaceText': '0',
+    'SunLighting': '0',
+    'SunShadowDirectionFix': '0',
+    'SunShadowMode': '0',
+    'SunSoftness': '0.0',
+    'TextureQuestSunSoftnessPreferenceRealSun': '1.6',
+    'TextureQuestPresetVersion': '2',
+    'ParticleShadowLimit': '8',
+    'EmissiveLightLimit': '32',
+    'ParticleLightLimit': '16',
+    'EmissiveParticles': '1',
+    'EmissiveObjects': '0',
+    'ParticleLightStrength': '1.0',
+    'ParticleLightRadius': '1.0',
+    'SmoothEmissiveLighting': '0',
+    'SurfaceSaturation': '0.0',
+    'TextureQuestSunSoftnessUnits': '1',
+}.items()}
+V3_GRAPHICS_DEFAULT_PROFILES = {
     name: ('texturequest-' + name + '-settings-v3', dict(GRAPHICS_CORE_DEFAULTS))
     for name in _GRAPHICS_PROFILE_NAMES
 }
-for _profile in GRAPHICS_DEFAULT_PROFILES:
-    _schema, _values = GRAPHICS_DEFAULT_PROFILES[_profile]
-    if '-world' in _profile: _values.update(GRAPHICS_WORLD_DEFAULTS)
-    if '-aio' in _profile: _values.update(GRAPHICS_AIO_DEFAULTS)
+from texturequest_quality import values as _quality_values, fresh_values as _quality_fresh_values, SUN_ENABLE
+GRAPHICS_WORLD_DEFAULTS = _quality_fresh_values()
+GRAPHICS_WORLD_DEFAULTS.update({key: value for key, value in _quality_values('Low').items() if key != SUN_ENABLE})
+GRAPHICS_DEFAULT_PROFILES = {
+    name: ('texturequest-' + name + '-settings-v4', dict(GRAPHICS_CORE_DEFAULTS))
+    for name in _GRAPHICS_PROFILE_NAMES
+}
+for _profiles, _world in ((V3_GRAPHICS_DEFAULT_PROFILES, V3_GRAPHICS_WORLD_DEFAULTS),
+                          (GRAPHICS_DEFAULT_PROFILES, GRAPHICS_WORLD_DEFAULTS)):
+    for _profile in _profiles:
+        _schema, _values = _profiles[_profile]
+        if '-world' in _profile: _values.update(_world)
+        if '-aio' in _profile: _values.update(GRAPHICS_AIO_DEFAULTS)
 GRAPHICS_DEFAULT_SCHEMAS = {schema: values
-    for profiles in (LEGACY_GRAPHICS_DEFAULT_PROFILES, V2_GRAPHICS_DEFAULT_PROFILES, GRAPHICS_DEFAULT_PROFILES)
+    for profiles in (LEGACY_GRAPHICS_DEFAULT_PROFILES, V2_GRAPHICS_DEFAULT_PROFILES,
+                     V3_GRAPHICS_DEFAULT_PROFILES, GRAPHICS_DEFAULT_PROFILES)
     for schema, values in profiles.values()}
 
 
@@ -145,7 +190,10 @@ def _preserved_graphics_defaults(lines, values):
     """Keep the renderer's effective old names and explicit legacy sun-off."""
     aliases = {'PointShadowSoftness': 'ShadowSoftness',
                'EmissiveLights': 'GlowLights', 'EmissiveLightStrength': 'GlowLightStrength',
-               'PaintedEmissionKept': 'PaintedGlowKept'}
+               'PaintedEmissionKept': 'PaintedGlowKept',
+               'ParticleLightStrengthV2': 'ParticleLightStrength',
+               'SunSoftness': 'SunShadowSize',
+               'TextureQuestSunSoftnessPreferenceRealSun': 'TextureQuestSunSoftnessPreference'}
     names = {('EQ2Graphics', key): None for key in (*aliases.values(), 'SunSoftness')}
     names.update(values)
     rows, _ = _parse(lines, names, casefold=True)
@@ -160,6 +208,16 @@ def _preserved_graphics_defaults(lines, values):
             return value if isfinite(value) else None
         except ValueError: return None
     omitted = {('EQ2Graphics', key) for key, alias in aliases.items() if present(alias)}
+    # A legacy particle value migrates through the native idempotent V2 helper.
+    # Do not seed a new default ahead of it and silently change physical light.
+    if present('ParticleLightStrength') and not present('ParticleLightStrengthV2'):
+        omitted.add(('EQ2Graphics', 'ParticleLightStrengthUnits'))
+    # The native sun helper derives the remembered amount from active or legacy
+    # values. A default preference must not preempt that conversion on update.
+    if any(present(key) for key in ('SunSoftness', 'SunShadowSize',
+                                  'TextureQuestSunSoftnessPreferenceRealSun', 'TextureQuestSunSoftnessPreference')):
+        omitted.update(('EQ2Graphics', key) for key in
+                       ('TextureQuestSunSoftnessPreferenceRealSun', 'TextureQuestSunSoftnessUnits'))
     softness = number('SunSoftness' if present('SunSoftness') else 'SunShadowSize')
     if (not any(present(key) for key in ('SunLighting', 'SunShadowDirectionFix', 'SmoothIndoorTransition'))
             and number('PointLightShadows') == 0 and number('AmbientOcclusion') == 0

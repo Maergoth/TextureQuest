@@ -83,6 +83,8 @@ struct PipelineClass
     uint32_t SunImageSlot = 0;
     // a sun pass's replacement in lightbuffer::SUN_SHADERS, or -1
     int SunReplacement = -1;
+    // Captured native variant whose filter is centred at the projected position.
+    bool SunCenteredFilter = false;
 };
 
 // classified pipelines by handle; init_pipeline and destroy_pipeline can run on any thread, so every access holds

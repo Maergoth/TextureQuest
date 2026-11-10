@@ -30,6 +30,7 @@
 #include "emission_policy.hpp"
 #include "sun_softness_settings.hpp"
 #include "shadow_face_culling.hpp"
+#include "particle_shadow_motion_policy.hpp"
 
 namespace shadowmaps
 {
@@ -73,7 +74,12 @@ constexpr float SAME_SPOT_DISTANCE = 0.05f;
 // a light drawn this close to a mapped light is taken to be that light
 constexpr float LIGHT_MATCH_DISTANCE = 1.0f;
 // a light that has moved further than this from where its map was drawn, such as a carried torch, is redrawn every frame
-constexpr float MOVED_LIGHT_DISTANCE = 0.1f;
+constexpr float MOVED_LIGHT_DISTANCE = particle_shadow_motion_policy::MandatoryDistance;
+// Last completed map pass; capture-only diagnostics, no per-frame file writes.
+static unsigned ParticleMotionCandidates=0,ParticleMotionRefinements=0,ParticleMotionPixelUnits=0;
+static unsigned ParticleMotionUnknownCasters=0;
+static unsigned ParticleMotionCubesThisSecond=0,ParticleMotionUnitsThisSecond=0;
+static float ParticleMotionResidual=0;
 // a cached object closer than this to a new sighting of its mesh is the same object, across hash grid cells
 constexpr float CASTER_MATCH_DISTANCE = 0.1f;
 constexpr UINT MAX_PROBES = 256;
@@ -239,6 +245,11 @@ struct Caster
     // set when the object's buffers were rewritten after its bounds were asked for; they are asked for again once the
     // writes settle, and the old bounds are used until then
     bool BoundsStale = false;
+    // Particle envelopes cannot exclude geometry using bounds from an older
+    // transform/buffer. This stays invalid while a fresh GPU read is queued.
+    bool ParticleBoundsInvalid = false;
+    float ParticleWorldReference[12] = {};
+    bool ParticleWorldReferenceKnown = false;
     // when the game last drew the object, by the clock, so its age does not depend on the frame rate
     std::chrono::steady_clock::time_point SeenTime;
 };
@@ -267,6 +278,11 @@ struct Light
     std::unordered_set<uint64_t> CasterKeys;
     // the shadow radius its objects were gathered within, which is also its maps' far plane; 0 before they are gathered
     float Radius = 0;
+    // Particle caster queries may be reused while the actual shadow sphere
+    // remains inside this expanded envelope. Radius remains the map far plane.
+    XMFLOAT3 ParticleCasterCentre = {};
+    float ParticleCasterRadius = 0;
+    bool ParticleCasterEnvelopeValid = false;
     // set while the light's objects were gathered within the fallback radius of a lamp whose reach was not known yet;
     // Radius may already be the reach-based one, and the objects are gathered again once the lamp has a slot
     bool FallbackRadius = false;
@@ -299,6 +315,8 @@ struct Light
     // slots left over
     bool GlowHeld = false;
 };
+
+inline uint64_t ParticleCasterQueries = 0, ParticleCasterReuses = 0;
 
 struct Frame
 {
@@ -1684,25 +1702,141 @@ static float FindShadowRadius(const Light &light)
     return std::max(radius, 2 * NEAR_PLANE);
 }
 
+// Translation recovered from camera-relative constants can differ in its last
+// bits. Compare against a stable reference so slow real motion accumulates;
+// pad bounds for both the readback and current position around that reference.
+constexpr float PARTICLE_CASTER_TRANSLATION_ROUNDING = 0.001f;
+constexpr float PARTICLE_CASTER_BOUNDS_PADDING = 0.0021f;
+
+static bool ParticleCasterBounds(const Caster &caster, XMFLOAT3 &low, XMFLOAT3 &high)
+{
+    if (!caster.BoundsKnown || caster.BoundsStale || caster.ParticleBoundsInvalid)
+        return false;
+    const float values[] = { caster.Low.x, caster.Low.y, caster.Low.z, caster.High.x, caster.High.y, caster.High.z };
+    for (float value : values)
+        if (!std::isfinite(value)) return false;
+    if (caster.Low.x > caster.High.x || caster.Low.y > caster.High.y || caster.Low.z > caster.High.z)
+        return false;
+    const auto lower = [](float value) { return std::nextafter(value - PARTICLE_CASTER_BOUNDS_PADDING, -FLT_MAX); };
+    const auto upper = [](float value) { return std::nextafter(value + PARTICLE_CASTER_BOUNDS_PADDING, FLT_MAX); };
+    low = { lower(caster.Low.x), lower(caster.Low.y), lower(caster.Low.z) };
+    high = { upper(caster.High.x), upper(caster.High.y), upper(caster.High.z) };
+    return true;
+}
+
+static bool ParticleCasterIntersects(const Light &light, const Caster &caster)
+{
+    XMFLOAT3 low, high;
+    // An unknown object's origin does not bound its triangles. Keep it in the
+    // candidate set until measured bounds can safely exclude it.
+    if (!ParticleCasterBounds(caster, low, high)) return true;
+    const XMFLOAT3 &centre = light.ParticleCasterEnvelopeValid ? light.ParticleCasterCentre : light.Position;
+    const float radius = light.ParticleCasterEnvelopeValid ? light.ParticleCasterRadius : FindShadowRadius(light);
+    return FindBoxDistance(low, high, centre) <= radius;
+}
+
+static bool CasterIntersectsLightQuery(const Light &light, const Caster &caster)
+{
+    return light.Particle ? ParticleCasterIntersects(light, caster)
+        : FindCasterDistance(caster, light.Position) < light.Radius;
+}
+
+// An updated caster may enter or leave a previously gathered particle envelope.
+// Only affected particle maps are made dirty; native/object policies stay intact.
+static void ParticleCasterChanged(uint64_t casterKey, const Caster &caster)
+{
+    if (caster.FramesSeen < CONFIRM_FRAMES) return;
+    for (auto &[key, light] : Lights)
+    {
+        if (!light.Particle || casterKey == light.EmitterKey) continue;
+        const bool held = light.CasterKeys.contains(casterKey);
+        const bool reaches = ParticleCasterIntersects(light, caster);
+        if (reaches) light.CasterKeys.insert(casterKey);
+        else light.CasterKeys.erase(casterKey);
+        if (held || reaches)
+        {
+            ++light.Version;
+            light.RedrawNow = true;
+        }
+    }
+}
+
+static void RemoveMissingParticleCasters()
+{
+    for (auto &[key, light] : Lights)
+        if (light.Particle && std::erase_if(light.CasterKeys, [](uint64_t casterKey) { return !Casters.contains(casterKey); }))
+        {
+            ++light.Version;
+            light.RedrawNow = true;
+        }
+}
+
+static bool ParticleCasterTransformChanged(Caster &caster)
+{
+    bool changed = !caster.ParticleWorldReferenceKnown && caster.BoundsKnown;
+    if (caster.ParticleWorldReferenceKnown)
+        for (int i = 0; i < 12; ++i)
+        {
+            if (i % 4 == 3)
+                changed = changed || !std::isfinite(caster.World[i])
+                    || std::abs(double(caster.World[i]) - caster.ParticleWorldReference[i]) > PARTICLE_CASTER_TRANSLATION_ROUNDING;
+            else
+                changed = changed || caster.World[i] != caster.ParticleWorldReference[i];
+        }
+    if (changed || !caster.ParticleWorldReferenceKnown)
+    {
+        std::copy(caster.World, caster.World + 12, caster.ParticleWorldReference);
+        caster.ParticleWorldReferenceKnown = true;
+    }
+    return changed;
+}
+
 // gives a light every confirmed object within its shadow radius other than its emitter, and notes that radius
 static void GatherCasters(Light &light)
 {
-    light.Radius = FindShadowRadius(light);
+    const float radius = FindShadowRadius(light);
+    // A built particle map keeps its projection/lookup radius until that map
+    // is replaced. Candidate-list refresh is not a map-pose commit.
+    if (!light.Particle || !light.BuiltFrame) light.Radius = radius;
     light.FallbackRadius = !light.Glow && light.Reach <= 0;
+    light.ParticleCasterEnvelopeValid = light.Particle;
+    if (light.Particle)
+    {
+        light.ParticleCasterCentre = light.Position;
+        light.ParticleCasterRadius = radius + particle_shadow_motion_policy::EnvelopePadding;
+        ++ParticleCasterQueries;
+    }
     light.CasterKeys.clear();
     for (const auto &[casterKey, caster] : Casters)
         if (casterKey != light.EmitterKey && caster.FramesSeen >= CONFIRM_FRAMES
-            && FindCasterDistance(caster, light.Position) < light.Radius)
+            && CasterIntersectsLightQuery(light, caster))
             light.CasterKeys.insert(casterKey);
+}
+
+static void EnsureParticleCasters(Light &light)
+{
+    if (!light.Particle) return;
+    const float radius = FindShadowRadius(light);
+    if (light.ParticleCasterEnvelopeValid && particle_shadow_motion_policy::CoversEnvelope(
+        Distance(light.Position, light.ParticleCasterCentre), radius, light.ParticleCasterRadius))
+    {
+        // The query radius is expanded, never the actual projection far plane.
+        if (!light.BuiltFrame) light.Radius = radius;
+        ++ParticleCasterReuses;
+    }
+    else GatherCasters(light);
 }
 
 // adds a newly confirmed object to every light whose shadow radius reaches it, other than a glow light's emitter
 static void AddToNearbyLights(uint64_t casterKey, const Caster &caster)
 {
     for (auto &[key, light] : Lights)
-        if (casterKey != light.EmitterKey && FindCasterDistance(caster, light.Position) < light.Radius
+        if (casterKey != light.EmitterKey && CasterIntersectsLightQuery(light, caster)
             && light.CasterKeys.insert(casterKey).second)
+        {
             ++light.Version;
+            if (light.Particle) light.RedrawNow = true;
+        }
 }
 
 // finds the lamp nearest this position within this distance, of this hue unless it is within SAME_SPOT_DISTANCE, or 0;
@@ -1755,7 +1889,16 @@ static void StartOver()
     WorldMeshes.clear();
     HeldMeshes.clear();
     for (auto &[key, light] : Lights)
+    {
         light.CasterKeys.clear();
+        light.ParticleCasterEnvelopeValid = false;
+        if (light.Particle) { ++light.Version; light.RedrawNow = true; }
+    }
+    ParticleCasterQueries = ParticleCasterReuses = 0;
+    ParticleMotionCandidates = ParticleMotionRefinements = ParticleMotionPixelUnits = 0;
+    ParticleMotionResidual = 0;
+    ParticleMotionUnknownCasters = 0;
+    ParticleMotionCubesThisSecond = ParticleMotionUnitsThisSecond = 0;
     std::erase_if(Lights, [](const auto &entry) { return entry.second.Slot < 0; });
 }
 
@@ -1805,11 +1948,16 @@ static void NoteBufferWrite(uint64_t buffer)
             if (vertex == buffer || index == buffer)
             {
                 used = true;
+                // A write can change extents before a fresh bounds read exists.
+                // Keep particle candidates conservative throughout that gap.
+                it->second.ParticleBoundsInvalid = true;
+                it->second.BoundsAskedFrame = 0;
                 if (keepsBounds(vertex, index))
                 {
                     it->second.BoundsStale = true;
                     it->second.BoundsAskedFrame = 0;
                 }
+                ParticleCasterChanged(*key, it->second);
             }
         }
         if (auto it = ClassifiedMeshes.find(*key); it != ClassifiedMeshes.end()
@@ -2253,6 +2401,8 @@ static void ReadFrame(Frame &frame)
     const XMFLOAT3 offset = { -frame.Camera.x, -frame.Camera.y, -frame.Camera.z };
     FindMovingMeshes(frame, records, offset);
     const auto now = std::chrono::steady_clock::now();
+    const bool particleLightsPresent = std::any_of(Lights.begin(), Lights.end(),
+        [](const auto &entry) { return entry.second.Particle; });
 
     for (size_t i = 0; i < frame.Records.size(); ++i)
     {
@@ -2290,6 +2440,17 @@ static void ReadFrame(Frame &frame)
         caster.World[3] = position.x;
         caster.World[7] = position.y;
         caster.World[11] = position.z;
+        if (particleLightsPresent && ParticleCasterTransformChanged(caster))
+        {
+            caster.ParticleBoundsInvalid = true;
+            caster.BoundsStale = true;
+            // Reject any read taken before this transform; enqueueing a new
+            // read clears BoundsStale but not ParticleBoundsInvalid.
+            caster.BoundsAskedFrame = 0;
+            ParticleCasterChanged(casterKey, caster);
+        }
+        else if (!particleLightsPresent)
+            caster.ParticleWorldReferenceKnown = false;
         if (caster.LastSeen != FrameNumber && ++caster.FramesSeen == CONFIRM_FRAMES)
             AddToNearbyLights(casterKey, caster);
         caster.LastSeen = FrameNumber;
@@ -2480,7 +2641,7 @@ static void Evict()
     for(const auto &[key,caster]:Casters)if(caster.BoundsKnown&&Distance(caster.Low,caster.High)<MIN_CASTER_SIZE)tiny.push_back(key);
     for(uint64_t key:tiny)RemoveCaster(key);
     // zone meshes all have the world origin as theirs, so the distance is to an object's bounds once they are known
-    std::erase_if(Casters, [](const auto &entry) {
+    const size_t removedCasters = std::erase_if(Casters, [](const auto &entry) {
         const Caster &caster = entry.second;
         const XMFLOAT3 nearest = caster.BoundsKnown
             ? XMFLOAT3 { std::clamp(Camera.x, caster.Low.x, caster.High.x), std::clamp(Camera.y, caster.Low.y, caster.High.y),
@@ -2491,6 +2652,7 @@ static void Evict()
 
         return caster.LastSeen + CASTER_LIFETIME < FrameNumber && Distance(nearest, Camera) > KEEP_DISTANCE;
     });
+    if (removedCasters) RemoveMissingParticleCasters();
     if (FrameNumber % AGE_CHECK_FRAMES == 0)
     {
         const auto now = std::chrono::steady_clock::now();
@@ -2779,6 +2941,8 @@ static bool ReachesFace(int face, const XMFLOAT3 &relative, float radius)
 static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
 {
     const CpuScope scope(StaticMapCpu);
+    EnsureParticleCasters(light);
+    if (light.Particle) light.Radius = FindShadowRadius(light);
     const auto siblingHolders=FindSiblingHolders(light);
     ComPtr<ID3DDeviceContextState> previous;
     ctx->SwapDeviceContextState(DrawState.Get(), &previous);
@@ -2839,17 +3003,19 @@ static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
             continue;
 
         const Caster &object = caster->second;
-        if (!object.BoundsKnown)
+        XMFLOAT3 low = {}, high = {};
+        if (!light.Particle && object.BoundsKnown) { low = object.Low; high = object.High; }
+        if (light.Particle ? !ParticleCasterBounds(object, low, high) : !object.BoundsKnown)
         {
             drawn.emplace_back(&object, XMFLOAT3 {}, FLT_MAX, shadow_face_culling::AllFaces);
             continue;
         }
-        const XMFLOAT3 relative = { (object.Low.x + object.High.x) / 2 - light.BuiltPosition.x,
-            (object.Low.y + object.High.y) / 2 - light.BuiltPosition.y, (object.Low.z + object.High.z) / 2 - light.BuiltPosition.z };
+        const XMFLOAT3 relative = { (low.x + high.x) / 2 - light.BuiltPosition.x,
+            (low.y + high.y) / 2 - light.BuiltPosition.y, (low.z + high.z) / 2 - light.BuiltPosition.z };
         const auto faceMask = shadow_face_culling::ConservativeMask(
-            { object.Low.x, object.Low.y, object.Low.z }, { object.High.x, object.High.y, object.High.z },
+            { low.x, low.y, low.z }, { high.x, high.y, high.z },
             { light.BuiltPosition.x, light.BuiltPosition.y, light.BuiltPosition.z });
-        drawn.emplace_back(&object, relative, Distance(object.Low, object.High) / 2, faceMask);
+        drawn.emplace_back(&object, relative, Distance(low, high) / 2, faceMask);
     }
 
     CasterConstants constants;
@@ -3528,6 +3694,48 @@ static void EndFrame(ID3D11Device *dev, ID3D11DeviceContext *ctx)
             }
             DrawCubeMap(ctx1.Get(), *resizedGlow);
         }
+        // Keep all legacy mandatory/new/stale work above. Additional small-pose
+        // refreshes let the existing continuous source filter reach the maps,
+        // with a bounded extra cost and no history blended from another origin.
+        ParticleMotionCandidates=ParticleMotionRefinements=ParticleMotionPixelUnits=0;
+        ParticleMotionResidual=0;
+        ParticleMotionUnknownCasters=0;
+        // Unmeasured candidates must draw conservatively on every face. Keep
+        // required updates, but do not multiply that transient cost with extra
+        // refinements while the existing asynchronous bounds reads catch up.
+        for(const auto &[key,caster]:Casters)
+        {
+            XMFLOAT3 low,high;
+            if(caster.FramesSeen>=CONFIRM_FRAMES&&!ParticleCasterBounds(caster,low,high))
+                ++ParticleMotionUnknownCasters;
+        }
+        std::vector<particle_shadow_motion_policy::Candidate> refinements;
+        refinements.reserve(selected.size());
+        for(const uint64_t key:selected)
+        {
+            const Light &light=Lights.at(key);
+            if(!light.Particle||!light.GlowShown||light.Slot<0||ParticleMotionUnknownCasters)continue;
+            const particle_shadow_motion_policy::Candidate candidate{key,light.BuiltFrame,
+                Distance(light.Position,light.BuiltPosition),FACE_SIZES[GetSizeIndex(light.Slot)]};
+            if(particle_shadow_motion_policy::IsRefinementCandidate(candidate,FrameNumber))
+                refinements.push_back(candidate);
+        }
+        ParticleMotionCandidates=static_cast<unsigned>(refinements.size());
+        for(const uint64_t key:particle_shadow_motion_policy::SelectRefinements(refinements,FrameNumber))
+        {
+            Light &light=Lights.at(key);
+            DrawCubeMap(ctx1.Get(),light);
+            ++ParticleMotionRefinements;
+            ParticleMotionPixelUnits+=particle_shadow_motion_policy::FacePixelUnits(FACE_SIZES[GetSizeIndex(light.Slot)]);
+        }
+        ParticleMotionCubesThisSecond+=ParticleMotionRefinements;
+        ParticleMotionUnitsThisSecond+=ParticleMotionPixelUnits;
+        for(const uint64_t key:selected)
+        {
+            const Light &light=Lights.at(key);
+            if(light.Particle&&light.GlowShown&&light.Slot>=0&&light.BuiltFrame)
+                ParticleMotionResidual=std::max(ParticleMotionResidual,Distance(light.Position,light.BuiltPosition));
+        }
         DrawMovingMaps(ctx1.Get());
         StopTimer(ctx, MapTimer);
     }
@@ -3540,6 +3748,13 @@ static void EndFrame(ID3D11Device *dev, ID3D11DeviceContext *ctx)
     const auto now = std::chrono::steady_clock::now();
     if (now - SecondStart >= std::chrono::seconds(1))
     {
+        lighting_diagnostics::LogShadowMapsSnapshot(FrameNumber,static_cast<unsigned>(FramesThisSecond),
+            std::chrono::duration<double,std::milli>(now-SecondStart).count(),MapTimer.Milliseconds,
+            CpuProfileEnabled.load()?GetCpuMilliseconds(MapCpu):-1,
+            CpuProfileEnabled.load()?GetCpuMilliseconds(StaticMapCpu):-1,
+            static_cast<unsigned>(MapsDrawnThisSecond),static_cast<unsigned>(StaticCasterDrawsThisSecond),
+            ParticleMotionCubesThisSecond,ParticleMotionUnitsThisSecond);
+        ParticleMotionCubesThisSecond=ParticleMotionUnitsThisSecond=0;
         MapsDrawnLastSecond = MapsDrawnThisSecond;
         MapsDrawnThisSecond = 0;
         CastersAddedLastSecond = CastersAddedThisSecond;

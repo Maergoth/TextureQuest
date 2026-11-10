@@ -1,14 +1,14 @@
 {
-  "revision": "TextureQuest 1.13.19 quality presets and compact managed graphics menu",
+  "revision": "TextureQuest 1.13.21 particle shadow motion, independent preferences and native sun-filter compatibility",
   "native_release_asset": {
     "bytes": 477184,
-    "sha256": "70a412241f79746970f7ef0930ec81cc3f97e772a0c4a16d3eb00b9da9837151"
+    "sha256": "acb72186eb948353495c53b6897422fc7870ecfbbb7ed66f7e8702b222e7cea4"
   },
   "actual_compiled_files": [
     {
       "name": "addon.cpp",
-      "bytes": 49063,
-      "sha256": "d8a7ab6461221da688960366c8e985fbc9e2bedda6cf625b2a30f2fc799a6da7"
+      "bytes": 49171,
+      "sha256": "360c1120036081ddd8befb0f37157a9518cc72ca3dcf9cc9dfdadde3dc49b67b"
     },
     {
       "name": "aio_controller.hpp",
@@ -492,7 +492,7 @@
     },
     "historical_only": true
   },
-  "integration_base_commit": "3842bbd0cdc58acdd7bf9af10ca51991b56f8aea",
+  "integration_base_commit": "0a08af610cfd15c3cab3b365a182b88a671ff2b6",
   "previous_evidence": {
     "revision": "TextureQuest 1.13.15 public graphics controls/defaults",
     "native_release_asset": {
@@ -530,5 +530,15 @@
         "sha256": "1531974043caf48c7428a10e8bc450b37463c388f7c53ced95d2b96195478202"
       }
     }
+  },
+  "release_1_13_21": {
+    "strict_native_build": {
+      "warnings": 0,
+      "actual_showIncludes": true,
+      "immutable_inputs": true
+    },
+    "scope": "Preset tooltip describes performance-only ownership.",
+    "game_validation": "Particle shadow motion approved in local 1.13.20; new preset/migration/filter changes have controlled validation, not new live-game approval.",
+    "hardware_benchmark": false
   }
 }

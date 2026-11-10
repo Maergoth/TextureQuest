@@ -1673,17 +1673,22 @@ static void AddBounds(uint64_t casterKey, shadowmaps::Caster &caster, const XMFL
         return;
 
     caster.BoundsKnown = true;
+    caster.ParticleBoundsInvalid = false;
     if (const float scale = shadowmaps::FindScale(caster.World); scale > 0 && shadowmaps::ClassifiedMeshes.contains(caster.Mesh.Key))
         shadowmaps::MeshSizes[caster.Mesh.Key] = shadowmaps::Distance(caster.Low, caster.High) / scale;
     for (auto &[key, light] : shadowmaps::Lights)
     {
-        if (light.EmitterKey != casterKey && shadowmaps::FindCasterDistance(caster, light.Position) < light.Radius
+        if (light.Particle) continue;
+        if (light.EmitterKey != casterKey && shadowmaps::CasterIntersectsLightQuery(light, caster)
             && light.CasterKeys.insert(casterKey).second)
             ++light.Version;
         // a lamp whose map holds its own model is redrawn without it
         if (!light.Glow && light.CasterKeys.contains(casterKey) && shadowmaps::HoldsLight(caster, light.Position))
             light.RedrawNow = true;
     }
+    // A newly measured or changed bound may enter a cached movement envelope;
+    // existing members can also have changed shape without changing their key.
+    shadowmaps::ParticleCasterChanged(casterKey, caster);
 }
 
 // reads the shapes and bounds copied at least READ_LATENCY frames ago, dropping those whose object is gone
