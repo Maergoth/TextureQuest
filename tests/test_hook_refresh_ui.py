@@ -1,4 +1,5 @@
 """New-version hook reinstall using a current, already prepared channel cache."""
+import json
 from unittest.mock import patch
 from test_loose_dds_ui import GraphicsOnlyUI
 import texturequest_app as app
@@ -30,7 +31,13 @@ class HookRefreshUI(GraphicsOnlyUI):
         self.assertTrue(self.ui.upgrade_pending())
         requests.clear()
         prepare = self.ui.dds_store.prepare
-        with patch.object(app, 'fetch_dds_source', return_value=source), \
+        # Reuse binds the complete choices identity. This invented cache must
+        # load its own choices rather than the unrelated bundled release file.
+        choices_path = self.root / 'fixture-choices.json'
+        choices_path.write_text(json.dumps(choices), encoding='utf-8')
+        resource = app.resource
+        with patch.object(app, 'resource', side_effect=lambda name: choices_path if name == 'shared-texture-choices.json' else resource(name)), \
+             patch.object(app, 'fetch_dds_source', return_value=source), \
              patch.object(self.ui.dds_store, 'prepare', side_effect=lambda *a, **kw: prepare(*a, **kw, opener=opener)), \
              patch.object(self.ui, 'begin', side_effect=lambda kind,message,action: action()), \
              patch.object(self.manager, 'install', wraps=self.manager.install) as install:
