@@ -97,7 +97,7 @@ class PublicGraphicsDefaults(unittest.TestCase):
     def test_fresh_public_defaults_and_conditional_restore(self):
         raw = b'; original\r\n[Foreign]\r\nKeep=1\r\n'
         after, lease = settings.prepare_dlss_config(raw, profile='graphics-world-aio-defaults')
-        self.assertTrue(lease['schema'].endswith('-v3'))
+        self.assertTrue(lease['schema'].endswith('-v4'))
         for key in ('FrameGeneration', 'ManagedSrEnabled', 'NeuralRendering',
                     'SmoothInterfaceText', 'SunLighting'):
             self.assertIn((key + '=0\r\n').encode(), after)

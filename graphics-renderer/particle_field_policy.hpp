@@ -1,6 +1,7 @@
 #pragma once
 #include <DirectXMath.h>
 #include "emission_policy.hpp"
+#include "particle_strength_settings.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -17,16 +18,16 @@ namespace particle_field_policy
 using DirectX::XMFLOAT3;using DirectX::XMFLOAT4;
 constexpr unsigned Triangles=32768,Draws=512,Tile=8,AtlasWidth=1024,AtlasHeight=2048,Samples=28,Lit=emission_policy::ParticleLimit;
 constexpr float CellWidth=2;
-// Particle gain is independent of surface emission. Existing settings migrate
-// their previous shared gain once; both new multipliers otherwise start at 1.
-constexpr float StrengthReference=1.0f;
-constexpr float MaximumStrength=128.0f,MaximumRadiusScale=16.0f,MaximumWorldRadius=128.0f;
+// New 1x particle gain is the previous 5x. Saved preferences migrate separately;
+// the maximum physical gain and all object-emission units remain unchanged.
+constexpr float StrengthReference=particle_strength_settings::Reference;
+constexpr float MaximumStrength=particle_strength_settings::Maximum,MaximumRadiusScale=16.0f,MaximumWorldRadius=128.0f;
 // A particle's shadow source core is independent of its illumination reach.
 // It describes only measured spread between positive-energy sample centroids.
 constexpr float MaximumSourceCoreRadius=.35f;
 inline float CleanSourceCoreRadius(float value)
 {return std::isfinite(value)?std::clamp(value,0.0f,MaximumSourceCoreRadius):0.0f;}
-inline float CleanStrength(float value){return std::isfinite(value)?std::clamp(value,0.0f,MaximumStrength):1.0f;}
+inline float CleanStrength(float value){return particle_strength_settings::Clean(value);}
 inline float CleanRadius(float value){return std::isfinite(value)?std::clamp(value,.25f,MaximumRadiusScale):1.0f;}
 inline float LightRadius(float scale,float shadowRange)
 {

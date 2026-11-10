@@ -12,18 +12,18 @@
     }
   },
   "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
-  "revision": "TextureQuest 1.13.20 local particle shadow-motion candidate",
-  "integration_base_commit": "c4ed740bc6d9bd9100eb6585b4891f18f0536584",
+  "revision": "TextureQuest 1.13.21 particle shadow motion, independent preferences and native sun-filter compatibility",
+  "integration_base_commit": "0a08af610cfd15c3cab3b365a182b88a671ff2b6",
   "files": [
     {
       "name": "addon.cpp",
-      "bytes": 24155,
-      "sha256": "06cf9dea92656a2c7173a3f0a0477ba8fd98030d44de6992ab1dfb4c6f157814"
+      "bytes": 25921,
+      "sha256": "b8478df7e2e9a45786e683a63ffe53f3e83ab603095b80c0412331ffdc58673c"
     },
     {
       "name": "capture.hpp",
-      "bytes": 45353,
-      "sha256": "2b289edec2135bc3e4a8ecbac740e03e9916561b9f7c3347aaaeeb43556b16dd"
+      "bytes": 45473,
+      "sha256": "efffc6db88508e883d1708914ad1d3d1cb5fba685acf0ac029da118f296990a3"
     },
     {
       "name": "deps/imgui/imconfig.h",
@@ -102,8 +102,8 @@
     },
     {
       "name": "light_buffer.hpp",
-      "bytes": 157643,
-      "sha256": "e566d371cc485686baa85dbb232a96f49d3e21cb49a75f58223e8a9baa7c9fae"
+      "bytes": 159307,
+      "sha256": "86b6e6dab6d7173970915fde44b56076c14857f9c6e9a1c4b4ca2fc7b18e26fe"
     },
     {
       "name": "lighting_diagnostics.hpp",
@@ -157,8 +157,8 @@
     },
     {
       "name": "particle_field_policy.hpp",
-      "bytes": 11209,
-      "sha256": "ac8e1aa9ada77980dca473047a68981b8a80d75e27d44aae330d0e2a863b4c86"
+      "bytes": 11291,
+      "sha256": "6a7264b0a75f08211f37725e01c1c037474fb91fdb33ac4fd0f98928fae3af77"
     },
     {
       "name": "particle_moving_shadows.hpp",
@@ -186,6 +186,11 @@
       "sha256": "c727562647f86c2d62cd601af33bc6658895d8135a9c8441e95e74b5575bbb52"
     },
     {
+      "name": "particle_strength_settings.hpp",
+      "bytes": 1659,
+      "sha256": "e98fe61e888a6998afb871ec34365da8b8d1769e9c530a0d42656c93bfdcaa52"
+    },
+    {
       "name": "projected_shadow_admission.hpp",
       "bytes": 891,
       "sha256": "6334770538b3ca0e39347e2ce90764201ccc86e3b6776a9900e136621463b723"
@@ -202,8 +207,8 @@
     },
     {
       "name": "quality_presets.hpp",
-      "bytes": 6143,
-      "sha256": "82acd21bbb4cee2703f1ea4fdd382b1b647bdaf4da2f74dfae09b404824792a9"
+      "bytes": 3846,
+      "sha256": "f691fa4a70db10070c34aa58e9a03d73f95c66266f4e34633a3de26338f5fa88"
     },
     {
       "name": "shadow_face_culling.hpp",
@@ -217,8 +222,8 @@
     },
     {
       "name": "shadows.hpp",
-      "bytes": 191446,
-      "sha256": "40b93f799c7dd12572b88ccf9c60e5ee99bbeb1c1f2016d69728194c8636129e"
+      "bytes": 191338,
+      "sha256": "bdf120d39e259c6913cd66a54066528baf569fd0c36ffcc14f3a8bd166696685"
     },
     {
       "name": "sun_direction_policy.hpp",
@@ -262,8 +267,8 @@
     }
   ],
   "native_release_asset": {
-    "bytes": 1290240,
-    "sha256": "1a8ead0d542fd37f5711a76ee23bef82f70bad7dc4dca5f11c8526f988f3f43d"
+    "bytes": 1286656,
+    "sha256": "75c6753227d5d2d63f58ee9316231aa61611fa840465a74e4b79e86a7ce4929f"
   },
   "compile_targets": [
     "addon.cpp"
@@ -951,5 +956,15 @@
       ]
     },
     "historical_only": true
+  },
+  "release_1_13_21": {
+    "strict_native_build": {
+      "warnings": 0,
+      "actual_showIncludes": true,
+      "immutable_inputs": true
+    },
+    "scope": "Retain 1.13.20 particle map refinements; migrate particle strength to fivefold reference; preserve appearance during preset changes; support three captured sun-filter variants with their native alignment.",
+    "game_validation": "Particle shadow motion approved in local 1.13.20; new preset/migration/filter changes have controlled validation, not new live-game approval.",
+    "hardware_benchmark": false
   }
 }

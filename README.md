@@ -10,13 +10,15 @@ TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim i
 
 AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,694 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The texture pack keeps the game's models and animations; optional Graphical Effects below change lighting. Some fine detail is newly generated, and results vary by texture.
 
-## 1.13.19 lighting update
+## 1.13.21 lighting update
 
 The qualified particle/object source observations, source-cache corrections,
 static shadow-face culling and independent per-light visibility are now active.
 The installer and ReShade share **Low, Medium, High and Max** lighting presets.
-The 1.13.18 shadow crossfade is removed after the in-game comparison; it did not
-solve the reported shadow jumping. Texture data remains **1.3.0**.
+Finer shadow-map updates now follow the smoothed particle source, with much less
+snapping reported in the local test. Quality presets preserve visual preferences.
+New particle strength 1× equals old 5×; saved brightness migrates unchanged.
+The failed shadow crossfade remains removed. Texture data remains **1.3.0**.
 The installer's **What's new** shows the same [changelog](CHANGELOG.md) used here.
 
 ## Graphics setup
@@ -43,12 +45,13 @@ Resolution, crowds, the CPU and multiple clients all affect the available budget
 Low is the fresh-install default. Every preset enables **16x anisotropic filtering**,
 AO, point-light shadows, character shadows and particle emission. Medium and above
 add object emission; High and Max add surface-light smoothing and sun processing.
-Max uses full supported capacities while keeping artistic light brightness, radius
-and shadow softness consistent. Rebuilt lamp lighting, corrective sun direction
-and smooth interface text remain off in presets.
+Max uses full supported capacities while preserving your chosen brightness,
+radius and shadow softness. Rebuilt lamp lighting, corrective sun direction and
+smooth text start off on fresh profiles; presets leave existing choices alone.
 
-Choosing a preset explicitly applies its lighting profile. Updates otherwise keep
-saved custom choices, which display **Custom**. Frame Gen and Neural Rendering
+Choosing a preset applies performance features and capacities. Appearance
+preferences survive and do not make the preset Custom. Custom means the effective
+performance settings differ from all four presets. Frame Gen and Neural Rendering
 start off on fresh installs and remain independent of presets. Upscaling and
 Reflex driver mode stay removed. See the [graphics guide](docs/GRAPHICS_FEATURES.md)
 for the preset tradeoffs and the shared shadow-pool limit.
@@ -77,9 +80,9 @@ cannot be reconstructed. Supported model shaders replay material normals;
 unknown paths retain geometric fallback.
 
 Ambiguous particle groups can still move their representative light or change
-shadow admission. The shadow-fade rollback does not claim to solve that source
-motion. Corrective sun-direction movement flicker remains unresolved, so that
-override is off in presets. Complete scene coverage, appearance and performance
+shadow admission. Finer map updates improve continuity within a bounded budget;
+they do not guarantee perfect motion in every scene. Corrective sun-direction
+movement flicker remains unresolved; that override starts off on fresh profiles. Complete scene coverage, appearance and performance
 are not guaranteed by controlled checks.
 
 ## Download and install

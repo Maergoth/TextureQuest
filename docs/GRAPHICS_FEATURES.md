@@ -18,8 +18,10 @@ into EQ2's world passes before the HUD. Textures remain required.
 
 The installer and in-game panel consume the same versioned preset definition.
 **Low** is the new-install default. An update keeps saved/custom values until you
-explicitly choose a preset. Manual changes that differ from a complete preset show
-**Custom**; this is a status rather than a fifth preset.
+explicitly choose a preset. Presets own performance features and capacities;
+manual changes to those controls show **Custom** when none matches. Brightness,
+radius, softness, colour and other appearance preferences are independent and
+survive preset selection. Changing those does not change the preset label.
 
 | Preset | Hardware starting point | Shared shadow maps | Emissive lights | Particle lights | Particle character shadows |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -37,8 +39,8 @@ explicitly choose a preset. Manual changes that differ from a complete preset sh
 | Object emission | Off | On | On | On |
 | Surface-light smoothing | Off | Off | On | On |
 | Sun lighting / shadow softening | Off | Off | On | On |
-| Rebuild lamp lighting / corrective sun direction | Off | Off | Off | Off |
-| Smooth interface text | Off | Off | Off | Off |
+| Rebuild lamp lighting / corrective sun direction | Preserve | Preserve | Preserve | Preserve |
+| Smooth interface text | Preserve | Preserve | Preserve | Preserve |
 
 These tiers are engineering starting points, not benchmarked FPS guarantees. Pixel
 resolution, crowds, the CPU, multiple clients and other ReShade effects change the
@@ -48,7 +50,17 @@ coverage and enables the optional surface reconstruction filter and sun effects.
 Max opens the full supported budgets; it does not inflate artistic intensity or
 radius. Higher limits can be expensive in dense scenes even on the named GPU.
 
-All tiers keep the same light brightness/radius and shadow-strength/softness tuning.
+All tiers preserve the current light brightness/radius and shadow-strength/softness
+tuning. They also preserve AO amounts, surface saturation, ambient contribution,
+painted-emission balance and compatibility overrides. Fresh profiles receive
+separate appearance defaults; presets never reapply those defaults. Sun softening
+has a preset-owned enable state while its remembered magnitude stays independent.
+
+Particle strength uses a fivefold baseline: new 1× equals former 5×. Existing
+explicit saved values migrate once by dividing by five, retaining actual light
+output; zero remains zero. Fresh profiles use 1×. The maximum 25.6× corresponds to
+the previous physical maximum of 128×. Object light strength is unchanged.
+
 The shared shadow-map pool includes native and inferred lights; native lamps take
 priority. An emissive light is eligible only while a suitable shared slot exists.
 Consequently the displayed capacities are ceilings, not guaranteed simultaneous
@@ -74,8 +86,9 @@ Previously seen particle sources remain for two seconds, then fade for one secon
 The cache cannot discover sources the game never submits. Persistent groups and
 smoothed positions reduce source changes, but ambiguous groups can still move or
 change shadow admission. The 150 ms shadow crossfade from local 1.13.18 has been
-removed after visual testing; this release does not claim perfectly continuous
-shadows. A small bounded source core reduces near-source self-occlusion spatially.
+removed after visual testing. Finer particle-map updates now follow smaller
+source movements, with conservative caster-list reuse. This trades bounded extra
+map rendering for smoother motion; it does not promise perfectly continuous shadows. A small bounded source core reduces near-source self-occlusion spatially.
 It does not identify the emitter's owner; unrelated geometry inside the small core
 can also be ignored.
 
@@ -94,8 +107,9 @@ Supported opaque shader pairs replay material normals. Unknown paths retain
 geometric fallback, so not every model seam or faceted surface is fixed.
 
 Sun lighting and shadow softening are separate from the corrective sun-direction
-override. The latter has unresolved movement flicker and remains off in every
-preset. **Rebuild lamp lighting** changes falloff/brightness and also stays off.
+override. The latter has unresolved movement flicker and starts off on fresh
+profiles. **Rebuild lamp lighting** changes falloff/brightness and also starts off.
+Presets preserve these compatibility choices.
 Keep native lighting, material shaders and GPU shadows enabled. Native EQ2 INIs
 and the game's bloom setting remain unchanged.
 

@@ -479,8 +479,8 @@ cbuffer GameConstants : register(b0)
 // game's own filter; above 0, the soft shadow is upsampled from HalfShadow rather than filtered (w)
 cbuffer Softness : register(b1)
 {
-    // x the soft edge's spread, w the full-resolution pixels across each texel of HalfShadow, or 0 when the soft
-    // shadow is found in the pass itself
+    // x the soft edge's spread, y selects the qualified centred native filter,
+    // w the full-resolution pixels across each HalfShadow texel (0 for direct filtering)
     float4 Softness;
 };
 // the distance along the view direction of each pixel's surface
@@ -582,12 +582,34 @@ float FindGameTap(float2 centred, float2 texels, float2 weight, float depth, flo
 }
 
 // the game's filter: a 2x2 tap at the position, weighted twice the taps two texels right and two texels down
+float FindCenteredGameTap(float2 position, float2 texels, float2 weight, float depth, float bias)
+{
+    float2 p = position + texels / MapSize.x;
+    float step = 1 / MapSize.x;
+    float top = lerp(FindShadowed(p, depth, bias), FindShadowed(p + float2(step, 0), depth, bias), weight.x);
+    float bottom = lerp(FindShadowed(p + float2(0, step), depth, bias), FindShadowed(p + step, depth, bias), weight.x);
+    return lerp(top, bottom, weight.y);
+}
+
 float FindGameShadow(float2 centred, float depth, float bias)
 {
-    float2 weight = frac(FindMapPosition(centred) * MapSize.x);
-    return (FindGameTap(centred, float2(0, 0), weight, depth, bias)
-        + FindGameTap(centred, float2(2, 0), weight, depth, bias) * 0.5
-        + FindGameTap(centred, float2(0, 2), weight, depth, bias) * 0.5) * 0.5;
+    float shadow = 0;
+    if (Softness.y > 0)
+    {
+        float2 position = FindMapPosition(centred) - 1 / MapSize.x;
+        float2 weight = frac(position * MapSize.x);
+        shadow = (FindCenteredGameTap(position, float2(0, 0), weight, depth, bias)
+            + FindCenteredGameTap(position, float2(2, 0), weight, depth, bias) * 0.5
+            + FindCenteredGameTap(position, float2(0, 2), weight, depth, bias) * 0.5) * 0.5;
+    }
+    else
+    {
+        float2 weight = frac(FindMapPosition(centred) * MapSize.x);
+        shadow = (FindGameTap(centred, float2(0, 0), weight, depth, bias)
+            + FindGameTap(centred, float2(2, 0), weight, depth, bias) * 0.5
+            + FindGameTap(centred, float2(0, 2), weight, depth, bias) * 0.5) * 0.5;
+    }
+    return shadow;
 }
 
 // the taps a soft shadow's search or filter takes over a radius of this many texels
@@ -620,8 +642,9 @@ float4 FindSoftFootprintValidity(float2 position)
 
 float FindSoftShadow(float2 position, float depth, float bias, int cascade, float2 pixel)
 {
-    // the game's filter is centred one texel right and down of the position
-    float2 centre = position + 1 / MapSize.x;
+    // Original variants centre one texel right/down; the qualified newer
+    // variants centre on the projected coordinate. Keep each native alignment.
+    float2 centre = position + (1 - Softness.y) / MapSize.x;
     float texelsPerUnit = 0.5 * length(CascadeRows[cascade * 4].xyz) * MapSize.x;
     float unitsPerDepth = 1 / length(CascadeRows[cascade * 4 + 2].xyz);
     float angle = 6.2831853 * frac(52.9829189 * frac(dot(pixel, float2(0.06711056, 0.00583715))));
@@ -1060,15 +1083,17 @@ ReceiverOutput ps_receiver_depth(float4 position : SV_Position)
 struct SunShader
 {
     uint64_t Hash;
+    // Same verified receiver/constant interface, with a one-texel-shifted filter origin.
+    uint64_t CenteredHash;
     const char *Entry;
     // the entry point that finds the pass's soft shadow at half resolution
     const char *HalfEntry;
 };
 
 constexpr SunShader SUN_SHADERS[] = {
-    { 0xda2115c6adf602bc, "ps_sun_near", "ps_sun_near_half" },
-    { 0x3c9b0cbf40efc97d, "ps_sun_middle", "ps_sun_middle_half" },
-    { 0x62815a7d83cc5713, "ps_sun_far", "ps_sun_far_half" },
+    { 0xda2115c6adf602bc, 0xdd6c3f0e1c3d0db7, "ps_sun_near", "ps_sun_near_half" },
+    { 0x3c9b0cbf40efc97d, 0x7265c69891dd5aba, "ps_sun_middle", "ps_sun_middle_half" },
+    { 0x62815a7d83cc5713, 0xecadffe8ccc858ce, "ps_sun_far", "ps_sun_far_half" },
 };
 constexpr size_t SUN_SHADER_COUNT = std::size(SUN_SHADERS);
 // the pixel shader constant buffer slot of the softness, one the game's sun shaders do not read
@@ -1123,6 +1148,7 @@ struct SunPass
 {
     UINT ImageSlot;
     int Replacement;
+    bool CenteredFilter;
 };
 
 static ComPtr<ID3D11VertexShader> FullScreenShader;
@@ -1335,15 +1361,20 @@ static void OnInitPipeline(device *, pipeline_layout, uint32_t count, const pipe
 
         const uint64_t hash = capture::HashCode(desc.code, desc.code_size);
         int replacement = -1;
+        bool centeredFilter = false;
         for (size_t index = 0; index < SUN_SHADER_COUNT; ++index)
-            if (SUN_SHADERS[index].Hash == hash)
+            if (SUN_SHADERS[index].Hash == hash || SUN_SHADERS[index].CenteredHash == hash)
+            {
                 replacement = static_cast<int>(index);
+                centeredFilter = SUN_SHADERS[index].CenteredHash == hash;
+            }
 
         std::lock_guard guard(capture::ClassLock);
         capture::PipelineClass &found = capture::Classes[handle.handle];
         found.Bits |= capture::CLASS_SUN_PASS;
         found.SunImageSlot = image.BindPoint;
         found.SunReplacement = replacement;
+        found.SunCenteredFilter = centeredFilter;
     }
 }
 
@@ -2067,13 +2098,13 @@ static void WriteState()
             static_cast<unsigned long long>(frame.DirectionEpoch), frame.CorrectedDirection.x,
             frame.CorrectedDirection.y, frame.CorrectedDirection.z, frame.DirectionAttempts, frame.DirectionApplied);
     }
-    fprintf(file, "\n--- sun shadow shaders: pixel shader, image slot, replacement\n");
+    fprintf(file, "\n--- sun shadow shaders: pixel shader, image slot, replacement, centred filter\n");
     {
         std::lock_guard guard(capture::ClassLock);
         for (const auto &[shader, found] : capture::Classes)
             if ((found.Bits & capture::CLASS_SUN_PASS) != 0)
-                fprintf(file, "%016llx %u %d\n", static_cast<unsigned long long>(shader), found.SunImageSlot,
-                    found.SunReplacement);
+                fprintf(file, "%016llx %u %d %d\n", static_cast<unsigned long long>(shader), found.SunImageSlot,
+                    found.SunReplacement, found.SunCenteredFilter ? 1 : 0);
     }
     fclose(file);
 }
@@ -2920,7 +2951,8 @@ static bool DrawSunPass(command_list *cmd, uint32_t vertices, uint32_t instances
 
     if ((capture::PixelClass.Bits & capture::CLASS_SUN_PASS) == 0)
         return false;
-    const SunPass pass = { capture::PixelClass.SunImageSlot, capture::PixelClass.SunReplacement };
+    const SunPass pass = { capture::PixelClass.SunImageSlot, capture::PixelClass.SunReplacement,
+        capture::PixelClass.SunCenteredFilter };
     const bool soften = softness > 0 && pass.Replacement >= 0;
     if (!fixWanted && !soften)
         return false;
@@ -2954,7 +2986,8 @@ static bool DrawSunPass(command_list *cmd, uint32_t vertices, uint32_t instances
     {
         ctx->PSGetShader(&gameShader, nullptr, nullptr);
         ctx->PSGetConstantBuffers1(SOFTNESS_SLOT, 1, &gameBuffer, &gameFirst, &gameCount);
-        const float constants[4] = { softness * SUN_SPREAD_PER_SOFTNESS, 0, 0, half ? scale : 0.0f };
+        const float constants[4] = { softness * SUN_SPREAD_PER_SOFTNESS, pass.CenteredFilter ? 1.0f : 0.0f,
+            0, half ? scale : 0.0f };
         ctx->UpdateSubresource(SoftnessBuffer.Get(), 0, nullptr, constants, 0, 0);
         ID3D11Buffer *buffer = SoftnessBuffer.Get();
         ctx->PSSetConstantBuffers(SOFTNESS_SLOT, 1, &buffer);

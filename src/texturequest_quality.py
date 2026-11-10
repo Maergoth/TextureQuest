@@ -46,11 +46,18 @@ def values(name):
             for key, value in settings.items()}
 
 
+def fresh_values():
+    """Appearance seed values, used only where no saved value exists."""
+    return {(section, key): ('1' if value else '0') if type(value) is bool else str(value)
+            for section, settings in contract()['fresh_defaults'].items()
+            for key, value in settings.items()}
+
+
 def description(name):
     if name == CUSTOM:
-        return 'Custom in-game settings. Choose a preset to replace its lighting and shadow controls.'
+        return 'Custom performance settings. Presets change feature switches and budgets; your light strength, radius, colour and softness are kept.'
     row = preset(name)
-    return row['target'] + ' class · ' + row.get('description', '')
+    return row['target'] + ' class · ' + row.get('description', '') + ' Keeps your appearance settings.'
 
 
 def _same(left, right):
@@ -62,8 +69,49 @@ def _same(left, right):
         return left == right
 
 
+SUN_ENABLE = ('EQ2Graphics', 'SunShadowSoftening')
+SUN_KEYS = ('SunSoftness', 'SunShadowSize', 'TextureQuestSunSoftnessPreferenceRealSun',
+            'TextureQuestSunSoftnessPreference', 'TextureQuestSunSoftnessUnits')
+
+
+def _sun_settings(lines):
+    """Mirror sun_softness_settings::Load; native values win without a marker.
+
+    The shared performance contract owns an enable intent, not the softness
+    magnitude. Legacy keys remain unchanged, as in the native Load/Store path.
+    """
+    rows, _ = _parse(lines, {('EQ2Graphics', key): None for key in SUN_KEYS}, casefold=True)
+    if any(len(indices) > 1 for indices in rows.values()):
+        raise ValueError('Duplicate sun settings; current settings were kept.')
+    def read(key):
+        indices = rows[('EQ2Graphics', key)]
+        if not indices:
+            return None
+        raw = _assignment(lines[indices[0]])[2].split(';', 1)[0].split('#', 1)[0].strip()
+        try:
+            return float(raw)
+        except ValueError as error:
+            raise ValueError('Invalid sun softness; current settings were kept.') from error
+    # Same definitions as graphics-renderer/sun_softness_settings.hpp.
+    legacy_factor = (1.0 / 3.0) / 0.00465
+    default, maximum = 1.6, 2.0 * legacy_factor
+    def clean(value):
+        return min(value, maximum) if math.isfinite(value) and value >= 0 else default
+    modern, legacy = read('SunSoftness'), read('SunShadowSize')
+    active = clean(modern) if modern is not None else clean(legacy * legacy_factor) if legacy is not None else 0.0
+    preference = read('TextureQuestSunSoftnessPreferenceRealSun')
+    old_preference = read('TextureQuestSunSoftnessPreference')
+    if preference is not None:
+        preference = clean(preference)
+    elif old_preference is not None:
+        preference = clean(old_preference * legacy_factor)
+    else:
+        preference = active if active > 0 else default
+    return active, preference if preference > 0 else default
+
+
 def detect(raw):
-    """Match effective managed controls, not a potentially stale preset label."""
+    """Match effective performance controls; appearance edits keep the tier."""
     lines, _ = _decode(raw)
     defaults = values('Low')
     rows, sections = _parse(lines, defaults, casefold=True)
@@ -72,8 +120,11 @@ def detect(raw):
     # A genuinely absent world profile uses the renderer's fresh Low defaults.
     if not any(section.casefold() == 'eq2graphics' for _, section in sections):
         return 'Low'
+    sun_enabled = _sun_settings(lines)[0] > 0
     for name in NAMES:
         expected = values(name)
+        if sun_enabled != (expected.pop(SUN_ENABLE) == '1'):
+            continue
         if all(rows[key] and _same(_assignment(lines[rows[key][0]])[2], expected[key])
                for key in expected):
             return name
@@ -81,9 +132,18 @@ def detect(raw):
 
 
 def apply(raw, name):
-    """Replace only preset-owned keys, preserving other settings and comments."""
+    """Replace performance switches/budgets, preserving appearance and comments."""
     expected = values(name)
     lines, bom = _decode(raw)
+    enabled = expected.pop(SUN_ENABLE) == '1'
+    active, preference = _sun_settings(lines)
+    # Turning off remembers the actual active magnitude. Turning on restores it;
+    # neither path chooses the preset author's artistic softness for the user.
+    if active > 0 and not enabled:
+        preference = active
+    expected.update({('EQ2Graphics', 'SunSoftness'): str(active if active > 0 and enabled else preference if enabled else 0.0),
+                     ('EQ2Graphics', 'TextureQuestSunSoftnessPreferenceRealSun'): str(preference),
+                     ('EQ2Graphics', 'TextureQuestSunSoftnessUnits'): '1'})
     rows, sections = _parse(lines, expected, casefold=True)
     if any(len(indices) > 1 for indices in rows.values()):
         raise ValueError('Duplicate quality settings; current settings were kept.')

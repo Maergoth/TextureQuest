@@ -3272,7 +3272,9 @@ static void DrawAdvancedSettings()
             ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic))
     {
         particle_emission::Strength = particle_field_policy::CleanStrength(particleStrength);
-        reshade::set_config_value(nullptr, CONFIG_SECTION, "ParticleLightStrength", particle_emission::Strength.load());
+        particle_strength_settings::Store(particle_emission::Strength.load(), [](const char *key, auto value) {
+            reshade::set_config_value(nullptr, CONFIG_SECTION, key, value);
+        });
     }
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Brightness of captured particle lights, independent of surface emissive strength.");
     float particleRadius = particle_field_policy::CleanRadius(particle_emission::Radius.load());
@@ -3596,13 +3598,11 @@ static void LoadSettings()
     reshade::get_config_value(nullptr, CONFIG_SECTION, "EmissiveLightStrength", glowStrength);
     glow::Strength = glowStrength;
 
-    // Preserve the old effective particle gain once, then keep it independent
-    // from later changes to the surface-emission control. Fresh profiles use 1.
-    float particleStrength = particle_emission::Strength.load();
-    const bool savedParticleStrength = reshade::get_config_value(nullptr, CONFIG_SECTION, "ParticleLightStrength", particleStrength);
-    particle_emission::Strength = particle_field_policy::CleanStrength(savedParticleStrength ? particleStrength : glowStrength);
-    if (!savedParticleStrength)
-        reshade::set_config_value(nullptr, CONFIG_SECTION, "ParticleLightStrength", particle_emission::Strength.load());
+    // Current units use old 5x as new 1x. Saved gains retain their brightness;
+    // fresh profiles use new 1x independently of the object-emission setting.
+    particle_emission::Strength = particle_strength_settings::Load(
+        [](const char *key, auto &value) { return reshade::get_config_value(nullptr, CONFIG_SECTION, key, value); },
+        [](const char *key, auto value) { reshade::set_config_value(nullptr, CONFIG_SECTION, key, value); });
     float particleRadius = particle_emission::Radius.load();
     reshade::get_config_value(nullptr, CONFIG_SECTION, "ParticleLightRadius", particleRadius);
     particle_emission::Radius = particle_field_policy::CleanRadius(particleRadius);
