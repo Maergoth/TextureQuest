@@ -75,18 +75,29 @@ LEGACY_GRAPHICS_DEFAULT_PROFILES = {
     name: ('texturequest-' + name + '-settings-v1', dict(LEGACY_GRAPHICS_CORE_DEFAULTS))
     for name in _GRAPHICS_PROFILE_NAMES
 }
-GRAPHICS_DEFAULT_PROFILES = {
+V2_GRAPHICS_DEFAULT_PROFILES = {
     name: ('texturequest-' + name + '-settings-v2', dict(GRAPHICS_CORE_DEFAULTS))
     for name in _GRAPHICS_PROFILE_NAMES
 }
 for _profiles, _world in ((LEGACY_GRAPHICS_DEFAULT_PROFILES, LEGACY_GRAPHICS_WORLD_DEFAULTS),
-                          (GRAPHICS_DEFAULT_PROFILES, GRAPHICS_WORLD_DEFAULTS)):
+                          (V2_GRAPHICS_DEFAULT_PROFILES, GRAPHICS_WORLD_DEFAULTS)):
     for _profile in _profiles:
         _schema, _values = _profiles[_profile]
         if '-world' in _profile: _values.update(_world)
         if '-aio' in _profile: _values.update(GRAPHICS_AIO_DEFAULTS)
+from texturequest_quality import values as _quality_values
+GRAPHICS_WORLD_DEFAULTS = dict(GRAPHICS_WORLD_DEFAULTS)
+GRAPHICS_WORLD_DEFAULTS.update(_quality_values('Low'))
+GRAPHICS_DEFAULT_PROFILES = {
+    name: ('texturequest-' + name + '-settings-v3', dict(GRAPHICS_CORE_DEFAULTS))
+    for name in _GRAPHICS_PROFILE_NAMES
+}
+for _profile in GRAPHICS_DEFAULT_PROFILES:
+    _schema, _values = GRAPHICS_DEFAULT_PROFILES[_profile]
+    if '-world' in _profile: _values.update(GRAPHICS_WORLD_DEFAULTS)
+    if '-aio' in _profile: _values.update(GRAPHICS_AIO_DEFAULTS)
 GRAPHICS_DEFAULT_SCHEMAS = {schema: values
-    for profiles in (LEGACY_GRAPHICS_DEFAULT_PROFILES, GRAPHICS_DEFAULT_PROFILES)
+    for profiles in (LEGACY_GRAPHICS_DEFAULT_PROFILES, V2_GRAPHICS_DEFAULT_PROFILES, GRAPHICS_DEFAULT_PROFILES)
     for schema, values in profiles.values()}
 
 

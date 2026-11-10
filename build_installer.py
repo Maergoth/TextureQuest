@@ -176,6 +176,13 @@ def main():
     shutil.copy2(shared_choices, stage / shared_choices.name)
     source_hashes['src/shared-texture-choices.json'] = sha(shared_choices)
     command += ['--add-data', str(stage / shared_choices.name) + ':.', '--hidden-import', 'xxhash']
+    subprocess.run([sys.executable, '-B', str(ROOT / 'tools/generate_quality_presets.py'), '--check'], check=True)
+    quality_presets = SRC / 'quality-presets.json'
+    shutil.copy2(quality_presets, stage / quality_presets.name)
+    source_hashes['src/quality-presets.json'] = sha(quality_presets)
+    source_hashes['tools/generate_quality_presets.py'] = sha(ROOT / 'tools/generate_quality_presets.py')
+    source_hashes['graphics-renderer/quality_presets.hpp'] = sha(ROOT / 'graphics-renderer/quality_presets.hpp')
+    command += ['--add-data', str(stage / quality_presets.name) + ':.']
     command += [str(stage / "texturequest_app.py")]
     subprocess.run(command, cwd=ROOT, env=env, check=True)
     if (sha(manifest) != manifest_hash or sha(bundled_manifest) != manifest_hash
@@ -189,6 +196,8 @@ def main():
     folder = DEST / NAME
     if sha(folder / "_internal/CHANGELOG.md") != changelog_hash:
         raise RuntimeError("Packaged changelog differs from its canonical source")
+    if sha(folder / '_internal/quality-presets.json') != source_hashes['src/quality-presets.json']:
+        raise RuntimeError('Packaged quality presets differ from the renderer contract')
     if graphics:
         for name, expected in graphics_pins.items():
             if (sha(args.graphics_runtime_dir / name) != expected or sha(resources_graphics / name) != expected or

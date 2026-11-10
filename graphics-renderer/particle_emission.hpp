@@ -5,7 +5,7 @@
 #include "particle_coalescing_policy.hpp"
 #include "particle_source_policy.hpp"
 #include "particle_retention_policy.hpp"
-#include "lighting_experiment.hpp"
+#include "lighting_diagnostics.hpp"
 
 // Observational native material replay: complete independent native draws form
 // a bounded partial world-light field. Native rendering is never replaced.
@@ -43,7 +43,7 @@ static ComPtr<ID3D11RasterizerState> Raster;
 static ComPtr<ID3D11DepthStencilState> NoDepth;
 static bool Failed=false,Probing=false;
 static uint64_t Epoch=1,ObservedFrame=UINT64_MAX,ExcludedSourceFrame=UINT64_MAX;
-static uint64_t ExperimentEpoch=0;
+static uint64_t ObservationEpoch=0;
 static std::vector<field::Cell> Cells;
 struct Selected {field::Key cell;uint64_t light=0;};
 static std::array<Selected,field::Lit> SelectedCells;
@@ -202,12 +202,12 @@ static void InvalidateScene()
     if(Frame.collecting)Frame.ledger.Reject();
 }
 static void Hide(){InvalidateScene();Seen=Measured=0;}
-static void SyncExperiment()
-{const uint64_t current=lighting_experiment::CurrentEpoch();if(current!=ExperimentEpoch){ExperimentEpoch=current;InvalidateScene();PrecapQualified=PrecapRejected=PrecapFailures=PrecapPublished=0;}}
+static void SyncObservationEpoch()
+{const uint64_t current=lighting_diagnostics::CurrentEpoch();if(current!=ObservationEpoch){ObservationEpoch=current;InvalidateScene();PrecapQualified=PrecapRejected=PrecapFailures=PrecapPublished=0;}}
 static void Reset(bool keepProfiles=false)
 {
     InvalidateScene();Frame={};State.Reset();Shape.Reset();Reduce.Reset();CloneShared.Reset();Constants.Reset();ReduceConstants.Reset();
-    PrecapVertex.Reset();PrecapShape.Reset();PrecapFailed=false;ExperimentEpoch=lighting_experiment::CurrentEpoch();
+    PrecapVertex.Reset();PrecapShape.Reset();PrecapFailed=false;ObservationEpoch=lighting_diagnostics::CurrentEpoch();
     PrecapQualified=PrecapRejected=PrecapFailures=PrecapPublished=0;
     SharedParameters.Reset();SharedRaw.Reset();SharedConstants.Reset();SharedRawView.Reset();Atlas.Reset();AtlasTarget.Reset();AtlasView.Reset();Raster.Reset();NoDepth.Reset();
     Failed=false;ObservedFrame=ExcludedSourceFrame=UINT64_MAX;Pending=RejectedBounds=RejectedState=RejectedIO=0;
@@ -379,7 +379,7 @@ static bool AdditiveSource(const D3D11_BLEND_DESC &b,const D3D11_DEPTH_STENCIL_D
 }
 static void Observe(shadowmaps::BoundDraw &bound,uint64_t vs,uint64_t ps)
 {
-    SyncExperiment();
+    SyncObservationEpoch();
     if(!glow::ParticlesActive()||Probing)return;uint64_t vh=0,ph=0;if(!Profiles(vs,ps,vh,ph))return;
     auto *native=bound.Context;const shadowmaps::DrawCall &call=bound.Call;
     // These same native shaders also draw ordinary alpha-over fire layers.
@@ -412,8 +412,7 @@ static void Observe(shadowmaps::BoundDraw &bound,uint64_t vs,uint64_t ps)
     const unsigned base=Frame.ledger.triangles;
     if(!Frame.ledger.Add(call.Count,call.Instances)){++OverflowFrames;return;}
     ShapeConstants data{};XMStoreFloat4x4(&data.inverse,XMMatrixInverse(nullptr,camera));data.offset={Frame.offset.x,Frame.offset.y,Frame.offset.z,0};data.base=base;
-    if(lighting_experiment::Enabled.load())
-    {data.profile=field::PrecapProfile(vh);if(!data.profile)++PrecapRejected;}
+    data.profile=field::PrecapProfile(vh);if(!data.profile)++PrecapRejected;
     auto &record=Frame.records[Frame.ledger.draws-1];record.first=base;record.count=call.Count/3;record.vertex=vh;record.pixel=ph;record.valid=true;
     if(!Capture(ctx.Get(),call,data,record)){record.valid=false;Frame.ledger.Undo(call.Count);++RejectedState;}
 }
@@ -448,7 +447,7 @@ static void Seal(ID3D11DeviceContext *native)
 }
 static void ReadFrame(ID3D11DeviceContext *ctx)
 {
-    SyncExperiment();
+    SyncObservationEpoch();
     if (!glow::ParticlesActive() && (HasField || SelectedCount || Frame.collecting)) Hide();
     // No exact selected draw in this frame is a complete empty observation,
     // only when no earlier frame owns the one packet and this is our service
@@ -622,8 +621,8 @@ static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit,bool al
 static void WriteState(FILE *file)
 {
     if(!file)return;
-    fprintf(file,"particle pre-cap experiment: requested %d, mode epoch %llu, qualified draws %u, geometry used %u, unsupported/unsafe %u, decoder/resource failures %u; native atlas unchanged, unsupported draws use baseline\n",
-        lighting_experiment::Enabled.load()?1:0,static_cast<unsigned long long>(ExperimentEpoch),PrecapQualified,PrecapPublished,PrecapRejected,PrecapFailures);
+    fprintf(file,"particle pre-cap geometry: active %d, cache epoch %llu, qualified draws %u, geometry used %u, unsupported/unsafe %u, decoder/resource failures %u; native atlas unchanged, unsupported draws use native geometry\n",
+        1,static_cast<unsigned long long>(ObservationEpoch),PrecapQualified,PrecapPublished,PrecapRejected,PrecapFailures);
     fprintf(file,"particle observed cache: entries %zu, grace 2.0s, fade 1.0s, hard expiry 3.0s\n",Retained.Size());
     fprintf(file,"particle stable sources: tracked %zu, owner bins %zu, acquire 4.0, retain 6.0, ownership hysteresis 0.75, pose tau 0.20s; inferred identities, native power unfiltered\n",Sources.Size(),Sources.OwnerCount());
     const auto core=Sources.SummarizeCore();

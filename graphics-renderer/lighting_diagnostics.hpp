@@ -13,17 +13,14 @@
 #include <string>
 #include <vector>
 
-// Local A/B experiment. Selection is committed only at Present; it is deliberately
-// not saved as a normal graphics preference. Profiling is entirely opt-in.
-namespace lighting_experiment
+// Production lighting timings. Profiling is opt-in and has no rendering-mode switch.
+namespace lighting_diagnostics
 {
 using Microsoft::WRL::ComPtr;
 using Clock = std::chrono::steady_clock;
-inline std::atomic<bool> Enabled{false};
-inline std::atomic<bool> Requested{false}, RecordRequested{false}, ResetRequested{false};
+inline std::atomic<bool> RecordRequested{false}, ResetRequested{false};
 inline std::atomic<uint64_t> Epoch{1};
 inline uint64_t CurrentEpoch() { return Epoch.load(); }
-inline void Request(bool value) { Requested.store(value); }
 
 struct Distribution
 {
@@ -54,12 +51,12 @@ struct Distribution
 };
 struct Results
 {
-    Distribution Gpu, Present, Lights, Transitions;
+    Distribution Gpu, Present, Lights;
     UINT Width = 0, Height = 0;
     uint64_t Fallbacks = 0, Unavailable = 0;
 };
 inline std::mutex ResultsLock;
-inline std::array<Results, 2> Modes;
+inline Results Stats;
 
 // Buffer rows and flush once per second or when recording stops. No worker can
 // outlive a dynamically unloaded add-on. Flush cost is logged separately; GPU
@@ -83,14 +80,14 @@ public:
         wchar_t name[128]{};
         swprintf_s(name, L"lighting-%04u%02u%02u-%02u%02u%02u-%03u-%lu.csv", now.wYear,
             now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond, now.wMilliseconds, GetCurrentProcessId());
-        const auto folder = std::filesystem::path(executable).parent_path() / L"EQ2Graphics-captures" / L"lighting-comparisons";
+        const auto folder = std::filesystem::path(executable).parent_path() / L"EQ2Graphics-captures" / L"lighting-performance";
         std::error_code error;
         std::filesystem::create_directories(folder, error);
-        if (error) { Error = "Cannot create comparison log directory"; return false; }
+        if (error) { Error = "Cannot create performance log directory"; return false; }
         const auto path = folder / name;
-        if (_wfopen_s(&File, path.c_str(), L"wx") != 0 || !File) { Error = "Cannot create comparison CSV"; return false; }
+        if (_wfopen_s(&File, path.c_str(), L"wx") != 0 || !File) { Error = "Cannot create performance CSV"; return false; }
         Path = path.string(); LastFlush = Clock::now();
-        Buffer = "utc,elapsed_ms,event,mode,epoch,frame,warmup,valid,gpu_lighting_ms,present_interval_ms,light_count,width,height,fallback,dropped_log_rows,settings_id,transition_lights\n";
+        Buffer = "utc,elapsed_ms,event,mode,epoch,frame,warmup,valid,gpu_lighting_ms,present_interval_ms,light_count,width,height,fallback,dropped_log_rows,settings_id\n";
         Buffer.reserve(256 * 1024);
         return true;
     }
@@ -129,28 +126,27 @@ inline bool Warming()
     return Frame - WarmFrame < 180 || Clock::now() - WarmStart < std::chrono::seconds(3);
 }
 
-inline void Log(const char *event, bool candidate, uint64_t epoch, uint64_t frame, bool warm,
-    bool valid, double gpu, double present, UINT lights, UINT width, UINT height, bool fallback, uint64_t settings = SettingsId,
-    UINT transitions = 0)
+inline void Log(const char *event, uint64_t epoch, uint64_t frame, bool warm,
+    bool valid, double gpu, double present, UINT lights, UINT width, UINT height, bool fallback, uint64_t settings = SettingsId)
 {
     if (!Recording) return;
     SYSTEMTIME utc{}; GetSystemTime(&utc);
     const double elapsed = std::chrono::duration<double, std::milli>(Clock::now() - SessionStart).count();
     char line[512]{};
-    sprintf_s(line, "%04u-%02u-%02uT%02u:%02u:%02u.%03uZ,%.3f,%s,%s,%llu,%llu,%d,%d,%.6f,%.6f,%u,%u,%u,%d,%llu,%016llx,%u\n",
+    sprintf_s(line, "%04u-%02u-%02uT%02u:%02u:%02u.%03uZ,%.3f,%s,%s,%llu,%llu,%d,%d,%.6f,%.6f,%u,%u,%u,%d,%llu,%016llx\n",
         utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond, utc.wMilliseconds,
-        elapsed, event, candidate ? "candidate" : "baseline", static_cast<unsigned long long>(epoch),
+        elapsed, event, "production", static_cast<unsigned long long>(epoch),
         static_cast<unsigned long long>(frame), warm ? 1 : 0, valid ? 1 : 0, gpu, present, lights, width, height,
-        fallback ? 1 : 0, static_cast<unsigned long long>(Writer.Lost()), static_cast<unsigned long long>(settings), transitions);
+        fallback ? 1 : 0, static_cast<unsigned long long>(Writer.Lost()), static_cast<unsigned long long>(settings));
     Writer.Push(line);
 }
 
 struct Query
 {
     ComPtr<ID3D11Query> Disjoint, Begin, End;
-    bool Pending = false, Candidate = false, Warm = false, Fallback = false;
-    uint64_t ModeEpoch = 0, SampleFrame = 0, SampleGeneration = 0, Settings = 0;
-    UINT Lights = 0, Width = 0, Height = 0, Transitions = 0;
+    bool Pending = false, Warm = false, Fallback = false;
+    uint64_t CacheEpoch = 0, SampleFrame = 0, SampleGeneration = 0, Settings = 0;
+    UINT Lights = 0, Width = 0, Height = 0;
 };
 inline std::array<Query, 8> Queries;
 inline int ActiveQuery = -1;
@@ -174,16 +170,15 @@ inline void Poll(ID3D11DeviceContext *ctx)
         if (valid && !query.Warm)
         {
             std::lock_guard lock(ResultsLock);
-            auto &result = Modes[query.Candidate ? 1 : 0];
+            auto &result = Stats;
             result.Gpu.Add(ms); result.Lights.Add(query.Lights);
-            result.Transitions.Add(query.Transitions);
             result.Width = query.Width; result.Height = query.Height;
         }
-        Log("gpu", query.Candidate, query.ModeEpoch, query.SampleFrame, query.Warm, valid,
-            ms, -1, query.Lights, query.Width, query.Height, query.Fallback, query.Settings, query.Transitions);
+        Log("gpu", query.CacheEpoch, query.SampleFrame, query.Warm, valid,
+            ms, -1, query.Lights, query.Width, query.Height, query.Fallback, query.Settings);
     }
 }
-inline void BeginPass(ID3D11DeviceContext *ctx, bool candidate, UINT lights, UINT width, UINT height, UINT transitions = 0)
+inline void BeginPass(ID3D11DeviceContext *ctx, UINT lights, UINT width, UINT height)
 {
     if (!Recording || ActiveQuery >= 0 || ctx->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE) return;
     Poll(ctx);
@@ -199,15 +194,14 @@ inline void BeginPass(ID3D11DeviceContext *ctx, bool candidate, UINT lights, UIN
                 || FAILED(dev->CreateQuery(&stamp, &query.End)))
             { query = {}; break; }
         }
-        query.Candidate = candidate; query.Warm = Warming(); query.Fallback = false;
-        query.ModeEpoch = CurrentEpoch(); query.SampleFrame = Frame; query.SampleGeneration = Generation;
+        query.Warm = Warming(); query.Fallback = false;
+        query.CacheEpoch = CurrentEpoch(); query.SampleFrame = Frame; query.SampleGeneration = Generation;
         query.Settings = SettingsId;
         query.Lights = lights; query.Width = width; query.Height = height;
-        query.Transitions = transitions;
         ctx->Begin(query.Disjoint.Get()); ctx->End(query.Begin.Get());
         ActiveQuery = static_cast<int>(i); return;
     }
-    std::lock_guard lock(ResultsLock); ++Modes[candidate ? 1 : 0].Unavailable;
+    std::lock_guard lock(ResultsLock); ++Stats.Unavailable;
 }
 inline void EndPass(ID3D11DeviceContext *ctx)
 {
@@ -219,7 +213,7 @@ inline void EndPass(ID3D11DeviceContext *ctx)
 inline void RecordFallback()
 {
     if (ActiveQuery >= 0) Queries[static_cast<size_t>(ActiveQuery)].Fallback = true;
-    std::lock_guard lock(ResultsLock); ++Modes[1].Fallbacks;
+    std::lock_guard lock(ResultsLock); ++Stats.Fallbacks;
 }
 inline void SaveSummary()
 {
@@ -227,26 +221,25 @@ inline void SaveSummary()
     auto path = std::filesystem::path(Writer.Path); path.replace_extension("summary.csv");
     FILE *file = nullptr;
     if (_wfopen_s(&file, path.c_str(), L"w") != 0 || !file)
-    { Writer.Error = "Cannot save comparison summary CSV"; return; }
-    fputs("mode,settings_id,window_samples,gpu_total_samples,gpu_mean_ms,gpu_p95_ms,present_samples,present_mean_ms,present_p95_ms,mean_lights,width,height,fallbacks,unavailable_queries,dropped_log_rows,mean_transition_lights\n", file);
+    { Writer.Error = "Cannot save performance summary CSV"; return; }
+    fputs("mode,settings_id,window_samples,gpu_total_samples,gpu_mean_ms,gpu_p95_ms,present_samples,present_mean_ms,present_p95_ms,mean_lights,width,height,fallbacks,unavailable_queries,dropped_log_rows\n", file);
     std::lock_guard lock(ResultsLock);
-    for (size_t i = 0; i < Modes.size(); ++i)
     {
-        const auto &r = Modes[i];
-        fprintf(file, "%s,%016llx,%zu,%llu,%.6f,%.6f,%zu,%.6f,%.6f,%.3f,%u,%u,%llu,%llu,%llu,%.3f\n",
-            i ? "candidate" : "baseline", static_cast<unsigned long long>(SettingsId), r.Gpu.Count,
+        const auto &r = Stats;
+        fprintf(file, "%s,%016llx,%zu,%llu,%.6f,%.6f,%zu,%.6f,%.6f,%.3f,%u,%u,%llu,%llu,%llu\n",
+            "production", static_cast<unsigned long long>(SettingsId), r.Gpu.Count,
             static_cast<unsigned long long>(r.Gpu.Total), r.Gpu.Count ? r.Gpu.Mean() : -1,
             r.Gpu.Count ? r.Gpu.P95() : -1, r.Present.Count, r.Present.Count ? r.Present.Mean() : -1,
             r.Present.Count ? r.Present.P95() : -1, r.Lights.Count ? r.Lights.Mean() : -1, r.Width, r.Height,
             static_cast<unsigned long long>(r.Fallbacks), static_cast<unsigned long long>(r.Unavailable),
-            static_cast<unsigned long long>(Writer.Lost()), r.Transitions.Count ? r.Transitions.Mean() : -1);
+            static_cast<unsigned long long>(Writer.Lost()));
     }
-    if (ferror(file)) Writer.Error = "Cannot write comparison summary CSV";
-    if (fclose(file) != 0) Writer.Error = "Cannot finish comparison summary CSV";
+    if (ferror(file)) Writer.Error = "Cannot write performance summary CSV";
+    if (fclose(file) != 0) Writer.Error = "Cannot finish performance summary CSV";
 }
 
 // Called after upstream Present cleanup. Pending query slots are never reused
-// until resolved, and delayed results retain the mode/generation of submission.
+// until resolved, and delayed results retain the settings/generation of submission.
 inline void Boundary(ID3D11DeviceContext *ctx, uint64_t settings = 0)
 {
     if (!ctx || ctx->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE) return;
@@ -256,41 +249,35 @@ inline void Boundary(ID3D11DeviceContext *ctx, uint64_t settings = 0)
     if (settings != SettingsId)
     {
         SettingsId = settings; ++Generation;
-        { std::lock_guard lock(ResultsLock); Modes = {}; }
+        { std::lock_guard lock(ResultsLock); Stats = {}; }
         WarmStart = now; WarmFrame = Frame; SkipInterval = true;
-        Log("settings_changed", Enabled.load(), CurrentEpoch(), Frame, true, false, -1, -1, 0, 0, 0, false);
+        Log("settings_changed", CurrentEpoch(), Frame, true, false, -1, -1, 0, 0, 0, false);
     }
     if (Recording && PreviousPresent != Clock::time_point{} && !SkipInterval)
     {
         const double elapsed = std::chrono::duration<double, std::milli>(now - PreviousPresent).count();
         const bool valid = elapsed > 0 && elapsed < 1000;
-        const bool warm = Warming(), candidate = Enabled.load();
-        if (valid && !warm) { std::lock_guard lock(ResultsLock); Modes[candidate ? 1 : 0].Present.Add(elapsed); }
-        Log("present", candidate, CurrentEpoch(), Frame, warm, valid, -1, elapsed, 0, 0, 0, false);
+        const bool warm = Warming();
+        if (valid && !warm) { std::lock_guard lock(ResultsLock); Stats.Present.Add(elapsed); }
+        Log("present", CurrentEpoch(), Frame, warm, valid, -1, elapsed, 0, 0, 0, false);
     }
     if (Recording)
     {
         const double flushMs = Writer.Flush();
-        if (flushMs >= 0) Log("csv_flush_cpu_ms", Enabled.load(), CurrentEpoch(), Frame, Warming(), false, -1, flushMs, 0, 0, 0, false);
+        if (flushMs >= 0) Log("csv_flush_cpu_ms", CurrentEpoch(), Frame, Warming(), false, -1, flushMs, 0, 0, 0, false);
     }
     PreviousPresent = now; SkipInterval = false;
     if (ResetRequested.exchange(false))
     {
-        { std::lock_guard lock(ResultsLock); Modes = {}; }
+        { std::lock_guard lock(ResultsLock); Stats = {}; }
         ++Generation; WarmStart = now; WarmFrame = Frame; SkipInterval = true;
-        Log("reset", Enabled.load(), CurrentEpoch(), Frame, true, false, -1, -1, 0, 0, 0, false);
-    }
-    if (Requested.load() != Enabled.load())
-    {
-        Enabled.store(Requested.load()); ++Epoch;
-        WarmStart = now; WarmFrame = Frame; SkipInterval = true;
-        Log("switch", Enabled.load(), CurrentEpoch(), Frame, true, false, -1, -1, 0, 0, 0, false);
+        Log("reset", CurrentEpoch(), Frame, true, false, -1, -1, 0, 0, 0, false);
     }
     if (RecordRequested.load() != Recording)
     {
         if (Recording)
         {
-            Log("stop", Enabled.load(), CurrentEpoch(), Frame, Warming(), false, -1, -1, 0, 0, 0, false);
+            Log("stop", CurrentEpoch(), Frame, Warming(), false, -1, -1, 0, 0, 0, false);
             SaveSummary(); Recording = false; Writer.Close(); ++Generation;
         }
         else
@@ -298,8 +285,8 @@ inline void Boundary(ID3D11DeviceContext *ctx, uint64_t settings = 0)
             if (Writer.Open())
             {
                 Recording = true; SessionStart = now; WarmStart = now; WarmFrame = Frame; ++Generation;
-                { std::lock_guard lock(ResultsLock); Modes = {}; }
-                Log("start", Enabled.load(), CurrentEpoch(), Frame, true, false, -1, -1, 0, 0, 0, false);
+                { std::lock_guard lock(ResultsLock); Stats = {}; }
+                Log("start", CurrentEpoch(), Frame, true, false, -1, -1, 0, 0, 0, false);
             }
             else RecordRequested = false;
         }
@@ -309,57 +296,51 @@ inline void Boundary(ID3D11DeviceContext *ctx, uint64_t settings = 0)
 inline void Release()
 {
     RecordRequested = false;
-    if (Recording) Log("device_release", Enabled.load(), CurrentEpoch(), Frame, true, false, -1, -1, 0, 0, 0, false);
+    if (Recording) Log("device_release", CurrentEpoch(), Frame, true, false, -1, -1, 0, 0, 0, false);
     if (Recording) SaveSummary();
     Recording = false; Writer.Close(); Queries = {}; ActiveQuery = -1; ++Generation;
-    PreviousPresent = {}; SkipInterval = true; Enabled = false; Requested = false; ++Epoch;
+    PreviousPresent = {}; SkipInterval = true; ++Epoch;
 }
 inline void WriteState(FILE *file)
 {
-    fprintf(file, "lighting comparison: requested %d, active %d, epoch %llu, settings %016llx, recording %d, warmup %d\n",
-        Requested.load() ? 1 : 0, Enabled.load() ? 1 : 0, static_cast<unsigned long long>(CurrentEpoch()),
-        static_cast<unsigned long long>(SettingsId), Recording ? 1 : 0, Warming() ? 1 : 0);
+    fprintf(file, "lighting performance: epoch %llu, settings %016llx, recording %d, warmup %d\n",
+        static_cast<unsigned long long>(CurrentEpoch()), static_cast<unsigned long long>(SettingsId),
+        Recording ? 1 : 0, Warming() ? 1 : 0);
     std::lock_guard lock(ResultsLock);
-    for (size_t i = 0; i < Modes.size(); ++i)
-        fprintf(file, "comparison %s: GPU mean %.6f ms p95 %.6f, samples %llu, Present mean %.6f ms p95 %.6f, fallback %llu\n",
-            i ? "candidate" : "baseline", Modes[i].Gpu.Mean(), Modes[i].Gpu.P95(),
-            static_cast<unsigned long long>(Modes[i].Gpu.Total), Modes[i].Present.Mean(), Modes[i].Present.P95(),
-            static_cast<unsigned long long>(Modes[i].Fallbacks));
+    fprintf(file, "production: GPU mean %.6f ms p95 %.6f, samples %llu, Present mean %.6f ms p95 %.6f, fallback %llu\n",
+        Stats.Gpu.Mean(), Stats.Gpu.P95(), static_cast<unsigned long long>(Stats.Gpu.Total),
+        Stats.Present.Mean(), Stats.Present.P95(), static_cast<unsigned long long>(Stats.Fallbacks));
 }
 inline void DrawSettings()
 {
-    ImGui::SeparatorText("Lighting comparison");
-    bool candidate = Requested.load();
-    if (ImGui::Checkbox("Experimental improvements", &candidate)) Request(candidate);
-    ImGui::TextWrapped("Unchecked: current 1.13.16 lighting. Checked: experimental source fixes, lighting and short shadow transitions. Switches at the next frame; caches rebuild. Selection resets when the game closes.");
+    ImGui::SeparatorText("Lighting performance");
     bool record = RecordRequested.load();
-    if (ImGui::Checkbox("Record comparison performance (CSV)", &record)) RecordRequested = record;
-    if (ImGui::Button("Clear comparison results")) ResetRequested = true;
-    ImGui::TextWrapped("Compare the same scene and camera. Changing other hook settings clears both summaries. Minimum warm-up: 3 seconds and 180 frames after each switch. Wait for lights to settle; warm-up samples are logged but excluded below.");
+    if (ImGui::Checkbox("Record lighting performance (CSV)", &record)) RecordRequested = record;
+    if (ImGui::Button("Clear performance results")) ResetRequested = true;
+    ImGui::TextWrapped("Changing hook settings clears the summary. Warm-up lasts at least 3 seconds and 180 frames. Warm-up samples are logged but excluded below.");
     if (Recording) ImGui::TextUnformatted(Warming() ? "Recording: warming up" : "Recording: collecting samples");
     if (!Writer.Error.empty()) ImGui::TextWrapped("Log error: %s", Writer.Error.c_str());
     if (Writer.WriteFailed()) ImGui::TextUnformatted("CSV write failed; check disk space and access.");
     if (!Writer.Path.empty()) { ImGui::TextWrapped("Log: %s", Writer.Path.c_str()); if (ImGui::Button("Copy log path")) ImGui::SetClipboardText(Writer.Path.c_str()); }
     ImGui::TextWrapped("Stopping recording also saves a .summary.csv beside the detailed log.");
     if (Writer.Lost()) ImGui::Text("Dropped log rows: %llu", static_cast<unsigned long long>(Writer.Lost()));
-    std::array<Results, 2> results;
-    { std::lock_guard lock(ResultsLock); results = Modes; }
-    if (ImGui::BeginTable("LightingAB", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+    Results result;
+    { std::lock_guard lock(ResultsLock); result = Stats; }
+    if (ImGui::BeginTable("LightingPerformance", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
     {
-        ImGui::TableSetupColumn("Metric"); ImGui::TableSetupColumn("Current 1.13.16"); ImGui::TableSetupColumn("Candidate"); ImGui::TableHeadersRow();
+        ImGui::TableSetupColumn("Metric"); ImGui::TableSetupColumn("Value"); ImGui::TableHeadersRow();
         const auto row = [&](const char *label, auto value) {
             ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextUnformatted(label);
-            for (const auto &result : results) { ImGui::TableNextColumn(); value(result); }
+            ImGui::TableNextColumn(); value(result);
         };
         row("GPU lighting mean / p95 (ms)", [](const Results &r) { if (r.Gpu.Count) ImGui::Text("%.3f / %.3f", r.Gpu.Mean(), r.Gpu.P95()); else ImGui::TextUnformatted("--"); });
         row("Game Present mean / p95 (ms)", [](const Results &r) { if (r.Present.Count) ImGui::Text("%.3f / %.3f", r.Present.Mean(), r.Present.P95()); else ImGui::TextUnformatted("--"); });
         row("GPU samples (total)", [](const Results &r) { ImGui::Text("%llu", static_cast<unsigned long long>(r.Gpu.Total)); });
         row("Mean submitted lights", [](const Results &r) { if (r.Lights.Count) ImGui::Text("%.1f", r.Lights.Mean()); else ImGui::TextUnformatted("--"); });
-        row("Mean transitioning lights", [](const Results &r) { if (r.Transitions.Count) ImGui::Text("%.1f", r.Transitions.Mean()); else ImGui::TextUnformatted("--"); });
         row("Lighting resolution", [](const Results &r) { ImGui::Text("%u x %u", r.Width, r.Height); });
         row("Fallbacks / unavailable queries", [](const Results &r) { ImGui::Text("%llu / %llu", static_cast<unsigned long long>(r.Fallbacks), static_cast<unsigned long long>(r.Unavailable)); });
         ImGui::EndTable();
     }
-    ImGui::TextWrapped("Statistics use the latest 600 valid samples per mode. GPU lighting includes candidate list construction, shading and upsampling; it excludes source measurement and shadow-map generation. Game Present intervals include other game work and frame caps; they are not display/output FPS. CSV uses -1 for an inapplicable metric. Buffered CSV writes occur once per second; their CPU cost is logged as csv_flush_cpu_ms.");
+    ImGui::TextWrapped("Statistics use the latest 600 valid samples. GPU lighting includes light-list construction, shading and upsampling; it excludes source measurement and shadow-map generation. Game Present intervals include other game work and frame caps; they are not display/output FPS. CSV uses -1 for an inapplicable metric. Buffered CSV writes occur once per second; their CPU cost is logged as csv_flush_cpu_ms.");
 }
 }

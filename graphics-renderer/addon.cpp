@@ -9,8 +9,11 @@
 #include "texturequest_world_guard.hpp"
 #include "depth_demand_v1.hpp"
 #include "capture.hpp"
-#include "lighting_experiment.hpp"
+#include "lighting_diagnostics.hpp"
 #include "shadows.hpp"
+#include "quality_presets.hpp"
+#include <string_view>
+#include <type_traits>
 
 using namespace reshade::api;
 
@@ -175,6 +178,120 @@ static void OnPushDescriptors(command_list *cmd, shader_stage stages, pipeline_l
     cmd->push_descriptors(stages, layout, param, replacement);
 }
 
+// Presets are generated from the installer's canonical JSON. Read actual state,
+// rather than a saved preset name, so any Advanced edit is reported as Custom.
+template<class T>
+static bool TQPresetSetting(const char *name, T &value, bool apply)
+{
+    const std::string_view key(name);
+    const auto live = [&](auto &setting) {
+        using Value = decltype(setting.load());
+        if (apply) setting.store(static_cast<Value>(value));
+        else value = static_cast<T>(setting.load());
+        return true;
+    };
+    if (key == "AnisotropicFiltering") return live(AnisotropyEnabled);
+    if (key == "Anisotropy") {
+        if (apply) AnisotropyLevel = ANISOTROPY_LEVELS - 1;
+        else value = static_cast<T>(2 << AnisotropyLevel.load());
+        return true;
+    }
+    if (key == "SmoothInterfaceText") return live(BilinearEnabled);
+    if (key == "PointLightShadows") return live(shadows::Enabled);
+    if (key == "CharacterShadows") return live(shadowmaps::MovingShadows);
+    if (key == "ShadowStrength") return live(shadowmaps::Strength);
+    if (key == "PointShadowSoftness") return live(shadowmaps::PointSoftness);
+    if (key == "OwnLampShaders") return live(shadows::OwnLampShaders);
+    if (key == "ShadowedLights") return live(shadowmaps::LightLimit);
+    if (key == "ParticleShadowLimit") return live(shadowmaps::ParticleShadowLimit);
+    if (key == "EmissiveLights") return live(glow::Enabled);
+    if (key == "EmissiveParticles") return live(glow::ParticlesEnabled);
+    if (key == "EmissiveObjects") return live(glow::ObjectsEnabled);
+    if (key == "EmissiveLightStrength") return live(glow::Strength);
+    if (key == "ParticleLightStrength") return live(particle_emission::Strength);
+    if (key == "ParticleLightRadius") return live(particle_emission::Radius);
+    if (key == "PaintedEmissionLight") return live(glow::PaintedLight);
+    if (key == "PaintedEmissionKept") return live(glow::PaintedKept);
+    if (key == "SmoothEmissiveLighting") return live(glow::SmoothLighting);
+    if (key == "EmissiveLightLimit") return live(glow::LightLimit);
+    if (key == "ParticleLightLimit") return live(glow::ParticleLightLimit);
+    if (key == "AmbientOcclusion") return live(lightbuffer::OcclusionEnabled);
+    if (key == "OcclusionRadius") return live(lightbuffer::OcclusionRadius);
+    if (key == "OcclusionStrength") return live(lightbuffer::OcclusionStrength);
+    if (key == "SurfaceSaturation") {
+        if (apply) lightbuffer::SurfaceSaturation = static_cast<float>(value) / 100.0f;
+        else value = static_cast<T>(lightbuffer::SurfaceSaturation.load() * 100.0f);
+        return true;
+    }
+    if (key == "SunLighting") return live(lightbuffer::SunEnabled);
+    if (key == "SunSoftness") return live(lightbuffer::SunSoftness);
+    if (key == "SunShadowMode") return live(lightbuffer::SunShadowMode);
+    if (key == "SunShadowDirectionFix") return live(lightbuffer::SunDirectionFix);
+    if (key == "SmoothIndoorTransition") return live(lightbuffer::SmoothIndoorTransition);
+    if (key == "AmbientKept") return live(lightbuffer::AmbientKept);
+    if (key == "TextureQuestSunSoftnessPreferenceRealSun" || key == "TextureQuestSunSoftnessUnits") {
+        if (!apply) reshade::get_config_value(nullptr, CONFIG_SECTION, name, value);
+        return true;
+    }
+    return false;
+}
+
+extern "C" __declspec(dllexport) int32_t TextureQuestWorldGraphicsQualityPreset()
+{
+    if (shadowmaps::LegacyPointSoftness.load()) return -1;
+    for (unsigned index = 0; index < tq_quality::Count; ++index) {
+        bool matches = true;
+        tq_quality::VisitSettings(index, [&](const char *name, auto expected) {
+            auto actual = expected;
+            if (!TQPresetSetting(name, actual, false)) { matches = false; return; }
+            if constexpr (std::is_floating_point_v<decltype(expected)>)
+                matches = matches && std::isfinite(actual) && std::abs(actual - expected) <= 0.0001f;
+            else matches = matches && actual == expected;
+        });
+        if (matches) return static_cast<int32_t>(index);
+    }
+    return -1;
+}
+
+extern "C" __declspec(dllexport) uint32_t TextureQuestApplyWorldGraphicsQualityPreset(uint32_t index)
+{
+    // Validate every key before changing anything; future schema extensions must
+    // not partly apply a preset to an older renderer.
+    bool known = true;
+    if (!tq_quality::VisitSettings(index, [&](const char *name, auto value) {
+        known = TQPresetSetting(name, value, false) && known;
+    }) || !known) return 0;
+    tq_quality::VisitSettings(index, [&](const char *name, auto value) {
+        TQPresetSetting(name, value, true);
+        reshade::set_config_value(nullptr, CONFIG_SECTION, name, value);
+    });
+    shadowmaps::LegacyPointSoftness = false;
+    reshade::set_config_value(nullptr, CONFIG_SECTION, "TextureQuestQualityPreset", tq_quality::Names[index]);
+    return 1;
+}
+
+static bool TQHasExistingWorldSettings()
+{
+    const auto present = [](const char *key) {
+        size_t size = 0;
+        // Probe presence, not parse success: even a malformed saved choice is
+        // existing user state and must not trigger an automatic full preset.
+        return reshade::get_config_value(nullptr, CONFIG_SECTION, key, nullptr, &size);
+    };
+    bool existing = false;
+    tq_quality::VisitSettings(0, [&](const char *key, auto) { existing = present(key) || existing; });
+    constexpr const char *legacy[] = {
+        "GlowLights", "GlowLightStrength", "PaintedGlowKept", "ShadowSoftness", "SunShadowSize",
+        "TextureQuestSunSoftnessPreference", "TextureQuestPresetVersion", "TextureQuestQualityPreset",
+        "TextureQuestPreset2PreviousShadowSoftness", "TextureQuestPreset1PreviousShadowStrength",
+        "TextureQuestPreset1PreviousShadowSoftness", "TextureQuestPreset1PreviousOcclusionRadius",
+        "TextureQuestPreset1PreviousOcclusionStrength", "TextureQuestPreset1PreviousShadowedLights",
+        "TextureQuestPreset1PreviousAnisotropy"
+    };
+    for (const char *key : legacy) existing = present(key) || existing;
+    return existing;
+}
+
 static void DrawSettings(effect_runtime *)
 {
     bool enabled = AnisotropyEnabled;
@@ -196,18 +313,16 @@ static void DrawSettings(effect_runtime *)
     ImGui::Separator();
     shadows::DrawSettings();
 
-    if (ImGui::CollapsingHeader("Advanced"))
-    {
-        lighting_experiment::DrawSettings();
-        shadows::DrawAdvancedSettings();
-        if (ImGui::TreeNode("Debug"))
-        {
-            shadows::DrawDebugSettings();
-            ImGui::Separator();
-            capture::DrawSettings();
-            ImGui::TreePop();
-        }
-    }
+    shadows::DrawAdvancedSettings();
+}
+
+static void DrawDebugSettings(effect_runtime *)
+{
+    shadows::DrawDebugSettings();
+    ImGui::Separator();
+    lighting_diagnostics::DrawSettings();
+    ImGui::Separator();
+    capture::DrawSettings();
 }
 
 static void LoadSettings()
@@ -284,11 +399,9 @@ static uint64_t TQLightingSettingsIdentity()
     return hash;
 }
 static void TQWorldBoundary(command_queue*queue,swapchain*,const rect*,const rect*,uint32_t,const rect*) {
-    const auto comparisonSettings = lighting_experiment::RecordRequested.load() || lighting_experiment::Recording
-        || lighting_experiment::Enabled.load() || lighting_experiment::Requested.load()
-        ? TQLightingSettingsIdentity() : lighting_experiment::SettingsId;
-    lighting_experiment::Boundary(reinterpret_cast<ID3D11DeviceContext*>(queue->get_native()), comparisonSettings);
-    shadowmaps::transitions::SyncSettings(comparisonSettings);
+    const auto performanceSettings = lighting_diagnostics::RecordRequested.load() || lighting_diagnostics::Recording
+        ? TQLightingSettingsIdentity() : lighting_diagnostics::SettingsId;
+    lighting_diagnostics::Boundary(reinterpret_cast<ID3D11DeviceContext*>(queue->get_native()), performanceSettings);
     const bool wanted=tq_world::Managed.Requested(),was=tq_world::Managed.Enabled();
     static bool samplerRetry=false;
     static std::uint32_t lastFiltering=0;
@@ -324,10 +437,20 @@ static void TQWorldBoundary(command_queue*queue,swapchain*,const rect*,const rec
     if(wanted&&!was)shadowmaps::RebuildAll();
     if(!ok)reshade::log::message(reshade::log::level::error,"TextureQuest world sampler transition could not restore every original descriptor");
 }
-static void TQWorldDeviceReleased(device*dev){lighting_experiment::Release();tq_world::Work.Clear();tq_world::Managed.Release(dev->get_native());}
+static void TQWorldDeviceReleased(device*dev){lighting_diagnostics::Release();tq_world::Work.Clear();tq_world::Managed.Release(dev->get_native());}
 extern "C" __declspec(dllexport) uint32_t TextureQuestWorldGraphicsABI()noexcept{return 1;}
 extern "C" __declspec(dllexport) void TextureQuestSetWorldGraphicsEnabled(uint32_t enabled)noexcept{tq_world::Managed.Request(enabled);}
-extern "C" __declspec(dllexport) void TextureQuestDrawWorldGraphics(effect_runtime*runtime){if(tq_world::Accept(runtime))DrawSettings(runtime);}
+extern "C" __declspec(dllexport) void TextureQuestDrawWorldGraphicsAdvanced(effect_runtime*runtime)
+{if(tq_world::Accept(runtime))DrawSettings(runtime);}
+extern "C" __declspec(dllexport) void TextureQuestDrawWorldGraphicsDebug(effect_runtime*runtime)
+{if(tq_world::Accept(runtime))DrawDebugSettings(runtime);}
+// Older controllers already provide an Advanced wrapper around this fallback.
+extern "C" __declspec(dllexport) void TextureQuestDrawWorldGraphics(effect_runtime*runtime)
+{
+    if(!tq_world::Accept(runtime))return;
+    DrawSettings(runtime);
+    if(ImGui::TreeNode("Debug")){DrawDebugSettings(runtime);ImGui::TreePop();}
+}
 
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
 {
@@ -340,6 +463,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
         if(auto provider=reshade::internal::get_reshade_module_handle())
             if(auto join=reinterpret_cast<tq_depth_v1::Register>(GetProcAddress(provider,tq_depth_v1::RegisterExport)))
                 join(module,tq_depth_v1::NoManualDepth);
+        const bool freshWorldSettings = !TQHasExistingWorldSettings();
         LoadSettings();
         reshade::register_event<reshade::addon_event::init_sampler>(&tq_world::Guard<&OnInitSampler>::Call);
         reshade::register_event<reshade::addon_event::destroy_sampler>(&tq_world::Guard<&OnDestroySampler>::Call);
@@ -347,6 +471,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
         reshade::register_event<reshade::addon_event::push_descriptors>(&tq_world::Guard<&OnPushDescriptors>::Call);
         capture::Register();
         shadows::Register();
+        if (freshWorldSettings) TextureQuestApplyWorldGraphicsQualityPreset(0);
         // Register after upstream frame cleanup; same pinned provider dispatch
         // order also releases the owner after its module/device cleanup.
         reshade::register_event<reshade::addon_event::present>(&tq_world::Guard<&TQWorldBoundary>::Call);

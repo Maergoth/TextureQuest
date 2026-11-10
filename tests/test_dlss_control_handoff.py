@@ -50,6 +50,7 @@ class ControlHandoff(Fixture):
 
     def ui(self):
         ui = SimpleNamespace(state_dir=self.state, game=Variable(str(self.game)), busy=None,
+            quality_snapshot=dict(choice=None, record_sha256=None),
             component_effects=Variable(False), component_dlss=Variable(False), component_graphics=Variable(False),
             component_snapshot=None, component_error='', prepared={'distribution': 'generated-channels-only'},
             release_checked=True, graphics_selected=Mock(return_value=True),
@@ -57,7 +58,7 @@ class ControlHandoff(Fixture):
             graphics_manager=self.manager, loader_status=Mock(return_value={}), loader_in_use=Mock(return_value=False),
             upgrade_pending=Mock(return_value=False), _download_latest=Mock(), dds_store=Mock(),
             set_message=Mock(), refresh_controls=Mock(), report=Mock(), shortcut={'vk': 106, 'modifiers': 0}, upgrade=Mock())
-        for name in ('load_components', 'selected_components', 'save_components'):
+        for name in ('load_components', 'selected_components', 'save_components', 'apply_pending_quality'):
             setattr(ui, name, MethodType(getattr(app.TextureQuestApp, name), ui))
         ui.begin = Mock(side_effect=lambda kind, message, action: action())
         components.save(self.state, self.game, self.selected, expected_before=None)
@@ -87,7 +88,7 @@ class ControlHandoff(Fixture):
             core._save(self.state / 'dds-prepared.json', prepared)
             order.append('prepare'); return prepared
         store.prepare.side_effect = prepare
-        store.verify.side_effect = lambda *a, **k: order.append('verify')
+        store.verify_for_install.side_effect = lambda *a, **k: order.append('verify')
         original = self.manager.uninstall
         def retire(*args, **kwargs):
             self.assertIn('verify', order)

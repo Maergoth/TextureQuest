@@ -4,6 +4,15 @@ This is the canonical history bundled with the installer. Develop entries are
 development builds, not announcements of public binary releases. Controlled
 checks described here do not establish complete in-game appearance or FPS.
 
+## 1.13.19 — Lighting quality presets
+
+- Promote the qualified object/particle source observations, independent per-light shadow visibility and conservative receiver-tile lighting work from the local comparison builds. Remove the comparison checkbox. Retain optional surface-light smoothing under Advanced.
+- Revert the 150 ms shadow crossfade from 1.13.18 after the in-game result did not improve the reported shadow jumping. Remove its retained-map memory and blending work. Particle grouping and the existing source-position smoothing remain; this release does not claim to eliminate every grouping or shadow-map step.
+- Add shared **Low, Medium, High, Max** quality presets to both the installer and the top of the TextureQuest panel. Use the same versioned preset contract for both. Manual changes show Custom; selecting a preset explicitly applies its complete lighting profile without changing Frame Gen or Neural Rendering.
+- Budget Low around an RTX 2060, Medium around an RTX 3070, High around an RTX 4080 and Max around an RTX 5090. Max enables the highest supported light/shadow capacities. These are starting points, not measured hardware FPS guarantees; artistic light strength, radius and shadow softness are kept consistent across tiers.
+- Keep **Show FPS**, **Frame Gen** and **Quality Presets** at the top. Move individual graphics controls to **Advanced** and diagnostics, captures and performance logging to **Debug**. Remove experimental labels from active controls. Keep anisotropic filtering on at 16x in every preset.
+- Preserve textures 1.3.0, portable data, saved custom settings and unchanged texture preparation. Frame Gen and Neural Rendering stay off on a fresh install and remain independent of quality presets. Upscaling and Reflex driver mode remain retired.
+
 ## 1.13.18 — Local experimental shadow transitions (not published)
 
 - Rename the existing Advanced comparison checkbox to **Experimental improvements**. It still starts unchecked each launch, preserves saved graphics preferences, and retains the same current/candidate comparison and opt-in CSV logging.

@@ -1,6 +1,7 @@
 """Dedicated consumer UI. Shared installer engine; no developer workspace."""
 from __future__ import annotations
 import argparse
+import hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 from pathlib import Path
@@ -23,6 +24,7 @@ from texturequest_graphics import GraphicsManager
 from texturequest_shortcut import normalize as shortcut_spec,label as shortcut_label,from_tk as shortcut_from_tk
 from texturequest_version import APP_VERSION
 import texturequest_components as components
+import texturequest_quality as quality
 from texturequest_version_check import check_updates as check_versions, texture_version, pack_identity, saved_manifest
 from texturequest_changelog import load_changelog, show_changelog
 
@@ -294,6 +296,9 @@ class TextureQuestApp:
         self.component_textures = tk.BooleanVar(value=True)
         self.component_dlss = tk.BooleanVar(value=False)
         self.component_graphics = tk.BooleanVar(value=False)
+        self.quality_choice = tk.StringVar(value='Low')
+        self.quality_snapshot = dict(choice=None, record_sha256=None)
+        self.quality_error = ''
         self.game = tk.StringVar(value=str(initial_game or ""))
         self.load_components()
         self.game.trace_add("write", lambda *_: self.game_changed())
@@ -448,7 +453,7 @@ class TextureQuestApp:
         self.component_controls = {}
         for key, caption, variable, hint in [
             ('textures', 'Textures (required)', self.component_textures, 'Our generated textures. The in-game toggle switches them off too.'),
-            ('effects', 'Graphical Effects / DLSS (experimental)', self.component_graphics, 'Lighting, shadows, ambient occlusion, filtering, DLSS frame generation and neural rendering on supported hardware. Press Home to show or hide settings, then choose TextureQuest. Ambient occlusion starts on; added lights and sun effects start off. Frame generation and neural rendering are optional and start off. The texture shortcut switches all selected features off/on.')]:
+            ('effects', 'Graphical Effects / DLSS', self.component_graphics, 'Lighting, shadows, ambient occlusion, filtering, DLSS frame generation and neural rendering on supported hardware. Choose a quality preset below, or press Home in game. Frame generation and neural rendering remain separate choices. The texture shortcut switches all selected features off/on.')]:
             row = tk.Frame(component_area, bg=WHITE)
             row.pack(fill='x')
             row.columnconfigure(0, weight=1)
@@ -460,6 +465,16 @@ class TextureQuestApp:
             info = self.label(row, 'ⓘ', size=10, color=GREEN, cursor='question_arrow', takefocus=True)
             info.grid(row=0, column=1, padx=(4, 0))
             HoverInfo(info, hint)
+        quality_row = tk.Frame(component_area, bg=WHITE)
+        quality_row.pack(fill='x', pady=(7, 0))
+        self.label(quality_row, 'Quality preset', size=9).pack(side='left', padx=(0, 10))
+        self.quality_dropdown = ttk.Combobox(quality_row, textvariable=self.quality_choice,
+            values=(*quality.NAMES, quality.CUSTOM), state='readonly', width=12)
+        self.quality_dropdown.pack(side='left', fill='x', expand=True)
+        self.quality_dropdown.bind('<<ComboboxSelected>>', self.quality_changed)
+        self.quality_note = self.label(component_area, '', size=8, color=MUTED,
+            wraplength=470, justify='left')
+        self.quality_note.pack(fill='x', pady=(4, 0))
         self.graphics_settings_note = self.label(component_area, 'Press Home to show or hide settings. Choose TextureQuest.',
             size=9, color=MUTED, wraplength=500, justify='left')
         self.graphics_settings_note.pack(fill='x', pady=(4, 0))
@@ -631,6 +646,46 @@ class TextureQuestApp:
         except (OSError, ValueError, KeyError, TypeError) as error:
             self.component_error = 'Saved component choices need attention: ' + str(error)
 
+    def load_quality(self):
+        self.quality_error = ''
+        game = self.game.get().strip()
+        if not game:
+            self.quality_snapshot = dict(choice=None, record_sha256=None)
+            self.quality_choice.set('Low')
+            return
+        try:
+            self.quality_snapshot = quality.load_pending(self.state_dir, game)
+            ini = core._plain(Path(game) / 'ReShade.ini', core._plain(game))
+            if ini.exists() and ini.stat().st_size > 4 * 1024**2:
+                raise ValueError('ReShade settings are too large; they were preserved.')
+            effective = quality.detect(ini.read_bytes() if ini.exists() else b'')
+            self.quality_choice.set(self.quality_snapshot['choice'] or effective)
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            self.quality_choice.set(quality.CUSTOM)
+            self.quality_error = 'Quality settings need attention: ' + str(error)
+
+    def quality_changed(self, _event=None):
+        try:
+            if self.busy or not self.game.get().strip():
+                raise ValueError('Choose a game folder before changing quality.')
+            selected = self.quality_choice.get()
+            self.quality_snapshot = quality.save_pending(self.state_dir, self.game.get().strip(),
+                None if selected == quality.CUSTOM else selected, expected=self.quality_snapshot)
+            self.set_message('Quality choice saved. Close EQ2, then Apply changes.' if selected != quality.CUSTOM
+                             else 'Keeping your current in-game settings.')
+        except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
+            self.set_message(str(error), error=True)
+        self.refresh_controls()
+
+    def apply_pending_quality(self, game, request):
+        if request is None or request['choice'] is None:
+            return None
+        if quality.load_pending(self.state_dir, game) != request:
+            raise ValueError('Quality choice changed before it could be applied. Reload the launcher.')
+        result = self.graphics_manager.apply_quality(game, request['choice'], progress=self.report)
+        quality.save_pending(self.state_dir, game, None, expected=request)
+        return result
+
     def selected_components(self, *, apply_graphics=False, capabilities=None):
         value = components.normalize()
         value['effects'] = self.component_effects.get()
@@ -695,21 +750,28 @@ class TextureQuestApp:
         for choice in self.mode_controls:
             choice.configure(state="disabled" if self.busy else "normal")
         game = self.game.get().strip()
+        if not self.busy:
+            self.load_quality()
         graphics = self.graphics_status(game)
         component_pending = not graphics.get('unknown') and graphics.get('installed') and components.normalize(graphics.get('components')) != self.selected_components(apply_graphics=True, capabilities=graphics)
+        quality_pending = bool(self.quality_snapshot['choice'] and self.component_graphics.get()
+                               and graphics.get('renderer_available'))
         self.component_controls['textures'].configure(state='disabled')
         # Keep old choices switchable even if an optional bundle is unavailable.
         graphics_choice = graphics.get('effects_available') or graphics.get('dlss_available') or self.component_graphics.get()
         self.component_controls['effects'].configure(state='normal' if not self.busy and game and graphics_choice and not graphics.get('unknown') and not self.component_error else 'disabled')
+        self.quality_dropdown.configure(state='readonly' if not self.busy and game and
+            self.component_graphics.get() and graphics.get('renderer_available') and not self.quality_error else 'disabled')
+        self.quality_note.configure(text=self.quality_error or quality.description(self.quality_choice.get()))
         loader = self.loader_status(game)
         legacy = self.loader_in_use(loader)
         if not self.busy and graphics.get('installed'):
             self.shortcut = shortcut_spec(graphics.get('shortcut'))
         self.shortcut_button.configure(text="Shortcut: " + shortcut_label(self.shortcut), state='disabled' if self.busy else 'normal')
         upgrading = self.upgrade_pending()
-        ready = not self.busy and game and graphics.get('available') and not graphics.get('unknown') and (upgrading or not legacy) and not self.component_error
+        ready = not self.busy and game and graphics.get('available') and not graphics.get('unknown') and (upgrading or not legacy) and not self.component_error and not self.quality_error
         self.button_state(self.install_button, bool(ready))
-        self.install_button.configure(text="Finish upgrade" if upgrading else "Apply changes" if component_pending else "Uninstall graphics hook" if graphics.get('installed') else "Install graphics hook")
+        self.install_button.configure(text="Finish upgrade" if upgrading else "Apply changes" if component_pending or quality_pending and graphics.get('installed') else "Uninstall graphics hook" if graphics.get('installed') else "Install graphics hook")
         self.menu.entryconfigure(self.legacy_uninstall_index, state="normal" if not self.busy and loader.get('installed') else "disabled")
         try:
             game_executable(game)
@@ -739,7 +801,7 @@ class TextureQuestApp:
         pending = (self.prepared or {}).get('coverage', {}).get('pending_groups', 0)
         self.download_label.configure(text=(f"Saved texture cache · {pending:,} changed source groups stay original" if pending else "Saved texture cache") if self.prepared else "Custom channels only · about 27.8 GB local cache")
         self.install_label.configure(text=(self.component_error if self.component_error else
-            "Close EQ2, then Apply changes. Your textures stay cached." if component_pending else
+            "Close EQ2, then Apply changes. Your textures stay cached." if component_pending or quality_pending and graphics.get('installed') else
             "Close EQ2, then Finish upgrade. Old hooks and verified PAK caches are removed automatically." if upgrading else
             "Use Settings → Uninstall old Memory hook first." if legacy else
             graphics.get('message', '') if graphics.get('installed') or not graphics.get('available') else
@@ -927,16 +989,19 @@ class TextureQuestApp:
             self.load_components()
             self.set_message(str(error), error=True)
             return False
+        quality_request = (dict(self.quality_snapshot) if selection['effects'] and
+                           self.quality_snapshot['choice'] else None)
         if self.upgrade_pending():
-            self._download_latest(auto_install=True, upgrading=True, selection=selection)
+            self._download_latest(auto_install=True, upgrading=True, selection=selection, quality_request=quality_request)
             return True
         changing = status['installed'] and components.normalize(status.get('components')) != selection
-        removing = status["installed"] and not changing
-        if changing and status.get('installed_newer_app'):
+        quality_only = bool(status['installed'] and not changing and quality_request)
+        removing = status["installed"] and not changing and not quality_only
+        if (changing or quality_only) and status.get('installed_newer_app'):
             self.set_message('This hook belongs to a newer TextureQuest app. Update the app before applying component changes.', error=True)
             return False
-        if not removing and (not self.prepared or not self.release_checked):
-            self._download_latest(auto_install=True, selection=selection)
+        if not removing and not quality_only and (not self.prepared or not self.release_checked):
+            self._download_latest(auto_install=True, selection=selection, quality_request=quality_request)
             return True
         def work():
             if self.loader_in_use(self.loader_status(game)):
@@ -949,6 +1014,8 @@ class TextureQuestApp:
                 return self.graphics_manager.uninstall(game, progress=self.report)
             if fresh["running"] or fresh["active_sessions"]:
                 raise RuntimeError("Close the previous graphics-hook sessions first.")
+            if quality_only:
+                return self.apply_pending_quality(game, quality_request)
             # Verify optional binaries, paths and collisions before removing
             # a working installation. Install repeats this under its lock.
             self.graphics_manager.preflight_components(game, selection)
@@ -960,11 +1027,14 @@ class TextureQuestApp:
                 if any(name.casefold() != 'reshade.ini' for name in removed.get('kept', [])):
                     raise ValueError('Changed hook files were kept. Resolve the listed files before installing the new choices.')
             result = self.graphics_manager.install(game, self.prepared, dual_load=False, progress=self.report, shortcut=self.shortcut, components=selection)
+            quality_result = self.apply_pending_quality(game, quality_request)
+            if quality_result:
+                result['message'] += ' ' + quality_result['message']
             if self.prepared.get('distribution') == 'generated-channels-only':
                 self.upgrade.complete(game, self.prepared, self.report)
             return result
-        self.begin("graphics-uninstall" if removing else "graphics-install",
-                   "Uninstalling Graphics hook…" if removing else "Installing Graphics hook…", work)
+        self.begin("graphics-uninstall" if removing else "graphics-quality" if quality_only else "graphics-install",
+                   "Uninstalling Graphics hook…" if removing else "Applying quality preset…" if quality_only else "Installing Graphics hook…", work)
         return True
 
     def repair_reshade_shortcuts(self):
@@ -1091,7 +1161,7 @@ class TextureQuestApp:
         except (OSError, ValueError, KeyError, TypeError):
             return False  # Normal status/install checks explain unknown records.
 
-    def _download_latest(self, base_zip=None, auto_install=False, upgrading=False, selection=None):
+    def _download_latest(self, base_zip=None, auto_install=False, upgrading=False, selection=None, quality_request=None):
         if self.busy:
             return
         offered = self.update_check.get('installer', {})
@@ -1128,6 +1198,9 @@ class TextureQuestApp:
                 self.graphics_manager, self.upgrade, minimum=minimum, binding=binding,
                 in_use=self.downloads_in_use, auto_install=auto_install, upgrading=upgrading, components=selection,
                 report=self.report, overall=self.report_overall, pause=self.pause.is_set)
+            # The automatic app refresh does not pass a request. Only a user's
+            # Install/Apply action may consume a saved pending quality choice.
+            self.apply_pending_quality(game, quality_request)
             self.dds_source = source
             return self.release, prepared, {}, None
         def work():
@@ -1278,7 +1351,7 @@ class TextureQuestApp:
                     self.set_message("TextureQuest is ready. The graphics hook uses individual DDS files.")
                     self.finish_progress("install")
                     self.show_install_success()
-                elif kind in ("graphics-install", "graphics-uninstall", "graphics-shortcut", "repair-shortcuts"):
+                elif kind in ("graphics-install", "graphics-uninstall", "graphics-shortcut", "graphics-quality", "repair-shortcuts"):
                     self.set_message(value["message"])
                 elif kind in ("loader-install", "loader-uninstall"):
                     self.set_message(value["message"] or
@@ -1509,8 +1582,16 @@ def main(argv=None):
                 "button": app.changelog_button.cget("text"), "read_only": True,
                 "scrollable": bool(notes.changelog_text.cget("yscrollcommand")), "nonmodal": True}
             notes.destroy()
+            quality_options = list(app.quality_dropdown.cget('values'))
+            assert quality_options == [*quality.NAMES, quality.CUSTOM]
+            quality_smoke = {'label': 'Quality preset', 'choices': quality_options,
+                'selected': app.quality_choice.get(), 'fresh_default': quality.contract()['default'],
+                'custom_means': 'Effective settings differ from all four presets',
+                'applies_only_on_install_or_apply': True,
+                'contract_sha256': hashlib.sha256(resource('quality-presets.json').read_bytes()).hexdigest()}
             receipt = {"version": app.app_version, "texture_version": texture_version(app.release),
                        "changelog": changelog_smoke,
+                       "quality_presets": quality_smoke,
                        "app_update_status": app.app_update_label.cget("text"), "texture_update_status": app.pack_update_label.cget("text"),
                        "title": root.title(), "game": app.game.get(),
                        "install_enabled": app.install_button.cget("state") != "disabled", "download_button": app.download_button.cget("text"),

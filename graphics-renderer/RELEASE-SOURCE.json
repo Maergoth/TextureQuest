@@ -12,13 +12,13 @@
     }
   },
   "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
-  "revision": "TextureQuest 1.13.18 local experimental shadow-transition candidate",
-  "integration_base_commit": "9d50a074658736c57328d09c66e1b334dd74e306",
+  "revision": "TextureQuest 1.13.19 public quality presets and promoted lighting",
+  "integration_base_commit": "3842bbd0cdc58acdd7bf9af10ca51991b56f8aea",
   "files": [
     {
       "name": "addon.cpp",
-      "bytes": 17491,
-      "sha256": "3ce403ed006b6123f7837e4cf49eafe0ba040e815c902481ae875ff1a67c7eda"
+      "bytes": 24155,
+      "sha256": "06cf9dea92656a2c7173a3f0a0477ba8fd98030d44de6992ab1dfb4c6f157814"
     },
     {
       "name": "capture.hpp",
@@ -87,18 +87,13 @@
     },
     {
       "name": "glow.hpp",
-      "bytes": 146947,
-      "sha256": "075224b2a802446484615cca92542e043bcce6146ddca37f7d05a443419e39cc"
-    },
-    {
-      "name": "glow_transition_shader.hpp",
-      "bytes": 8141,
-      "sha256": "2c72618113cb832b584ab7809745e0658ed31f6ac29ecc19b32f1325a608b3e7"
+      "bytes": 144231,
+      "sha256": "7d3a3ea6d372c538e7a8e55131353e276e941284b47a8e8bed982ee2bab101ea"
     },
     {
       "name": "glow_transport.hpp",
-      "bytes": 18076,
-      "sha256": "6e6258d77243a484397d1cab5a0e47517c46a3ca5bae1cfbf7a40f4aa876c12a"
+      "bytes": 17506,
+      "sha256": "b4324a510d954f53622222a11a094f761de00af65e6ae62352b195c5a9962342"
     },
     {
       "name": "lamp_holder_policy.hpp",
@@ -111,9 +106,9 @@
       "sha256": "e566d371cc485686baa85dbb232a96f49d3e21cb49a75f58223e8a9baa7c9fae"
     },
     {
-      "name": "lighting_experiment.hpp",
-      "bytes": 19011,
-      "sha256": "02b99116f5480baaabbc245a3d4e136e06af54ecd6e5ba27736f8ce0ee450bfe"
+      "name": "lighting_diagnostics.hpp",
+      "bytes": 16915,
+      "sha256": "f4489c48ce97a9a41f86df3cbb9bb13799f49ec573d4071be12022dab5c1ee42"
     },
     {
       "name": "material_normal_replay.hpp",
@@ -152,8 +147,8 @@
     },
     {
       "name": "particle_emission.hpp",
-      "bytes": 48733,
-      "sha256": "e96130a2e1705c30deab50960c72d58af70d36c516b0accd25be81850a3f8241"
+      "bytes": 48677,
+      "sha256": "7e19cadd4f00138a9e3d5d2e9dc1dbfe75a53d7ab131d4f8e33e6ea5e1899c78"
     },
     {
       "name": "particle_emission_policy.hpp",
@@ -167,8 +162,8 @@
     },
     {
       "name": "particle_moving_shadows.hpp",
-      "bytes": 13203,
-      "sha256": "9d13e107ba22361f4db76e9c2918b02f452b24217c7a917e5a7fe8d4f36dee5b"
+      "bytes": 12194,
+      "sha256": "cf9fcb33e96eb85faae45e5a97ae9a31c64f19945c0e4c981a91492e218e1e3c"
     },
     {
       "name": "particle_retention_policy.hpp",
@@ -201,29 +196,24 @@
       "sha256": "bf6527fd509a35bad218013ccf8431d7ed33f7b4c6f7f707bcdd324ee18c3447"
     },
     {
+      "name": "quality_presets.hpp",
+      "bytes": 6143,
+      "sha256": "82acd21bbb4cee2703f1ea4fdd382b1b647bdaf4da2f74dfae09b404824792a9"
+    },
+    {
       "name": "shadow_face_culling.hpp",
       "bytes": 2146,
       "sha256": "ac115e53826312ad5e02e0f52483979404700bc1634bcca51e11bdb3eda013df"
     },
     {
       "name": "shadow_maps.hpp",
-      "bytes": 167845,
-      "sha256": "b91262bdee314426a30bf98eb9da70851f533464d18ad31e3ccc9d6196197ceb"
-    },
-    {
-      "name": "shadow_transition_history.hpp",
-      "bytes": 16464,
-      "sha256": "5802a77c13397c21ff76bce499a4315ea11bb23ef573301f77c67931ac369436"
-    },
-    {
-      "name": "shadow_transition_policy.hpp",
-      "bytes": 3462,
-      "sha256": "1efe548810c897188d55a87839e1d2140f247989f4e5130469afdad54851c6d0"
+      "bytes": 167042,
+      "sha256": "b798e2b9216967ce719eca0331e557728155972fe179b6f4da5b09ffe8874075"
     },
     {
       "name": "shadows.hpp",
-      "bytes": 193983,
-      "sha256": "9bc18e206a47414ba42eb1f98350a9bcd8437e639642cdfc62f0dd2c77a066c1"
+      "bytes": 191446,
+      "sha256": "40b93f799c7dd12572b88ccf9c60e5ee99bbeb1c1f2016d69728194c8636129e"
     },
     {
       "name": "sun_direction_policy.hpp",
@@ -267,18 +257,21 @@
     }
   ],
   "native_release_asset": {
-    "bytes": 1258496,
-    "sha256": "33ad89065a6e51c11cb0e5ab0295fff5cb0f32ec6f1ab760518798bc2a8a3c5a"
+    "bytes": 1271296,
+    "sha256": "74f53150f4767c220cf6b8f9600a26545f6ed38ed7d650a10b239865d579f9a5"
   },
+  "compile_targets": [
+    "addon.cpp"
+  ],
   "build": {
     "exit_code": 0,
     "command": {
-      "bytes": 608,
-      "sha256": "cafd71ad7f4701eb0f4527b4ac756cdbe01c8804e7504a47e397e129fa7428c5"
+      "bytes": 602,
+      "sha256": "5d22a2af7fab4e9b4e8217f76aa6e29c38bd19a5bdc60d7400261d3ff14dc05e"
     },
     "log": {
-      "bytes": 55969,
-      "sha256": "063a612e7a20601cb25ab217e3b1a5f1a05aa5df18a851de4370a3b223bbc110"
+      "bytes": 55723,
+      "sha256": "444a1fd077ceb3056440fb15cf3d134e5456d0ade321df0939d73da6e3084695"
     },
     "actual_showIncludes": true,
     "warnings": 0,
@@ -286,330 +279,673 @@
     "toolchain": "VS18 x64/MSVC14.50.35717",
     "compilation_roster": "Explicit translation unit plus actual /showIncludes project/dependency inputs, unchanged during compilation."
   },
+  "qualification": "Qualified native source observations and independent visibility are now active. Shadow crossfade/history allocation from1.13.18 is removed after the local visual comparison. Presets provide shared engineering budgets, not measured GPU performance guarantees. Existing particle grouping/source smoothing and normal map refresh thresholds remain; source reassociation, unknown native profiles and game-culled sources are not claimed solved. Strict C++ compilation and focused final shader, diagnostics and preset checks passed; controlled evidence is recorded below.",
+  "publication_note": "Prepared for requested public1.13.19 release. This metadata alone does not establish publication, a game installation or hardware benchmark.",
+  "changes": [
+    "Promote qualified whole-object triangle and pre-screen-cap particle observations without an A/B gate.",
+    "Use independent per-light shadow visibility with conservative receiver admission; retain source-profile fallbacks and exact bounce.",
+    "Remove the150ms shadow transition implementation, retained cube pools and transition telemetry.",
+    "Replace comparison controls with Debug-only performance capture for the active renderer.",
+    "Apply/query canonical Low Medium High Max presets through additive ABI1 exports; keep Advanced and Debug panel contents separate.",
+    "Default fresh settings toLow and force16xAF in each preset; preserve existing custom settings unless a preset is selected.",
+    "Keep Frame Gen and Neural Rendering outside the graphics preset contract and remove active experimental labels."
+  ],
+  "controlled_validation": {
+    "status": "STRICT_NATIVE_PRESETS_DIAGNOSTICS_AND_PROMOTED_TRANSPORT_PASS",
+    "evidence": [
+      {
+        "name": "native-renderer-002/PROVENANCE.json",
+        "bytes": 8530,
+        "sha256": "c62ba0fd643d592a671b2507ba0edf940f62d1148f0d6bb2785cbb514d482bd9"
+      },
+      {
+        "name": "renderer-validation-001/RESULT.json",
+        "bytes": 1791,
+        "sha256": "7d711e793459ee350e2a320e5dd2c518c4fec2f946f0da5d0a9c8cd017fecbdb"
+      },
+      {
+        "name": "renderer-validation-001/PRESETS-RESULT.json",
+        "bytes": 1616,
+        "sha256": "86c81a962b41b1188c4b2eaf4e1961d2d9d29d81a0d4118d9a0bfe3e34194319"
+      },
+      {
+        "name": "renderer-transport-001/RESULT.json",
+        "bytes": 2931,
+        "sha256": "641945c47eeb76ba983fc56508440aafca6906ef7b60d7d2b43a482c7d29abca"
+      }
+    ],
+    "checks": {
+      "native_preset_bridge": 487,
+      "diagnostics_and_csv": 30,
+      "diagnostic_csv_rows": 8,
+      "transport_rgb_channels": 98664,
+      "transport_quality_cases": 9
+    },
+    "transport_worst_rgb_error": 6.15834e-05,
+    "transport_rgb_error_budget": 0.000488281,
+    "physical_gpu_executed": false,
+    "real_game_tested": false,
+    "shader_warnings": "Five inherited D3DCompile X4000 filter-helper warnings match the1.13.17 fixture; no new shader warnings. Native C++ /W4 /WX haszero warnings.",
+    "scope": "Actual native compiled source graph; all canonical preset apply/query/persistence fields with invalid/fresh/legacy cases; production diagnostics query/CSV lifecycle; actual promoted independent and tiled lighting shaders with binding/fallback checks on software WARP. No hardware FPS or game visual validation. D3D11 debug layer unavailable; explicit binding checks passed."
+  },
   "prior_metadata": {
-    "revision": "TextureQuest030 / non-live Develop1.13.12",
+    "bytes": 26760,
+    "sha256": "a0b1058056d8f2c4f46b9146a2a7cd89e02248dd566b3ba1434f332aaffa8a0e"
+  },
+  "previous_local_evidence": {
+    "upstream": "https://github.com/Sichii/Eq2GraphicsAddonRS",
+    "upstream_commit": "3752e0b97a87c5def22c9f8d6cabfd369d5817cb",
+    "dependency_licenses": {
+      "deps/imgui/LICENSE.txt": {
+        "bytes": 1104,
+        "sha256": "55e058cc5899e6077a819ad1005d6d1f4528f65ae100795c9692f9fa6525a8ce"
+      },
+      "deps/reshade/LICENSE.md": {
+        "bytes": 1490,
+        "sha256": "d2bb5eb908e9aa7ac2f7f4cf6441d62e1f6ac1256cf22bb5289516c9f30e5f0a"
+      }
+    },
+    "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
+    "revision": "TextureQuest 1.13.18 local experimental shadow-transition candidate",
+    "integration_base_commit": "9d50a074658736c57328d09c66e1b334dd74e306",
+    "files": [
+      {
+        "name": "addon.cpp",
+        "bytes": 17491,
+        "sha256": "3ce403ed006b6123f7837e4cf49eafe0ba040e815c902481ae875ff1a67c7eda"
+      },
+      {
+        "name": "capture.hpp",
+        "bytes": 45353,
+        "sha256": "2b289edec2135bc3e4a8ecbac740e03e9916561b9f7c3347aaaeeb43556b16dd"
+      },
+      {
+        "name": "deps/imgui/imconfig.h",
+        "bytes": 12289,
+        "sha256": "fb8e32b9af9aa7dad5ec5c5bc862537f5624cb39a814e6d3b36b4629a50b6599"
+      },
+      {
+        "name": "deps/imgui/imgui.h",
+        "bytes": 454459,
+        "sha256": "2ca314d19c7e1ea85687a9c1e37079e0cc823939a551b3e6b2453ff0af9fbf13"
+      },
+      {
+        "name": "deps/reshade/include/reshade.hpp",
+        "bytes": 19843,
+        "sha256": "d86932721cb77e47b996da6bf3861b1a938a1bc843be04d1e0c5dd09133b7f43"
+      },
+      {
+        "name": "deps/reshade/include/reshade_api.hpp",
+        "bytes": 58876,
+        "sha256": "db19051ef285a7a1a3721f2711de973be8805d4ca39a38fbadade7fd22100a17"
+      },
+      {
+        "name": "deps/reshade/include/reshade_api_device.hpp",
+        "bytes": 89369,
+        "sha256": "8492cb9a4352ab9a25140828226a411be36c480c23d53d0fcc806a0515076212"
+      },
+      {
+        "name": "deps/reshade/include/reshade_api_format.hpp",
+        "bytes": 18738,
+        "sha256": "d5fcdf598a9adbd18db6ccd0d15133d08c4dfa4909ec8335f76edaf735ae39cf"
+      },
+      {
+        "name": "deps/reshade/include/reshade_api_pipeline.hpp",
+        "bytes": 50915,
+        "sha256": "2c592013e46e72c62119c0652786ac21c6536a29a1bad30973a6069d1d7f7351"
+      },
+      {
+        "name": "deps/reshade/include/reshade_api_resource.hpp",
+        "bytes": 29552,
+        "sha256": "cae6d40cbd37e314e5ce5fc2cd22e77d7042892284212972bd986ffabb96363e"
+      },
+      {
+        "name": "deps/reshade/include/reshade_events.hpp",
+        "bytes": 126479,
+        "sha256": "5b1f8b8144589712584cc8f2e8b6cf7c2aff05fc1c570b7867cfa1ee841296b7"
+      },
+      {
+        "name": "deps/reshade/include/reshade_overlay.hpp",
+        "bytes": 96000,
+        "sha256": "771f0cdde2dacd21cfe04664e1aaaddae43114a1abb51bb63af5645a88c217a6"
+      },
+      {
+        "name": "depth_demand_v1.hpp",
+        "bytes": 1152,
+        "sha256": "62f314817eead16bd21205a3ab1c8f93f3758a1e683500758637bcacdb3a4dc3"
+      },
+      {
+        "name": "emission_policy.hpp",
+        "bytes": 3136,
+        "sha256": "0326d9d91b7150a9aae0920179762cfdc061cb2a417f2f79c5351899e67b4ef7"
+      },
+      {
+        "name": "glow.hpp",
+        "bytes": 146947,
+        "sha256": "075224b2a802446484615cca92542e043bcce6146ddca37f7d05a443419e39cc"
+      },
+      {
+        "name": "glow_transition_shader.hpp",
+        "bytes": 8141,
+        "sha256": "2c72618113cb832b584ab7809745e0658ed31f6ac29ecc19b32f1325a608b3e7"
+      },
+      {
+        "name": "glow_transport.hpp",
+        "bytes": 18076,
+        "sha256": "6e6258d77243a484397d1cab5a0e47517c46a3ca5bae1cfbf7a40f4aa876c12a"
+      },
+      {
+        "name": "lamp_holder_policy.hpp",
+        "bytes": 2804,
+        "sha256": "13feaf4b64f1a066c0b90f5bf10489be6acca3d9d5fe9f98264c482fe1bc2e8f"
+      },
+      {
+        "name": "light_buffer.hpp",
+        "bytes": 157643,
+        "sha256": "e566d371cc485686baa85dbb232a96f49d3e21cb49a75f58223e8a9baa7c9fae"
+      },
+      {
+        "name": "lighting_experiment.hpp",
+        "bytes": 19011,
+        "sha256": "02b99116f5480baaabbc245a3d4e136e06af54ecd6e5ba27736f8ce0ee450bfe"
+      },
+      {
+        "name": "material_normal_replay.hpp",
+        "bytes": 19837,
+        "sha256": "070117a16461775680fd40788be856835b89bcf5a0c428450b1425592ca01e81"
+      },
+      {
+        "name": "object_emission_chart.hpp",
+        "bytes": 19735,
+        "sha256": "f0de84168ee0a3dde512cd235a42738088707883d7ca0f885f0fd5782b889b94"
+      },
+      {
+        "name": "object_radiance_policy.hpp",
+        "bytes": 5960,
+        "sha256": "ebd8ac1ccffdd67cf5033527925dda0bc4ada7d322c4836733d70382833a8fca"
+      },
+      {
+        "name": "offscreen_lamp_policy.hpp",
+        "bytes": 237,
+        "sha256": "2360225259461cf1ba4bdb3af0efc1a5117f210a374e98aface546f1144fa6dc"
+      },
+      {
+        "name": "owned_sun_constants.hpp",
+        "bytes": 2951,
+        "sha256": "9fc1e1718c4056b5189a8170a2b0d6fcfdecb47a9111752e5d66bf350e6c886f"
+      },
+      {
+        "name": "painted_emission_policy.hpp",
+        "bytes": 921,
+        "sha256": "fbbb721ce84d6900a0c98def338301c8a8a8fef53c5d6f4430491903f3dca723"
+      },
+      {
+        "name": "particle_coalescing_policy.hpp",
+        "bytes": 1628,
+        "sha256": "bf1a062b95ce2a24de09ea5864f5fd85aa69d23a99b277623cb5d8bb106801a0"
+      },
+      {
+        "name": "particle_emission.hpp",
+        "bytes": 48733,
+        "sha256": "e96130a2e1705c30deab50960c72d58af70d36c516b0accd25be81850a3f8241"
+      },
+      {
+        "name": "particle_emission_policy.hpp",
+        "bytes": 3363,
+        "sha256": "673071bd509518154372d26cd1a2f7d599d0ee4302169d840467392c0066a782"
+      },
+      {
+        "name": "particle_field_policy.hpp",
+        "bytes": 11209,
+        "sha256": "ac8e1aa9ada77980dca473047a68981b8a80d75e27d44aae330d0e2a863b4c86"
+      },
+      {
+        "name": "particle_moving_shadows.hpp",
+        "bytes": 13203,
+        "sha256": "9d13e107ba22361f4db76e9c2918b02f452b24217c7a917e5a7fe8d4f36dee5b"
+      },
+      {
+        "name": "particle_retention_policy.hpp",
+        "bytes": 5271,
+        "sha256": "8bd9a2a47d9f41d49ba27b8a54cb0acd9d9c16354b30d6d010cbaf6bd10ee081"
+      },
+      {
+        "name": "particle_source_policy.hpp",
+        "bytes": 17200,
+        "sha256": "b21b719504daaa04773757516800c0b9db0af912c266241c26da983ea0f5e966"
+      },
+      {
+        "name": "particle_source_shadow.hpp",
+        "bytes": 3740,
+        "sha256": "c727562647f86c2d62cd601af33bc6658895d8135a9c8441e95e74b5575bbb52"
+      },
+      {
+        "name": "projected_shadow_admission.hpp",
+        "bytes": 891,
+        "sha256": "6334770538b3ca0e39347e2ce90764201ccc86e3b6776a9900e136621463b723"
+      },
+      {
+        "name": "projected_shadow_policy.hpp",
+        "bytes": 2593,
+        "sha256": "15c5f1cac2aed0833545d04ef0f8d9f1282eb622b02d4251de67ca4cb567594d"
+      },
+      {
+        "name": "projected_shadows.hpp",
+        "bytes": 12604,
+        "sha256": "bf6527fd509a35bad218013ccf8431d7ed33f7b4c6f7f707bcdd324ee18c3447"
+      },
+      {
+        "name": "shadow_face_culling.hpp",
+        "bytes": 2146,
+        "sha256": "ac115e53826312ad5e02e0f52483979404700bc1634bcca51e11bdb3eda013df"
+      },
+      {
+        "name": "shadow_maps.hpp",
+        "bytes": 167845,
+        "sha256": "b91262bdee314426a30bf98eb9da70851f533464d18ad31e3ccc9d6196197ceb"
+      },
+      {
+        "name": "shadow_transition_history.hpp",
+        "bytes": 16464,
+        "sha256": "5802a77c13397c21ff76bce499a4315ea11bb23ef573301f77c67931ac369436"
+      },
+      {
+        "name": "shadow_transition_policy.hpp",
+        "bytes": 3462,
+        "sha256": "1efe548810c897188d55a87839e1d2140f247989f4e5130469afdad54851c6d0"
+      },
+      {
+        "name": "shadows.hpp",
+        "bytes": 193983,
+        "sha256": "9bc18e206a47414ba42eb1f98350a9bcd8437e639642cdfc62f0dd2c77a066c1"
+      },
+      {
+        "name": "sun_direction_policy.hpp",
+        "bytes": 4388,
+        "sha256": "28fc0c2912a715c9f7fd040fb94e600b7e56c64e7f557f36e7b14dfbed6cc193"
+      },
+      {
+        "name": "sun_softness_settings.hpp",
+        "bytes": 1928,
+        "sha256": "c152ee17a0dd8e7a7ffe22edcb7088b2f7bccb4c892a90faac1fe984c510edcf"
+      },
+      {
+        "name": "sun_source_policy.hpp",
+        "bytes": 1164,
+        "sha256": "70be4793b63cbe820be3dec3f14ce60f15f4774741c8adf77173d0f6e7304cc4"
+      },
+      {
+        "name": "sun_state_policy.hpp",
+        "bytes": 1941,
+        "sha256": "2d3e87a19b430e8431bd88efe2d18ff0a127698938f962b8724d17f1fdf5f740"
+      },
+      {
+        "name": "texturequest_world_guard.hpp",
+        "bytes": 1242,
+        "sha256": "47ca552980908f82c5045808836284fdb3b57ca4cab558240e29d1128752abcf"
+      },
+      {
+        "name": "texturequest_world_master.hpp",
+        "bytes": 1174,
+        "sha256": "99aa71da2a872d44617e7e3b3052aa7f4ae659208d654c36d04b63175aea1ca8"
+      },
+      {
+        "name": "texturequest_world_presets.hpp",
+        "bytes": 3179,
+        "sha256": "c5d671929eeca3323e14443f0496de17c1d2749ffc8c0312107efcd223e3a226"
+      },
+      {
+        "name": "world_work_policy.hpp",
+        "bytes": 2127,
+        "sha256": "00f03b2d2a400ca4910b657394355331a88ca372ae95cd0ed02b51c143fdd21b"
+      }
+    ],
     "native_release_asset": {
-      "bytes": 1127936,
-      "sha256": "5ee82fbbc489b8de8c1bad844b8a78c2ee840f0e164d644fb5e11e38f917883a"
+      "bytes": 1258496,
+      "sha256": "33ad89065a6e51c11cb0e5ab0295fff5cb0f32ec6f1ab760518798bc2a8a3c5a"
     },
     "build": {
       "exit_code": 0,
-      "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes",
-      "compile_log": {
-        "bytes": 55508,
-        "sha256": "5400ecbff86e50d7593e009a1501a626908281ed83b88356e3ea3f44250a78e1"
-      }
+      "command": {
+        "bytes": 608,
+        "sha256": "cafd71ad7f4701eb0f4527b4ac756cdbe01c8804e7504a47e397e129fa7428c5"
+      },
+      "log": {
+        "bytes": 55969,
+        "sha256": "063a612e7a20601cb25ab217e3b1a5f1a05aa5df18a851de4370a3b223bbc110"
+      },
+      "actual_showIncludes": true,
+      "warnings": 0,
+      "included_inputs_unchanged_during_build": true,
+      "toolchain": "VS18 x64/MSVC14.50.35717",
+      "compilation_roster": "Explicit translation unit plus actual /showIncludes project/dependency inputs, unchanged during compilation."
     },
-    "controlled_validation": {
-      "status": "PASS_STRICT_NATIVE_AND_MATCHED_PRODUCTION_TEMPORAL_CHECKS",
-      "focused_cpu": {
-        "bytes": 1440,
-        "sha256": "5deea5dc7bdad37fef58aadb5b7a7d016bf4c92f5615cead082719470565b803"
-      },
-      "focused_cpu_log": {
-        "bytes": 583,
-        "sha256": "ef97297ef84aeb1c4a9519f93719e62993601d9397fd66e4f69214e65cdac503"
-      },
-      "focused_checks": 1271,
-      "final": {
-        "bytes": 9640,
-        "sha256": "9e018aad25b18be6f72c0cdd4268f04add55dac466413d4084bab65c946b9fcd"
-      },
-      "gpu_executed": false,
-      "scope": "Focused030 grouping/conservation/capacity and actual production temporal ReadFrame/cache/EndFrame CPU checks; no unchanged hardware/alpha/map suite replay."
-    },
-    "qualification": "030 replaces centroid-grid identity with deterministic nearest-anchor association and ownership hysteresis, preserving exact current RGB/moments and independent0.20s positional filtering. Published grouping/history/field state commits atomically. Existing0.1unit built-shadow movement threshold and scheduler remain. Identities are spatial inference; ambiguous split/merge/culling histories expire normally. Controlled CPU checks do not prove live shadow stability, all models/offscreen coverage or FPS; adversarial near-coincident anchor states can be costly.",
     "prior_metadata": {
-      "revision": "TextureQuest027/028/029 / private local1.13.11",
+      "revision": "TextureQuest030 / non-live Develop1.13.12",
       "native_release_asset": {
-        "bytes": 1094144,
-        "sha256": "397690edf3454db93d4d1472c9ed52599d94d7b462d3ed1b8776c741569fa112"
+        "bytes": 1127936,
+        "sha256": "5ee82fbbc489b8de8c1bad844b8a78c2ee840f0e164d644fb5e11e38f917883a"
       },
       "build": {
         "exit_code": 0,
         "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes",
         "compile_log": {
-          "bytes": 55355,
-          "sha256": "19f8d3b67f93e2fcd14260857eb38e913b6f2a805b0312d11cb1a916724c660d"
+          "bytes": 55508,
+          "sha256": "5400ecbff86e50d7593e009a1501a626908281ed83b88356e3ea3f44250a78e1"
         }
       },
       "controlled_validation": {
-        "status": "PASS",
-        "particle_cpu": {
-          "bytes": 9572,
-          "sha256": "a62ec3b62e417a122b3604e192910f9167824e3a1b05bf6f538efd5d56448671"
+        "status": "PASS_STRICT_NATIVE_AND_MATCHED_PRODUCTION_TEMPORAL_CHECKS",
+        "focused_cpu": {
+          "bytes": 1440,
+          "sha256": "5deea5dc7bdad37fef58aadb5b7a7d016bf4c92f5615cead082719470565b803"
         },
-        "normal_gpu": {
-          "bytes": 1430,
-          "sha256": "22edd8738a791a7639372adf28a49ff812569b48e2b3a206ce0344e2adfea52d"
+        "focused_cpu_log": {
+          "bytes": 583,
+          "sha256": "ef97297ef84aeb1c4a9519f93719e62993601d9397fd66e4f69214e65cdac503"
         },
+        "focused_checks": 1271,
         "final": {
-          "bytes": 9156,
-          "sha256": "5cd1cd757f2c12d4aadf473147eb2938c90eb823110aa5f784fc45f1c1945c1e"
-        }
+          "bytes": 9640,
+          "sha256": "9e018aad25b18be6f72c0cdd4268f04add55dac466413d4084bab65c946b9fcd"
+        },
+        "gpu_executed": false,
+        "scope": "Focused030 grouping/conservation/capacity and actual production temporal ReadFrame/cache/EndFrame CPU checks; no unchanged hardware/alpha/map suite replay."
       },
-      "qualification": "Historical1.13.11 scope only. Its029 native base-normal hardware case and027/028 CPU evidence were not rerun as030 GPU proof; current030 checks are recorded separately.",
-      "historical_only": true,
+      "qualification": "030 replaces centroid-grid identity with deterministic nearest-anchor association and ownership hysteresis, preserving exact current RGB/moments and independent0.20s positional filtering. Published grouping/history/field state commits atomically. Existing0.1unit built-shadow movement threshold and scheduler remain. Identities are spatial inference; ambiguous split/merge/culling histories expire normally. Controlled CPU checks do not prove live shadow stability, all models/offscreen coverage or FPS; adversarial near-coincident anchor states can be costly.",
       "prior_metadata": {
-        "revision": "TextureQuest025/026 / private local1.13.10",
+        "revision": "TextureQuest027/028/029 / private local1.13.11",
         "native_release_asset": {
-          "bytes": 1090048,
-          "sha256": "fb4998fe4da008247ee5c402e61108af9aef78df12c744c38127c759a9690887"
+          "bytes": 1094144,
+          "sha256": "397690edf3454db93d4d1472c9ed52599d94d7b462d3ed1b8776c741569fa112"
         },
-        "historical_only": true
-      }
-    },
-    "historical_only": true
-  },
-  "qualification": "Unchecked retains the current1.13.16 baseline; Experimental improvements is the same unsaved candidate switch. Only valid same-owner/same-slot emissive histories may transition over150ms, with each static endpoint paired to its actual moving-caster snapshot when required and matching map/source metadata. Missing, partial, stale or incompatible history falls back to valid current shadowing. Slot reassignment, settings/epoch/zone changes abort retained history. Ranking/slot turnover remains current-only; a frozen moving silhouette can briefly trail or double during the fade. At most six logical transitions use lazily allocated history pools bounded to84MiB; no hardware or universal visual/FPS improvement is claimed. Qualified source-profile, native-culling and unchanged-buffer rotation limits inherited from1.13.17 remain.",
-  "publication_note": "Private local comparison candidate only; this metadata does not assert installation, publication or GitHub changes.",
-  "previous_evidence": {
-    "revision": "TextureQuest031/032 / Develop1.13.14",
-    "native_release_asset": {
-      "bytes": 1135104,
-      "sha256": "3ddafaeea1eea4affa6d0d9868e9371ee5baea8149866d04496983e2e5daa271"
-    },
-    "metadata": {
-      "bytes": 10779,
-      "sha256": "4d1139c297204fae792cecd8fe0adde46c7c90e8d787ffd1cec0926856c67fe4"
-    },
-    "historical_only": true,
-    "controlled_validation": {
-      "status": "PASS_031_CPU_032_CORRECTED_HARDWARE_AND_STRICT_NATIVE",
-      "cpu_checks": 1381,
-      "hardware_checks": 35,
-      "final": {
-        "bytes": 10059,
-        "sha256": "2b4a5f09b11a967638f8b4fa2914a2daefc0b0616b5a83ddcb3384313a7b4b97"
-      },
-      "scope": "One focused source-core scenario; first failure and diagnostic retained, corrected35checks passed; no historical alpha/fullmap replay"
-    }
-  },
-  "compile_targets": [
-    "addon.cpp"
-  ],
-  "changes": [
-    "Relabel the existing unsaved A/B switch Experimental improvements; preserve default-off/current baseline and saved settings.",
-    "Bound valid same-owner/same-slot emissive handoffs to150ms; pair each static endpoint with the moving-map snapshot and source metadata actually used.",
-    "Keep current animated RGB instead of filtering or retaining old emission colours.",
-    "Limit active logical transitions to six, with lazy1024/512/256 history pools capped at84MiB; unavailable history uses valid current shadowing.",
-    "Abort fades on slot reassignment, invalid/partial/incompatible history and settings/epoch/zone changes; retain normal map-update budget.",
-    "Ranking/slot turnover remains current-only; frozen moving silhouettes may briefly trail or double during the150ms fade.",
-    "Extend detailed comparison CSV with transition_lights, summary mean_transition_lights and the UI mean transitioning-light row.",
-    "Retain1.13.17 qualified object/particle source observations, independent visibility and source-profile fallbacks."
-  ],
-  "previous_public_evidence": {
-    "revision": "TextureQuest 1.13.15 public graphics controls/defaults",
-    "native_release_asset": {
-      "bytes": 1133568,
-      "sha256": "6c0662c1032332ba602fd8d45cb61e3c7abfc924b0fa0bbb03218151b8b70584"
-    },
-    "build": {
-      "exit_code": 0,
-      "command": {
-        "bytes": 575,
-        "sha256": "8ff462ac3426f902ef3d7478356fed5181dc7998a7a1d2f715274a9628a397f3"
-      },
-      "log": {
-        "bytes": 54459,
-        "sha256": "138ef16f8f9325a2a24b59a50883ed83164f6c2a16407b455c62550cb65780a5"
-      },
-      "actual_showIncludes": true,
-      "toolchain": "VS18 x64/MSVC14.50.35717",
-      "warnings": 0,
-      "compilation_roster": "Explicit translation units plus project headers actually recorded by /showIncludes. External dependencies retain their pinned commit identities."
-    },
-    "qualification": "Settings/defaults and retired-feature changes; no new shader algorithm, GPU benchmark or real-game visual result is claimed. Existing controlled lighting evidence remains historical and was not rerun.",
-    "historical_only": true
-  },
-  "controlled_validation": {
-    "status": "STRICT_NATIVE_AND_FOCUSED_TRANSITION_PASS",
-    "evidence": [
-      {
-        "name": "validation-001/RESULT.json",
-        "bytes": 7064,
-        "sha256": "961b26ebfa0495324504fcf867de6dcee4bb5c5804f42a86c391974b5da2aeb1"
-      },
-      {
-        "name": "history-001/RESULT.json",
-        "bytes": 3669,
-        "sha256": "6a6f72f795a4cc0b65def9971c6b2f629371767771f49f54387d82ca469c9ce2"
-      }
-    ],
-    "physical_gpu_executed": false,
-    "real_game_tested": false,
-    "scope": "Bounded same-owner static/moving shadow history, paired endpoint metadata, coverage/fallback/admission/abort lifecycle, experimental shader path and transition comparison telemetry. Controlled software results are not hardware FPS."
-  },
-  "previous_local_evidence": {
-    "revision": "TextureQuest 1.13.17 local lighting comparison candidate",
-    "integration_base_commit": "a684223288b7d1444868ff4dcbf35956b33b928f",
-    "native_release_asset": {
-      "bytes": 1233408,
-      "sha256": "3c12b3ff1efc311b8c9aecbe2755fe3d2f15c004deb667c52f881a1f922237f6"
-    },
-    "build": {
-      "exit_code": 0,
-      "command": {
-        "bytes": 596,
-        "sha256": "71770b0e6729d5595278ce4dfa1d1eb6c95c300091bc3841db55263d41a3f077"
-      },
-      "log": {
-        "bytes": 55377,
-        "sha256": "6c806c1a24c61f5cea86da89b3a680809a5413e12ef93a85ca7fb7e7cef5122b"
-      },
-      "actual_showIncludes": true,
-      "warnings": 0,
-      "toolchain": "VS18 x64/MSVC14.50.35717",
-      "compilation_roster": "Explicit translation unit plus actual project/dependency inputs recorded by /showIncludes."
-    },
-    "qualification": "The baseline renderer remains default and the candidate is an unsaved Advanced experiment. Exact source profiles only; unsupported observers retain their existing route. Physical rotation of unchanged object buffers and native culling remain limitations. Candidate independent visibility can cost more than legacy visibility borrowing; no universal speedup or complete flicker fix is claimed. Shadow filter sample-count transitions remain. Paired shadow-sampling research was rejected; no Tensor Core runtime is added.",
-    "controlled_validation": {
-      "status": "STRICT_NATIVE_AND_FOCUSED_CPU_WARP_PASS",
-      "evidence": [
-        {
-          "name": "comparison-001/RESULT.json",
-          "bytes": 1728,
-          "sha256": "620dd23ad7d70f7eeb1f55c04f77d0031d66b1f005ea5710bf86403127efd7e9"
+        "build": {
+          "exit_code": 0,
+          "flags": "/std:c++20 /O2 /MT /EHsc /W4 /WX /permissive- /DNDEBUG /DNOMINMAX /showIncludes",
+          "compile_log": {
+            "bytes": 55355,
+            "sha256": "19f8d3b67f93e2fcd14260857eb38e913b6f2a805b0312d11cb1a916724c660d"
+          }
         },
-        {
-          "name": "emitter-implementation/RESULT.json",
-          "bytes": 3214,
-          "sha256": "30bd6afab51029add8156d854105beb7e5d159a70817e2efc82e2ccf9d47fd69"
+        "controlled_validation": {
+          "status": "PASS",
+          "particle_cpu": {
+            "bytes": 9572,
+            "sha256": "a62ec3b62e417a122b3604e192910f9167824e3a1b05bf6f538efd5d56448671"
+          },
+          "normal_gpu": {
+            "bytes": 1430,
+            "sha256": "22edd8738a791a7639372adf28a49ff812569b48e2b3a206ce0344e2adfea52d"
+          },
+          "final": {
+            "bytes": 9156,
+            "sha256": "5cd1cd757f2c12d4aadf473147eb2938c90eb823110aa5f784fc45f1c1945c1e"
+          }
         },
-        {
-          "name": "research/particle-precap-001/HANDOFF.json",
-          "bytes": 831,
-          "sha256": "3cec505f99f2e4ddce2eae324980815c57900b8cf63170e6f062dc88222a34b1"
-        },
-        {
-          "name": "transport-001/RESULT.json",
-          "bytes": 4323,
-          "sha256": "f5e055e30328bbb9fe3693aca82a6471066f7767cfa6eb8de945f61a2e1fcb01"
-        },
-        {
-          "name": "research/COMPARISON-REVIEW.json",
-          "bytes": 4513,
-          "sha256": "4201388ea8324f623dc1fc277b1a63e20f935433fcaf4189ef8b4a2e7ca4e0bf"
-        },
-        {
-          "name": "FINAL-REVIEW.json",
-          "bytes": 5655,
-          "sha256": "9c59f1afcda2d709212e52667d3c9ad2ec3dc96a6387194ea93e062945fa3b8f"
-        },
-        {
-          "name": "research/PAIRED-RESULT.json",
-          "bytes": 2635,
-          "sha256": "9a3ee13ff3b099d7467b214ee36212f56e831e4a2d9e74d8ff80694ccce29ee3"
-        },
-        {
-          "name": "research/TENSOR-ALGEBRA.json",
-          "bytes": 4197,
-          "sha256": "5c5d714f0319cc7099d39e062c55455a193af7ec18f66ec02a0c8c77fa5af8a6"
+        "qualification": "Historical1.13.11 scope only. Its029 native base-normal hardware case and027/028 CPU evidence were not rerun as030 GPU proof; current030 checks are recorded separately.",
+        "historical_only": true,
+        "prior_metadata": {
+          "revision": "TextureQuest025/026 / private local1.13.10",
+          "native_release_asset": {
+            "bytes": 1090048,
+            "sha256": "fb4998fe4da008247ee5c402e61108af9aef78df12c744c38127c759a9690887"
+          },
+          "historical_only": true
         }
-      ],
-      "physical_gpu_executed": false,
-      "real_game_tested": false,
-      "scope": "Qualified native material/particle replay, canonical flux conservation, independent visibility and receiver bounds, D3D state restoration, mode/epoch/query ownership and CSV logs. Software benchmarks include candidate list construction and reconstruction; they are not hardware FPS."
+      },
+      "historical_only": true
     },
-    "changes": [
-      "Retain current 1.13.16 path by default; candidate frame-boundary switches reset source epochs without mixing readbacks.",
-      "Opt-in CSV and retained A/B mean/p95 timings, warm-up/fallback labels, settings and resolution reset, summary on stop.",
-      "Two verified native particle profiles use geometry before camera-distance size cap; native material/alpha remains.",
-      "One verified painted-object pair uses complete native material triangles with stable anchors and collision-checked cell keys.",
-      "Independent per-light direct visibility with bounded receiver-tile shadow admission; exact path for small light sets.",
-      "Bounce remains exact; extra bounce-mask optimization was rejected after software regressions."
-    ],
-    "previous_local_evidence": {
-      "revision": "TextureQuest 1.13.16 local lighting cache and reconstruction candidate",
+    "qualification": "Unchecked retains the current1.13.16 baseline; Experimental improvements is the same unsaved candidate switch. Only valid same-owner/same-slot emissive histories may transition over150ms, with each static endpoint paired to its actual moving-caster snapshot when required and matching map/source metadata. Missing, partial, stale or incompatible history falls back to valid current shadowing. Slot reassignment, settings/epoch/zone changes abort retained history. Ranking/slot turnover remains current-only; a frozen moving silhouette can briefly trail or double during the fade. At most six logical transitions use lazily allocated history pools bounded to84MiB; no hardware or universal visual/FPS improvement is claimed. Qualified source-profile, native-culling and unchanged-buffer rotation limits inherited from1.13.17 remain.",
+    "publication_note": "Private local comparison candidate only; this metadata does not assert installation, publication or GitHub changes.",
+    "previous_evidence": {
+      "revision": "TextureQuest031/032 / Develop1.13.14",
       "native_release_asset": {
-        "bytes": 1143296,
-        "sha256": "97b97108a41e619307b536e0fccf9badd0dcc608b862e8bdcbc68586a8dcc71f"
+        "bytes": 1135104,
+        "sha256": "3ddafaeea1eea4affa6d0d9868e9371ee5baea8149866d04496983e2e5daa271"
+      },
+      "metadata": {
+        "bytes": 10779,
+        "sha256": "4d1139c297204fae792cecd8fe0adde46c7c90e8d787ffd1cec0926856c67fe4"
+      },
+      "historical_only": true,
+      "controlled_validation": {
+        "status": "PASS_031_CPU_032_CORRECTED_HARDWARE_AND_STRICT_NATIVE",
+        "cpu_checks": 1381,
+        "hardware_checks": 35,
+        "final": {
+          "bytes": 10059,
+          "sha256": "2b4a5f09b11a967638f8b4fa2914a2daefc0b0616b5a83ddcb3384313a7b4b97"
+        },
+        "scope": "One focused source-core scenario; first failure and diagnostic retained, corrected35checks passed; no historical alpha/fullmap replay"
+      }
+    },
+    "compile_targets": [
+      "addon.cpp"
+    ],
+    "changes": [
+      "Relabel the existing unsaved A/B switch Experimental improvements; preserve default-off/current baseline and saved settings.",
+      "Bound valid same-owner/same-slot emissive handoffs to150ms; pair each static endpoint with the moving-map snapshot and source metadata actually used.",
+      "Keep current animated RGB instead of filtering or retaining old emission colours.",
+      "Limit active logical transitions to six, with lazy1024/512/256 history pools capped at84MiB; unavailable history uses valid current shadowing.",
+      "Abort fades on slot reassignment, invalid/partial/incompatible history and settings/epoch/zone changes; retain normal map-update budget.",
+      "Ranking/slot turnover remains current-only; frozen moving silhouettes may briefly trail or double during the150ms fade.",
+      "Extend detailed comparison CSV with transition_lights, summary mean_transition_lights and the UI mean transitioning-light row.",
+      "Retain1.13.17 qualified object/particle source observations, independent visibility and source-profile fallbacks."
+    ],
+    "previous_public_evidence": {
+      "revision": "TextureQuest 1.13.15 public graphics controls/defaults",
+      "native_release_asset": {
+        "bytes": 1133568,
+        "sha256": "6c0662c1032332ba602fd8d45cb61e3c7abfc924b0fa0bbb03218151b8b70584"
       },
       "build": {
         "exit_code": 0,
         "command": {
-          "bytes": 581,
-          "sha256": "b22b397aa0c3f1353772a602eb080e573bfc71a2bb3cc7934a083fc2dc52b003"
+          "bytes": 575,
+          "sha256": "8ff462ac3426f902ef3d7478356fed5181dc7998a7a1d2f715274a9628a397f3"
         },
         "log": {
-          "bytes": 54788,
-          "sha256": "c5358b5b267cac4470c4bdb7dcee5b6a88de01f4c5c94a2bf7e2eb2e00b8611d"
+          "bytes": 54459,
+          "sha256": "138ef16f8f9325a2a24b59a50883ed83164f6c2a16407b455c62550cb65780a5"
+        },
+        "actual_showIncludes": true,
+        "toolchain": "VS18 x64/MSVC14.50.35717",
+        "warnings": 0,
+        "compilation_roster": "Explicit translation units plus project headers actually recorded by /showIncludes. External dependencies retain their pinned commit identities."
+      },
+      "qualification": "Settings/defaults and retired-feature changes; no new shader algorithm, GPU benchmark or real-game visual result is claimed. Existing controlled lighting evidence remains historical and was not rerun.",
+      "historical_only": true
+    },
+    "controlled_validation": {
+      "status": "STRICT_NATIVE_AND_FOCUSED_TRANSITION_PASS",
+      "evidence": [
+        {
+          "name": "validation-001/RESULT.json",
+          "bytes": 7064,
+          "sha256": "961b26ebfa0495324504fcf867de6dcee4bb5c5804f42a86c391974b5da2aeb1"
+        },
+        {
+          "name": "history-001/RESULT.json",
+          "bytes": 3669,
+          "sha256": "6a6f72f795a4cc0b65def9971c6b2f629371767771f49f54387d82ca469c9ce2"
+        }
+      ],
+      "physical_gpu_executed": false,
+      "real_game_tested": false,
+      "scope": "Bounded same-owner static/moving shadow history, paired endpoint metadata, coverage/fallback/admission/abort lifecycle, experimental shader path and transition comparison telemetry. Controlled software results are not hardware FPS."
+    },
+    "previous_local_evidence": {
+      "revision": "TextureQuest 1.13.17 local lighting comparison candidate",
+      "integration_base_commit": "a684223288b7d1444868ff4dcbf35956b33b928f",
+      "native_release_asset": {
+        "bytes": 1233408,
+        "sha256": "3c12b3ff1efc311b8c9aecbe2755fe3d2f15c004deb667c52f881a1f922237f6"
+      },
+      "build": {
+        "exit_code": 0,
+        "command": {
+          "bytes": 596,
+          "sha256": "71770b0e6729d5595278ce4dfa1d1eb6c95c300091bc3841db55263d41a3f077"
+        },
+        "log": {
+          "bytes": 55377,
+          "sha256": "6c806c1a24c61f5cea86da89b3a680809a5413e12ef93a85ca7fb7e7cef5122b"
         },
         "actual_showIncludes": true,
         "warnings": 0,
         "toolchain": "VS18 x64/MSVC14.50.35717",
-        "compilation_roster": "Explicit translation unit plus project/dependency headers recorded by this build /showIncludes."
+        "compilation_roster": "Explicit translation unit plus actual project/dependency inputs recorded by /showIncludes."
       },
-      "qualification": "Controlled CPU/software Direct3D evidence only; no hardware FPS gain or complete camera-motion fix is established. Unknown object cells carry no guessed energy, sparse established observations are retained, partial visibility inside a 2-unit cell can still change its mean. Optional surface smoothing defaults off because it adds shader arithmetic. No source RGB animation smoothing or shadow quality reduction. Existing unsupported native sources, AO checkerboard history and sun-direction issues remain separate limitations.",
+      "qualification": "The baseline renderer remains default and the candidate is an unsaved Advanced experiment. Exact source profiles only; unsupported observers retain their existing route. Physical rotation of unchanged object buffers and native culling remain limitations. Candidate independent visibility can cost more than legacy visibility borrowing; no universal speedup or complete flicker fix is claimed. Shadow filter sample-count transitions remain. Paired shadow-sampling research was rejected; no Tensor Core runtime is added.",
       "controlled_validation": {
         "status": "STRICT_NATIVE_AND_FOCUSED_CPU_WARP_PASS",
         "evidence": [
           {
-            "name": "radiance-cache-001/RESULT.json",
-            "bytes": 1791,
-            "sha256": "0f26b8f5f08f39df4e3b0cf9977dda6a903e7a23ed4d302e97e01ca455ed6652"
+            "name": "comparison-001/RESULT.json",
+            "bytes": 1728,
+            "sha256": "620dd23ad7d70f7eeb1f55c04f77d0031d66b1f005ea5710bf86403127efd7e9"
           },
           {
-            "name": "cache-review-001/RESULT.json",
-            "bytes": 2573,
-            "sha256": "7e5ea008a2a826b24dfcd3ef7c5d3ed7d1259957a4a422789c24a5ebe85ebdad"
+            "name": "emitter-implementation/RESULT.json",
+            "bytes": 3214,
+            "sha256": "30bd6afab51029add8156d854105beb7e5d159a70817e2efc82e2ccf9d47fd69"
           },
           {
-            "name": "radiance-boundary-001/RESULT.json",
-            "bytes": 2516,
-            "sha256": "f1bd1fd463241d259b9a3ef1eb75a7f2d65d03d9d36dcbe4a8389626ebb58e18"
+            "name": "research/particle-precap-001/HANDOFF.json",
+            "bytes": 831,
+            "sha256": "3cec505f99f2e4ddce2eae324980815c57900b8cf63170e6f062dc88222a34b1"
           },
           {
-            "name": "shadow-face-001/RESULT.json",
-            "bytes": 2975,
-            "sha256": "595c70b56c32e1a12b705eaa135f20cb35cc3cfdfcf109700b2c329166447565"
+            "name": "transport-001/RESULT.json",
+            "bytes": 4323,
+            "sha256": "f5e055e30328bbb9fe3693aca82a6471066f7767cfa6eb8de945f61a2e1fcb01"
           },
           {
-            "name": "shader-fixture-001/PRODUCTION-REVIEW.json",
-            "bytes": 3348,
-            "sha256": "335485c357e57965d34fddbe897767889418a946c52efbba4208109208b2c76b"
+            "name": "research/COMPARISON-REVIEW.json",
+            "bytes": 4513,
+            "sha256": "4201388ea8324f623dc1fc277b1a63e20f935433fcaf4189ef8b4a2e7ca4e0bf"
           },
           {
-            "name": "shader-fixture-001/final-compile-002/RESULT.json",
-            "bytes": 2498,
-            "sha256": "9fd6ec83cf76d9d93ee667891391602c18d162f400807a7950063b93cdd55935"
+            "name": "FINAL-REVIEW.json",
+            "bytes": 5655,
+            "sha256": "9c59f1afcda2d709212e52667d3c9ad2ec3dc96a6387194ea93e062945fa3b8f"
           },
           {
-            "name": "shader-perf-001/RESULT.json",
-            "bytes": 4563,
-            "sha256": "b428c58c875f61a24e1f7f57444960df1d708780ff4b0f3a69c2443ad42a1b9c"
+            "name": "research/PAIRED-RESULT.json",
+            "bytes": 2635,
+            "sha256": "9a3ee13ff3b099d7467b214ee36212f56e831e4a2d9e74d8ff80694ccce29ee3"
+          },
+          {
+            "name": "research/TENSOR-ALGEBRA.json",
+            "bytes": 4197,
+            "sha256": "5c5d714f0319cc7099d39e062c55455a193af7ec18f66ec02a0c8c77fa5af8a6"
           }
         ],
         "physical_gpu_executed": false,
         "real_game_tested": false,
-        "scope": "Production cache conservation, bounded reprojection mapping, conservative shadow-face rejection, actual HLSL reconstruction fixtures and final entry-point compilation. Initial cache evidence predates the separately tested boundary refinement. Shader-perf range rejection was evaluated and deliberately not adopted."
+        "scope": "Qualified native material/particle replay, canonical flux conservation, independent visibility and receiver bounds, D3D state restoration, mode/epoch/query ownership and CSV logs. Software benchmarks include candidate list construction and reconstruction; they are not hardware FPS."
+      },
+      "changes": [
+        "Retain current 1.13.16 path by default; candidate frame-boundary switches reset source epochs without mixing readbacks.",
+        "Opt-in CSV and retained A/B mean/p95 timings, warm-up/fallback labels, settings and resolution reset, summary on stop.",
+        "Two verified native particle profiles use geometry before camera-distance size cap; native material/alpha remains.",
+        "One verified painted-object pair uses complete native material triangles with stable anchors and collision-checked cell keys.",
+        "Independent per-light direct visibility with bounded receiver-tile shadow admission; exact path for small light sets.",
+        "Bounce remains exact; extra bounce-mask optimization was rejected after software regressions."
+      ],
+      "previous_local_evidence": {
+        "revision": "TextureQuest 1.13.16 local lighting cache and reconstruction candidate",
+        "native_release_asset": {
+          "bytes": 1143296,
+          "sha256": "97b97108a41e619307b536e0fccf9badd0dcc608b862e8bdcbc68586a8dcc71f"
+        },
+        "build": {
+          "exit_code": 0,
+          "command": {
+            "bytes": 581,
+            "sha256": "b22b397aa0c3f1353772a602eb080e573bfc71a2bb3cc7934a083fc2dc52b003"
+          },
+          "log": {
+            "bytes": 54788,
+            "sha256": "c5358b5b267cac4470c4bdb7dcee5b6a88de01f4c5c94a2bf7e2eb2e00b8611d"
+          },
+          "actual_showIncludes": true,
+          "warnings": 0,
+          "toolchain": "VS18 x64/MSVC14.50.35717",
+          "compilation_roster": "Explicit translation unit plus project/dependency headers recorded by this build /showIncludes."
+        },
+        "qualification": "Controlled CPU/software Direct3D evidence only; no hardware FPS gain or complete camera-motion fix is established. Unknown object cells carry no guessed energy, sparse established observations are retained, partial visibility inside a 2-unit cell can still change its mean. Optional surface smoothing defaults off because it adds shader arithmetic. No source RGB animation smoothing or shadow quality reduction. Existing unsupported native sources, AO checkerboard history and sun-direction issues remain separate limitations.",
+        "controlled_validation": {
+          "status": "STRICT_NATIVE_AND_FOCUSED_CPU_WARP_PASS",
+          "evidence": [
+            {
+              "name": "radiance-cache-001/RESULT.json",
+              "bytes": 1791,
+              "sha256": "0f26b8f5f08f39df4e3b0cf9977dda6a903e7a23ed4d302e97e01ca455ed6652"
+            },
+            {
+              "name": "cache-review-001/RESULT.json",
+              "bytes": 2573,
+              "sha256": "7e5ea008a2a826b24dfcd3ef7c5d3ed7d1259957a4a422789c24a5ebe85ebdad"
+            },
+            {
+              "name": "radiance-boundary-001/RESULT.json",
+              "bytes": 2516,
+              "sha256": "f1bd1fd463241d259b9a3ef1eb75a7f2d65d03d9d36dcbe4a8389626ebb58e18"
+            },
+            {
+              "name": "shadow-face-001/RESULT.json",
+              "bytes": 2975,
+              "sha256": "595c70b56c32e1a12b705eaa135f20cb35cc3cfdfcf109700b2c329166447565"
+            },
+            {
+              "name": "shader-fixture-001/PRODUCTION-REVIEW.json",
+              "bytes": 3348,
+              "sha256": "335485c357e57965d34fddbe897767889418a946c52efbba4208109208b2c76b"
+            },
+            {
+              "name": "shader-fixture-001/final-compile-002/RESULT.json",
+              "bytes": 2498,
+              "sha256": "9fd6ec83cf76d9d93ee667891391602c18d162f400807a7950063b93cdd55935"
+            },
+            {
+              "name": "shader-perf-001/RESULT.json",
+              "bytes": 4563,
+              "sha256": "b428c58c875f61a24e1f7f57444960df1d708780ff4b0f3a69c2443ad42a1b9c"
+            }
+          ],
+          "physical_gpu_executed": false,
+          "real_game_tested": false,
+          "scope": "Production cache conservation, bounded reprojection mapping, conservative shadow-face rejection, actual HLSL reconstruction fixtures and final entry-point compilation. Initial cache evidence predates the separately tested boundary refinement. Shader-perf range rejection was evaluated and deliberately not adopted."
+        },
+        "historical_only": true
       },
       "historical_only": true
     },
-    "historical_only": true
-  },
-  "transition_bounds": {
-    "duration_ms": 150,
-    "logical_transitions": 6,
-    "history_slots_by_face_size": {
-      "1024": 2,
-      "512": 4,
-      "256": 8
+    "transition_bounds": {
+      "duration_ms": 150,
+      "logical_transitions": 6,
+      "history_slots_by_face_size": {
+        "1024": 2,
+        "512": 4,
+        "256": 8
+      },
+      "maximum_lazy_history_mib": 84,
+      "matched_actual_moving_snapshot": true,
+      "current_rgb_preserved": true,
+      "same_owner_same_slot_only": true,
+      "scope": "emissive_lights",
+      "ranking_turnover_current_only": true,
+      "moving_snapshot_can_briefly_trail": true,
+      "abort_on": [
+        "slot_reassignment",
+        "invalid_or_partial_history",
+        "incompatible_source_metadata",
+        "settings_change",
+        "experiment_epoch_change",
+        "zone_or_device_reset"
+      ]
     },
-    "maximum_lazy_history_mib": 84,
-    "matched_actual_moving_snapshot": true,
-    "current_rgb_preserved": true,
-    "same_owner_same_slot_only": true,
-    "scope": "emissive_lights",
-    "ranking_turnover_current_only": true,
-    "moving_snapshot_can_briefly_trail": true,
-    "abort_on": [
-      "slot_reassignment",
-      "invalid_or_partial_history",
-      "incompatible_source_metadata",
-      "settings_change",
-      "experiment_epoch_change",
-      "zone_or_device_reset"
-    ]
+    "historical_only": true
   }
 }

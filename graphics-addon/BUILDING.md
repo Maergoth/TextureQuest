@@ -1,15 +1,17 @@
 # Building the TextureQuest add-on
 
-The 1.13.15 core image was built with VS18 x64/MSVC14.50.35717 from
-this release source. Its 475648-byte image is SHA256
-`26521272e3b27aff0362a28ea3957b006d5f6b4615eaa5fa6366abb6923db166`.
+The 1.13.19 core image was built with VS18 x64/MSVC14.50.35717 from
+this release source. Its 477184-byte image is SHA256
+`70a412241f79746970f7ef0930ec81cc3f97e772a0c4a16d3eb00b9da9837151`.
 `RELEASE-NATIVE-SOURCE.json` records the actual local translation units and
 headers captured by `/showIncludes`. The core no longer instantiates or calls
-Reflex driver control, and its menu exposes only optional FG/NR controls.
+Reflex driver control, and its top menu exposes Show FPS, Frame Gen and Quality Presets. Advanced holds
+individual controls; Debug holds diagnostics. Optional ABI1 exports supply native
+preset query/apply and split panels, with the old panel retained for compatibility.
 Historical low-latency helper files are not compilation inputs.
 
 For a separate rebuild, use an x64 developer prompt and an isolated output
-directory. The release command used `/Brepro /std:c++20 /O2 /MT /EHsc /W4
+directory. The release command used `/Brepro /std:c++20 /O2 /MT /EHsc /W4 /WX
 /permissive- /DNDEBUG /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /showIncludes`,
 the include directories `deps/reshade/include`, `deps/xxhash`,
 `deps/libdeflate`, `deps/imgui`, and these translation units:
@@ -25,6 +27,11 @@ Link a DLL with `user32.lib bcrypt.lib`. Generic `build.cmd` also builds the
 retained selfchecks; those executables are not part of the published add-on.
 A rebuild is a new candidate and must not silently replace the exact release
 image or reuse its review/runtime pins.
+
+The 1.13.19 core passes `/W4 /WX` with zero warnings. A focused CPU fixture
+passes 38 checks of absent/legacy/current ABI handling, live preset query/apply,
+invalid indices, null runtime and separate panel dispatch. No game or GPU
+benchmark is implied by these interface checks.
 
 `DDSReader` keeps immutable session bytes only after full Windows BCrypt SHA256
 admission. A per-reader mutex serializes misses; the LRU owns at most 16 entries
@@ -44,6 +51,6 @@ libdeflate retain their respective dependency licenses under `deps/`.
 
 The release's separate ReShade provider is the retained custom depth-demand
 build, not an unmodified official installer DLL. Its unchanged 5410816-byte
-image is SHA256 `78ef670bd7baf3688f8570294cf793050f9fd8f2751fa7b3086c93ae5eb14fd1`;
+image is SHA256 `af45413c73384ec412930efd2daba2523f8d04003ff8e89d2cf86e1141ab7d9e`;
 provider source/build provenance is under `provider/`. Native payloads are
 release assets; `graphics-runtime/RUNTIME.json` selects their exact bytes.

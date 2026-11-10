@@ -16,6 +16,10 @@ class WorldGraphicsController {
             API.ABI = reinterpret_cast<decltype(API.ABI)>(GetProcAddress(Module, "TextureQuestWorldGraphicsABI"));
             API.Set = reinterpret_cast<decltype(API.Set)>(GetProcAddress(Module, "TextureQuestSetWorldGraphicsEnabled"));
             API.Panel = reinterpret_cast<decltype(API.Panel)>(GetProcAddress(Module, "TextureQuestDrawWorldGraphics"));
+            API.Advanced = reinterpret_cast<decltype(API.Advanced)>(GetProcAddress(Module, "TextureQuestDrawWorldGraphicsAdvanced"));
+            API.Debug = reinterpret_cast<decltype(API.Debug)>(GetProcAddress(Module, "TextureQuestDrawWorldGraphicsDebug"));
+            API.Preset = reinterpret_cast<decltype(API.Preset)>(GetProcAddress(Module, "TextureQuestWorldGraphicsQualityPreset"));
+            API.ApplyPreset = reinterpret_cast<decltype(API.ApplyPreset)>(GetProcAddress(Module, "TextureQuestApplyWorldGraphicsQualityPreset"));
         }
         return API.Compatible();
     }
@@ -28,6 +32,22 @@ public:
     bool Draw(reshade::api::effect_runtime* runtime) {
         std::lock_guard guard(Lock);
         return Resolve() && API.Draw(runtime);
+    }
+    bool ReadPreset(int32_t& preset) {
+        std::lock_guard guard(Lock);
+        return Resolve() && API.ReadPreset(preset);
+    }
+    bool RequestPreset(uint32_t preset) {
+        std::lock_guard guard(Lock);
+        return Resolve() && API.RequestPreset(preset);
+    }
+    bool DrawAdvanced(reshade::api::effect_runtime* runtime) {
+        std::lock_guard guard(Lock);
+        return Resolve() && API.DrawAdvanced(runtime);
+    }
+    bool DrawDebug(reshade::api::effect_runtime* runtime) {
+        std::lock_guard guard(Lock);
+        return Resolve() && API.DrawDebug(runtime);
     }
     void Clear() {
         std::lock_guard guard(Lock);

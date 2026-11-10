@@ -641,7 +641,7 @@ bool OnOverlayTechnique(effect_runtime* runtime, effect_technique technique) {
         ImGui::SameLine();
         bool requested = state.Requested;
         ImGui::BeginDisabled(!Global->Config.DLSS);
-        if (ImGui::Checkbox("DLSS 5 (experimental) [DLSS5_Feed.fx]", &requested))
+        if (ImGui::Checkbox("DLSS 5 [DLSS5_Feed.fx]", &requested))
             Global->DLSS.SetRequested(runtime, requested);
         ImGui::EndDisabled();
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
@@ -669,13 +669,25 @@ bool OnOverlayTechnique(effect_runtime* runtime, effect_technique technique) {
     return true;
 }
 
-void DrawAioControls(bool original) {
+enum class AioPanel { FrameGeneration, Advanced, Debug };
+
+void DrawAioControls(bool original, AioPanel panel) {
     const auto aio = Global->AIO.Snapshot();
     const auto& status = aio.Status;
     if (!aio.Compatible || !aio.ControlsCompatible ||
         !(aio.Controls.Flags & TQAIO_ControlsLoaded)) {
-        ImGui::TextDisabled("DLSS controls: %s", !aio.Present ? "waiting for add-on" :
-            !aio.ControlsCompatible ? "update the graphics hook" : "initializing");
+        if (panel == AioPanel::FrameGeneration) {
+            bool disabled = false;
+            ImGui::BeginDisabled();
+            ImGui::Checkbox("Frame Gen", &disabled);
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGui::SetTooltip("DLSS controls: %s. See Debug for details.", !aio.Present ? "waiting for add-on" :
+                    !aio.ControlsCompatible ? "update the graphics hook" : "initializing");
+        } else if (panel == AioPanel::Debug) {
+            ImGui::TextDisabled("DLSS controls: %s", !aio.Present ? "waiting for add-on" :
+                !aio.ControlsCompatible ? "update the graphics hook" : "initializing");
+        }
         return;
     }
     auto options = aio.Controls.Requested;
@@ -695,61 +707,63 @@ void DrawAioControls(bool original) {
         ImGui::SetNextItemWidth(210.0f);
         return ImGui::Combo(id, value, items, count);
     };
-    static constexpr const char* frameModes[] = {"2x", "3x", "4x"};
-    int frameMode = int(options.FrameMultiplier) - 2;
-    if (component("Frame Generation", TQAIO_FG, "##TQFrameGeneration", &frameMode, frameModes, 3)) {
-        options.FrameMultiplier = uint32_t(frameMode + 2);
-        changed = true;
-    }
-    static constexpr const char* neuralPresets[] = {"Preset 1 (Default)", "Preset 2", "Preset 3", "Custom"};
-    int neural = options.NrPasses != 1 ? 3 : int(options.NrModel) - 1;
-    if (component("Neural Rendering", TQAIO_NR, "##TQNeuralRendering", &neural, neuralPresets, 4)) {
-        if (neural < 3) {
-            options.NrModel = uint32_t(neural + 1);
-            options.NrPasses = 1;
+    if (panel == AioPanel::FrameGeneration) {
+        static constexpr const char* frameModes[] = {"2x", "3x", "4x"};
+        int frameMode = int(options.FrameMultiplier) - 2;
+        if (component("Frame Gen", TQAIO_FG, "##TQFrameGeneration", &frameMode, frameModes, 3)) {
+            options.FrameMultiplier = uint32_t(frameMode + 2);
             changed = true;
         }
-        if (neural == 3) ImGui::OpenPopup("Neural Rendering Advanced");
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Advanced")) ImGui::OpenPopup("Neural Rendering Advanced");
-    if (ImGui::BeginPopup("Neural Rendering Advanced")) {
-        bool enabled = (options.EnabledMask & TQAIO_NR) != 0;
-        if (ImGui::Checkbox("Neural rendering", &enabled)) {
-            options.EnabledMask = enabled ? options.EnabledMask | TQAIO_NR : options.EnabledMask & ~TQAIO_NR;
-            changed = true;
+    if (panel == AioPanel::Advanced) {
+        static constexpr const char* neuralPresets[] = {"Preset 1 (Default)", "Preset 2", "Preset 3", "Custom"};
+        int neural = options.NrPasses != 1 ? 3 : int(options.NrModel) - 1;
+        if (component("Neural Rendering", TQAIO_NR, "##TQNeuralRendering", &neural, neuralPresets, 4)) {
+            if (neural < 3) {
+                options.NrModel = uint32_t(neural + 1);
+                options.NrPasses = 1;
+                changed = true;
+            }
+            if (neural == 3) ImGui::OpenPopup("Neural Rendering Advanced");
         }
-        static constexpr const char* models[] = {"Preset 1", "Preset 2", "Preset 3"};
-        int model = int(options.NrModel) - 1;
-        if (ImGui::Combo("Model", &model, models, 3)) { options.NrModel = uint32_t(model + 1); changed = true; }
-        int passes = int(options.NrPasses);
-        if (ImGui::SliderInt("Passes", &passes, 1, 3)) { options.NrPasses = uint32_t(passes); changed = true; }
-        ImGui::TextDisabled("More passes repeat neural rendering and cost GPU time.");
-        ImGui::Separator();
-        ImGui::Text("Game frame: %ux%u   Output: %ux%u", status.SourceWidth, status.SourceHeight, status.OutputWidth, status.OutputHeight);
-        ImGui::Text("Completed: NR %llu / FG %llu",
-            static_cast<unsigned long long>(status.NrFrames),
-            static_cast<unsigned long long>(status.FgFrames));
-        ImGui::EndPopup();
+        ImGui::SameLine();
+        if (ImGui::Button("Advanced")) ImGui::OpenPopup("Neural Rendering Advanced");
+        if (ImGui::BeginPopup("Neural Rendering Advanced")) {
+            bool enabled = (options.EnabledMask & TQAIO_NR) != 0;
+            if (ImGui::Checkbox("Neural rendering", &enabled)) {
+                options.EnabledMask = enabled ? options.EnabledMask | TQAIO_NR : options.EnabledMask & ~TQAIO_NR;
+                changed = true;
+            }
+            static constexpr const char* models[] = {"Preset 1", "Preset 2", "Preset 3"};
+            int model = int(options.NrModel) - 1;
+            if (ImGui::Combo("Model", &model, models, 3)) { options.NrModel = uint32_t(model + 1); changed = true; }
+            int passes = int(options.NrPasses);
+            if (ImGui::SliderInt("Passes", &passes, 1, 3)) { options.NrPasses = uint32_t(passes); changed = true; }
+            ImGui::TextDisabled("More passes repeat neural rendering and cost GPU time.");
+            ImGui::EndPopup();
+        }
     }
     if (changed && !Global->AIO.RequestControls(options))
         ImGui::TextDisabled("The DLSS setting could not be applied.");
-    if ((options.EnabledMask & TQAIO_FG) && options.FrameMultiplier == 4 && (aio.Controls.Flags & TQAIO_Unsupported4x))
-        ImGui::TextDisabled("4x is unavailable on this GPU/runtime.");
-    if ((options.EnabledMask & TQAIO_FG) && options.FrameMultiplier == 3 && (aio.Controls.Flags & TQAIO_Unsupported3x))
-        ImGui::TextDisabled("3x is unavailable on this GPU/runtime.");
-    if (original) ImGui::TextDisabled("Paused in Original mode. Your choices are kept.");
-    else if (aio.Controls.Flags & TQAIO_ControlsPending) ImGui::TextDisabled("Applying DLSS changes...");
+    if (panel == AioPanel::Debug) {
+        ImGui::Text("Game frame: %ux%u   Output: %ux%u", status.SourceWidth, status.SourceHeight, status.OutputWidth, status.OutputHeight);
+        ImGui::Text("Completed: NR %llu / FG %llu",
+            static_cast<unsigned long long>(status.NrFrames), static_cast<unsigned long long>(status.FgFrames));
+        if ((options.EnabledMask & TQAIO_FG) && options.FrameMultiplier == 4 && (aio.Controls.Flags & TQAIO_Unsupported4x))
+            ImGui::TextDisabled("4x is unavailable on this GPU/runtime.");
+        if ((options.EnabledMask & TQAIO_FG) && options.FrameMultiplier == 3 && (aio.Controls.Flags & TQAIO_Unsupported3x))
+            ImGui::TextDisabled("3x is unavailable on this GPU/runtime.");
+        if (original) ImGui::TextDisabled("Paused in Original mode. Your choices are kept.");
+        else if (aio.Controls.Flags & TQAIO_ControlsPending) ImGui::TextDisabled("Applying DLSS changes...");
+    }
 }
 
 void OnTextureQuestOverlay(effect_runtime* runtime) {
-    if (!GameRuntime(runtime)) return;
-    if (!Global) return;
+    if (!GameRuntime(runtime) || !Global) return;
     const bool original = Global->Original.load();
     const bool selected = Global->Config.Effects;
+    const bool aioSelected = Global->Config.DLSS && Global->Config.DLSSBackend == "aio";
     const auto state = Global->Effects.Snapshot(runtime);
-    ImGui::Text("Textures: %s", original ? "Original" : "TextureQuest");
-    ImGui::TextDisabled("Press Home to show or hide these settings.");
     bool showFPS = Global->ShowFPS.load();
     if (ImGui::Checkbox("Show FPS", &showFPS)) {
         Global->ShowFPS = showFPS;
@@ -757,42 +771,80 @@ void OnTextureQuestOverlay(effect_runtime* runtime) {
     }
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Game = rendered frames. Output = compositor Presents, including generated frames.\nOutput is not a monitor scanout measurement.");
-    if (Global->Config.DLSS && Global->Config.DLSSBackend == "aio") {
-        DrawAioControls(original);
-        ImGui::Separator();
+    if (aioSelected) DrawAioControls(original, AioPanel::FrameGeneration);
+    else {
+        bool enabled = false;
+        ImGui::BeginDisabled();
+        ImGui::Checkbox("Frame Gen", &enabled);
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("Select Graphical Effects / DLSS in the TextureQuest launcher to install supported DLSS processing.");
     }
-    if (Global->Config.WorldGraphics) {
-        ImGui::TextUnformatted("World graphics: EQ2 Graphics");
-        if (original) ImGui::TextDisabled("Paused in Original. Your choices are kept.");
-        if (!Global->WorldGraphics.Draw(runtime))
-            ImGui::TextDisabled("Waiting for the managed EQ2 Graphics addon.");
-        ImGui::Separator();
-        ImGui::TextUnformatted("Your texture hotkey switches textures and graphics off/on.");
-        return;
-    }
-    if(ImGui::Button("Capture world lighting (3 frames)"))
-        Global->RendererProbe.Arm(runtime->get_device()->get_native(),std::filesystem::path(Global->Config.Downloads).parent_path().parent_path());
-    const auto captureStatus=Global->RendererProbe.Status();
-    ImGui::Text("Lighting capture: %s",captureStatus==1?"Capturing":captureStatus==2?"Saving":captureStatus==3?"Saved to data diagnostics":captureStatus==4?"Could not save":"Off");
-    if(ImGui::IsItemHovered())ImGui::SetTooltip("Private graphics bindings only. No game files changed. Capture while looking at lamps in the world.");
-    ImGui::Text("Graphics effects: %s", selected ? "Selected" : "Not installed");
-    ImGui::Separator();
-    constexpr const char* labels[] = {
-        "Ambient occlusion", "Contact shadows", "Depth view"
-    };
-    static_assert(std::size(labels) == tq::EffectNames.size());
-    ImGui::BeginDisabled(!selected);
-    for (size_t i = 0; i < tq::EffectNames.size(); ++i) {
-        bool requested = (state.Requested & (1u << i)) != 0;
-        if (ImGui::Checkbox(labels[i], &requested))
-            Global->Effects.SetRequested(runtime, i, requested);
-        ImGui::SameLine(210.0f);
-        ImGui::TextUnformatted(tq::EffectStatus(state, i, selected, original));
+    int32_t preset = -1;
+    const bool presetsReady = Global->Config.WorldGraphics && Global->WorldGraphics.ReadPreset(preset);
+    static constexpr const char* qualityNames[] = {"Low", "Medium", "High", "Max"};
+    const char* qualityPreview = !presetsReady ? "Unavailable" :
+        preset >= 0 && preset < 4 ? qualityNames[preset] : "Custom";
+    ImGui::BeginDisabled(!presetsReady);
+    ImGui::SetNextItemWidth(210.0f);
+    if (ImGui::BeginCombo("Quality Presets", qualityPreview)) {
+        for (uint32_t i = 0; i < std::size(qualityNames); ++i) {
+            if (ImGui::Selectable(qualityNames[i], preset == static_cast<int32_t>(i)))
+                Global->WorldGraphics.RequestPreset(i);
+            if (preset == static_cast<int32_t>(i)) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
     }
     ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip(presetsReady ?
+            "Applies a complete lighting and shadow profile. Manual edits appear as Custom.\nFrame Gen and Neural Rendering remain independent. Advanced contains individual controls." :
+            "Quality presets require the current managed EQ2 Graphics add-on. See Debug for details.");
+
     ImGui::Separator();
-    ImGui::TextUnformatted("Your texture hotkey switches everything to Original.");
-    ImGui::TextUnformatted("Effect choices stay selected when you switch back.");
+    if (ImGui::TreeNode("Advanced")) {
+        ImGui::Text("Textures: %s", original ? "Original" : "TextureQuest");
+        ImGui::TextDisabled("Press Home to show or hide these settings.");
+        if (original) ImGui::TextDisabled("Graphics paused in Original. Your choices are kept.");
+        if (aioSelected) {
+            DrawAioControls(original, AioPanel::Advanced);
+            ImGui::Separator();
+        }
+        if (Global->Config.WorldGraphics) {
+            if (!Global->WorldGraphics.DrawAdvanced(runtime))
+                ImGui::TextDisabled("Waiting for the managed EQ2 Graphics add-on.");
+        } else {
+            constexpr const char* labels[] = {"Ambient occlusion", "Contact shadows"};
+            ImGui::BeginDisabled(!selected);
+            for (size_t i = 0; i < std::size(labels); ++i) {
+                bool requested = (state.Requested & (1u << i)) != 0;
+                if (ImGui::Checkbox(labels[i], &requested)) Global->Effects.SetRequested(runtime, i, requested);
+            }
+            ImGui::EndDisabled();
+        }
+        ImGui::TextDisabled("Your texture hotkey switches textures and graphics off/on.");
+        ImGui::TreePop();
+    }
+    if (ImGui::TreeNode("Debug")) {
+        if (aioSelected) DrawAioControls(original, AioPanel::Debug);
+        if (Global->Config.WorldGraphics) {
+            if (!Global->WorldGraphics.DrawDebug(runtime))
+                ImGui::TextDisabled("Managed graphics diagnostics unavailable; update the graphics hook.");
+        } else {
+            if (ImGui::Button("Capture world lighting (3 frames)"))
+                Global->RendererProbe.Arm(runtime->get_device()->get_native(), std::filesystem::path(Global->Config.Downloads).parent_path().parent_path());
+            const auto captureStatus = Global->RendererProbe.Status();
+            ImGui::Text("Lighting capture: %s", captureStatus == 1 ? "Capturing" : captureStatus == 2 ? "Saving" : captureStatus == 3 ? "Saved to data diagnostics" : captureStatus == 4 ? "Could not save" : "Off");
+            ImGui::Text("Graphics effects: %s", selected ? "Selected" : "Not installed");
+            bool depthView = (state.Requested & (1u << 2)) != 0;
+            ImGui::BeginDisabled(!selected);
+            if (ImGui::Checkbox("Depth view", &depthView)) Global->Effects.SetRequested(runtime, 2, depthView);
+            ImGui::EndDisabled();
+            for (size_t i = 0; i < tq::EffectNames.size(); ++i)
+                ImGui::Text("%s: %s", tq::EffectNames[i], tq::EffectStatus(state, i, selected, original));
+        }
+        ImGui::TreePop();
+    }
 }
 
 void Start(HMODULE module) {

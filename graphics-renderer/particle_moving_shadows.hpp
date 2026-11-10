@@ -72,23 +72,6 @@ static int Binding(int slot,const Light &light)
     }
     return -1;
 }
-// Describes the actual completed map before its next-frame overwrite. A missing
-// map is not invented: the caller then follows the same native-map fallback as
-// glow::DrawLights. Only this optional snapshot path accepts the current frame.
-static bool Snapshot(int slot,const Light &light,uint64_t frame,ID3D11Texture2D *&texture,UINT &cube)
-{
-    texture=nullptr;cube=0;
-    if(!Requested||!MovingShadows||!light.Particle||slot<0||slot>=MAX_LIGHTS||!SlotActive[slot])return false;
-    for(unsigned p=0;p<Capacity;++p)
-    {
-        const auto &m=Maps[p];
-        if(m.valid&&m.key==SlotLights[slot]&&m.epoch==SourceEpoch&&m.frame==frame
-            &&m.position.x==light.BuiltPosition.x&&m.position.y==light.BuiltPosition.y&&m.position.z==light.BuiltPosition.z
-            &&m.radius==light.Radius&&m.sourceRadius==light.BuiltParticleSourceRadius&&Pool[p/Cubes].view&&Pool[p/Cubes].texture)
-        {texture=Pool[p/Cubes].texture.Get();cube=p%Cubes;return true;}
-    }
-    return false;
-}
 static void Draw(ID3D11DeviceContext1 *ctx,const std::vector<std::optional<const WorldMesh *>> &worldMeshes)
 {
     Eligible=Ready=MeshesDrawn=FacesDrawn=0;

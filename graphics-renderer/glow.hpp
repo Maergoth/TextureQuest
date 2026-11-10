@@ -9,7 +9,7 @@
 #include "emission_policy.hpp"
 #include "painted_emission_policy.hpp"
 #include "glow_transport.hpp"
-#include "lighting_experiment.hpp"
+#include "lighting_diagnostics.hpp"
 #include "object_radiance_policy.hpp"
 #include <d3d11_1.h>
 #include <d3d11shader.h>
@@ -639,7 +639,7 @@ struct Emitter
     XMFLOAT4 Radiance = {};
     uint64_t MeasuredFrame = 0;
     uint64_t AppliedMeasureSequence = 0;
-    // Candidate-only: immutable primitive/sample associations, independent of camera reprojection.
+    // Immutable primitive/sample associations, independent of camera reprojection.
     struct ChartAnchor { uint64_t Leaf; double Area; };
     bool Chart = false, ChartRejected = false, ChartDirty = false;
     uint64_t ChartGeometry = 0, ChartMaterial = 0, ChartSequence = 0;
@@ -696,12 +696,6 @@ struct GlowLightConstants
 {
     XMFLOAT4 Position, Colour, Normal, Moving, Shadow;
 };
-
-struct GlowTransitionConstants
-{
-    XMFLOAT4 OldPosition, StaticMap, MovingMap;
-};
-static_assert(sizeof(GlowTransitionConstants) == 48);
 
 struct LightConstants
 {
@@ -768,10 +762,10 @@ static bool ObjectObservationActive = false;
 static void RetireObjects();
 static void UpdateObjectObservationMode()
 {
-    const uint64_t epoch = lighting_experiment::CurrentEpoch();
-    const bool active = lighting_experiment::Enabled.load() && ObjectsActive();
+    const uint64_t epoch = lighting_diagnostics::CurrentEpoch();
+    const bool active = ObjectsActive();
     if (ObjectObservationEpoch == epoch && ObjectObservationActive == active) return;
-    // Both directions rebuild semantic source data. Neither mode inherits the other's colours, positions or reads.
+    // Source enablement and device epochs retire pending semantic observations.
     RetireObjects(); ObjectObservationEpoch = epoch; ObjectObservationActive = active;
     object_chart::Invalidate(epoch, active);
 }
@@ -799,7 +793,6 @@ static ComPtr<ID3D11PixelShader> ReducedLightShader, UpsampleShader, SmoothUpsam
 static ComPtr<ID3D11BlendState> LightBlend, PaintedCompositeBlend;
 static ComPtr<ID3D11RasterizerState> LightRasterizer;
 static ComPtr<ID3D11Buffer> FrameBuffer, LightConstantsBuffer;
-static ComPtr<ID3D11Buffer> TransitionConstantsBuffer;
 // how much glow lights reach each pixel this frame, written with the lights
 static ComPtr<ID3D11Texture2D> MaskTexture;
 static ComPtr<ID3D11RenderTargetView> MaskTarget;
@@ -2082,7 +2075,6 @@ static bool CreateScreenTexture(ID3D11Device *dev, UINT width, UINT height, DXGI
 // adds the glow lights with drawn maps to the light buffer, once the game's lamps are in it, and marks where they reach
 static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materialNormals=nullptr)
 {
-    const bool transportRequested = lighting_experiment::Enabled.load();
     LightsDrawnThisFrame = 0;
     ComPtr<ID3D11DeviceContext1> ctx1;
     if (!SourcesActive() || CreateFailed || !UpsampleShader || !shadowmaps::CubeViews[0] || !shadowmaps::OffsetKnown
@@ -2103,8 +2095,6 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
     XMFLOAT4X4 worldToClip;
     XMStoreFloat4x4(&worldToClip, lightbuffer::WorldToClip);
     LightConstants constants = {};
-    std::array<GlowTransitionConstants, MAX_GLOW_LIGHTS> transitions{};
-    UINT transitionCount = 0;
     constants.FaceSizes = { static_cast<float>(shadowmaps::FACE_SIZES[0]), static_cast<float>(shadowmaps::FACE_SIZES[1]),
         static_cast<float>(shadowmaps::FACE_SIZES[2]), static_cast<float>(shadowmaps::MOVING_FACE_SIZE) };
     D3D11_RECT area = { LONG_MAX, LONG_MAX, LONG_MIN, LONG_MIN };
@@ -2116,36 +2106,17 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
         auto it = shadowmaps::Lights.find(shadowmaps::SlotLights[slot]);
         D3D11_RECT rect;
         if (!shadowmaps::SlotActive[slot] || it == shadowmaps::Lights.end() || !it->second.GlowShown || !it->second.BuiltFrame
-            || (Emitters.contains(it->second.EmitterKey) ? !ObjectsActive() : !ParticlesActive()))
+            || (Emitters.contains(it->second.EmitterKey) ? !ObjectsActive() : !ParticlesActive())
+            || !FindLightRect(worldToClip, it->second.BuiltPosition, shadowmaps::FindShadowRadius(it->second) * BOUNCE_REACH,
+                desc.Width, desc.Height, rect))
             continue;
 
         const shadowmaps::Light &light = it->second;
         const float reach = shadowmaps::FindShadowRadius(light);
-        bool visible = FindLightRect(worldToClip, light.BuiltPosition, reach * BOUNCE_REACH, desc.Width, desc.Height, rect);
-        shadowmaps::transitions::Endpoint history{};
-        const bool transitioning = transportRequested && shadowmaps::transitions::Get(it->first, light, history);
-        if (transitioning)
-        {
-            D3D11_RECT oldRect;
-            if (FindLightRect(worldToClip, history.Position, reach * BOUNCE_REACH, desc.Width, desc.Height, oldRect))
-            {
-                rect = visible ? D3D11_RECT{ std::min(rect.left, oldRect.left), std::min(rect.top, oldRect.top),
-                    std::max(rect.right, oldRect.right), std::max(rect.bottom, oldRect.bottom) } : oldRect;
-                visible = true;
-            }
-        }
-        if (!visible) continue;
         const int size = shadowmaps::GetSizeIndex(slot);
         // full-size slots also have a moving-object map, whose cube is the slot's place in its array
         const int particleMap=shadowmaps::particle_moving::Binding(slot,light);
         const bool movingUsed = particleMap<0 && slot < shadowmaps::SIZE_STARTS[1] && shadowmaps::MovingMapUsed[slot];
-        if (transitioning)
-        {
-            transitions[count] = { { history.Position.x, history.Position.y, history.Position.z, history.NewWeight },
-                { float(history.Tier), float(history.Cube), float(history.FaceSize), history.Radius },
-                { float(history.MovingTier), float(history.MovingCube), float(history.MovingFaceSize), history.MovingFaceSize ? 1.0f : 0.0f } };
-            ++transitionCount;
-        }
         constants.Lights[count++] = { { light.BuiltPosition.x, light.BuiltPosition.y, light.BuiltPosition.z, static_cast<float>(size) },
             { light.GlowColour.x, light.GlowColour.y, light.GlowColour.z, reach },
             { light.GlowNormal.x, light.GlowNormal.y, light.GlowNormal.z, static_cast<float>(slot - shadowmaps::SIZE_STARTS[size]) },
@@ -2203,38 +2174,12 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
         shadowmaps::particle_moving::Pool[0].view.Get(),shadowmaps::particle_moving::Pool[1].view.Get(),
         shadowmaps::particle_moving::Pool[2].view.Get(),shadowmaps::particle_moving::Pool[3].view.Get() };
     lightbuffer::StartTimer(ctx1.Get(), lightbuffer::GlowTimer);
-    lighting_experiment::BeginPass(ctx1.Get(), transportRequested, UINT(count), reducedWidth, reducedHeight, transitionCount);
-    ID3D11Buffer *transitionBuffer = nullptr;
-    if (transitionCount)
-    {
-        const D3D11_BUFFER_DESC transitionDesc = { UINT(sizeof(transitions)), D3D11_USAGE_DEFAULT, D3D11_BIND_CONSTANT_BUFFER };
-        if (TransitionConstantsBuffer || SUCCEEDED(dev->CreateBuffer(&transitionDesc, nullptr, &TransitionConstantsBuffer)))
-        {
-            ctx1->UpdateSubresource(TransitionConstantsBuffer.Get(), 0, nullptr, transitions.data(), 0, 0);
-            transitionBuffer = TransitionConstantsBuffer.Get();
-        }
-        else
-        {
-            shadowmaps::transitions::Invalidate();
-            lighting_experiment::RecordFallback();
-        }
-    }
-    bool transportCandidate = false;
-    if (transportRequested)
-    {
-        transportCandidate = glow_transport::Prepare(dev.Get(), LIGHT_SHADER, reducedWidth, reducedHeight, UINT(count));
-        if (transportCandidate)
-            glow_transport::Build(ctx1.Get(), FrameBuffer.Get(), LightConstantsBuffer.Get(), offset,
-                lightbuffer::DepthCopyView.Get(), reducedWidth, reducedHeight, UINT(count), transitionBuffer);
-        else lighting_experiment::RecordFallback();
-    }
-    if (transportCandidate)
-    {
-        ctx1->PSSetConstantBuffers(4, 1, &transitionBuffer);
-        ID3D11ShaderResourceView *historyViews[] = { shadowmaps::transitions::View(0),
-            shadowmaps::transitions::View(1), shadowmaps::transitions::View(2) };
-        ctx1->PSSetShaderResources(15, 3, historyViews);
-    }
+    lighting_diagnostics::BeginPass(ctx1.Get(), UINT(count), reducedWidth, reducedHeight);
+    const bool useTransportLists = glow_transport::Prepare(dev.Get(), LIGHT_SHADER, reducedWidth, reducedHeight, UINT(count));
+    if (useTransportLists)
+        glow_transport::Build(ctx1.Get(), FrameBuffer.Get(), LightConstantsBuffer.Get(), offset,
+            lightbuffer::DepthCopyView.Get(), reducedWidth, reducedHeight, UINT(count));
+    else lighting_diagnostics::RecordFallback();
     // texels outside the lights' rectangle are left unlit
     ctx1->ClearRenderTargetView(ReducedLightTarget.Get(), clear);
     ctx1->ClearRenderTargetView(ReducedSurfaceTarget.Get(), clear);
@@ -2248,7 +2193,7 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
         static_cast<LONG>(std::ceil(area.bottom / scale)) };
     ctx1->RSSetScissorRects(1, &reducedArea);
     ctx1->OMSetBlendState(nullptr, nullptr, 0xffffffff);
-    ctx1->PSSetShader(transportCandidate ? glow_transport::Shader(UINT(count)) : ReducedLightShader.Get(), nullptr, 0);
+    ctx1->PSSetShader(useTransportLists ? glow_transport::Shader(UINT(count)) : ReducedLightShader.Get(), nullptr, 0);
     ctx1->PSSetShaderResources(0, 13, views);
     ctx1->Draw(3, 0);
     ctx1->PSSetShader(SmoothLighting && SmoothUpsampleShader ? SmoothUpsampleShader.Get() : UpsampleShader.Get(), nullptr, 0);
@@ -2260,15 +2205,8 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
     ctx1->OMSetBlendState(LightBlend.Get(), nullptr, 0xffffffff);
     ctx1->PSSetShaderResources(0, 13, views);
     ctx1->Draw(3, 0);
-    if (transportCandidate)
-    {
-        glow_transport::Unbind(ctx1.Get());
-        ID3D11ShaderResourceView *noHistoryViews[3]{};
-        ctx1->PSSetShaderResources(15, 3, noHistoryViews);
-        ID3D11Buffer *noTransitionBuffer = nullptr;
-        ctx1->PSSetConstantBuffers(4, 1, &noTransitionBuffer);
-    }
-    lighting_experiment::EndPass(ctx1.Get());
+    if (useTransportLists) glow_transport::Unbind(ctx1.Get());
+    lighting_diagnostics::EndPass(ctx1.Get());
     lightbuffer::StopTimer(ctx1.Get(), lightbuffer::GlowTimer);
     LightsDrawnThisFrame = count;
 
@@ -2409,7 +2347,11 @@ static bool CreateObjects(ID3D11Device *dev)
         || FAILED(dev->CreateBuffer(&frameDesc, nullptr, &FrameBuffer))
         || FAILED(dev->CreateBuffer(&lightDesc, nullptr, &LightConstantsBuffer))
         || !CreateShapeObjects(dev)) return false;
-    if (!lightbuffer::CreatePixelShader(dev, "ps_reduced_light", ReducedLightShader, LIGHT_SHADER)
+    // The fallback is the same corrected independent-light shader. A list allocation
+    // failure must not resurrect legacy borrowed visibility or weak-light omissions.
+    std::string independent;
+    if (!glow_transport::IndependentSources(LIGHT_SHADER, independent)) return false;
+    if (!lightbuffer::CreatePixelShader(dev, "ps_reduced_light", ReducedLightShader, independent.c_str())
         || !lightbuffer::CreatePixelShader(dev, "ps_upsample", UpsampleShader, LIGHT_SHADER)) return false;
     // The optional filter failing to compile must not disable existing lighting.
     lightbuffer::CreatePixelShader(dev, "ps_upsample_smooth", SmoothUpsampleShader, LIGHT_SHADER);
@@ -2481,7 +2423,6 @@ static void Reset(bool keepShapeBuffers = false)
     LightRasterizer.Reset();
     FrameBuffer.Reset();
     LightConstantsBuffer.Reset();
-    TransitionConstantsBuffer.Reset();
     MaskTexture.Reset();
     MaskTarget.Reset();
     MaskView.Reset();
