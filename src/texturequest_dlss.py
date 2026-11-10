@@ -127,14 +127,26 @@ V3_GRAPHICS_DEFAULT_PROFILES = {
     name: ('texturequest-' + name + '-settings-v3', dict(GRAPHICS_CORE_DEFAULTS))
     for name in _GRAPHICS_PROFILE_NAMES
 }
+# v4 introduced normalized V2 particle strength and removed the obsolete
+# world-preset migration marker. Keep that exact historical lease authority.
+V4_GRAPHICS_WORLD_DEFAULTS = dict(V3_GRAPHICS_WORLD_DEFAULTS)
+for _key in ('TextureQuestPresetVersion', 'ParticleLightStrength'):
+    V4_GRAPHICS_WORLD_DEFAULTS.pop(('EQ2Graphics', _key))
+V4_GRAPHICS_WORLD_DEFAULTS.update({('EQ2Graphics', 'ParticleLightStrengthV2'): '1.0',
+                                  ('EQ2Graphics', 'ParticleLightStrengthUnits'): '2'})
+V4_GRAPHICS_DEFAULT_PROFILES = {
+    name: ('texturequest-' + name + '-settings-v4', dict(GRAPHICS_CORE_DEFAULTS))
+    for name in _GRAPHICS_PROFILE_NAMES
+}
 from texturequest_quality import values as _quality_values, fresh_values as _quality_fresh_values, SUN_ENABLE
 GRAPHICS_WORLD_DEFAULTS = _quality_fresh_values()
 GRAPHICS_WORLD_DEFAULTS.update({key: value for key, value in _quality_values('Low').items() if key != SUN_ENABLE})
 GRAPHICS_DEFAULT_PROFILES = {
-    name: ('texturequest-' + name + '-settings-v4', dict(GRAPHICS_CORE_DEFAULTS))
+    name: ('texturequest-' + name + '-settings-v5', dict(GRAPHICS_CORE_DEFAULTS))
     for name in _GRAPHICS_PROFILE_NAMES
 }
 for _profiles, _world in ((V3_GRAPHICS_DEFAULT_PROFILES, V3_GRAPHICS_WORLD_DEFAULTS),
+                          (V4_GRAPHICS_DEFAULT_PROFILES, V4_GRAPHICS_WORLD_DEFAULTS),
                           (GRAPHICS_DEFAULT_PROFILES, GRAPHICS_WORLD_DEFAULTS)):
     for _profile in _profiles:
         _schema, _values = _profiles[_profile]
@@ -142,7 +154,7 @@ for _profiles, _world in ((V3_GRAPHICS_DEFAULT_PROFILES, V3_GRAPHICS_WORLD_DEFAU
         if '-aio' in _profile: _values.update(GRAPHICS_AIO_DEFAULTS)
 GRAPHICS_DEFAULT_SCHEMAS = {schema: values
     for profiles in (LEGACY_GRAPHICS_DEFAULT_PROFILES, V2_GRAPHICS_DEFAULT_PROFILES,
-                     V3_GRAPHICS_DEFAULT_PROFILES, GRAPHICS_DEFAULT_PROFILES)
+                     V3_GRAPHICS_DEFAULT_PROFILES, V4_GRAPHICS_DEFAULT_PROFILES, GRAPHICS_DEFAULT_PROFILES)
     for schema, values in profiles.values()}
 
 
@@ -194,7 +206,8 @@ def _preserved_graphics_defaults(lines, values):
                'ParticleLightStrengthV2': 'ParticleLightStrength',
                'SunSoftness': 'SunShadowSize',
                'TextureQuestSunSoftnessPreferenceRealSun': 'TextureQuestSunSoftnessPreference'}
-    names = {('EQ2Graphics', key): None for key in (*aliases.values(), 'SunSoftness')}
+    names = {('EQ2Graphics', key): None for key in
+             (*aliases.values(), 'SunSoftness', 'ParticleLightStrengthV2', 'ParticleLightStrengthV3')}
     names.update(values)
     rows, _ = _parse(lines, names, casefold=True)
     def present(key): return rows.get(('EQ2Graphics', key), [])
@@ -208,10 +221,12 @@ def _preserved_graphics_defaults(lines, values):
             return value if isfinite(value) else None
         except ValueError: return None
     omitted = {('EQ2Graphics', key) for key, alias in aliases.items() if present(alias)}
-    # A legacy particle value migrates through the native idempotent V2 helper.
-    # Do not seed a new default ahead of it and silently change physical light.
-    if present('ParticleLightStrength') and not present('ParticleLightStrengthV2'):
-        omitted.add(('EQ2Graphics', 'ParticleLightStrengthUnits'))
+    # The native idempotent helper migrates V2/raw values into V3 units. A new
+    # default must not mask either saved value and change physical brightness.
+    if present('ParticleLightStrengthV2') or present('ParticleLightStrength'):
+        omitted.add(('EQ2Graphics', 'ParticleLightStrengthV3'))
+        if not present('ParticleLightStrengthV3'):
+            omitted.add(('EQ2Graphics', 'ParticleLightStrengthUnits'))
     # The native sun helper derives the remembered amount from active or legacy
     # values. A default preference must not preempt that conversion on update.
     if any(present(key) for key in ('SunSoftness', 'SunShadowSize',

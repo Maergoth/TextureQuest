@@ -1,0 +1,21 @@
+{
+  "version": "1.13.22",
+  "built_commit": "afb928d23c2af2342d31cce2e31ab12435ea2bb5",
+  "runtime_sha256": "355329a8c0b4123ee2819d8eba41dc9d7dc8068b08b0c97393a8277e7b761404",
+  "archive_sha256": "44852534ddbe97a6ebe15a29764a3242b951afd0e73395bbfaace163ff0e1fda",
+  "native_migration_checks": 145,
+  "focused_launcher_tests": 17,
+  "historical_lease_authorities_preserved": 16,
+  "strict_renderer_warnings": 0,
+  "unchanged_native_dependencies": 7,
+  "frozen_ui_smoke": true,
+  "local_normal_update_passed": true,
+  "settings_preserved": true,
+  "native_eq2_ini_bytes_preserved": true,
+  "texture_version": "1.3.0",
+  "texture_preparation_preserved": true,
+  "current_half_becomes_new_one": true,
+  "physical_brightness_preserved": true,
+  "performance_changes": false,
+  "new_fps_benchmark": false
+}

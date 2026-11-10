@@ -1,6 +1,6 @@
 {
   "schema": "texturequest-quality-presets-v1",
-  "version": 2,
+  "version": 3,
   "default": "Low",
   "hardware_guidance": "Starting points for these GPU classes, not benchmarked FPS guarantees. Resolution, crowd size and other clients affect cost.",
   "presets": [
@@ -122,8 +122,8 @@
       "AmbientKept": 1.0,
       "TextureQuestSunSoftnessPreferenceRealSun": 1.6,
       "TextureQuestSunSoftnessUnits": 1,
-      "ParticleLightStrengthV2": 1.0,
-      "ParticleLightStrengthUnits": 2
+      "ParticleLightStrengthV3": 1.0,
+      "ParticleLightStrengthUnits": 3
     }
   }
 }

@@ -250,6 +250,11 @@
       "name": "licenses/TextureQuest-11321-PUBLIC.txt",
       "bytes": 1271,
       "sha256": "b8cf987b0252717a67d6e36ad1b07ad5d3947d9d2dded858f4e4bb2f94ca5446"
+    },
+    {
+      "name": "licenses/TextureQuest-11322-LOCAL.txt",
+      "bytes": 333,
+      "sha256": "f76fa067274f2b677fd728daa67c35d3493419f428a1362d919e560d8ccb7a75"
     }
   ],
   "dlss": {
@@ -310,8 +315,8 @@
     "files": [
       {
         "name": "renderer/EQ2Graphics.addon64",
-        "bytes": 1286656,
-        "sha256": "75c6753227d5d2d63f58ee9316231aa61611fa840465a74e4b79e86a7ce4929f"
+        "bytes": 1287168,
+        "sha256": "cbb144c9bd60f42469b12a66c106685f59ad9cc91015769af343ee5dd4ef146e"
       }
     ]
   }

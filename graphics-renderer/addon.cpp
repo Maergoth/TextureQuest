@@ -211,6 +211,7 @@ static bool TQPresetSetting(const char *name, T &value, bool apply)
     if (key == "EmissiveLightStrength") return live(glow::Strength);
     if (key == "ParticleLightStrength") return live(particle_emission::Strength);
     if (key == "ParticleLightStrengthV2") return live(particle_emission::Strength);
+    if (key == "ParticleLightStrengthV3") return live(particle_emission::Strength);
     if (key == "ParticleLightRadius") return live(particle_emission::Radius);
     if (key == "PaintedEmissionLight") return live(glow::PaintedLight);
     if (key == "PaintedEmissionKept") return live(glow::PaintedKept);
@@ -309,7 +310,7 @@ static bool TQHasExistingWorldSettings()
     tq_quality::VisitSettings(0, [&](const char *key, auto) { existing = present(key) || existing; });
     tq_quality::VisitFreshDefaults([&](const char *key, auto) { existing = present(key) || existing; });
     constexpr const char *legacy[] = {
-        "GlowLights", "GlowLightStrength", "PaintedGlowKept", "ShadowSoftness", "SunShadowSize", "ParticleLightStrength",
+        "GlowLights", "GlowLightStrength", "PaintedGlowKept", "ShadowSoftness", "SunShadowSize", "ParticleLightStrength", "ParticleLightStrengthV2",
         "TextureQuestSunSoftnessPreference", "TextureQuestPresetVersion", "TextureQuestQualityPreset",
         "TextureQuestPreset2PreviousShadowSoftness", "TextureQuestPreset1PreviousShadowStrength",
         "TextureQuestPreset1PreviousShadowSoftness", "TextureQuestPreset1PreviousOcclusionRadius",

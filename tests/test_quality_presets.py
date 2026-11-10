@@ -17,14 +17,16 @@ class QualitySettings(unittest.TestCase):
     def test_presets_roundtrip_and_manual_divergence_preserve_unrelated_controls(self):
         original = (b'\xef\xbb\xbf[User]\r\nKeep=unchanged\r\n[Standalone.DLSSNR]\r\n'
                     b'FrameGeneration=1\r\nNeuralRendering=1\r\n[TextureQuest]\r\nShowFPS=0\r\n'
-                    b'[eq2graphics]\r\nAnisotropy = 4 ; keep this comment\r\n')
+                    b'[eq2graphics]\r\nAnisotropy = 4 ; keep this comment\r\n'
+                    b'ParticleLightStrengthV3 = 1.25 ; keep brightness\r\nParticleLightStrengthV2=0.5\r\n')
         for name in quality.NAMES:
             with self.subTest(name=name):
                 updated = quality.apply(original, name)
                 self.assertEqual(quality.detect(updated), name)
                 self.assertEqual(quality.apply(updated, name), updated)
                 self.assertIn(b'Anisotropy = 16 ; keep this comment', updated)
-                for kept in (b'Keep=unchanged', b'FrameGeneration=1', b'NeuralRendering=1', b'ShowFPS=0'):
+                for kept in (b'Keep=unchanged', b'FrameGeneration=1', b'NeuralRendering=1', b'ShowFPS=0',
+                             b'ParticleLightStrengthV3 = 1.25 ; keep brightness', b'ParticleLightStrengthV2=0.5'):
                     self.assertIn(kept, updated)
                 changed = updated.replace(b'Anisotropy = 16', b'Anisotropy = 8')
                 self.assertEqual(quality.detect(changed), quality.CUSTOM)
@@ -39,7 +41,7 @@ class QualitySettings(unittest.TestCase):
     def test_fresh_defaults_match_low_old_v2_leases_still_restore_and_custom_stays(self):
         fresh, lease = dlss.prepare_dlss_config(b'', profile='graphics-world-defaults')
         self.assertEqual(quality.detect(fresh), 'Low')
-        self.assertTrue(lease['schema'].endswith('-v4'))
+        self.assertTrue(lease['schema'].endswith('-v5'))
         custom = quality.apply(b'', 'Max').replace(b'Anisotropy=16', b'Anisotropy=4')
         refreshed, _ = dlss.prepare_dlss_config(custom, profile='graphics-world-defaults')
         self.assertIn(b'Anisotropy=4', refreshed)
