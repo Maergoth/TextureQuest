@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <mutex>
+#include <map>
 #include "texturequest_aio_api.h"
 
 namespace tq {
@@ -34,6 +35,11 @@ class FpsCounter {
         Last = {}; Last.OutputActive = active;
     }
 public:
+    void Reset() {
+        std::lock_guard guard(Lock);
+        Started = false;
+        Last = {};
+    }
     void Frame(uint64_t now, bool active, uint64_t output) {
         std::lock_guard guard(Lock);
         if (!Started || now < Previous || now - Previous > 3000 || active != OutputActive ||
@@ -58,6 +64,46 @@ public:
     FrameRates Snapshot() {
         std::lock_guard guard(Lock);
         return Last;
+    }
+};
+// A source runtime owns its sample window. Hidden intervals and another
+// window's Presents must never enter the visible window's FPS result.
+class RuntimeFpsCounters {
+    std::mutex Lock;
+    std::map<const void*, FpsCounter> Counters;
+    bool Visible = true;
+public:
+    void Register(const void* runtime) {
+        if (!runtime) return;
+        std::lock_guard guard(Lock);
+        Counters.try_emplace(runtime).first->second.Reset();
+    }
+    void Forget(const void* runtime) {
+        std::lock_guard guard(Lock);
+        Counters.erase(runtime);
+    }
+    void SetVisible(bool visible) {
+        std::lock_guard guard(Lock);
+        if (Visible == visible) return;
+        Visible = visible;
+        for (auto& [runtime, counter] : Counters) {
+            (void)runtime;
+            counter.Reset();
+        }
+    }
+    void Frame(const void* runtime, uint64_t now, bool active, uint64_t output) {
+        std::lock_guard guard(Lock);
+        if (!Visible) return;
+        if (auto it = Counters.find(runtime); it != Counters.end())
+            it->second.Frame(now, active, output);
+    }
+    FrameRates Snapshot(const void* runtime) {
+        std::lock_guard guard(Lock);
+        if (Visible) {
+            if (auto it = Counters.find(runtime); it != Counters.end())
+                return it->second.Snapshot();
+        }
+        return {};
     }
 };
 } // namespace tq

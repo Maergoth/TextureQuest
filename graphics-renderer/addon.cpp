@@ -145,10 +145,13 @@ static sampler FindCopy(device *dev, ReplacedSampler &entry)
 // binds the copy of each replaced sampler the game binds, so a settings change applies on the next draw
 static void OnPushDescriptors(command_list *cmd, shader_stage stages, pipeline_layout layout, uint32_t param, const descriptor_table_update &update)
 {
-    const shadowmaps::CpuScope scope(shadowmaps::BindCpu);
+    // This hot callback is registered directly: reject inactive/non-sampler
+    // events before ownership queries or diagnostic timing.
     if (TQSamplerBoundary || !tq_world::Managed.Enabled() || (!AnisotropyEnabled && !BilinearEnabled) || update.type != descriptor_type::sampler || !update.count
         || update.count > MAX_BOUND_SAMPLERS)
         return;
+    if (!tq_world::Accept(cmd)) return;
+    const shadowmaps::CpuScope scope(shadowmaps::BindCpu);
 
     const auto *bound = static_cast<const sampler *>(update.descriptors);
     sampler replaced[MAX_BOUND_SAMPLERS];
@@ -428,9 +431,11 @@ static uint64_t TQLightingSettingsIdentity()
     return hash;
 }
 static void TQWorldBoundary(command_queue*queue,swapchain*,const rect*,const rect*,uint32_t,const rect*) {
-    const auto performanceSettings = lighting_diagnostics::RecordRequested.load() || lighting_diagnostics::Recording
-        ? TQLightingSettingsIdentity() : lighting_diagnostics::SettingsId;
-    lighting_diagnostics::Boundary(reinterpret_cast<ID3D11DeviceContext*>(queue->get_native()), performanceSettings);
+    if (lighting_diagnostics::NeedsBoundary()) {
+        const auto performanceSettings = lighting_diagnostics::RecordRequested.load() || lighting_diagnostics::Recording
+            ? TQLightingSettingsIdentity() : lighting_diagnostics::SettingsId;
+        lighting_diagnostics::Boundary(reinterpret_cast<ID3D11DeviceContext*>(queue->get_native()), performanceSettings);
+    }
     const bool wanted=tq_world::Managed.Requested(),was=tq_world::Managed.Enabled();
     static bool samplerRetry=false;
     static std::uint32_t lastFiltering=0;
@@ -497,7 +502,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
         reshade::register_event<reshade::addon_event::init_sampler>(&tq_world::Guard<&OnInitSampler>::Call);
         reshade::register_event<reshade::addon_event::destroy_sampler>(&tq_world::Guard<&OnDestroySampler>::Call);
         reshade::register_event<reshade::addon_event::destroy_device>(&tq_world::Guard<&OnDestroyDevice>::Call);
-        reshade::register_event<reshade::addon_event::push_descriptors>(&tq_world::Guard<&OnPushDescriptors>::Call);
+        reshade::register_event<reshade::addon_event::push_descriptors>(&OnPushDescriptors);
         capture::Register();
         shadows::Register();
         if (freshWorldSettings) {

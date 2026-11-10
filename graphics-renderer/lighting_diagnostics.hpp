@@ -266,8 +266,15 @@ inline void SaveSummary()
 
 // Called after upstream Present cleanup. Pending query slots are never reused
 // until resolved, and delayed results retain the settings/generation of submission.
+inline bool NeedsBoundary() noexcept
+{
+    return Recording || RecordRequested.load() || ResetRequested.load();
+}
 inline void Boundary(ID3D11DeviceContext *ctx, uint64_t settings = 0)
 {
+    // Frame counts belong to active diagnostic sessions. Starting a new one
+    // resets its warm-up origin; idle frames need no clocks or context calls.
+    if (!NeedsBoundary()) return;
     if (!ctx || ctx->GetType() != D3D11_DEVICE_CONTEXT_IMMEDIATE) return;
     ++Frame;
     if (Recording) Poll(ctx);

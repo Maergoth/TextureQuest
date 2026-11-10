@@ -10,6 +10,14 @@ TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim i
 
 AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,694 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The texture pack keeps the game's models and animations; optional Graphical Effects below change lighting. Some fine detail is newly generated, and results vary by texture.
 
+## 1.13.23 idle-overhead update
+
+Hidden FPS no longer forces an otherwise unnecessary GUI frame. Disabled or
+absent effects stop repeated searches, and inactive capture, sampler and
+diagnostic paths skip unnecessary queries. Textures, rendering quality and saved
+settings are unchanged. Build and lifecycle/concurrency checks passed; actual
+game FPS gains remain unmeasured. [Details and remaining costs](docs/IDLE_HOOK_OVERHEAD.md).
+
 ## 1.13.22 lighting update
 
 The qualified particle/object source observations, source-cache corrections,

@@ -1,0 +1,4 @@
+TextureQuest 1.13.23 idle-overhead update.
+Skip hidden FPS sampling, repeated disabled-effect reconciliation, inactive sampler work and idle diagnostic frame collection.
+The bundled modified ReShade provider supports optional overlay demand without toggling callback registrations; Home and other GUI triggers remain intact.
+Texture bytes, mipmaps, lighting/shadow quality and budgets are preserved. No measured game-FPS gain or zero-overhead claim. Dependency licenses and permissions remain unchanged.

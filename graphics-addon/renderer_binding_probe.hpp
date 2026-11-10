@@ -95,6 +95,9 @@ public:
  ~RendererBindingProbe(){Stop();}
  void Stop(){ {std::lock_guard<std::mutex>g(lock_);active_=false;for(auto&b:buffers_)b.second.map=nullptr;}if(writer_.joinable())writer_.join();}
  unsigned Status()const{return writeStatus_.load();}
+ // Status 1 also covers a finished capture awaiting its final Frame callback.
+ // This is an idle hint only; each callback still validates state under lock.
+ bool NeedsCaptureCallbacks()const{return writeStatus_.load(std::memory_order_relaxed)==1;}
  bool Arm(uint64_t nativeDevice,const std::filesystem::path&mapParent) {
   if(!nativeDevice)return false;
   if(writer_.joinable()){if(writeStatus_.load()==2)return false;writer_.join();}

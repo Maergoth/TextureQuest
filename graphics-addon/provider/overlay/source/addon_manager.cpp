@@ -7,6 +7,7 @@
 
 #include "reshade.hpp"
 #include "addon_manager.hpp"
+#include "texturequest_overlay_demand.hpp"
 #include "dll_log.hpp"
 #include "ini_file.hpp"
 #include <algorithm> // std::find, std::find_if, std::remove, std::remove_if
@@ -422,6 +423,11 @@ reshade::addon_info *reshade::find_addon(const void *address)
 
 #if defined(RESHADE_API_LIBRARY_EXPORT)
 
+extern "C" __declspec(dllexport) uint32_t WINAPI TextureQuestSetOverlayCallbackDemandV1(void *module, void *callback, uint32_t requested)
+{
+	return tq_overlay_demand::callbacks.set_demand(module, callback, requested != 0) ? 1u : 0u;
+}
+
 bool ReShadeRegisterAddon(void *module, uint32_t api_version)
 {
 	// Can only register an add-on module once
@@ -588,6 +594,8 @@ void ReShadeRegisterEventForAddon(void *module, reshade::addon_event ev, void *c
 	event_list.push_back(callback);
 
 	info->event_callbacks.emplace_back(static_cast<uint32_t>(ev), callback);
+	if (ev == reshade::addon_event::reshade_overlay)
+		tq_overlay_demand::callbacks.register_callback(info->handle, callback);
 
 #if RESHADE_VERBOSE_LOG
 	reshade::log::message(reshade::log::level::debug, "Registered event callback %p for event %s.", callback, addon_event_to_string(ev));
@@ -617,6 +625,8 @@ void ReShadeUnregisterEventForAddon(void *module, reshade::addon_event ev, void 
 	event_list.erase(std::remove(event_list.begin(), event_list.end(), callback), event_list.end());
 
 	info->event_callbacks.erase(std::remove(info->event_callbacks.begin(), info->event_callbacks.end(), std::make_pair(static_cast<uint32_t>(ev), callback)), info->event_callbacks.end());
+	if (ev == reshade::addon_event::reshade_overlay)
+		tq_overlay_demand::callbacks.unregister_callback(info->handle, callback);
 
 #if RESHADE_VERBOSE_LOG
 	reshade::log::message(reshade::log::level::debug, "Unregistered event callback %p for event %s.", callback, addon_event_to_string(ev));
