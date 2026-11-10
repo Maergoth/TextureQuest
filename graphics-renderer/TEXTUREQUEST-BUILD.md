@@ -1,28 +1,22 @@
-# Renderer 1.13.14 development build
+# Renderer 1.13.16 local development build
 
-Particle lights gain a small radial exclusion in their shadow depth pass.
-The CPU derives a core from positive-energy triangle-centroid spread with
-weighted Welford accumulation: min(0.35, 0.5 * RMS) world units. Core metadata
-uses the existing elapsed-time position filter. Power, raw moments, stable
-source identities and observation-based retention remain unchanged.
+Based on public 1.13.15. Object cache measurements are placed only in observed
+world cells and combined by conserved area-weighted flux. A tiny, unambiguous
+adjacent-cell correction handles grid-boundary reprojection rounding. Unknown
+regions receive no parent or whole-object colour fallback.
 
-Static and moving shadow paths use the built position and built core together.
-The depth-only single/layered pixel shaders retain geometry outside the core;
-native lights use zero core. The helper changes no vertex shader, global bias,
-near plane, light budget or shadow-bank layout. State is restored after drawing.
-This is spatial exclusion, not recovered owner identity: another object inside
-the tiny core can also be ignored. It cannot remove every self-shadow artifact.
+Known mesh bounds conservatively skip nonintersecting static cube-shadow faces.
+Map resolution, samples, moving shadows and update scheduling are unchanged.
+Invalid reconstruction samples are rejected. Optional slope-aware four-tap
+surface smoothing is compiled separately and defaults off. It uses no history
+and does not filter source animation or the game texture colour.
 
-The strict native build and 1,381 focused CPU checks passed. The corrected
-hardware-D3D11 fixture passed 35 checks for static/moving/layered paths, measured
-pixel position, biased depth, outside blockers, native zero-core behavior and
-native state/data preservation. Initial failed assumptions and their numeric
-diagnostic remain in local receipts; no historical full-map/alpha suite replay
-is claimed. Actual game appearance and FPS remain unconfirmed.
+The strict C++20 /O2 /W4 /WX build passed. RELEASE-SOURCE.json records actual
+compiler inputs, binary identity and focused CPU/software Direct3D evidence.
+The alternate squared-range shader optimization was not adopted because
+controlled software timings regressed for inside-heavy light workloads.
 
-The hardware probe verifies DirectX pixel SV_Position.w as view depth for these
-unchanged cube shaders. See also Microsoft's documented DirectX/Vulkan position
-W distinction in the [DXC options](https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#vulkan-specific-options).
-RELEASE-SOURCE.json records the current 32 root native inputs and exact image.
-Prior normal-map, source-stability and cache fixes remain. Dependency permission
-and licenses are unchanged. See docs/GRAPHICS-1.13.14-HANDOFF.md.
+These checks do not establish physical-GPU performance or a complete fix in
+EQ2. See [the candidate handoff](../docs/GRAPHICS-1.13.16-HANDOFF.md). Earlier
+particle grouping, material normals, off-screen retention and bounded source
+cores are retained; their evidence in metadata is explicitly historical.

@@ -12,8 +12,8 @@
     }
   },
   "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
-  "revision": "TextureQuest 1.13.15 public graphics controls/defaults",
-  "integration_base_commit": "3ca6da05ea6bdf896bb548e09fef4ccf9fc0e293",
+  "revision": "TextureQuest 1.13.16 local lighting cache and reconstruction candidate",
+  "integration_base_commit": "8ae625df0e7e7b27fa51044f16f7fa694baa135c",
   "files": [
     {
       "name": "addon.cpp",
@@ -87,8 +87,8 @@
     },
     {
       "name": "glow.hpp",
-      "bytes": 123992,
-      "sha256": "ee5e0e6e7f872f36d4ed7e9f821fb0e7bd0c06b82d0180403aa9654ba9069c07"
+      "bytes": 131127,
+      "sha256": "cd31533a05647ad45e6e37351a41c6e47fcf79d520ab100931e2511d4ca268c2"
     },
     {
       "name": "lamp_holder_policy.hpp",
@@ -104,6 +104,11 @@
       "name": "material_normal_replay.hpp",
       "bytes": 19761,
       "sha256": "2d39fd6e45e35b2522e2d3b5f4b376316ce445a8a3879206571887cc343f9175"
+    },
+    {
+      "name": "object_radiance_policy.hpp",
+      "bytes": 5960,
+      "sha256": "ebd8ac1ccffdd67cf5033527925dda0bc4ada7d322c4836733d70382833a8fca"
     },
     {
       "name": "offscreen_lamp_policy.hpp",
@@ -176,14 +181,19 @@
       "sha256": "bf6527fd509a35bad218013ccf8431d7ed33f7b4c6f7f707bcdd324ee18c3447"
     },
     {
+      "name": "shadow_face_culling.hpp",
+      "bytes": 2146,
+      "sha256": "ac115e53826312ad5e02e0f52483979404700bc1634bcca51e11bdb3eda013df"
+    },
+    {
       "name": "shadow_maps.hpp",
-      "bytes": 166646,
-      "sha256": "4f2b58ec627896ae141fb14feb4d5295407e7be5acf737d005a89a865252b5f5"
+      "bytes": 167042,
+      "sha256": "b798e2b9216967ce719eca0331e557728155972fe179b6f4da5b09ffe8874075"
     },
     {
       "name": "shadows.hpp",
-      "bytes": 193329,
-      "sha256": "38e7f55d8fe08d7cf5137a2120302f85f2eaa4a4bf780006594aa10aee68d080"
+      "bytes": 193939,
+      "sha256": "d73437168e129be8c1090f5fcda48eb7bda6c464fbf506e45781bd5b6d82adf1"
     },
     {
       "name": "sun_direction_policy.hpp",
@@ -227,23 +237,23 @@
     }
   ],
   "native_release_asset": {
-    "bytes": 1133568,
-    "sha256": "6c0662c1032332ba602fd8d45cb61e3c7abfc924b0fa0bbb03218151b8b70584"
+    "bytes": 1143296,
+    "sha256": "97b97108a41e619307b536e0fccf9badd0dcc608b862e8bdcbc68586a8dcc71f"
   },
   "build": {
     "exit_code": 0,
     "command": {
-      "bytes": 575,
-      "sha256": "8ff462ac3426f902ef3d7478356fed5181dc7998a7a1d2f715274a9628a397f3"
+      "bytes": 581,
+      "sha256": "b22b397aa0c3f1353772a602eb080e573bfc71a2bb3cc7934a083fc2dc52b003"
     },
     "log": {
-      "bytes": 54459,
-      "sha256": "138ef16f8f9325a2a24b59a50883ed83164f6c2a16407b455c62550cb65780a5"
+      "bytes": 54788,
+      "sha256": "c5358b5b267cac4470c4bdb7dcee5b6a88de01f4c5c94a2bf7e2eb2e00b8611d"
     },
     "actual_showIncludes": true,
-    "toolchain": "VS18 x64/MSVC14.50.35717",
     "warnings": 0,
-    "compilation_roster": "Explicit translation units plus project headers actually recorded by /showIncludes. External dependencies retain their pinned commit identities."
+    "toolchain": "VS18 x64/MSVC14.50.35717",
+    "compilation_roster": "Explicit translation unit plus project/dependency headers recorded by this build /showIncludes."
   },
   "prior_metadata": {
     "revision": "TextureQuest030 / non-live Develop1.13.12",
@@ -320,8 +330,8 @@
     },
     "historical_only": true
   },
-  "qualification": "Settings/defaults and retired-feature changes; no new shader algorithm, GPU benchmark or real-game visual result is claimed. Existing controlled lighting evidence remains historical and was not rerun.",
-  "publication_note": "Built for requested public1.13.15 release. This source metadata does not itself assert a GitHub upload or publication.",
+  "qualification": "Controlled CPU/software Direct3D evidence only; no hardware FPS gain or complete camera-motion fix is established. Unknown object cells carry no guessed energy, sparse established observations are retained, partial visibility inside a 2-unit cell can still change its mean. Optional surface smoothing defaults off because it adds shader arithmetic. No source RGB animation smoothing or shadow quality reduction. Existing unsupported native sources, AO checkerboard history and sun-direction issues remain separate limitations.",
+  "publication_note": "Local candidate only. This metadata does not assert installation, publication or GitHub changes.",
   "previous_evidence": {
     "revision": "TextureQuest031/032 / Develop1.13.14",
     "native_release_asset": {
@@ -348,8 +358,77 @@
     "addon.cpp"
   ],
   "changes": [
-    "AO on; point/emissive/Sun/softening/smooth-text defaults off",
-    "Low/Med/Max paired light and shadow budgets; Advanced custom controls retained",
-    "No forced legacy numeric preset reset"
-  ]
+    "Conserve measured object radiance across hierarchy levels; retain observed cells and reject older readbacks.",
+    "Schedule first radiance sampling after geometry readiness; admit sparse first observations without replacing established cells on weak evidence.",
+    "Bounded unique adjacent-cell lookup for tiny grid-boundary reprojection errors; no broad fallback colour.",
+    "Conservative static shadow-face AABB rejection with unchanged shadow quality and scheduling.",
+    "Reject invalid/cross-surface reconstruction fallback; optional four-tap slope-aware smoothing off by default."
+  ],
+  "previous_public_evidence": {
+    "revision": "TextureQuest 1.13.15 public graphics controls/defaults",
+    "native_release_asset": {
+      "bytes": 1133568,
+      "sha256": "6c0662c1032332ba602fd8d45cb61e3c7abfc924b0fa0bbb03218151b8b70584"
+    },
+    "build": {
+      "exit_code": 0,
+      "command": {
+        "bytes": 575,
+        "sha256": "8ff462ac3426f902ef3d7478356fed5181dc7998a7a1d2f715274a9628a397f3"
+      },
+      "log": {
+        "bytes": 54459,
+        "sha256": "138ef16f8f9325a2a24b59a50883ed83164f6c2a16407b455c62550cb65780a5"
+      },
+      "actual_showIncludes": true,
+      "toolchain": "VS18 x64/MSVC14.50.35717",
+      "warnings": 0,
+      "compilation_roster": "Explicit translation units plus project headers actually recorded by /showIncludes. External dependencies retain their pinned commit identities."
+    },
+    "qualification": "Settings/defaults and retired-feature changes; no new shader algorithm, GPU benchmark or real-game visual result is claimed. Existing controlled lighting evidence remains historical and was not rerun.",
+    "historical_only": true
+  },
+  "controlled_validation": {
+    "status": "STRICT_NATIVE_AND_FOCUSED_CPU_WARP_PASS",
+    "evidence": [
+      {
+        "name": "radiance-cache-001/RESULT.json",
+        "bytes": 1791,
+        "sha256": "0f26b8f5f08f39df4e3b0cf9977dda6a903e7a23ed4d302e97e01ca455ed6652"
+      },
+      {
+        "name": "cache-review-001/RESULT.json",
+        "bytes": 2573,
+        "sha256": "7e5ea008a2a826b24dfcd3ef7c5d3ed7d1259957a4a422789c24a5ebe85ebdad"
+      },
+      {
+        "name": "radiance-boundary-001/RESULT.json",
+        "bytes": 2516,
+        "sha256": "f1bd1fd463241d259b9a3ef1eb75a7f2d65d03d9d36dcbe4a8389626ebb58e18"
+      },
+      {
+        "name": "shadow-face-001/RESULT.json",
+        "bytes": 2975,
+        "sha256": "595c70b56c32e1a12b705eaa135f20cb35cc3cfdfcf109700b2c329166447565"
+      },
+      {
+        "name": "shader-fixture-001/PRODUCTION-REVIEW.json",
+        "bytes": 3348,
+        "sha256": "335485c357e57965d34fddbe897767889418a946c52efbba4208109208b2c76b"
+      },
+      {
+        "name": "shader-fixture-001/final-compile-002/RESULT.json",
+        "bytes": 2498,
+        "sha256": "9fd6ec83cf76d9d93ee667891391602c18d162f400807a7950063b93cdd55935"
+      },
+      {
+        "name": "shader-perf-001/RESULT.json",
+        "bytes": 4563,
+        "sha256": "b428c58c875f61a24e1f7f57444960df1d708780ff4b0f3a69c2443ad42a1b9c"
+      }
+    ],
+    "physical_gpu_executed": false,
+    "real_game_tested": false,
+    "scope": "Production cache conservation, bounded reprojection mapping, conservative shadow-face rejection, actual HLSL reconstruction fixtures and final entry-point compilation. Initial cache evidence predates the separately tested boundary refinement. Shader-perf range rejection was evaluated and deliberately not adopted."
+  }
 }

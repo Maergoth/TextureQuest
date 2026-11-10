@@ -1,6 +1,13 @@
 # EQ2 Graphics
 
-## TextureQuest 1.13.15 integration
+## TextureQuest 1.13.16 local candidate
+
+Object-emission cache conservation, conservative static shadow-face culling and
+optional emissive-light smoothing are prepared for local testing. See the
+[candidate handoff](../docs/GRAPHICS-1.13.16-HANDOFF.md) for behavior and limits.
+This candidate is not a public release.
+
+## Inherited public defaults
 
 Press **Home** to show or hide settings, then choose **TextureQuest**. The public
 adapter starts AO on, and point/emissive/Sun/softening/smooth-text work off.

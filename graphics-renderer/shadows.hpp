@@ -3296,6 +3296,13 @@ static void DrawAdvancedSettings()
     }
 
     ImGui::SeparatorText("Emissive lights");
+    bool smoothLighting = glow::SmoothLighting;
+    if (ImGui::Checkbox("Smooth emissive lighting (experimental)", &smoothLighting))
+    {
+        glow::SmoothLighting = smoothLighting;
+        reshade::set_config_value(nullptr, CONFIG_SECTION, "SmoothEmissiveLighting", smoothLighting);
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Reduce subtle surface-lighting grain. Uses extra shader work; off by default.");
     bool glowLights = glow::Enabled;
     ImGui::BeginDisabled(!glowLights);
     int emissiveLimit=glow::LightLimit;
@@ -3605,6 +3612,9 @@ static void LoadSettings()
     reshade::get_config_value(nullptr,CONFIG_SECTION,"EmissiveParticles",emissiveParticles);
     reshade::get_config_value(nullptr,CONFIG_SECTION,"EmissiveObjects",emissiveObjects);
     glow::ParticlesEnabled=emissiveParticles;glow::ObjectsEnabled=emissiveObjects;
+    bool smoothLighting = false;
+    reshade::get_config_value(nullptr, CONFIG_SECTION, "SmoothEmissiveLighting", smoothLighting);
+    glow::SmoothLighting = smoothLighting;
 
     int emissiveLimit=emission_policy::DefaultGlowLimit;
     reshade::get_config_value(nullptr,CONFIG_SECTION,"EmissiveLightLimit",emissiveLimit);
