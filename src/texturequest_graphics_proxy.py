@@ -80,7 +80,7 @@ DLSS_PROFILES = {
 
 def _dlss_contract(profile):
     identity = profile.get('id') if type(profile) is dict else None
-    need(type(identity) is str and identity in DLSS_PROFILES, 'Unknown experimental DLSS profile.')
+    need(type(identity) is str and identity in DLSS_PROFILES, 'Unknown DLSS profile.')
     return DLSS_PROFILES[identity]
 
 
@@ -223,10 +223,10 @@ class GraphicsManager:
         """
         profile = runtime.get('dlss')
         need(runtime.get('schema') in ('texturequest-graphics-runtime-v7', 'texturequest-graphics-runtime-v8') and type(profile) is dict,
-             'The experimental DLSS profile is not included.')
+             'The DLSS profile is not included.')
         need(set(profile) == {'schema', 'id', 'private', 'api', 'files'} and
              profile['schema'] == 'texturequest-dlss-runtime-v1' and
-             profile['private'] is True and profile['api'] == 'd3d11', 'Unknown experimental DLSS profile.')
+             profile['private'] is True and profile['api'] == 'd3d11', 'Unknown DLSS profile.')
         contract = _dlss_contract(profile)
         roles = contract['roles']
         rows = profile['files']
@@ -242,7 +242,7 @@ class GraphicsManager:
             seen.add(role)
             source = core._plain(self.runtime_dir / row['name'], self.runtime_dir)
             stat = source.stat()
-            need(source.is_file(), 'Missing experimental DLSS file: ' + source.name)
+            need(source.is_file(), 'Missing DLSS file: ' + source.name)
             sources.append((source, row))
             fingerprints.append((str(source), stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns))
         need(not ({row['name'].casefold() for row in rows} & {row['name'].casefold() for row in runtime['files']}),
@@ -299,7 +299,7 @@ class GraphicsManager:
             return None
         profile = self._dlss_profile(runtime, full=True)
         need(self._addon_folder(game) == game,
-             'Experimental DLSS currently needs ReShade add-ons in the game folder. Your AddonPath was kept.')
+             'DLSS currently needs ReShade add-ons in the game folder. Your AddonPath was kept.')
         record = self._record(game)
         owned = {str(core._plain(row['path'])).casefold(): row for row in (record or {}).get('files', [])}
         contract = _dlss_contract(profile)
@@ -541,6 +541,26 @@ class GraphicsManager:
         if progress: progress(result['message'])
         return result
 
+    def apply_quality(self, game, name, progress=None):
+        """An explicit settings-only action; no texture census or hook handoff."""
+        import texturequest_quality as quality
+        quality.preset(name)
+        game = core._plain(core.validate_game(game).parent)
+        ensure_closed()
+        with core._lock(self.state_dir / 'operation.lock'), core._lock(self.state_dir / 'sideload/helper-owner.lock'):
+            record = self._record(game)
+            need(record and record['phase'] == 'installed' and record.get('renderer_profile') == RENDERER_PROFILE_ID,
+                 'Install Graphical Effects before applying a lighting quality preset.')
+            need(not self.status(game).get('installed_newer_app'),
+                 'This hook belongs to a newer TextureQuest app. Update the app before changing quality.')
+            ini = core._plain(game / 'ReShade.ini', game)
+            need(ini.is_file(), 'ReShade settings are missing. Refresh the graphics hook first.')
+            result = self._repair_shortcuts(game, lambda raw: quality.apply(raw, name), reset_shortcuts=False)
+            need(quality.detect(ini.read_bytes()) == name, 'The selected quality preset could not be confirmed.')
+        result['message'] = name + ' quality saved. Press Home in game for settings.'
+        if progress: progress(result['message'])
+        return result
+
     def _effects_shader(self, runtime):
         """Keep one immutable owned FX cache, shared like the local texture cache."""
         effects = runtime.get('effects')
@@ -621,18 +641,18 @@ class GraphicsManager:
 
     def status(self, game):
         runtime = self._runtime()
-        dlss_available, dlss_message = False, 'Experimental DLSS is not included.'
+        dlss_available, dlss_message = False, 'DLSS is not included.'
         if runtime and runtime.get('dlss') is not None:
             try:
                 self._dlss_profile(runtime)
-                dlss_available, dlss_message = True, 'Experimental DLSS profile verified. Private testing only.'
+                dlss_available, dlss_message = True, 'DLSS profile verified.'
             except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
-                dlss_message = 'Experimental DLSS unavailable: ' + str(error)
+                dlss_message = 'DLSS unavailable: ' + str(error)
         renderer_available, renderer_message = False, 'World renderer is not included.'
         if runtime and runtime.get('renderer') is not None:
             try:
                 self._renderer_profile(runtime)
-                renderer_available, renderer_message = True, 'World renderer verified. Private testing only.'
+                renderer_available, renderer_message = True, 'World renderer verified.'
             except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
                 renderer_message = 'World renderer unavailable: ' + str(error)
         result = dict(installed=False, running=False, active_sessions=0, available=runtime is not None,

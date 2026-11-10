@@ -10,61 +10,77 @@ TextureQuest is a community texture pack for **EverQuest II Origins**. Its aim i
 
 AI-assisted upscaling adds finer surface detail while keeping the familiar look of Norrath. The pack includes **24,694 textures**, mostly at **1K or 2K**, with selected large creatures and heavily stretched surfaces at **4K**. It covers equipment, characters, creatures and environments. The texture pack keeps the game's models and animations; optional Graphical Effects below change lighting. Some fine detail is newly generated, and results vary by texture.
 
-## 1.13.15 graphics update
+## 1.13.19 lighting update
 
-This update brings the Develop lighting work into the public installer with
-simpler controls and quieter defaults. It includes stable particle groups,
-short-lived light retention, supported material-normal replay and a small
-particle-source shadow exclusion core. Texture data remains **1.3.0**.
+The qualified particle/object source observations, source-cache corrections,
+static shadow-face culling and independent per-light visibility are now active.
+The installer and ReShade share **Low, Medium, High and Max** lighting presets.
+The 1.13.18 shadow crossfade is removed after the in-game comparison; it did not
+solve the reported shadow jumping. Texture data remains **1.3.0**.
 The installer's **What's new** shows the same [changelog](CHANGELOG.md) used here.
-See the [graphics guide](docs/GRAPHICS_FEATURES.md) for controls and remaining limits.
 
 ## Graphics setup
 
 - **Textures (required):** the released texture pack.
-- **Graphical Effects / DLSS (experimental):** lighting, shadows, AO, filtering,
-  optional DLSS frame generation and neural rendering on supported hardware.
+- **Graphical Effects / DLSS:** lighting, shadows, AO, filtering, optional
+  DLSS frame generation and neural rendering on supported hardware.
 
-Choose components, close EQ2, then **Apply changes**. **Press Home to show or hide
-settings**, then choose **TextureQuest**. Ambient occlusion starts **on**. Point
-lights, emissive lights, sun lighting, sun shadow softening, smooth interface
-text, frame generation and neural rendering start **off**. Updates keep your
-saved choices. Upscaling and Reflex driver mode have been removed.
+Choose components and a **Quality Presets** setting in the installer, close EQ2,
+then **Apply changes**. **Press Home to show or hide settings**, then choose
+**TextureQuest**. **Show FPS**, **Frame Gen** and **Quality Presets** are at the top;
+individual controls are in **Advanced**, with captures, statistics and logging in
+**Debug**. The comparison checkbox and active experimental labels are removed.
 
-**Shadow quality** and **Light quality** offer **Low, Med, Max**. Further tuning
-is under **Advanced**. Shadow quality controls native shadow maps and particle
-character-shadow capacity; light quality controls emissive and particle budgets.
-Both share the shadow-map pool, so a lower shadow quality can limit active lights.
-AF uses 16x when enabled.
+| Preset | Hardware starting point | Shared shadow maps | Emissive / particle lights | Particle character shadows |
+| --- | --- | ---: | ---: | ---: |
+| Low | RTX 2060 | 64 | 32 / 16 | 8 |
+| Medium | RTX 3070 | 128 | 96 / 32 | 24 |
+| High | RTX 4080 | 256 | 256 / 64 | 64 |
+| Max | RTX 5090 | 512 | 512 / 128 | 128 |
+
+These are engineering starting points, not hardware benchmark or FPS guarantees.
+Resolution, crowds, the CPU and multiple clients all affect the available budget.
+Low is the fresh-install default. Every preset enables **16x anisotropic filtering**,
+AO, point-light shadows, character shadows and particle emission. Medium and above
+add object emission; High and Max add surface-light smoothing and sun processing.
+Max uses full supported capacities while keeping artistic light brightness, radius
+and shadow softness consistent. Rebuilt lamp lighting, corrective sun direction
+and smooth interface text remain off in presets.
+
+Choosing a preset explicitly applies its lighting profile. Updates otherwise keep
+saved custom choices, which display **Custom**. Frame Gen and Neural Rendering
+start off on fresh installs and remain independent of presets. Upscaling and
+Reflex driver mode stay removed. See the [graphics guide](docs/GRAPHICS_FEATURES.md)
+for the preset tradeoffs and the shared shadow-pool limit.
+
 **Numpad \*** switches textures and graphics off/on without changing your choices.
 Uncheck Point-light shadows, Ambient occlusion and Sun lighting to stop world
 light/depth processing. Filtering and textures work separately. Other enabled
 ReShade effects can still need depth.
 
-Frame Generation and Neural Rendering each have an on/off checkbox that keeps
-its preset. Neural Rendering also has **Advanced** model/pass controls. These
-choices can change while playing. Motion is estimated; performance and image
-quality depend on the scene and hardware. A game cap near 60 FPS can help frame
-pacing. Extra AIO hotkeys are disabled. Opening Home does not pause processing.
+Frame Gen offers **2x / 3x / 4x** where supported. Neural Rendering is under
+Advanced. Motion is estimated; performance and image quality depend on the scene
+and hardware. A game cap near 60 FPS can help frame pacing. Extra AIO hotkeys are
+disabled. Opening Home does not pause processing.
 
 The graphics component integrates [Sichii's EQ2 Graphics](https://github.com/Sichii/Eq2GraphicsAddonRS)
 into the world rendering passes before the HUD. Keep native lighting, material
 shaders and GPU shadows enabled; they supply inputs this renderer needs. Native
-game INIs are unchanged. Bloom, screen-color bounce and edge smoothing remain
-removed; your native bloom setting is preserved.
+game INIs and the game's bloom setting are preserved.
 
-Point-light shadows preserve native lamp lighting by default. Rebuilt lamp
-lighting is an Advanced experiment. Emissive lighting combines supported glowing
-objects and spell particles, with separate **Particles** and **Objects** toggles.
-Previously seen particles retain their light for two seconds, then fade for one
-second; sources the game never submits cannot be reconstructed. Character shadows
-have a separate particle pool of up to 128 lights. Supported model shaders use
-material-normal replay; unknown paths retain geometric fallback.
+Point-light shadows preserve native lamp lighting by default. **Rebuild lamp
+lighting** is an Advanced override that changes falloff and brightness. Emissive
+lighting combines supported glowing objects and spell particles, with separate
+**Particles** and **Objects** choices. Previously seen particles retain their
+light for two seconds, then fade for one second; sources the game never submits
+cannot be reconstructed. Supported model shaders replay material normals;
+unknown paths retain geometric fallback.
 
-Sun-direction movement flicker remains unresolved. Sun processing starts off.
-The small particle-source shadow core reduces nearby self-occlusion spatially;
-it does not identify the emitter's owner. Complete scene coverage, appearance
-and performance are not guaranteed by controlled checks.
+Ambiguous particle groups can still move their representative light or change
+shadow admission. The shadow-fade rollback does not claim to solve that source
+motion. Corrective sun-direction movement flicker remains unresolved, so that
+override is off in presets. Complete scene coverage, appearance and performance
+are not guaranteed by controlled checks.
 
 ## Download and install
 

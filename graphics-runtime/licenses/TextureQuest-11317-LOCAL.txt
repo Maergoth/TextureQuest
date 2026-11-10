@@ -1,0 +1,6 @@
+TextureQuest1.13.17 local lighting comparison candidate. This bundle is not a public release or an installation receipt.
+Only the world-renderer native image changes from local1.13.16; seven other native payloads and texture data1.3.0 remain pinned.
+See the bundled changelog and qualified renderer source metadata for exact scope, evidence and remaining visual/performance checks.
+Press Home to show or hide settings, then select TextureQuest. Existing saved settings remain in effect.
+This current candidate notice accompanies, and preserves unchanged, historical dated notices and dependency licenses. Previously confirmed redistribution permission and third-party obligations are unchanged.
+Runtime staging does not process generation, install game files, publish binaries or establish in-game performance.

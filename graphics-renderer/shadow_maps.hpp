@@ -29,6 +29,7 @@
 #include "lamp_holder_policy.hpp"
 #include "emission_policy.hpp"
 #include "sun_softness_settings.hpp"
+#include "shadow_face_culling.hpp"
 
 namespace shadowmaps
 {
@@ -2828,7 +2829,7 @@ static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
 
     // each object to draw, with the centre of its bounds relative to the light and how far it reaches from there. An
     // object whose bounds are not known yet may be any size, so it goes into every face.
-    std::vector<std::tuple<const Caster *, XMFLOAT3, float>> drawn;
+    std::vector<std::tuple<const Caster *, XMFLOAT3, float, std::uint8_t>> drawn;
     drawn.reserve(light.CasterKeys.size());
     for (uint64_t key : light.CasterKeys)
     {
@@ -2840,12 +2841,15 @@ static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
         const Caster &object = caster->second;
         if (!object.BoundsKnown)
         {
-            drawn.emplace_back(&object, XMFLOAT3 {}, FLT_MAX);
+            drawn.emplace_back(&object, XMFLOAT3 {}, FLT_MAX, shadow_face_culling::AllFaces);
             continue;
         }
         const XMFLOAT3 relative = { (object.Low.x + object.High.x) / 2 - light.BuiltPosition.x,
             (object.Low.y + object.High.y) / 2 - light.BuiltPosition.y, (object.Low.z + object.High.z) / 2 - light.BuiltPosition.z };
-        drawn.emplace_back(&object, relative, Distance(object.Low, object.High) / 2);
+        const auto faceMask = shadow_face_culling::ConservativeMask(
+            { object.Low.x, object.Low.y, object.Low.z }, { object.High.x, object.High.y, object.High.z },
+            { light.BuiltPosition.x, light.BuiltPosition.y, light.BuiltPosition.z });
+        drawn.emplace_back(&object, relative, Distance(object.Low, object.High) / 2, faceMask);
     }
 
     CasterConstants constants;
@@ -2856,9 +2860,9 @@ static void DrawCubeMap(ID3D11DeviceContext1 *ctx, Light &light)
         ctx->OMSetRenderTargets(0, nullptr, view);
         const XMMATRIX viewMatrix = XMMatrixLookToLH(eye, FACE_DIRECTIONS[face], FACE_UPS[face]);
         XMStoreFloat4x4(&constants.ViewProjection, XMMatrixTranspose(XMMatrixMultiply(viewMatrix, projection)));
-        for (const auto &[object, relative, extent] : drawn)
+        for (const auto &[object, relative, extent, faceMask] : drawn)
         {
-            if (!ReachesFace(face, relative, extent))
+            if (!(faceMask & (1u << face)) || !ReachesFace(face, relative, extent))
                 continue;
 
             std::copy(object->World, object->World + 12, constants.World);

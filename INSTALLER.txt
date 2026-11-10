@@ -1,57 +1,57 @@
-TextureQuest 1.13.15 — Windows x64
+TextureQuest 1.13.19 — Windows x64
+
+PRESS HOME TO SHOW OR HIDE SETTINGS. Choose the TextureQuest tab.
+Show FPS, Frame Gen and Quality Presets are at the top. Individual controls are
+in Advanced; captures, statistics and performance recording are in Debug.
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract outside the game folder; keep data beside the EXE.
-3. Select your game folder and components, then Install graphics hook.
+3. Select your game folder, components and Quality Presets, then apply changes.
 4. Launch EQ2 normally, including after reboot. TextureQuest can stay closed.
 
-PRESS HOME TO SHOW OR HIDE SETTINGS. Choose the TextureQuest tab.
+Textures are required. Graphical Effects / DLSS includes lighting, shadows,
+ambient occlusion, filtering, optional frame generation and neural rendering on
+supported hardware. Upscaling and Reflex driver mode have been removed.
+
+Quality presets are available in this installer and in the in-game panel:
+- Low: RTX 2060 starting point; 64 shadow slots, 32 emissive lights, 16 particle
+  lights and 8 particle character shadows. Object emission and sun effects off.
+- Medium: RTX 3070 starting point; 128 / 96 / 32 / 24. Adds object emission.
+- High: RTX 4080 starting point; 256 / 256 / 64 / 64. Adds surface-light smoothing
+  and sun processing.
+- Max: RTX 5090 starting point; 512 / 512 / 128 / 128, full supported capacities.
+All presets enable 16x anisotropic filtering, AO, point/character shadows and
+particle emission. Light strength/radius and softness do not escalate with tier.
+These are starting budgets, not measured FPS guarantees. A busy scene or higher
+resolution can need a lower tier. Custom shows when manual settings differ.
+
+Selecting a preset explicitly applies its lighting profile. Existing settings
+are otherwise preserved. Frame Gen and Neural Rendering remain independent and
+start off on fresh installs. Smooth interface text, rebuilt lamp lighting and
+the corrective sun-direction option remain off in presets.
+
+Frame Gen offers 2x / 3x / 4x where supported. Neural Rendering is under Advanced.
+Motion is estimated; more processing costs GPU time. A game cap near 60 FPS can
+help pacing. Home never pauses enabled processing. Keep native lighting,
+material shaders and GPU shadows enabled. Native game INIs and bloom are unchanged.
+
 Numpad * switches textures and graphics Original/TextureQuest without changing
-individual choices. Use Shortcut to change that key.
+individual choices. Use Shortcut to change that key. Other ReShade effects remain.
 
-Textures are required. Graphical Effects / DLSS (experimental) includes lighting,
-shadows, ambient occlusion, filtering, optional frame generation and neural
-rendering on supported hardware.
+The recent qualified source and visibility improvements are active. The 150 ms
+shadow fade is removed; it did not solve source/group movement. Offscreen history
+cannot discover game-culled sources; unsupported model shaders retain fallback.
 
-New-install defaults:
-- Ambient occlusion: on.
-- Point-light shadows and emissive lights: off.
-- Sun lighting and sun shadow softening: off.
-- Smooth interface text: off.
-- Frame generation and neural rendering: off.
-Upscaling and Reflex driver mode have been removed. Updates preserve saved
-choices for the retained features. Retired controls cannot reactivate from old settings.
-
-Shadow quality and Light quality have Low, Med and Max presets. Advanced contains
-numeric tweaks. The shared shadow pool can limit active lights. Character shadows
-must be enabled for moving particle shadows. Emissive Particles and Objects can
-be selected separately after enabling the parent controls. AF uses 16x.
-
-Frame Generation offers 2x / 3x / 4x where supported. Neural Rendering has presets
-and Advanced model/pass controls. Higher settings cost GPU time; motion is estimated.
-A game cap near 60 FPS can help frame pacing. Home never pauses enabled processing.
-Keep native lighting, material shaders and GPU shadows enabled. Native game INIs
-and the game's bloom setting are unchanged. Other ReShade effects are preserved.
-
-Click What's new for the versioned changelog bundled with the installer.
-Developers can read the same history on GitHub:
+Click What's new for the changelog bundled with the installer. Developers can
+read the same history on GitHub:
 https://github.com/Maergoth/TextureQuest/blob/Develop/CHANGELOG.md
 
-Texture data remains 1.3.0: about 17.7 GB downloads and 27.8 GB local DDS.
-The app reconstructs protected channels, headers and tails from your game files.
-Keep data. No game PAK changes or background watcher. The unfinished generation
-batch is not included.
-
-Get app update verifies, replaces and restarts the app while preserving data,
+Texture data remains 1.3.0: about 17.7 GB downloads and 27.8 GB local DDS. Keep
+data. The unfinished generation batch is not included. No game PAK changes or
+background watcher. Get app update verifies, replaces and restarts the app,
 then refreshes the owned hook through normal setup. Unchanged texture preparation
 is reused. After a game patch, Verify / Update textures rebuilds stock matching.
-Changed or unavailable assets remain original with a coverage report.
 
 Close EQ2 before install, update or uninstall. Uninstall removes only unchanged
-owned files. Later user settings and unknown files are preserved. The bundled
-ReShade provider includes the keyboard/menu compatibility fix. Existing compatible
-ReShade is reused; third-party notices and modified source are included.
-
-Experimental lighting still has coverage limits. Sun-direction movement flicker
-is unresolved. Cached particles cannot reveal sources the game never submits.
-Graphics hooks have no official approval; see the graphics guide for limitations.
+owned files. Later user settings and unknown files are preserved. Existing
+compatible ReShade is reused; third-party notices and modified source are included.

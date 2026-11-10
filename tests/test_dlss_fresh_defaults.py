@@ -97,20 +97,20 @@ class PublicGraphicsDefaults(unittest.TestCase):
     def test_fresh_public_defaults_and_conditional_restore(self):
         raw = b'; original\r\n[Foreign]\r\nKeep=1\r\n'
         after, lease = settings.prepare_dlss_config(raw, profile='graphics-world-aio-defaults')
-        self.assertTrue(lease['schema'].endswith('-v2'))
+        self.assertTrue(lease['schema'].endswith('-v3'))
         for key in ('FrameGeneration', 'ManagedSrEnabled', 'NeuralRendering',
-                    'PointLightShadows', 'EmissiveLights', 'SmoothInterfaceText', 'SunLighting', 'SunSoftness'):
+                    'SmoothInterfaceText', 'SunLighting'):
             self.assertIn((key + '=0\r\n').encode(), after)
         self.assertIn(b'AmbientOcclusion=1\r\n', after)
         self.assertNotIn(b'ReflexLowLatency', after)
-        self.assertIn(b'ShadowedLights=50\r\n', after)
-        self.assertIn(b'ParticleShadowLimit=50\r\n', after)
-        self.assertIn(b'EmissiveLightLimit=64\r\n', after)
-        self.assertIn(b'ParticleLightLimit=64\r\n', after)
+        self.assertIn(b'ShadowedLights=64\r\n', after)
+        self.assertIn(b'ParticleShadowLimit=8\r\n', after)
+        self.assertIn(b'EmissiveLightLimit=32\r\n', after)
+        self.assertIn(b'ParticleLightLimit=16\r\n', after)
         self.assertEqual(settings.restore_dlss_config(after, lease), (raw, ()))
-        edited = after.replace(b'PointLightShadows=0', b'PointLightShadows=1')
+        edited = after.replace(b'PointLightShadows=1', b'PointLightShadows=0')
         restored, conflicts = settings.restore_dlss_config(edited, lease)
-        self.assertIn(b'PointLightShadows=1', restored)
+        self.assertIn(b'PointLightShadows=0', restored)
         self.assertIn('EQ2Graphics.PointLightShadows', conflicts)
 
     def test_saved_choices_are_not_reset_by_new_defaults(self):

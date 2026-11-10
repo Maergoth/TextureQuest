@@ -2535,6 +2535,7 @@ static void WriteState()
         OwnLampShaders.load() ? 1 : 0, CreateFailed ? 1 : 0);
     particle_emission::WriteState(file);
     WriteMaterialState(file);
+    lighting_diagnostics::WriteState(file);
     {
         std::lock_guard guard(capture::ClassLock);
         const auto writeSet = [file](const char *name, uint32_t bit) {
@@ -3153,25 +3154,6 @@ static void DrawSettings()
         reshade::set_config_value(nullptr, CONFIG_SECTION, "PointLightShadows", enabled);
     }
     ImGui::BeginDisabled(!enabled);
-    constexpr const char* presets[] = {"Low", "Med", "Max"};
-    const int selected = tq_world::ShadowQualityIndex(shadowmaps::LightLimit.load(),
-        shadowmaps::ParticleShadowLimit.load(), shadowmaps::MAX_LIGHTS, int(emission_policy::ParticleLimit));
-    if (ImGui::BeginCombo("Shadow quality", selected < 0 ? "Custom (Advanced)" : presets[selected]))
-    {
-        for (int i = 0; i < 3; ++i)
-            if (ImGui::Selectable(presets[i], selected == i))
-            {
-                const int limit = tq_world::ShadowPresetLimit(i, shadowmaps::MAX_LIGHTS);
-                shadowmaps::LightLimit = limit;
-                reshade::set_config_value(nullptr, CONFIG_SECTION, "ShadowedLights", limit);
-                const int particles = tq_world::ShadowPresetLimit(i, int(emission_policy::ParticleLimit));
-                shadowmaps::ParticleShadowLimit = particles;
-                reshade::set_config_value(nullptr, CONFIG_SECTION, "ParticleShadowLimit", particles);
-            }
-        ImGui::EndCombo();
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Low: 10 shared maps / 10 particle character shadows. Med: 50 / 50. Max: %d / %u. Native and emissive lights share the map pool; eligible sources still apply.", shadowmaps::MAX_LIGHTS, emission_policy::ParticleLimit);
     bool moving = shadowmaps::MovingShadows;
     if (ImGui::Checkbox("Character shadows", &moving))
     {
@@ -3180,7 +3162,7 @@ static void DrawSettings()
     }
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Moving shadows for point lights and supported projected window lights.");
     bool emissive = glow::Enabled;
-    if (ImGui::Checkbox("Emissive lights (experimental)", &emissive))
+    if (ImGui::Checkbox("Emissive lights", &emissive))
     {
         glow::Enabled = emissive;
         reshade::set_config_value(nullptr, CONFIG_SECTION, "EmissiveLights", emissive);
@@ -3194,43 +3176,8 @@ static void DrawSettings()
     bool emissiveObjects=glow::ObjectsEnabled;
     if (ImGui::Checkbox("Objects",&emissiveObjects))
     {glow::ObjectsEnabled=emissiveObjects;reshade::set_config_value(nullptr,CONFIG_SECTION,"EmissiveObjects",emissiveObjects);}
-    const int lightQuality = tq_world::LightQualityIndex(glow::LightLimit.load(), glow::ParticleLightLimit.load(),
-        glow::MAX_GLOW_LIGHTS, int(emission_policy::ParticleLimit));
-    if (ImGui::BeginCombo("Light quality", lightQuality < 0 ? "Custom (Advanced)" : presets[lightQuality]))
-    {
-        for (int i = 0; i < 3; ++i)
-            if (ImGui::Selectable(presets[i], lightQuality == i))
-            {
-                const int total = tq_world::LightPresetLimit(i, glow::MAX_GLOW_LIGHTS);
-                const int particles = tq_world::LightPresetLimit(i, int(emission_policy::ParticleLimit));
-                glow::LightLimit = total;
-                glow::ParticleLightLimit = particles;
-                reshade::set_config_value(nullptr, CONFIG_SECTION, "EmissiveLightLimit", total);
-                reshade::set_config_value(nullptr, CONFIG_SECTION, "ParticleLightLimit", particles);
-            }
-        ImGui::EndCombo();
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Low: 16 emissive lights / up to 16 particles. Med: 64 / 64. Max: %d / %u. The shared Shadow quality map limit also applies; native lamps take priority.", glow::MAX_GLOW_LIGHTS, emission_policy::ParticleLimit);
     ImGui::EndDisabled();ImGui::Unindent();
     ImGui::EndDisabled();
-    if (emissive)
-    {
-        size_t emitters = 0;
-        int cells = 0, drawn = 0;
-        {
-            std::lock_guard guard(glow::Lock);
-            emitters = glow::Emitters.size() + particle_emission::Measured;
-            cells = glow::CellsPickedLastFrame + static_cast<int>(particle_emission::Active);
-            drawn = glow::LightsDrawnLastFrame;
-        }
-        if (!tq_world::Managed.Enabled()) ImGui::TextDisabled("Emissive: paused by texture toggle.");
-        else if (!enabled) ImGui::TextDisabled("Emissive: requires point light shadows.");
-        else if (!emitters && particle_emission::Seen) ImGui::TextDisabled("Emissive: measuring particle sources (%u reads pending).", particle_emission::Pending);
-        else if (!emitters) ImGui::TextDisabled("Emissive: no supported sources detected.");
-        else if (!drawn) ImGui::TextDisabled("Emissive: %zu emitters, %d cells; no active draws.", emitters, cells);
-        else ImGui::TextDisabled("Emissive: %d light draws last frame.", drawn);
-    }
     bool occlusion = lightbuffer::OcclusionEnabled;
     if (ImGui::Checkbox("Ambient occlusion", &occlusion))
     {
@@ -3296,6 +3243,13 @@ static void DrawAdvancedSettings()
     }
 
     ImGui::SeparatorText("Emissive lights");
+    bool smoothLighting = glow::SmoothLighting;
+    if (ImGui::Checkbox("Smooth emissive lighting", &smoothLighting))
+    {
+        glow::SmoothLighting = smoothLighting;
+        reshade::set_config_value(nullptr, CONFIG_SECTION, "SmoothEmissiveLighting", smoothLighting);
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Reduce subtle surface-lighting grain. Uses extra shader work; off by default.");
     bool glowLights = glow::Enabled;
     ImGui::BeginDisabled(!glowLights);
     int emissiveLimit=glow::LightLimit;
@@ -3427,8 +3381,26 @@ static void DrawAdvancedSettings()
 // the settings for finding problems: counts, timings and views of what the add-on computes
 static void DrawDebugSettings()
 {
+    const bool enabled = Enabled, emissive = glow::Enabled;
+    if (emissive)
+    {
+        size_t emitters = 0;
+        int cells = 0, drawn = 0;
+        {
+            std::lock_guard guard(glow::Lock);
+            emitters = glow::Emitters.size() + particle_emission::Measured;
+            cells = glow::CellsPickedLastFrame + static_cast<int>(particle_emission::Active);
+            drawn = glow::LightsDrawnLastFrame;
+        }
+        if (!tq_world::Managed.Enabled()) ImGui::TextDisabled("Emissive: paused by texture toggle.");
+        else if (!enabled) ImGui::TextDisabled("Emissive: requires point light shadows.");
+        else if (!emitters && particle_emission::Seen) ImGui::TextDisabled("Emissive: measuring particle sources (%u reads pending).", particle_emission::Pending);
+        else if (!emitters) ImGui::TextDisabled("Emissive: no supported sources detected.");
+        else if (!drawn) ImGui::TextDisabled("Emissive: %zu emitters, %d cells; no active draws.", emitters, cells);
+        else ImGui::TextDisabled("Emissive: %d light draws last frame.", drawn);
+    }
     bool ownLampShaders = OwnLampShaders;
-    if (ImGui::Checkbox("Rebuild lamp lighting (experimental)", &ownLampShaders))
+    if (ImGui::Checkbox("Rebuild lamp lighting", &ownLampShaders))
     {
         OwnLampShaders = ownLampShaders;
         reshade::set_config_value(nullptr, CONFIG_SECTION, "OwnLampShaders", ownLampShaders);
@@ -3605,6 +3577,9 @@ static void LoadSettings()
     reshade::get_config_value(nullptr,CONFIG_SECTION,"EmissiveParticles",emissiveParticles);
     reshade::get_config_value(nullptr,CONFIG_SECTION,"EmissiveObjects",emissiveObjects);
     glow::ParticlesEnabled=emissiveParticles;glow::ObjectsEnabled=emissiveObjects;
+    bool smoothLighting = false;
+    reshade::get_config_value(nullptr, CONFIG_SECTION, "SmoothEmissiveLighting", smoothLighting);
+    glow::SmoothLighting = smoothLighting;
 
     int emissiveLimit=emission_policy::DefaultGlowLimit;
     reshade::get_config_value(nullptr,CONFIG_SECTION,"EmissiveLightLimit",emissiveLimit);

@@ -55,6 +55,16 @@ inline Power Scale(const Power &p,double w){return {p.x*w,p.y*w,p.z*w};}
 inline void Add(Power &a,const Power &b){a.x+=b.x;a.y+=b.y;a.z+=b.z;}
 enum class TriangleClass { Invalid, Excluded, Included };
 enum class Exclusion { None, Extent, Distance };
+// Only these captured native VS profiles expose a verified pre-screen-cap
+// billboard decoder. Every other profile keeps its original measured geometry.
+inline unsigned PrecapProfile(uint64_t vertex)
+{return vertex==0xea078a606781c9bdull?1u:vertex==0x65ceb4dd51400679ull?2u:0u;}
+inline bool ValidPrecapTriangle(const XMFLOAT4 *p)
+{
+    if(!p)return false;
+    for(unsigned i=0;i<3;++i)if(!Finite({p[i].x,p[i].y,p[i].z})||p[i].w!=1)return false;
+    return true;
+}
 inline TriangleClass ClassifyTriangle(const XMFLOAT4 *p,const Reduction &r,const XMFLOAT3 &camera,
     Power &power,XMFLOAT3 &position,Exclusion *reason=nullptr,float receiverRadius=0)
 {

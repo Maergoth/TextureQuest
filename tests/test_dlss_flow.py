@@ -29,13 +29,16 @@ class DLSSFlow(unittest.TestCase):
                            components=components.normalize(), installation_revision='own-record',
                            effects_available=True, dlss_available=True, message='ready')
         ui = types.SimpleNamespace(state_dir=self.root / 'data', game=Variable(str(self.game)), busy=None,
+            quality_choice=Variable('Low'), quality_snapshot=dict(choice=None, record_sha256=None), quality_error='',
+            quality_dropdown=Mock(), quality_note=Mock(),
             component_effects=Variable(False), component_dlss=Variable(False), component_graphics=Variable(False), component_error='', component_snapshot=None,
             prepared={}, release_checked=True, graphics_status=Mock(side_effect=lambda *_: dict(self.status)),
             graphics_manager=Mock(), loader_status=Mock(return_value={}), loader_in_use=Mock(return_value=False),
             upgrade_pending=Mock(return_value=False), graphics_selected=Mock(return_value=True),
             set_message=Mock(), refresh_controls=Mock(), _download_latest=Mock(), dds_store=Mock(),
             report=Mock(), shortcut={'vk': 106, 'modifiers': 0}, upgrade=Mock())
-        for name in ('selected_components', 'save_components', 'load_components', 'components_changed'):
+        for name in ('selected_components', 'save_components', 'load_components', 'components_changed',
+                     'load_quality', 'apply_pending_quality'):
             setattr(ui, name, types.MethodType(getattr(app.TextureQuestApp, name), ui))
         ui.begin = Mock(side_effect=lambda kind, message, action: action())
         self.ui = ui

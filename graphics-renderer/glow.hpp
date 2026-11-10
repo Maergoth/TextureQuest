@@ -8,6 +8,9 @@
 #include <reshade.hpp>
 #include "emission_policy.hpp"
 #include "painted_emission_policy.hpp"
+#include "glow_transport.hpp"
+#include "lighting_diagnostics.hpp"
+#include "object_radiance_policy.hpp"
 #include <d3d11_1.h>
 #include <d3d11shader.h>
 #include <d3dcompiler.h>
@@ -26,6 +29,7 @@
 #include <vector>
 #include "shadow_maps.hpp"
 #include "light_buffer.hpp"
+#include "object_emission_chart.hpp"
 
 namespace glow
 {
@@ -38,8 +42,8 @@ constexpr float CELL_SIZES[CELL_SIZE_COUNT] = { 2, 4, 8, 16, 32, 64, 128, 256 };
 constexpr uint64_t MEASURE_INTERVAL = 180;
 constexpr UINT MEASURE_WIDTH = 256;
 constexpr UINT MEASURE_HEIGHT = 128;
-// the least texels of a measure a cell must cover for them to replace its glow, so a cell seen edge-on or from far away
-// keeps what it had
+// the least texels in one measure that may replace an already observed finest cell. An unknown local cell can be
+// initialized by fewer texels; repeated sparse views do not increase confidence or replace its retained colour
 constexpr int MIN_CELL_TEXELS = 4;
 // a cell whose light is less than this share of the light of the cell it splits from gets no light
 constexpr float DARK_SHARE = 0.01f;
@@ -324,7 +328,7 @@ bool FindSurface(float2 pixel, out float3 world, out float3 normal, out float ca
 
 // the brightest channel of every light's contribution before its shadow, summed, in mask how far inside the reach of
 // any light the surface is, and in bounce the lights' bounce light
-float FindTotal(float3 world, float3 normal, out float mask, out float3 bounce)
+)" R"(float FindTotal(float3 world, float3 normal, out float mask, out float3 bounce)
 {
     float total = 0;
     mask = 0;
@@ -452,18 +456,23 @@ float4 FindUpsampledLight(float2 pixel, float cameraDistance, float3 normal)
         int3 place = int3(clamp(corner + offset, 0, int2(width, height) - 1), 0);
         float4 texel = ReducedLight.Load(place);
         float4 surface = ReducedSurface.Load(place);
+        float facing = saturate(dot(normal, surface.xyz));
+        // Cleared/invalid samples and unrelated surface normals are not lighting
+        // evidence, including when the bilateral weights all approach zero.
+        if (texel.w <= 0 || !all(isfinite(texel)) || !all(isfinite(surface))
+            || dot(surface.xyz, surface.xyz) <= 0.25 || facing <= 0.5) continue;
         float4 value = float4(texel.rgb, surface.w);
         float2 bilinear = offset == 1 ? fraction : 1 - fraction;
         float difference = abs(cameraDistance - texel.w);
-        float facing = saturate(dot(normal, surface.xyz));
+        float error = difference / max(0.02 * cameraDistance, 0.0001) + 8 * (1 - facing);
         facing *= facing;
         facing *= facing;
         float weight = bilinear.x * bilinear.y * exp(-difference / max(0.02 * cameraDistance, 0.0001)) * facing * facing;
         sum += value * weight;
         total += weight;
-        if (difference < nearestDifference)
+        if (error < nearestDifference)
         {
-            nearestDifference = difference;
+            nearestDifference = error;
             nearest = value;
         }
     }
@@ -479,6 +488,97 @@ Output ps_upsample(float4 position : SV_Position)
         discard;
 
     float4 light = FindUpsampledLight(position.xy, cameraDistance, normal);
+    if (!any(light))
+        discard;
+
+    Output output;
+    output.Light = float4(light.rgb, 0);
+    output.Mask = light.a;
+    return output;
+}
+
+// Reconstruct lighting only; the game's texture colour is never filtered.
+// The four-tap result is retained at lighting/depth/normal edges. On a coherent,
+// low-contrast planar surface slope-aware bilinear weights reduce depth-guide noise without any
+// frame history, so moving lights and deliberate fire pulses remain immediate.
+float4 FindUpsampledLightSmooth(float2 pixel, float cameraDistance, float3 normal, float2 distanceGradient)
+{
+    uint width, height;
+    ReducedLight.GetDimensions(width, height);
+    float2 position = pixel / Reduced.x - 0.5;
+    int2 centre = (int2)floor(position);
+    float depthScale = max(0.02 * cameraDistance, 0.0001);
+    float4 sharp = 0, smooth = 0, nearest = 0;
+    float sharpWeight = 0, smoothWeight = 0, nearestError = 1e30;
+    float3 least = 1e30, most = -1e30;
+    float coherence = 1;
+    [unroll]
+    for (int y = 0; y <= 1; ++y)
+    {
+        [unroll]
+        for (int x = 0; x <= 1; ++x)
+        {
+            int2 samplePixel = centre + int2(x, y);
+            int3 place = int3(clamp(samplePixel, 0, int2(width, height) - 1), 0);
+            float4 texel = ReducedLight.Load(place);
+            float4 surface = ReducedSurface.Load(place);
+            float facing = saturate(dot(normal, surface.xyz));
+            float difference = abs(cameraDistance - texel.w);
+            // A cleared texel has no surface. Never select it (or an unrelated
+            // surface normal) as the old nearest-distance fallback did.
+            bool valid = texel.w > 0 && all(isfinite(texel)) && all(isfinite(surface))
+                && dot(surface.xyz, surface.xyz) > 0.25 && facing > 0.5;
+            // Radial camera distance changes across a flat sloping surface.
+            // Remove its local gradient for the optional spatial filter only;
+            // the original four-tap reconstruction keeps its exact depth guide.
+            float2 sampleFull = floor((float2(place.xy) + 0.5) * Reduced.x) + 0.5;
+            float residual = abs(texel.w - cameraDistance - dot(distanceGradient, sampleFull - pixel));
+            float compatible = valid ? saturate((facing - 0.9) / 0.05)
+                * (1 - smoothstep(depthScale, 2 * depthScale, residual)) : 0;
+            coherence = min(coherence, compatible);
+            if (!valid) continue;
+            float4 value = float4(texel.rgb, surface.w);
+            float2 delta = abs(float2(samplePixel) - position);
+            float2 bilinear = saturate(1 - delta);
+            float normalWeight = facing * facing;
+            normalWeight *= normalWeight;
+            normalWeight *= normalWeight;
+            float guide = exp(-difference / depthScale) * normalWeight;
+            float weight = bilinear.x * bilinear.y * guide;
+            sharp += value * weight;
+            sharpWeight += weight;
+            float wideWeight = bilinear.x * bilinear.y * normalWeight;
+            smooth += value * wideWeight;
+            smoothWeight += wideWeight;
+            least = min(least, texel.rgb);
+            most = max(most, texel.rgb);
+            float error = difference / depthScale + 8 * (1 - facing);
+            if (bilinear.x * bilinear.y > 0 && error < nearestError)
+            {
+                nearestError = error;
+                nearest = value;
+            }
+        }
+    }
+    float4 result = sharpWeight > 0.00001 ? sharp / sharpWeight : nearest;
+    float range = max(most.r - least.r, max(most.g - least.g, most.b - least.b));
+    float peak = max(most.r, max(most.g, most.b));
+    float filterShare = coherence * (1 - smoothstep(0.04 * peak + 0.005, 0.10 * peak + 0.01, range));
+    if (filterShare > 0 && smoothWeight > 0.00001)
+        result.rgb = lerp(result.rgb, smooth.rgb / smoothWeight, filterShare);
+    return result;
+}
+
+// the glow lights and mask at full resolution, upsampled from ps_reduced_light's
+Output ps_upsample_smooth(float4 position : SV_Position)
+{
+    float3 world, normal;
+    float cameraDistance;
+    bool valid = FindSurface(position.xy, world, normal, cameraDistance);
+    float2 distanceGradient = float2(ddx(cameraDistance), ddy(cameraDistance));
+    if (!valid) discard;
+
+    float4 light = FindUpsampledLightSmooth(position.xy, cameraDistance, normal, distanceGradient);
     if (!any(light))
         discard;
 
@@ -524,18 +624,27 @@ struct Cell
     // the unit area-weighted normal, or zero when the cell's surface faces every way
     XMFLOAT3 Normal;
     float Radius;
-    // the glow's average colour over the cell, in the colour target's units; w is 1 once measured
+    // Average over the full geometric area; w records some observed coverage, including measured black. Finest cells
+    // hold direct observations; every larger cell holds only the conserved flux of its known descendants.
     XMFLOAT4 Radiance;
+    // Finest cells only: texels in the last accepted observation, capped at MIN_CELL_TEXELS; never accumulated.
+    unsigned RadianceSupport = 0;
 };
 
 struct Emitter
 {
     uint64_t LastSeen = 0;
     uint64_t Ticket = 0;
-    // the glow's average colour where the last measure saw it, in the colour target's units; w is 1 once measured. Cells
-    // not measured yet take it
+    // Diagnostic visible-texel average only. It is never used to light unobserved parts of this object.
     XMFLOAT4 Radiance = {};
     uint64_t MeasuredFrame = 0;
+    uint64_t AppliedMeasureSequence = 0;
+    // Immutable primitive/sample associations, independent of camera reprojection.
+    struct ChartAnchor { uint64_t Leaf; double Area; };
+    bool Chart = false, ChartRejected = false, ChartDirty = false;
+    uint64_t ChartGeometry = 0, ChartMaterial = 0, ChartSequence = 0;
+    std::vector<ChartAnchor> ChartAnchors;
+    std::vector<XMFLOAT4> ChartCorners;
     bool ShapeRequested = false;
     bool ShapeKnown = false;
     XMFLOAT3 Centre = {};
@@ -617,6 +726,8 @@ static bool SourcesActive(){return ObjectsActive() || ParticlesActive();}
 static std::atomic<int> LightLimit = emission_policy::DefaultGlowLimit;
 static std::atomic<int> ParticleLightLimit = emission_policy::DefaultParticleLimit;
 static std::atomic<float> Strength = 1.0f;
+// Optional spatial reconstruction; separate shader keeps its cost out of the default path.
+static std::atomic<bool> SmoothLighting = false;
 // the constant share kept for confirmed native painted-world passes
 static std::atomic<float> PaintedKept = 0.5f;
 // what a painted glow's light is scaled by, against an emitter pass's; at 0 painted glow gives no light
@@ -638,6 +749,7 @@ static ComPtr<ID3D11BlendState> MeasureBlend;
 // camera offset, known when the frame's world-to-clip transform was
 static uint64_t MeasuredKeys[READ_LATENCY];
 static uint64_t MeasuredTickets[READ_LATENCY], NextTicket=1;
+static uint64_t MeasuredSequences[READ_LATENCY], NextMeasureSequence=1;
 static bool MeasuredPainted[READ_LATENCY];
 static unsigned ParticleSlots=0;
 static bool ParticleAllocationReady=false;
@@ -645,6 +757,18 @@ static XMFLOAT4X4 MeasuredClipToWorld[READ_LATENCY];
 static XMFLOAT3 MeasuredOffset[READ_LATENCY];
 static bool MeasuredPlaced[READ_LATENCY];
 static bool MeasuredThisFrame;
+static uint64_t ObjectObservationEpoch = UINT64_MAX;
+static bool ObjectObservationActive = false;
+static void RetireObjects();
+static void UpdateObjectObservationMode()
+{
+    const uint64_t epoch = lighting_diagnostics::CurrentEpoch();
+    const bool active = ObjectsActive();
+    if (ObjectObservationEpoch == epoch && ObjectObservationActive == active) return;
+    // Source enablement and device epochs retire pending semantic observations.
+    RetireObjects(); ObjectObservationEpoch = epoch; ObjectObservationActive = active;
+    object_chart::Invalidate(epoch, active);
+}
 static std::vector<ShapeRead> ShapeReads;
 // a staging buffer a mesh's triangles are copied into for reading, free while no ShapeRead holds it, and its size
 struct ShapeStaging
@@ -665,7 +789,7 @@ static std::unordered_map<uint64_t, uint64_t> CellLights;
 // the cells lit last frame, which split and merge with a margin
 static std::unordered_set<uint64_t> ActiveCells;
 static ComPtr<ID3D11VertexShader> LightVertexShader;
-static ComPtr<ID3D11PixelShader> ReducedLightShader, UpsampleShader;
+static ComPtr<ID3D11PixelShader> ReducedLightShader, UpsampleShader, SmoothUpsampleShader;
 static ComPtr<ID3D11BlendState> LightBlend, PaintedCompositeBlend;
 static ComPtr<ID3D11RasterizerState> LightRasterizer;
 static ComPtr<ID3D11Buffer> FrameBuffer, LightConstantsBuffer;
@@ -872,15 +996,33 @@ static bool CreateMeasureObjects(ID3D11Device *dev)
     return SUCCEEDED(dev->CreateBlendState(&blendDesc, &MeasureBlend));
 }
 
-static void SetKind(Emitter &emitter,bool painted)
+static void RejectObjectChart(uint64_t owner,Emitter &emitter);
+static void SetKind(Emitter &emitter,bool painted,uint64_t owner)
 {
+    if(emitter.ChartGeometry&&emitter.Painted!=painted)RejectObjectChart(owner,emitter);
     if(!emitter.Ticket || emitter.Painted!=painted)
     {
         emitter.Ticket=NextTicket++;
-        emitter.Radiance={};emitter.Whole.Radiance={};emitter.MeasuredFrame=0;
-        for(auto &level:emitter.Cells)for(auto &[key,cell]:level)cell.Radiance={};
+        emitter.Chart=false;emitter.ChartRejected=false;emitter.ChartDirty=false;emitter.ChartGeometry=0;emitter.ChartMaterial=0;emitter.ChartSequence=0;
+        emitter.ChartAnchors.clear();emitter.ChartCorners.clear();
+        emitter.Radiance={};emitter.Whole.Radiance={};emitter.MeasuredFrame=0;emitter.AppliedMeasureSequence=0;
+        for(auto &level:emitter.Cells)for(auto &[key,cell]:level){cell.Radiance={};cell.RadianceSupport=0;}
     }
     emitter.Painted=painted;
+}
+
+// Unsupported canonical state returns this source to a fresh baseline observer, never reinterpreting chart cells.
+static void RejectObjectChart(uint64_t owner,Emitter &emitter)
+{
+    std::erase_if(CellLights,[owner](const auto &entry){
+        const auto light=shadowmaps::Lights.find(entry.second);
+        if(light==shadowmaps::Lights.end()||light->second.EmitterKey!=owner)return false;
+        ActiveCells.erase(entry.first);return true;
+    });
+    std::erase_if(shadowmaps::Lights,[owner](const auto &entry){return entry.second.Glow&&entry.second.EmitterKey==owner;});
+    std::erase_if(ShapeReads,[owner](const ShapeRead &read){return !read.BoundsOnly&&read.CasterKey==owner;});
+    Emitter fresh;fresh.LastSeen=emitter.LastSeen;fresh.Ticket=NextTicket++;fresh.Painted=emitter.Painted;fresh.ChartRejected=true;
+    emitter=std::move(fresh);
 }
 
 // draws a glow again into the measure target with depth, and copies both whole for reading, with the frame's camera so
@@ -929,6 +1071,7 @@ static void Measure(ID3D11DeviceContext *ctx, const shadowmaps::DrawCall &call, 
     ctx->CopyResource(MeasureDepthReadback[slot].Get(), MeasureDepth.Get());
     MeasuredKeys[slot] = casterKey;
     MeasuredTickets[slot]=Emitters.at(casterKey).Ticket; MeasuredPainted[slot]=Emitters.at(casterKey).Painted;
+    MeasuredSequences[slot]=NextMeasureSequence++;
     XMStoreFloat4x4(&MeasuredClipToWorld[slot], XMMatrixInverse(nullptr, lightbuffer::WorldToClip));
     MeasuredOffset[slot] = shadowmaps::CurrentOffset;
     MeasuredPlaced[slot] = lightbuffer::WorldToClipKnown;
@@ -948,6 +1091,7 @@ static bool HandleColourDraw(shadowmaps::BoundDraw &bound, uint64_t pixelShader)
 {
     auto *ctx = bound.Context;
     const auto &call = bound.Call;
+    UpdateObjectObservationMode();
     if (!ObjectsActive()) { if (PaintedDestination) CompositePainted(ctx); return false; }
     D3D11_TEXTURE2D_DESC desc = {};
     const bool eligible = call.Instances == 1
@@ -1009,12 +1153,37 @@ static bool HandleColourDraw(shadowmaps::BoundDraw &bound, uint64_t pixelShader)
     if (!painted || (PaintedLight > 0 && (found == Emitters.end() || found->second.Painted)))
     {
         Emitter &emitter = found == Emitters.end() ? Emitters[casterKey] : found->second;
-        SetKind(emitter,painted);
+        SetKind(emitter,painted,casterKey);
         emitter.LastSeen = shadowmaps::FrameNumber;
         if (MeasureTarget && !MeasuredThisFrame && !MeasuredKeys[shadowmaps::FrameNumber % READ_LATENCY]
-            && (!emitter.MeasuredFrame || emitter.MeasuredFrame + MEASURE_INTERVAL <= shadowmaps::FrameNumber)
+            && object_radiance_policy::MeasurementReady(emitter.ShapeKnown, emitter.Whole.Area,
+                emitter.MeasuredFrame, shadowmaps::FrameNumber, emitter.ChartDirty?15:MEASURE_INTERVAL)
             && emission_policy::Samples.Take(shadowmaps::FrameNumber,emission_policy::Producer::Surface))
-            Measure(ctx, call, casterKey);
+        {
+            bool screen = true;
+            if (ObjectObservationActive && knownPainted && !emitter.ChartRejected)
+            {
+                ComPtr<ID3D11VertexShader> vertex;ctx->VSGetShader(&vertex,nullptr,nullptr);
+                uint64_t vertexHash=0,pixelHash=0;
+                { std::lock_guard guard(Lock);
+                  if (auto v=PaintedVertexHashes.find(reinterpret_cast<uint64_t>(vertex.Get()));v!=PaintedVertexHashes.end())vertexHash=v->second;
+                  if (auto p=PaintedPixelHashes.find(pixelShader);p!=PaintedPixelHashes.end())pixelHash=p->second; }
+                if (vertexHash==object_chart::VertexProfile && pixelHash==object_chart::PixelProfile)
+                {
+                    object_chart::Parameters parameters{};
+                    XMStoreFloat4x4(&parameters.inverse,XMMatrixInverse(nullptr,lightbuffer::WorldToClip));
+                    parameters.offset={shadowmaps::CurrentOffset.x,shadowmaps::CurrentOffset.y,shadowmaps::CurrentOffset.z,0};
+                    const object_chart::Draw draw{call.Indexed,call.Count,call.First,call.BaseVertex};
+                    const auto admission=object_chart::Capture(ctx,draw,casterKey,emitter.Ticket,ObjectObservationEpoch,vertexHash,pixelHash,parameters);
+                    if (admission==object_chart::Admission::Queued)
+                    { emitter.Chart=true;emitter.ChartDirty=false;emitter.MeasuredFrame=shadowmaps::FrameNumber;MeasuredThisFrame=true;screen=false; }
+                    else if (admission==object_chart::Admission::Busy) screen=false;
+                    else if (!emitter.Chart) emitter.ChartRejected=true;
+                    else {RejectObjectChart(casterKey,emitter);screen=false;}
+                }
+            }
+            if (screen && !emitter.Chart) Measure(ctx,call,casterKey);
+        }
     }
     return handled;
 }
@@ -1372,6 +1541,106 @@ static void BuildCells(Emitter &emitter, const XMFLOAT3 *corners, UINT triangles
     emitter.Size = std::sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+// Canonical material observations are complete source snapshots, not visible-pixel means. Sample locations are
+// bound once to the primitive/geometry revision; subsequent camera motion changes neither cells nor source centres.
+// The 28 samples per triangle are fixed quadrature, not a claim of exact integration of arbitrary texture detail.
+static bool ApplyObjectChart(Emitter &emitter,const object_chart::Result &result)
+{
+    if (!result.valid || result.positions.size()!=static_cast<size_t>(result.triangles)*3
+        || result.colours.size()!=static_cast<size_t>(result.triangles)*object_chart::Samples) return false;
+    bool geometry=emitter.ChartGeometry!=result.geometry || emitter.ChartCorners.size()!=result.positions.size();
+    // Billboard rotations follow the camera: anchors change only for a new owner or written geometry.
+    if (geometry)
+    {
+        std::unordered_map<uint64_t,CellSum> sums[CELL_SIZE_COUNT];
+        CellSum whole=StartCell(0,0,0);
+        std::vector<Emitter::ChartAnchor> anchors;anchors.reserve(result.colours.size());
+        for (unsigned triangle=0;triangle<result.triangles;++triangle)
+        {
+            const XMVECTOR a=XMLoadFloat4(&result.positions[triangle*3]);
+            const XMVECTOR ab=XMLoadFloat4(&result.positions[triangle*3+1])-a;
+            const XMVECTOR ac=XMLoadFloat4(&result.positions[triangle*3+2])-a;
+            const XMVECTOR cross=XMVector3Cross(ab,ac);const float length=XMVectorGetX(XMVector3Length(cross));
+            if (!std::isfinite(length)) return false;
+            float normal[3]{};if(length>1e-6f)XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(normal),cross/length);
+            const double share=static_cast<double>(length)*.5/object_chart::Samples;
+            for (unsigned y=0;y<7;++y)for(unsigned x=0;x+y<=6;++x)
+            {
+                float point[3];XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(point),a+ab*((x+.5f)/7.5f)+ac*((y+.5f)/7.5f));
+                uint64_t leaf=0;
+                if (share>0)
+                {
+                    AddPoint(whole,point,normal,share);
+                    for(int size=0;size<CELL_SIZE_COUNT;++size)
+                    {
+                        int cx,cy,cz;if(!emission_policy::Cell(point[0],CELL_SIZES[size],cx)
+                            ||!emission_policy::Cell(point[1],CELL_SIZES[size],cy)||!emission_policy::Cell(point[2],CELL_SIZES[size],cz))return false;
+                        const uint64_t key=object_chart::CellKey(size,cx,cy,cz);
+                        auto found=sums[size].try_emplace(key,StartCell(cx,cy,cz)).first;
+                        if(found->second.X!=cx||found->second.Y!=cy||found->second.Z!=cz)return false;
+                        AddPoint(found->second,point,normal,share);
+                        if(!size)leaf=key;
+                    }
+                }
+                anchors.push_back({leaf,share});
+            }
+        }
+        if(!std::isfinite(whole.Area)||whole.Area<=0)return false;
+        for(int size=0;size<CELL_SIZE_COUNT;++size)
+        { emitter.Cells[size].clear();for(const auto &[key,sum]:sums[size])emitter.Cells[size][key]=FinishCell(sum,POINT_SPACING); }
+        emitter.Whole=FinishCell(whole,POINT_SPACING);emitter.Centre=emitter.Whole.Centre;
+        const float dx=whole.High[0]-whole.Low[0],dy=whole.High[1]-whole.Low[1],dz=whole.High[2]-whole.Low[2];
+        emitter.Size=std::sqrt(dx*dx+dy*dy+dz*dz);emitter.ShapeKnown=true;emitter.ShapeRequested=true;
+        emitter.ChartAnchors=std::move(anchors);emitter.ChartCorners=result.positions;emitter.ChartGeometry=result.geometry;
+    }
+    if(emitter.ChartAnchors.size()!=result.colours.size())return false;
+    std::unordered_map<uint64_t,object_radiance_policy::Flux> fluxes;
+    for(size_t i=0;i<result.colours.size();++i)
+    {
+        const auto &anchor=emitter.ChartAnchors[i];const auto &rgb=result.colours[i];
+        if(anchor.Area>0)fluxes[anchor.Leaf].Add(rgb.x,rgb.y,rgb.z,true,anchor.Area);
+    }
+    for(auto &[key,cell]:emitter.Cells[0])
+    {
+        const auto avg=fluxes[key].Average(cell.Area);cell.Radiance={avg[0],avg[1],avg[2],avg[3]};
+        cell.RadianceSupport=MIN_CELL_TEXELS;
+    }
+    for(int size=1;size<CELL_SIZE_COUNT;++size)
+        for(auto &[key,cell]:emitter.Cells[size])
+        {
+            object_radiance_policy::Flux flux;
+            for(int dx=0;dx<2;++dx)for(int dy=0;dy<2;++dy)for(int dz=0;dz<2;++dz)
+            {
+                const int x=cell.X*2+dx,y=cell.Y*2+dy,z=cell.Z*2+dz;
+                auto child=emitter.Cells[size-1].find(object_chart::CellKey(size-1,x,y,z));
+                if(child==emitter.Cells[size-1].end())continue;const auto &c=child->second;
+                if(c.X!=x||c.Y!=y||c.Z!=z)continue;
+                flux.Add(c.Radiance.x,c.Radiance.y,c.Radiance.z,c.Radiance.w>0,c.Area);
+            }
+            const auto avg=flux.Average(cell.Area);cell.Radiance={avg[0],avg[1],avg[2],avg[3]};
+        }
+    object_radiance_policy::Flux whole;
+    for(const auto &[key,cell]:emitter.Cells[CELL_SIZE_COUNT-1])whole.Add(cell.Radiance.x,cell.Radiance.y,cell.Radiance.z,cell.Radiance.w>0,cell.Area);
+    const auto avg=whole.Average(emitter.Whole.Area);emitter.Whole.Radiance={avg[0],avg[1],avg[2],avg[3]};
+    emitter.Radiance=emitter.Whole.Radiance;emitter.ChartMaterial=result.material;return true;
+}
+
+static void ReadObjectCharts(ID3D11DeviceContext *ctx)
+{
+    object_chart::Read(ctx,ObjectObservationEpoch,[](object_chart::Result &&result){
+        auto found=Emitters.find(result.owner);
+        if(found==Emitters.end()||!found->second.Chart||found->second.Ticket!=result.ticket
+            ||result.epoch!=ObjectObservationEpoch||!object_radiance_policy::NewerMeasurement(result.sequence,found->second.ChartSequence))return;
+        Emitter &emitter=found->second;emitter.ChartSequence=result.sequence;
+        // Unsupported cube/clip flags and malformed snapshots fail closed; baseline shape/colour are rebuilt.
+        if(!ApplyObjectChart(emitter,result))RejectObjectChart(result.owner,emitter);
+        // A queued snapshot stays exact even when native animation advances before readback. Refresh changed inputs
+        // soon, rather than rejecting every fire frame or waiting the normal 180 frame interval. A 15 frame floor avoids
+        // monopolizing the shared source service; all other admission/backpressure limits still apply.
+        else emitter.ChartDirty=result.superseded;
+    });
+}
+
 // finds the bounds of a mesh's triangles; false, leaving lowest and highest alone, when it has none
 static bool FindBounds(const XMFLOAT3 *corners, UINT triangles, XMFLOAT3 &lowest, XMFLOAT3 &highest)
 {
@@ -1473,7 +1742,10 @@ static void ReadShapes(ID3D11DeviceContext *ctx)
 
 static uint64_t HashCell(uint64_t casterKey, int size, const Cell &cell)
 {
-    return shadowmaps::HashValue(casterKey, shadowmaps::HashCaster(size, cell.X, cell.Y, cell.Z));
+    const auto owner=Emitters.find(casterKey);
+    const bool canonical=owner!=Emitters.end()&&owner->second.ChartGeometry;
+    return shadowmaps::HashValue(casterKey, canonical?object_chart::CellKey(size,cell.X,cell.Y,cell.Z)
+        :shadowmaps::HashCaster(size, cell.X, cell.Y, cell.Z));
 }
 
 static float FindLuminance(const XMFLOAT4 &colour)
@@ -1487,26 +1759,11 @@ static float FindLightScale(const Emitter &emitter)
     return emitter.Painted ? PaintedLight.load() : 1.0f;
 }
 
-// a cell's glow at one of CELL_SIZES, or CELL_SIZE_COUNT for the whole emitter: its own once measured, else that of the
-// nearest cell around it that is, else the whole emitter's, else the last measure's average while none is
-static XMFLOAT4 FindCellRadiance(const Emitter &emitter, int size, const Cell &cell)
+// A cell has only its own retained observation or conserved descendant flux. Unknown space must never inherit the
+// latest visible mean or an ancestor's colour, even when the camera selects a different level of the hierarchy.
+static XMFLOAT4 FindCellRadiance(const Emitter &, int, const Cell &cell)
 {
-    const Cell *current = &cell;
-    int x = cell.X, y = cell.Y, z = cell.Z;
-    while (size < CELL_SIZE_COUNT && current)
-    {
-        if (current->Radiance.w > 0)
-            return current->Radiance;
-        if (++size == CELL_SIZE_COUNT)
-            break;
-
-        x >>= 1;
-        y >>= 1;
-        z >>= 1;
-        auto parent = emitter.Cells[size].find(shadowmaps::HashCaster(size, x, y, z));
-        current = parent == emitter.Cells[size].end() ? nullptr : &parent->second;
-    }
-    return emitter.Whole.Radiance.w > 0 ? emitter.Whole.Radiance : emitter.Radiance;
+    return cell.Radiance.w > 0 ? cell.Radiance : XMFLOAT4{};
 }
 
 // how far an emitter's light reaches: where its whole glow, as bright as its cells' lights draw it together, over the
@@ -1585,9 +1842,11 @@ static void FindChildren(const Candidate &parent, std::vector<Candidate> &childr
         for (int dy = 0; dy < 2; ++dy)
             for (int dz = 0; dz < 2; ++dz)
             {
-                auto child = emitter.Cells[size].find(shadowmaps::HashCaster(size, parent.Source->X * 2 + dx,
-                    parent.Source->Y * 2 + dy, parent.Source->Z * 2 + dz));
-                if (child != emitter.Cells[size].end())
+                const int x=parent.Source->X*2+dx,y=parent.Source->Y*2+dy,z=parent.Source->Z*2+dz;
+                const uint64_t key=emitter.ChartGeometry?object_chart::CellKey(size,x,y,z):shadowmaps::HashCaster(size,x,y,z);
+                auto child = emitter.Cells[size].find(key);
+                if (child != emitter.Cells[size].end()
+                    &&(!emitter.ChartGeometry||(child->second.X==x&&child->second.Y==y&&child->second.Z==z)))
                     add(size, child->second);
             }
 }
@@ -1605,7 +1864,7 @@ static std::vector<Candidate> FindCut(int budget)
     for (const auto &[casterKey, emitter] : Emitters)
     {
         const float scale = FindLightScale(emitter);
-        if (!emitter.ShapeKnown || emitter.Radiance.w <= 0 || emitter.Whole.Area <= 0 || scale <= 0
+        if (!emitter.ShapeKnown || emitter.Whole.Radiance.w <= 0 || emitter.Whole.Area <= 0 || scale <= 0
             || emitter.Radius < MIN_GLOW_RADIUS
             || shadowmaps::Distance(emitter.Centre, shadowmaps::Camera) - emitter.Size / 2 > SEEN_DISTANCE)
             continue;
@@ -1915,6 +2174,12 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
         shadowmaps::particle_moving::Pool[0].view.Get(),shadowmaps::particle_moving::Pool[1].view.Get(),
         shadowmaps::particle_moving::Pool[2].view.Get(),shadowmaps::particle_moving::Pool[3].view.Get() };
     lightbuffer::StartTimer(ctx1.Get(), lightbuffer::GlowTimer);
+    lighting_diagnostics::BeginPass(ctx1.Get(), UINT(count), reducedWidth, reducedHeight);
+    const bool useTransportLists = glow_transport::Prepare(dev.Get(), LIGHT_SHADER, reducedWidth, reducedHeight, UINT(count));
+    if (useTransportLists)
+        glow_transport::Build(ctx1.Get(), FrameBuffer.Get(), LightConstantsBuffer.Get(), offset,
+            lightbuffer::DepthCopyView.Get(), reducedWidth, reducedHeight, UINT(count));
+    else lighting_diagnostics::RecordFallback();
     // texels outside the lights' rectangle are left unlit
     ctx1->ClearRenderTargetView(ReducedLightTarget.Get(), clear);
     ctx1->ClearRenderTargetView(ReducedSurfaceTarget.Get(), clear);
@@ -1928,10 +2193,10 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
         static_cast<LONG>(std::ceil(area.bottom / scale)) };
     ctx1->RSSetScissorRects(1, &reducedArea);
     ctx1->OMSetBlendState(nullptr, nullptr, 0xffffffff);
-    ctx1->PSSetShader(ReducedLightShader.Get(), nullptr, 0);
+    ctx1->PSSetShader(useTransportLists ? glow_transport::Shader(UINT(count)) : ReducedLightShader.Get(), nullptr, 0);
     ctx1->PSSetShaderResources(0, 13, views);
     ctx1->Draw(3, 0);
-    ctx1->PSSetShader(UpsampleShader.Get(), nullptr, 0);
+    ctx1->PSSetShader(SmoothLighting && SmoothUpsampleShader ? SmoothUpsampleShader.Get() : UpsampleShader.Get(), nullptr, 0);
     ID3D11RenderTargetView *targets[] = { lightbuffer::LightBufferTarget.Get(), MaskTarget.Get() };
     ctx1->OMSetRenderTargets(2, targets, nullptr);
     const D3D11_VIEWPORT viewport = { 0, 0, static_cast<float>(desc.Width), static_cast<float>(desc.Height), 0, 1 };
@@ -1940,6 +2205,8 @@ static void DrawLights(ID3D11DeviceContext *ctx,ID3D11ShaderResourceView *materi
     ctx1->OMSetBlendState(LightBlend.Get(), nullptr, 0xffffffff);
     ctx1->PSSetShaderResources(0, 13, views);
     ctx1->Draw(3, 0);
+    if (useTransportLists) glow_transport::Unbind(ctx1.Get());
+    lighting_diagnostics::EndPass(ctx1.Get());
     lightbuffer::StopTimer(ctx1.Get(), lightbuffer::GlowTimer);
     LightsDrawnThisFrame = count;
 
@@ -2080,13 +2347,21 @@ static bool CreateObjects(ID3D11Device *dev)
         || FAILED(dev->CreateBuffer(&frameDesc, nullptr, &FrameBuffer))
         || FAILED(dev->CreateBuffer(&lightDesc, nullptr, &LightConstantsBuffer))
         || !CreateShapeObjects(dev)) return false;
-    return lightbuffer::CreatePixelShader(dev, "ps_reduced_light", ReducedLightShader, LIGHT_SHADER)
-        && lightbuffer::CreatePixelShader(dev, "ps_upsample", UpsampleShader, LIGHT_SHADER);
+    // The fallback is the same corrected independent-light shader. A list allocation
+    // failure must not resurrect legacy borrowed visibility or weak-light omissions.
+    std::string independent;
+    if (!glow_transport::IndependentSources(LIGHT_SHADER, independent)) return false;
+    if (!lightbuffer::CreatePixelShader(dev, "ps_reduced_light", ReducedLightShader, independent.c_str())
+        || !lightbuffer::CreatePixelShader(dev, "ps_upsample", UpsampleShader, LIGHT_SHADER)) return false;
+    // The optional filter failing to compile must not disable existing lighting.
+    lightbuffer::CreatePixelShader(dev, "ps_upsample_smooth", SmoothUpsampleShader, LIGHT_SHADER);
+    return true;
 }
 
 // keepShapeBuffers keeps the staging, stream output and zero buffers, which belong to the device, not the scene
 static void Reset(bool keepShapeBuffers = false)
 {
+    object_chart::Reset();ObjectObservationEpoch=UINT64_MAX;ObjectObservationActive=false;
     Emitters.clear();
     CellLights.clear();
     ActiveCells.clear();
@@ -2124,6 +2399,7 @@ static void Reset(bool keepShapeBuffers = false)
     }
     std::fill(std::begin(MeasuredKeys), std::end(MeasuredKeys), 0);
     std::fill(std::begin(MeasuredTickets),std::end(MeasuredTickets),0);
+    std::fill(std::begin(MeasuredSequences),std::end(MeasuredSequences),0);
     ParticleSlots=0;ParticleAllocationReady=false;emission_policy::Samples.Clear();
     MeasureTexture.Reset();
     MeasureDepth.Reset();
@@ -2140,6 +2416,8 @@ static void Reset(bool keepShapeBuffers = false)
     LightVertexShader.Reset();
     ReducedLightShader.Reset();
     UpsampleShader.Reset();
+    SmoothUpsampleShader.Reset();
+    glow_transport::Reset();
     LightBlend.Reset();
     PaintedCompositeBlend.Reset();
     LightRasterizer.Reset();
@@ -2165,10 +2443,9 @@ static void Reset(bool keepShapeBuffers = false)
     CreateFailed = false;
 }
 
-// sums one measure's covered texels into the emitter's average and, with its frame's camera known, into the cells
-// they fall in. A cell covered by at least MIN_CELL_TEXELS takes their average; the others keep theirs. Each cell above
-// a changed one then becomes the area-weighted average of its cells, those never measured counting as it was, and the
-// whole emitter the area-weighted average of its measured top cells
+// Measures only the finest world cells actually covered in this snapshot. Unobserved cells retain their values;
+// unknown cells count as zero. Parents and Whole are rebuilt only from known descendant flux divided by their FULL
+// geometric area, so changing hierarchy level cannot paint a new visible mean across previously unseen geometry.
 static void MeasureCells(uint64_t casterKey, Emitter &emitter, const D3D11_MAPPED_SUBRESOURCE &colours,
     const D3D11_MAPPED_SUBRESOURCE &depths, UINT slot)
 {
@@ -2177,6 +2454,7 @@ static void MeasureCells(uint64_t casterKey, Emitter &emitter, const D3D11_MAPPE
         int X, Y, Z;
         double Colour[3];
         int Count;
+        bool GeometryCell = false;
     };
     std::unordered_map<uint64_t, TexelSum> sums;
     double total[3] = {};
@@ -2211,11 +2489,29 @@ static void MeasureCells(uint64_t casterKey, Emitter &emitter, const D3D11_MAPPE
                 ||!emission_policy::Cell(point[0],CELL_SIZES[0],cellX)
                 ||!emission_policy::Cell(point[1],CELL_SIZES[0],cellY)
                 ||!emission_policy::Cell(point[2],CELL_SIZES[0],cellZ))continue;
-            TexelSum &sum = sums.try_emplace(shadowmaps::HashCaster(0, cellX, cellY, cellZ),
-                TexelSum{ cellX, cellY, cellZ }).first->second;
+            // Cache nominal geometry admission per local bucket, not per pixel. Missing cells may snap only
+            // across a tiny grid boundary to one unambiguous existing leaf; no parent/visible colour is borrowed.
+            auto [bucket, inserted] = sums.try_emplace(shadowmaps::HashCaster(0, cellX, cellY, cellZ),
+                TexelSum{ cellX, cellY, cellZ });
+            const auto existing = [&](int xCell, int yCell, int zCell) {
+                auto found = emitter.Cells[0].find(shadowmaps::HashCaster(0, xCell, yCell, zCell));
+                return found != emitter.Cells[0].end() && std::isfinite(found->second.Area) && found->second.Area > 0;
+            };
+            if (inserted)
+                bucket->second.GeometryCell = existing(cellX, cellY, cellZ);
+            TexelSum *sum = &bucket->second;
+            if (!sum->GeometryCell)
+            {
+                int neighbor[3] = { cellX, cellY, cellZ };
+                if (!object_radiance_policy::FindBoundaryNeighbor(point, CELL_SIZES[0], neighbor, existing))
+                    continue;
+                sum = &sums.try_emplace(shadowmaps::HashCaster(0, neighbor[0], neighbor[1], neighbor[2]),
+                    TexelSum{ neighbor[0], neighbor[1], neighbor[2] }).first->second;
+                sum->GeometryCell = true;
+            }
             for (int channel = 0; channel < 3; ++channel)
-                sum.Colour[channel] += texel[channel];
-            ++sum.Count;
+                sum->Colour[channel] += texel[channel];
+            ++sum->Count;
         }
     }
     if (!covered)
@@ -2226,33 +2522,29 @@ static void MeasureCells(uint64_t casterKey, Emitter &emitter, const D3D11_MAPPE
     if (!placed)
         return;
 
-    // cells at each size whose glow changed
+    // Only direct local observations can establish coverage. One to three texels may bootstrap an unknown cell,
+    // but never overwrite an established one. Four or more preserve immediate native animation, including fire.
     std::unordered_set<uint64_t> changed[CELL_SIZE_COUNT];
     int measured[CELL_SIZE_COUNT] = {};
-    for (int size = 0; size < CELL_SIZE_COUNT; ++size)
+    int sparseBootstraps = 0;
+    for (const auto &[key, sum] : sums)
     {
-        std::unordered_map<uint64_t, TexelSum> parents;
-        for (const auto &[key, sum] : sums)
-        {
-            auto cell = emitter.Cells[size].find(key);
-            if (cell != emitter.Cells[size].end() && sum.Count >= MIN_CELL_TEXELS)
-            {
-                cell->second.Radiance = { static_cast<float>(sum.Colour[0] / sum.Count),
-                    static_cast<float>(sum.Colour[1] / sum.Count), static_cast<float>(sum.Colour[2] / sum.Count), 1 };
-                changed[size].insert(key);
-                ++measured[size];
-            }
-            if (size + 1 == CELL_SIZE_COUNT)
-                continue;
-
-            const int x = sum.X >> 1, y = sum.Y >> 1, z = sum.Z >> 1;
-            TexelSum &parent = parents.try_emplace(shadowmaps::HashCaster(size + 1, x, y, z), TexelSum{ x, y, z })
-                .first->second;
-            for (int channel = 0; channel < 3; ++channel)
-                parent.Colour[channel] += sum.Colour[channel];
-            parent.Count += sum.Count;
-        }
-        sums = std::move(parents);
+        auto found = emitter.Cells[0].find(key);
+        if (found == emitter.Cells[0].end())
+            continue;
+        Cell &cell = found->second;
+        if (!std::isfinite(cell.Area) || cell.Area <= 0
+            || !object_radiance_policy::ReplaceObservation(cell.Radiance.w > 0, sum.Count, MIN_CELL_TEXELS))
+            continue;
+        const auto observation = object_radiance_policy::Observation(sum.Colour[0], sum.Colour[1], sum.Colour[2], sum.Count);
+        if (observation[3] <= 0)
+            continue;
+        cell.Radiance = { observation[0], observation[1], observation[2], observation[3] };
+        cell.RadianceSupport = std::min(static_cast<unsigned>(sum.Count), static_cast<unsigned>(MIN_CELL_TEXELS));
+        changed[0].insert(key);
+        ++measured[0];
+        if (sum.Count < MIN_CELL_TEXELS)
+            ++sparseBootstraps;
     }
 
     for (int size = 1; size < CELL_SIZE_COUNT; ++size)
@@ -2267,8 +2559,7 @@ static void MeasureCells(uint64_t casterKey, Emitter &emitter, const D3D11_MAPPE
         for (uint64_t key : changed[size])
         {
             Cell &cell = emitter.Cells[size].at(key);
-            double sum[3] = {};
-            double area = 0;
+            object_radiance_policy::Flux flux;
             for (int dx = 0; dx < 2; ++dx)
                 for (int dy = 0; dy < 2; ++dy)
                     for (int dz = 0; dz < 2; ++dz)
@@ -2277,38 +2568,30 @@ static void MeasureCells(uint64_t casterKey, Emitter &emitter, const D3D11_MAPPE
                             cell.Y * 2 + dy, cell.Z * 2 + dz));
                         if (child == emitter.Cells[size - 1].end())
                             continue;
-
-                        const XMFLOAT4 radiance = FindCellRadiance(emitter, size - 1, child->second);
-                        sum[0] += radiance.x * child->second.Area;
-                        sum[1] += radiance.y * child->second.Area;
-                        sum[2] += radiance.z * child->second.Area;
-                        area += child->second.Area;
+                        const Cell &source = child->second;
+                        flux.Add(source.Radiance.x, source.Radiance.y, source.Radiance.z, source.Radiance.w > 0, source.Area);
                     }
-            if (area > 0)
-                cell.Radiance = { static_cast<float>(sum[0] / area), static_cast<float>(sum[1] / area),
-                    static_cast<float>(sum[2] / area), 1 };
+            const auto average = flux.Average(cell.Area);
+            cell.Radiance = { average[0], average[1], average[2], average[3] };
+            ++measured[size];
         }
     }
 
-    double sum[3] = {};
-    double area = 0;
-    for (const auto &[key, cell] : emitter.Cells[CELL_SIZE_COUNT - 1])
-        if (cell.Radiance.w > 0)
-        {
-            sum[0] += cell.Radiance.x * cell.Area;
-            sum[1] += cell.Radiance.y * cell.Area;
-            sum[2] += cell.Radiance.z * cell.Area;
-            area += cell.Area;
-        }
-    if (area > 0)
-        emitter.Whole.Radiance = { static_cast<float>(sum[0] / area), static_cast<float>(sum[1] / area),
-            static_cast<float>(sum[2] / area), 1 };
+    if (!changed[0].empty())
+    {
+        object_radiance_policy::Flux flux;
+        for (const auto &[key, cell] : emitter.Cells[CELL_SIZE_COUNT - 1])
+            flux.Add(cell.Radiance.x, cell.Radiance.y, cell.Radiance.z, cell.Radiance.w > 0, cell.Area);
+        const auto average = flux.Average(emitter.Whole.Area);
+        emitter.Whole.Radiance = { average[0], average[1], average[2], average[3] };
+    }
 
     if (capture::State == capture::Phase::Capturing && capture::Log)
     {
         fprintf(capture::Log, "--- glow measure %016llx: %d texels covered, average %.3f %.3f %.3f, whole %.3f %.3f %.3f, "
-            "cells measured", static_cast<unsigned long long>(casterKey), covered, emitter.Radiance.x, emitter.Radiance.y,
-            emitter.Radiance.z, emitter.Whole.Radiance.x, emitter.Whole.Radiance.y, emitter.Whole.Radiance.z);
+            "low-support leaf bootstraps %d, cells updated/rebuilt", static_cast<unsigned long long>(casterKey), covered,
+            emitter.Radiance.x, emitter.Radiance.y,
+            emitter.Radiance.z, emitter.Whole.Radiance.x, emitter.Whole.Radiance.y, emitter.Whole.Radiance.z, sparseBootstraps);
         for (int size = 0; size < CELL_SIZE_COUNT; ++size)
             fprintf(capture::Log, " %.0f:%d", CELL_SIZES[size], measured[size]);
         fprintf(capture::Log, "\n");
@@ -2336,8 +2619,16 @@ static void ReadMeasure(ID3D11DeviceContext *ctx)
 
         MeasuredKeys[slot] = 0;
         auto emitter = Emitters.find(casterKey);
-        if (emitter != Emitters.end() && emission_policy::Measurement(emitter->second.Ticket,emitter->second.Painted,MeasuredTickets[slot],MeasuredPainted[slot]))
+        if (emitter != Emitters.end()
+            && !emitter->second.Chart
+            && emission_policy::Measurement(emitter->second.Ticket,emitter->second.Painted,MeasuredTickets[slot],MeasuredPainted[slot])
+            && object_radiance_policy::NewerMeasurement(MeasuredSequences[slot], emitter->second.AppliedMeasureSequence))
+        {
+            // The newest consumed packet wins, even if its view has no valid local samples. A late older packet must
+            // not subsequently roll the object back to a prior camera view.
+            emitter->second.AppliedMeasureSequence = MeasuredSequences[slot];
             MeasureCells(casterKey, emitter->second, colours, depths, slot);
+        }
         ctx->Unmap(MeasureDepthReadback[slot].Get(), 0);
         ctx->Unmap(MeasureReadback[slot].Get(), 0);
     }
@@ -2355,6 +2646,8 @@ static void WriteState()
     const auto ago = [](uint64_t frame) { return static_cast<long long>(shadowmaps::FrameNumber - frame); };
     fprintf(file, "enabled %d, strength %.3f, painted kept %.3f, painted light %.3f, create failed %d\n",
         Enabled.load() ? 1 : 0, Strength.load(), PaintedKept.load(), PaintedLight.load(), CreateFailed ? 1 : 0);
+    fprintf(file, "smooth emissive reconstruction: requested %d, shader ready %d\n", SmoothLighting.load() ? 1 : 0,
+        SmoothUpsampleShader ? 1 : 0);
     fprintf(file, "emissive light limit %u, particle light limit %u, global shadowed light limit %d, particle slots %u\n",
         emission_policy::ClampGlowLimit(LightLimit.load()), emission_policy::ClampParticleLimit(ParticleLightLimit.load()),
         shadowmaps::LightLimit.load(), ParticleSlots);
@@ -2362,6 +2655,12 @@ static void WriteState()
         "this second %d, measured this frame %d, mask frame %lld ago\n", LightsDrawnThisFrame, LightsDrawnLastFrame,
         CellsPickedLastFrame, PaintedSkippedLastSecond, PaintedSkippedThisSecond, MeasuredThisFrame ? 1 : 0,
         MaskFrame == UINT64_MAX ? -1ll : ago(MaskFrame));
+    fprintf(file,"canonical object charts: active %d, epoch %llu, queued %llu, completed %llu, invalid %llu, unsupported %llu, busy %llu, pending %u\n",
+        ObjectObservationActive?1:0,static_cast<unsigned long long>(ObjectObservationEpoch),
+        static_cast<unsigned long long>(object_chart::Counts.queued),static_cast<unsigned long long>(object_chart::Counts.complete),
+        static_cast<unsigned long long>(object_chart::Counts.invalid),static_cast<unsigned long long>(object_chart::Counts.unsupported),
+        static_cast<unsigned long long>(object_chart::Counts.busy),object_chart::Counts.pending);
+    fprintf(file,"canonical superseded input snapshots %llu (dirty refresh minimum 15 frames)\n",static_cast<unsigned long long>(object_chart::Counts.superseded));
     fprintf(file, "measured keys:");
     for (UINT n = 0; n < READ_LATENCY; ++n)
         fprintf(file, " %016llx", static_cast<unsigned long long>(MeasuredKeys[n]));
@@ -2387,11 +2686,11 @@ static void WriteState()
             {
                 auto light = CellLights.find(HashCell(key, size, cell));
                 fprintf(file, "  cell size %.0f at %d %d %d: area %.3f, centre %.3f %.3f %.3f, normal %.3f %.3f %.3f, "
-                    "radius %.3f, radiance %.4f %.4f %.4f %.0f, light %llu%s\n", CELL_SIZES[size], cell.X, cell.Y, cell.Z,
+                    "radius %.3f, radiance %.4f %.4f %.4f %.0f, light %llu%s, observation texels %u\n", CELL_SIZES[size], cell.X, cell.Y, cell.Z,
                     cell.Area, cell.Centre.x, cell.Centre.y, cell.Centre.z, cell.Normal.x, cell.Normal.y, cell.Normal.z,
                     cell.Radius, cell.Radiance.x, cell.Radiance.y, cell.Radiance.z, cell.Radiance.w,
                     light == CellLights.end() ? 0ull : static_cast<unsigned long long>(light->second),
-                    ActiveCells.contains(HashCell(key, size, cell)) ? ", active" : "");
+                    ActiveCells.contains(HashCell(key, size, cell)) ? ", active" : "", cell.RadianceSupport);
             }
     }
 
@@ -2419,11 +2718,13 @@ static void RetireObjects()
     std::erase_if(ShapeReads, [](const ShapeRead &read){return !read.BoundsOnly;});
     std::fill(std::begin(MeasuredKeys),std::end(MeasuredKeys),0);
     std::fill(std::begin(MeasuredTickets),std::end(MeasuredTickets),0);
+    std::fill(std::begin(MeasuredSequences),std::end(MeasuredSequences),0);
 }
 
 static void EndFrame(ID3D11Device *dev, ID3D11DeviceContext *ctx,unsigned particleDemand=0)
 {
     const shadowmaps::CpuScope scope(shadowmaps::GlowCpu);
+    UpdateObjectObservationMode();ReadObjectCharts(ctx);
     ParticleSlots=0;ParticleAllocationReady=false;
     if (capture::State == capture::Phase::Capturing) WriteState();
     if (PaintedDestination) CompositePainted(ctx);

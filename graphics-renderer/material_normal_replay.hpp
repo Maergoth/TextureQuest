@@ -235,7 +235,7 @@ static ID3D11ShaderResourceView*MaterialNormalsView()
         &&lightbuffer::WorldToClipKnown&&lightbuffer::IsSameCamera(DirectX::XMLoadFloat4x4(&MaterialCamera),lightbuffer::WorldToClip)?MaterialView.Get():nullptr;
 }
 static void MaterialNoteWrite(uint64_t handle)
-{if(MaterialActive()){std::lock_guard guard(MaterialVersionLock);auto found=MaterialBufferVersions.find(handle);if(found!=MaterialBufferVersions.end())++found->second;}}
+{object_chart::NoteWrite(handle);if(MaterialActive()){std::lock_guard guard(MaterialVersionLock);auto found=MaterialBufferVersions.find(handle);if(found!=MaterialBufferVersions.end())++found->second;}}
 static void OnMaterialMapBuffer(device*dev,resource buffer,uint64_t offset,uint64_t size,map_access access,void**data)
 {if(access!=map_access::read_only)MaterialNoteWrite(buffer.handle);shadowmaps::OnMapBuffer(dev,buffer,offset,size,access,data);}
 static bool OnMaterialUpdateBuffer(device*dev,const void*data,resource buffer,uint64_t offset,uint64_t size)
@@ -245,7 +245,7 @@ static bool OnMaterialCopy(command_list*,resource,resource destination)
 static bool OnMaterialCopyBuffer(command_list*,resource,uint64_t,resource destination,uint64_t,uint64_t)
 {MaterialNoteWrite(destination.handle);return false;}
 static void OnMaterialDestroyResource(device*dev,resource handle)
-{{std::lock_guard guard(MaterialVersionLock);MaterialBufferVersions.erase(handle.handle);}shadowmaps::OnDestroyResource(dev,handle);}
+{object_chart::ForgetResource(handle.handle);{std::lock_guard guard(MaterialVersionLock);MaterialBufferVersions.erase(handle.handle);}shadowmaps::OnDestroyResource(dev,handle);}
 static bool OnMaterialUpdateTexture(device*,const subresource_data&,resource destination,uint32_t,const subresource_box*)
 {MaterialNoteWrite(destination.handle);return false;}
 static bool OnMaterialUpdateTextureCommand(command_list*,const subresource_data&,resource destination,uint32_t,const subresource_box*)

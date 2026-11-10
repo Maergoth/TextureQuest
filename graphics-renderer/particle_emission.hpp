@@ -5,6 +5,7 @@
 #include "particle_coalescing_policy.hpp"
 #include "particle_source_policy.hpp"
 #include "particle_retention_policy.hpp"
+#include "lighting_diagnostics.hpp"
 
 // Observational native material replay: complete independent native draws form
 // a bounded partial world-light field. Native rendering is never replaced.
@@ -12,10 +13,11 @@ namespace particle_emission
 {
 using Microsoft::WRL::ComPtr;using namespace DirectX;
 namespace policy=particle_emission_policy;namespace field=particle_field_policy;
-struct DrawRecord { unsigned first=0,count=0;uint64_t vertex=0,pixel=0;ComPtr<ID3D11Query> query;bool valid=false; };
+struct DrawRecord { unsigned first=0,count=0;uint64_t vertex=0,pixel=0;ComPtr<ID3D11Query> query,precapQuery;bool valid=false,precap=false; };
 struct Packet
 {
     ComPtr<ID3D11Buffer> output,read,reduced,reducedRead;
+    ComPtr<ID3D11Buffer> precapOutput,precapRead;
     ComPtr<ID3D11UnorderedAccessView> reducedView;
     ComPtr<ID3D11Query> complete;
     std::array<DrawRecord,field::Draws> records;
@@ -23,11 +25,14 @@ struct Packet
     ComPtr<ID3D11Resource> scene,target;
     XMFLOAT3 camera{},offset{};XMFLOAT4X4 cameraMatrix{};
     std::chrono::steady_clock::time_point time{};
-    bool collecting=false,busy=false,writes=false;
+    bool collecting=false,busy=false,writes=false,precapWrites=false;
 };
 static Packet Frame;
 static ComPtr<ID3DDeviceContextState> State;
 static ComPtr<ID3D11GeometryShader> Shape;
+static ComPtr<ID3D11VertexShader> PrecapVertex;
+static ComPtr<ID3D11GeometryShader> PrecapShape;
+static bool PrecapFailed=false;
 static ComPtr<ID3D11ComputeShader> Reduce,CloneShared;
 static ComPtr<ID3D11Buffer> Constants,ReduceConstants,SharedParameters,SharedRaw,SharedConstants;
 static ComPtr<ID3D11UnorderedAccessView> SharedRawView;
@@ -38,6 +43,7 @@ static ComPtr<ID3D11RasterizerState> Raster;
 static ComPtr<ID3D11DepthStencilState> NoDepth;
 static bool Failed=false,Probing=false;
 static uint64_t Epoch=1,ObservedFrame=UINT64_MAX,ExcludedSourceFrame=UINT64_MAX;
+static uint64_t ObservationEpoch=0;
 static std::vector<field::Cell> Cells;
 struct Selected {field::Key cell;uint64_t light=0;};
 static std::array<Selected,field::Lit> SelectedCells;
@@ -54,6 +60,7 @@ static std::vector<field::Cell> VisibleCells(double now=SecondsNow())
 {return Retained.Merge(Cells,HasField&&!Cells.empty()?field::Visibility(now-Seconds(FieldTime)):0,Epoch,now);}
 static unsigned Seen=0,Measured=0,Active=0,Pending=0,RejectedBounds=0,RejectedState=0,RejectedIO=0;
 static unsigned CompleteFrames=0,IncompleteFrames=0,OverflowFrames=0,SkippedFrames=0;
+static unsigned PrecapQualified=0,PrecapRejected=0,PrecapFailures=0,PrecapPublished=0;
 struct DomainStats
 {
     uint64_t frame=0,epoch=0;unsigned draws=0,triangles=0,included=0,excludedDistance=0,excludedExtent=0,invalid=0;
@@ -77,7 +84,7 @@ static bool Profiles(uint64_t vs,uint64_t ps,uint64_t &vhash,uint64_t &phash)
     vhash=v->second;phash=p->second;return true;
 }
 static bool IsProfile(uint64_t vs,uint64_t ps){uint64_t v=0,p=0;return Profiles(vs,ps,v,p);}
-struct ShapeConstants {XMFLOAT4X4 inverse;XMFLOAT4 offset;UINT base=0,padding[3]{};};
+struct ShapeConstants {XMFLOAT4X4 inverse;XMFLOAT4 offset;UINT base=0,nativeRows=0,profile=0,padding=0;};
 constexpr const char *Shader=R"(
 cbuffer Inverse:register(b0){float4 Rows[4];float4 Offset;uint Base;uint3 pad;};
 cbuffer Shared:register(b1){float4 s[11];};
@@ -106,6 +113,54 @@ struct Out {float4 position:SV_Position;float4 color0:COLOR0;float4 color1:COLOR
  }
  stream.RestartStrip();
 }
+)";
+// Auxiliary geometry only: the native VS/PS material atlas remains untouched.
+// Decode the two captured VS profiles before their c82.w screen-size clamp,
+// then undo the same camera transform. The capture never renders this shader.
+constexpr const char *PrecapShader=R"(
+cbuffer NativeConstants:register(b0){float4 c[1024];};
+cbuffer Shared:register(b1){float4 s[11];};
+cbuffer Private:register(b2){float4 Rows[4];float4 Offset;uint Base,NativeRows,Profile,pad;};
+struct Source {float4 position:SV_Position;float4 world:WORLD;};
+Source source_vs(float4 position:POSITION,float4 color:COLOR0,float4 uv:TEXCOORD0)
+{
+ Source o;o.position=float4(0,0,.5,1);o.world=0;
+ bool valid=NativeRows>=83 && (Profile==1 || Profile==2) && all(isfinite(position)) && all(isfinite(color)) && all(isfinite(uv));
+ [unroll]for(uint i=0;i<15;++i)valid=valid&&all(isfinite(c[i]));
+ valid=valid&&all(isfinite(c[64]))&&all(isfinite(c[82]));
+ valid=valid&&s[1].x<.5&&s[7].x<=.5&&(s[9].w<=.5||all(abs(s[9].xyz)<1e-6));
+ [unroll]for(uint j=0;j<11;++j)valid=valid&&all(isfinite(s[j]));
+ float scale=length(c[7].xyz);
+ float2 corner=float2(uv.z>=c[0].z,uv.w>=c[0].w)*(2*c[1].xy)-c[1].xy;
+ float size=corner.x*uv.z*scale;
+ float2 turn=corner;
+ float2 dimensions=size.xx;
+ if(Profile==1)
+ {
+  float phase=frac(position.w*c[64].w)*c[64].y+c[64].x;
+  valid=valid&&isfinite(phase)&&phase>=0&&phase<float(min(NativeRows,1024u));
+  uint index=valid?(uint)phase:0;
+  float3 curve=frac(phase)*c[index].wwz+c[index].yyx;
+  float curveLength=length(curve.yz);
+  valid=valid&&all(isfinite(curve))&&curveLength>1e-10&&abs(c[2].w)>1e-10;
+  curve/=max(curveLength,1e-10);
+  turn=float2(corner.x*curve.x+corner.y*curve.z,-corner.x*curve.z+corner.y*curve.y);
+  dimensions.y=size*((size>=c[0].y?1:0)/c[2].w-c[1].y);
+ }
+ float4 p=float4(position.xyz,c[1].w);
+ float4 clip=float4(dot(p,c[3]),dot(p,c[4]),dot(p,c[5]),dot(p,c[6]));
+ // A rejected/behind-near native billboard is not a proven source footprint.
+ valid=valid&&scale>1e-10&&all(isfinite(clip))&&clip.w>=c[82].z&&clip.w>1e-8;
+ float2 beforeCap=dimensions/max(clip.w,1e-8);
+ clip+=float4(beforeCap*turn*c[82].xy,c[0].zw)*clip.w;
+ float4 world=float4(dot(Rows[0],clip),dot(Rows[1],clip),dot(Rows[2],clip),dot(Rows[3],clip));
+ valid=valid&&all(isfinite(world))&&abs(world.w)>1e-8;
+ o.world=float4(valid?world.xyz/world.w-Offset.xyz:0,valid?1:0);
+ return o;
+}
+struct World {float4 world:WORLD;};
+[maxvertexcount(3)]void source_gs(triangle Source vertices[3],inout TriangleStream<World> stream)
+{[unroll]for(uint i=0;i<3;++i){World o;o.world=vertices[i].world;stream.Append(o);}stream.RestartStrip();}
 )";
 // Integer loads/stores preserve every bit of the actually visible native b1
 // window. Only row9.w is replaced, and only on our private PS binding.
@@ -147,9 +202,13 @@ static void InvalidateScene()
     if(Frame.collecting)Frame.ledger.Reject();
 }
 static void Hide(){InvalidateScene();Seen=Measured=0;}
+static void SyncObservationEpoch()
+{const uint64_t current=lighting_diagnostics::CurrentEpoch();if(current!=ObservationEpoch){ObservationEpoch=current;InvalidateScene();PrecapQualified=PrecapRejected=PrecapFailures=PrecapPublished=0;}}
 static void Reset(bool keepProfiles=false)
 {
     InvalidateScene();Frame={};State.Reset();Shape.Reset();Reduce.Reset();CloneShared.Reset();Constants.Reset();ReduceConstants.Reset();
+    PrecapVertex.Reset();PrecapShape.Reset();PrecapFailed=false;ObservationEpoch=lighting_diagnostics::CurrentEpoch();
+    PrecapQualified=PrecapRejected=PrecapFailures=PrecapPublished=0;
     SharedParameters.Reset();SharedRaw.Reset();SharedConstants.Reset();SharedRawView.Reset();Atlas.Reset();AtlasTarget.Reset();AtlasView.Reset();Raster.Reset();NoDepth.Reset();
     Failed=false;ObservedFrame=ExcludedSourceFrame=UINT64_MAX;Pending=RejectedBounds=RejectedState=RejectedIO=0;
     LastDomain={};
@@ -197,6 +256,27 @@ static bool Compile(ID3D11Device *dev)
     for(auto &record:Frame.records)if(FAILED(dev->CreateQuery(&q,&record.query)))return false;
     Failed=false;return true;
 }
+// Optional resources are created only for the requested A/B mode. Failure keeps
+// the complete baseline producer available and never disables native rendering.
+static bool CompilePrecap(ID3D11Device *dev)
+{
+    if(PrecapVertex&&PrecapShape)return true;if(PrecapFailed)return false;PrecapFailed=true;
+    ComPtr<ID3DBlob> code,errors;ComPtr<ID3D11VertexShader> vertex;ComPtr<ID3D11GeometryShader> geometry;
+    if(FAILED(D3DCompile(PrecapShader,strlen(PrecapShader),nullptr,nullptr,nullptr,"source_vs","vs_5_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&code,&errors))
+        ||FAILED(dev->CreateVertexShader(code->GetBufferPointer(),code->GetBufferSize(),nullptr,&vertex)))return false;
+    code.Reset();errors.Reset();
+    if(FAILED(D3DCompile(PrecapShader,strlen(PrecapShader),nullptr,nullptr,nullptr,"source_gs","gs_5_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&code,&errors)))return false;
+    const D3D11_SO_DECLARATION_ENTRY declaration{0,"WORLD",0,0,4,0};const UINT stride=16;
+    if(FAILED(dev->CreateGeometryShaderWithStreamOutput(code->GetBufferPointer(),code->GetBufferSize(),&declaration,1,&stride,1,D3D11_SO_NO_RASTERIZED_STREAM,nullptr,&geometry)))return false;
+    ComPtr<ID3D11Buffer> output,read;
+    D3D11_BUFFER_DESC b{field::Triangles*3*16,D3D11_USAGE_DEFAULT,D3D11_BIND_STREAM_OUTPUT};
+    if(FAILED(dev->CreateBuffer(&b,nullptr,&output)))return false;
+    b.Usage=D3D11_USAGE_STAGING;b.BindFlags=0;b.CPUAccessFlags=D3D11_CPU_ACCESS_READ;
+    if(FAILED(dev->CreateBuffer(&b,nullptr,&read)))return false;
+    const D3D11_QUERY_DESC query{D3D11_QUERY_SO_STATISTICS,0};
+    for(auto &record:Frame.records)if(!record.precapQuery&&FAILED(dev->CreateQuery(&query,&record.precapQuery)))return false;
+    Frame.precapOutput=std::move(output);Frame.precapRead=std::move(read);PrecapVertex=std::move(vertex);PrecapShape=std::move(geometry);PrecapFailed=false;return true;
+}
 // Cache every native reference locally, swap to an owned state, then clear the
 // cache and restore. No native render target/depth or buffer is modified.
 static bool Capture(ID3D11DeviceContext1 *ctx,const shadowmaps::DrawCall &call,const ShapeConstants &data,DrawRecord &record)
@@ -223,6 +303,16 @@ static bool Capture(ID3D11DeviceContext1 *ctx,const shadowmaps::DrawCall &call,c
     D3D11_SHADER_RESOURCE_VIEW_DESC td{};texture->GetDesc(&td);ComPtr<ID3D11Resource> resource;texture->GetResource(&resource);
     if(td.ViewDimension!=D3D11_SRV_DIMENSION_TEXTURE2D||resource.Get()==lightbuffer::LightBuffer.Get()
         ||resource.Get()==lightbuffer::CurrentTarget||resource.Get()==lightbuffer::CurrentDepth){release();return false;}
+    ShapeConstants geometry=data;record.precap=false;
+    if(data.profile)
+    {
+        D3D11_BUFFER_DESC native{};vb[0]->GetDesc(&native);const uint64_t nativeFirst=uint64_t(vf[0])*16;
+        if(nativeFirst<=native.ByteWidth)
+            geometry.nativeRows=std::min({1024u,UINT((native.ByteWidth-nativeFirst)/16),vc[0]?vc[0]:4096u});
+        ComPtr<ID3D11Device> dev;ctx->GetDevice(&dev);
+        if(geometry.nativeRows<83)++PrecapRejected;
+        else {record.precap=CompilePrecap(dev.Get());if(record.precap)++PrecapQualified;else ++PrecapFailures;}
+    }
     struct ProbeScope{ProbeScope(){Probing=true;}~ProbeScope(){Probing=false;}} probing;
     ComPtr<ID3DDeviceContextState> previous;ctx->SwapDeviceContextState(State.Get(),&previous);
     const UINT parameters[4]{sharedRows,0,0,0};ctx->UpdateSubresource(SharedParameters.Get(),0,nullptr,parameters,0,0);
@@ -231,7 +321,7 @@ static bool Capture(ID3D11DeviceContext1 *ctx,const shadowmaps::DrawCall &call,c
     ID3D11UnorderedAccessView *raw=SharedRawView.Get();ctx->CSSetUnorderedAccessViews(0,1,&raw,nullptr);ctx->CSSetShader(CloneShared.Get(),nullptr,0);ctx->Dispatch(256,1,1);
     ID3D11UnorderedAccessView *noUav=nullptr;ctx->CSSetUnorderedAccessViews(0,1,&noUav,nullptr);ctx->CopyResource(SharedConstants.Get(),SharedRaw.Get());
     ctx->CSSetShader(nullptr,nullptr,0);ID3D11Buffer *empty[32]{};ctx->CSSetConstantBuffers(0,2,empty);
-    ctx->UpdateSubresource(Constants.Get(),0,nullptr,&data,0,0);
+    ctx->UpdateSubresource(Constants.Get(),0,nullptr,&geometry,0,0);
     ctx->IASetInputLayout(layout.Get());ctx->IASetVertexBuffers(0,32,vbs,strides,offsets);ctx->IASetIndexBuffer(ib.Get(),format,ibOffset);
     ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);ctx->VSSetShader(vs.Get(),nullptr,0);
     for(UINT i=0;i<2;++i){if(vc[i])ctx->VSSetConstantBuffers1(i,1,&vb[i],&vf[i],&vc[i]);else ctx->VSSetConstantBuffers(i,1,&vb[i]);}
@@ -249,11 +339,21 @@ static bool Capture(ID3D11DeviceContext1 *ctx,const shadowmaps::DrawCall &call,c
     ID3D11Buffer *output=Frame.output.Get();UINT start=data.base*3*16;ctx->SOSetTargets(1,&output,&start);ctx->Begin(record.query.Get());
     if(call.Indexed)ctx->DrawIndexed(call.Count,call.First,call.BaseVertex);else ctx->Draw(call.Count,call.First);
     Frame.writes=true;ctx->End(record.query.Get());ID3D11Buffer *none=nullptr;UINT zero=0;ctx->SOSetTargets(1,&none,&zero);
+    if(record.precap)
+    {
+        // Same IA draw and native b0/b1 window; no native target, PS, UV or alpha
+        // is changed. This second private SO pass only records source geometry.
+        ctx->VSSetShader(PrecapVertex.Get(),nullptr,0);ctx->VSSetConstantBuffers(2,1,&privateConstants);
+        ctx->GSSetShader(PrecapShape.Get(),nullptr,0);ctx->PSSetShader(nullptr,nullptr,0);ctx->OMSetRenderTargets(0,nullptr,nullptr);
+        ID3D11Buffer *precap=Frame.precapOutput.Get();ctx->SOSetTargets(1,&precap,&start);ctx->Begin(record.precapQuery.Get());
+        if(call.Indexed)ctx->DrawIndexed(call.Count,call.First,call.BaseVertex);else ctx->Draw(call.Count,call.First);
+        ctx->End(record.precapQuery.Get());ctx->SOSetTargets(1,&none,&zero);Frame.precapWrites=true;
+    }
     // Remove all borrowed native state from the owned cache before restoration.
     UINT zeros[32]{};ID3D11ShaderResourceView *noView=nullptr;ID3D11SamplerState *noSampler=nullptr;
     ctx->IASetVertexBuffers(0,32,empty,zeros,zeros);ctx->IASetIndexBuffer(nullptr,DXGI_FORMAT_UNKNOWN,0);ctx->IASetInputLayout(nullptr);
     ctx->VSSetShader(nullptr,nullptr,0);ctx->PSSetShader(nullptr,nullptr,0);ctx->GSSetShader(nullptr,nullptr,0);
-    ctx->VSSetConstantBuffers(0,2,empty);ctx->PSSetConstantBuffers(0,2,empty);ctx->GSSetConstantBuffers(0,2,empty);
+    ctx->VSSetConstantBuffers(0,3,empty);ctx->PSSetConstantBuffers(0,2,empty);ctx->GSSetConstantBuffers(0,2,empty);
     ctx->PSSetShaderResources(0,1,&noView);ctx->PSSetShaderResources(36,1,&noView);ctx->PSSetSamplers(0,1,&noSampler);
     ctx->OMSetRenderTargets(0,nullptr,nullptr);ctx->RSSetState(nullptr);ctx->OMSetDepthStencilState(nullptr,0);
     ctx->SwapDeviceContextState(previous.Get(),nullptr);release();return true;
@@ -265,7 +365,7 @@ static bool BeginFrame(ID3D11DeviceContext *native)
     ObservedFrame=now;
     if(Frame.busy){++SkippedFrames;return false;}
     if(!emission_policy::Samples.Take(now,emission_policy::Producer::Particle))return false;
-    Frame.ledger.Begin(now,Epoch);Frame.collecting=true;Frame.writes=false;Frame.time=std::chrono::steady_clock::now();Frame.scene=lightbuffer::LightBuffer;
+    Frame.ledger.Begin(now,Epoch);Frame.collecting=true;Frame.writes=Frame.precapWrites=false;Frame.time=std::chrono::steady_clock::now();Frame.scene=lightbuffer::LightBuffer;
     Frame.target=lightbuffer::CurrentTarget;Frame.camera=shadowmaps::Camera;Frame.offset=shadowmaps::CurrentOffset;
     XMStoreFloat4x4(&Frame.cameraMatrix,lightbuffer::WorldToClip);
     (void)native;return true;
@@ -279,6 +379,7 @@ static bool AdditiveSource(const D3D11_BLEND_DESC &b,const D3D11_DEPTH_STENCIL_D
 }
 static void Observe(shadowmaps::BoundDraw &bound,uint64_t vs,uint64_t ps)
 {
+    SyncObservationEpoch();
     if(!glow::ParticlesActive()||Probing)return;uint64_t vh=0,ph=0;if(!Profiles(vs,ps,vh,ph))return;
     auto *native=bound.Context;const shadowmaps::DrawCall &call=bound.Call;
     // These same native shaders also draw ordinary alpha-over fire layers.
@@ -311,6 +412,7 @@ static void Observe(shadowmaps::BoundDraw &bound,uint64_t vs,uint64_t ps)
     const unsigned base=Frame.ledger.triangles;
     if(!Frame.ledger.Add(call.Count,call.Instances)){++OverflowFrames;return;}
     ShapeConstants data{};XMStoreFloat4x4(&data.inverse,XMMatrixInverse(nullptr,camera));data.offset={Frame.offset.x,Frame.offset.y,Frame.offset.z,0};data.base=base;
+    data.profile=field::PrecapProfile(vh);if(!data.profile)++PrecapRejected;
     auto &record=Frame.records[Frame.ledger.draws-1];record.first=base;record.count=call.Count/3;record.vertex=vh;record.pixel=ph;record.valid=true;
     if(!Capture(ctx.Get(),call,data,record)){record.valid=false;Frame.ledger.Undo(call.Count);++RejectedState;}
 }
@@ -339,10 +441,13 @@ static void Seal(ID3D11DeviceContext *native)
     ID3D11UnorderedAccessView *noUav=nullptr;ID3D11ShaderResourceView *noView=nullptr;ID3D11Buffer *noBuffer=nullptr;
     ctx->CSSetUnorderedAccessViews(0,1,&noUav,nullptr);ctx->CSSetShaderResources(0,1,&noView);ctx->CSSetConstantBuffers(0,1,&noBuffer);ctx->CSSetShader(nullptr,nullptr,0);
     ctx->SwapDeviceContextState(previous.Get(),nullptr);
-    native->CopyResource(Frame.read.Get(),Frame.output.Get());native->CopyResource(Frame.reducedRead.Get(),Frame.reduced.Get());native->End(Frame.complete.Get());Frame.busy=true;
+    native->CopyResource(Frame.read.Get(),Frame.output.Get());native->CopyResource(Frame.reducedRead.Get(),Frame.reduced.Get());
+    if(Frame.precapWrites)native->CopyResource(Frame.precapRead.Get(),Frame.precapOutput.Get());
+    native->End(Frame.complete.Get());Frame.busy=true;
 }
 static void ReadFrame(ID3D11DeviceContext *ctx)
 {
+    SyncObservationEpoch();
     if (!glow::ParticlesActive() && (HasField || SelectedCount || Frame.collecting)) Hide();
     // No exact selected draw in this frame is a complete empty observation,
     // only when no earlier frame owns the one packet and this is our service
@@ -368,13 +473,26 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
                 if(state==S_FALSE){Pending=1;return;}
                 if(state!=S_OK){valid=false;break;}
                 record.valid=stats.NumPrimitivesWritten==record.count&&stats.PrimitivesStorageNeeded==record.count;
-                if(!record.valid)++domain.invalidDraws;}
-            D3D11_MAPPED_SUBRESOURCE positions{},material{};
-            bool positionMapped=false,materialMapped=false;
+                if(!record.valid)++domain.invalidDraws;
+                if(record.precap)
+                {
+                    D3D11_QUERY_DATA_SO_STATISTICS source{};const auto read=ctx->GetData(record.precapQuery.Get(),&source,sizeof(source),D3D11_ASYNC_GETDATA_DONOTFLUSH);
+                    if(read==S_FALSE){Pending=1;return;}
+                    record.precap=read==S_OK&&source.NumPrimitivesWritten==record.count&&source.PrimitivesStorageNeeded==record.count;
+                    if(!record.precap)++PrecapFailures;
+                }}
+            D3D11_MAPPED_SUBRESOURCE positions{},material{},precap{};
+            bool positionMapped=false,materialMapped=false,precapMapped=false;
             if(valid){const auto mapped=ctx->Map(Frame.read.Get(),0,D3D11_MAP_READ,D3D11_MAP_FLAG_DO_NOT_WAIT,&positions);
                 if(mapped==DXGI_ERROR_WAS_STILL_DRAWING){Pending=1;return;}positionMapped=SUCCEEDED(mapped);valid=positionMapped;}
             if(valid){const auto mapped=ctx->Map(Frame.reducedRead.Get(),0,D3D11_MAP_READ,D3D11_MAP_FLAG_DO_NOT_WAIT,&material);
                 if(mapped==DXGI_ERROR_WAS_STILL_DRAWING){ctx->Unmap(Frame.read.Get(),0);Pending=1;return;}materialMapped=SUCCEEDED(mapped);valid=materialMapped;}
+            if(valid&&Frame.precapWrites)
+            {
+                const auto mapped=ctx->Map(Frame.precapRead.Get(),0,D3D11_MAP_READ,D3D11_MAP_FLAG_DO_NOT_WAIT,&precap);
+                if(mapped==DXGI_ERROR_WAS_STILL_DRAWING){ctx->Unmap(Frame.reducedRead.Get(),0);ctx->Unmap(Frame.read.Get(),0);Pending=1;return;}
+                precapMapped=SUCCEEDED(mapped);if(!precapMapped)++PrecapFailures;
+            }
             std::vector<particle_source_policy::Sample> candidate;if(valid)candidate.reserve(field::Triangles);
             if(valid)
             {
@@ -383,11 +501,18 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
                 for(unsigned i=0;i<Frame.ledger.draws;++i)
                 {
                     const auto &record=Frame.records[i];if(!record.valid)continue;
+                    const XMFLOAT4 *geometry=world;
+                    if(record.precap&&precapMapped)
+                    {
+                        const auto *source=static_cast<const XMFLOAT4*>(precap.pData);bool verified=true;
+                        for(unsigned t=record.first;t<record.first+record.count;++t)verified=verified&&field::ValidPrecapTriangle(source+t*3);
+                        if(verified){geometry=source;++PrecapPublished;}else ++PrecapRejected;
+                    }
                     const size_t start=candidate.size();bool sourceValid=true;
                     for(unsigned t=record.first;t<record.first+record.count;++t)
                     {
                         field::Power energy;XMFLOAT3 location;field::Exclusion reason;
-                        const auto kind=field::ClassifyTriangle(world+t*3,raw[t],Frame.camera,energy,location,&reason,field::LightRadius(Radius.load(),field::MaximumWorldRadius));
+                        const auto kind=field::ClassifyTriangle(geometry+t*3,raw[t],Frame.camera,energy,location,&reason,field::LightRadius(Radius.load(),field::MaximumWorldRadius));
                         if(kind==field::TriangleClass::Invalid)
                         {++domain.invalid;if(domain.firstInvalid==UINT32_MAX)domain.firstInvalid=t;sourceValid=false;break;}
                         if(kind==field::TriangleClass::Excluded)
@@ -408,7 +533,7 @@ static void ReadFrame(ID3D11DeviceContext *ctx)
                     else ++domain.acceptedDraws;
                 }
             }
-            if(materialMapped)ctx->Unmap(Frame.reducedRead.Get(),0);if(positionMapped)ctx->Unmap(Frame.read.Get(),0);
+            if(precapMapped)ctx->Unmap(Frame.precapRead.Get(),0);if(materialMapped)ctx->Unmap(Frame.reducedRead.Get(),0);if(positionMapped)ctx->Unmap(Frame.read.Get(),0);
             if(valid&&!domain.acceptedDraws)valid=false;
             const auto publication=std::chrono::steady_clock::now();
             particle_source_policy::Prepared prepared;
@@ -496,6 +621,8 @@ static void EndFrame(ID3D11DeviceContext *,unsigned allowance=field::Lit,bool al
 static void WriteState(FILE *file)
 {
     if(!file)return;
+    fprintf(file,"particle pre-cap geometry: active %d, cache epoch %llu, qualified draws %u, geometry used %u, unsupported/unsafe %u, decoder/resource failures %u; native atlas unchanged, unsupported draws use native geometry\n",
+        1,static_cast<unsigned long long>(ObservationEpoch),PrecapQualified,PrecapPublished,PrecapRejected,PrecapFailures);
     fprintf(file,"particle observed cache: entries %zu, grace 2.0s, fade 1.0s, hard expiry 3.0s\n",Retained.Size());
     fprintf(file,"particle stable sources: tracked %zu, owner bins %zu, acquire 4.0, retain 6.0, ownership hysteresis 0.75, pose tau 0.20s; inferred identities, native power unfiltered\n",Sources.Size(),Sources.OwnerCount());
     const auto core=Sources.SummarizeCore();

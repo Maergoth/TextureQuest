@@ -1,16 +1,23 @@
 # EQ2 Graphics
 
-## TextureQuest 1.13.15 integration
+## TextureQuest 1.13.19 integration
 
-Press **Home** to show or hide settings, then choose **TextureQuest**. The public
-adapter starts AO on, and point/emissive/Sun/softening/smooth-text work off.
-Existing explicit feature choices and numeric settings are kept. Shadow quality
-uses Low/Med/Max budgets10/50/512, with particle character shadows10/50/128.
-Light quality uses emissive16/64/512 and particle16/64/128. Both share the shadow
-pool; native lamps take priority. Custom numeric controls remain in Advanced.
-The sections below describe the upstream techniques; the current integration,
-coverage limits and default policy are in [the graphics guide](../docs/GRAPHICS_FEATURES.md).
+Press **Home** to show or hide settings and choose **TextureQuest**. The top panel
+has **Show FPS**, **Frame Gen** and **Quality Presets**. Low, Medium, High and Max
+use the same definition in the installer and renderer. Low is the fresh default;
+existing custom settings are retained until a preset is selected. All tiers use
+16x anisotropic filtering. Individual controls are in Advanced and diagnostics,
+captures and performance logging are in Debug.
 
+Qualified object/particle source observations and independent shadow visibility
+are active. The 1.13.18 shadow crossfade and its retained-map pool are removed after
+the local visual comparison. Existing grouping and position smoothing remain;
+this is not a claim that source reassociation or shadow-map steps are eliminated.
+Preset GPU targets are engineering starting points, not hardware FPS guarantees.
+
+The sections below describe inherited upstream techniques. Current integration,
+preset budgets, coverage limits and default policy are in the
+[graphics guide](../docs/GRAPHICS_FEATURES.md) and [release handoff](../docs/GRAPHICS-1.13.19-HANDOFF.md).
 
 A ReShade add-on for EverQuest II (Direct3D 11) that adds shadows, light and filtering the game does not have. Every
 feature has a switch and settings in the add-on's panel in the ReShade overlay.
