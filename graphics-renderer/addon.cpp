@@ -9,6 +9,7 @@
 #include "texturequest_world_guard.hpp"
 #include "depth_demand_v1.hpp"
 #include "capture.hpp"
+#include "lighting_experiment.hpp"
 #include "shadows.hpp"
 
 using namespace reshade::api;
@@ -197,6 +198,7 @@ static void DrawSettings(effect_runtime *)
 
     if (ImGui::CollapsingHeader("Advanced"))
     {
+        lighting_experiment::DrawSettings();
         shadows::DrawAdvancedSettings();
         if (ImGui::TreeNode("Debug"))
         {
@@ -258,7 +260,33 @@ static bool TQApplySamplerStage(device*api,ID3D11Device*dev,ID3D11DeviceContext*
     }
     return ok;
 }
+static uint64_t TQLightingSettingsIdentity()
+{
+    uint64_t hash = 0xcbf29ce484222325ull;
+    const auto add = [&](uint64_t value) { hash = (hash ^ value) * 0x100000001b3ull; };
+    const auto real = [&](float value) { add(std::bit_cast<uint32_t>(value)); };
+    add(tq_world::Managed.Requested()); add(shadows::Enabled.load());
+    add(AnisotropyEnabled.load()); add(BilinearEnabled.load()); add(shadows::OwnLampShaders.load());
+    add(shadowmaps::LightLimit.load()); add(shadowmaps::ParticleShadowLimit.load());
+    add(shadowmaps::MovingShadows.load()); add(shadowmaps::LegacyPointSoftness.load());
+    add(shadowmaps::ShowColours.load()); real(shadowmaps::Strength.load()); real(shadowmaps::PointSoftness.load());
+    add(glow::Enabled.load()); add(glow::ObjectsEnabled.load()); add(glow::ParticlesEnabled.load());
+    add(glow::LightLimit.load()); add(glow::ParticleLightLimit.load()); add(glow::SmoothLighting.load());
+    real(glow::Strength.load()); real(glow::PaintedKept.load()); real(glow::PaintedLight.load());
+    real(particle_emission::Strength.load()); real(particle_emission::Radius.load());
+    add(lightbuffer::SunEnabled.load()); add(static_cast<unsigned>(lightbuffer::SunShadowMode.load()));
+    add(lightbuffer::SunDirectionFix.load()); add(lightbuffer::SmoothIndoorTransition.load());
+    real(lightbuffer::SunSoftness.load()); real(lightbuffer::AmbientKept.load());
+    add(lightbuffer::OcclusionEnabled.load()); real(lightbuffer::OcclusionRadius.load());
+    real(lightbuffer::OcclusionStrength.load()); real(lightbuffer::SurfaceSaturation.load());
+    add(lightbuffer::ShowOcclusion.load());
+    add(shadowmaps::ScreenWidth); add(shadowmaps::ScreenHeight);
+    return hash;
+}
 static void TQWorldBoundary(command_queue*queue,swapchain*,const rect*,const rect*,uint32_t,const rect*) {
+    const auto comparisonSettings = lighting_experiment::RecordRequested.load() || lighting_experiment::Recording
+        ? TQLightingSettingsIdentity() : lighting_experiment::SettingsId;
+    lighting_experiment::Boundary(reinterpret_cast<ID3D11DeviceContext*>(queue->get_native()), comparisonSettings);
     const bool wanted=tq_world::Managed.Requested(),was=tq_world::Managed.Enabled();
     static bool samplerRetry=false;
     static std::uint32_t lastFiltering=0;
@@ -294,7 +322,7 @@ static void TQWorldBoundary(command_queue*queue,swapchain*,const rect*,const rec
     if(wanted&&!was)shadowmaps::RebuildAll();
     if(!ok)reshade::log::message(reshade::log::level::error,"TextureQuest world sampler transition could not restore every original descriptor");
 }
-static void TQWorldDeviceReleased(device*dev){tq_world::Work.Clear();tq_world::Managed.Release(dev->get_native());}
+static void TQWorldDeviceReleased(device*dev){lighting_experiment::Release();tq_world::Work.Clear();tq_world::Managed.Release(dev->get_native());}
 extern "C" __declspec(dllexport) uint32_t TextureQuestWorldGraphicsABI()noexcept{return 1;}
 extern "C" __declspec(dllexport) void TextureQuestSetWorldGraphicsEnabled(uint32_t enabled)noexcept{tq_world::Managed.Request(enabled);}
 extern "C" __declspec(dllexport) void TextureQuestDrawWorldGraphics(effect_runtime*runtime){if(tq_world::Accept(runtime))DrawSettings(runtime);}

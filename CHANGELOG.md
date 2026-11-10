@@ -4,6 +4,15 @@ This is the canonical history bundled with the installer. Develop entries are
 development builds, not announcements of public binary releases. Controlled
 checks described here do not establish complete in-game appearance or FPS.
 
+## 1.13.17 — Local lighting comparison candidate (not published)
+
+- Add **Home → TextureQuest → Advanced → Test lighting improvements**. Unchecked retains the current 1.13.16 renderer; checked selects the candidate. Changes commit at frame boundaries and rebuild source caches. The experiment starts off each launch and does not overwrite saved graphics preferences.
+- Add opt-in **Record comparison performance (CSV)**, a current/candidate table, and a summary file on stop. Record asynchronous GPU lighting times, game Present intervals, light counts, resolution, settings identity, warm-up and fallback markers. Exclude at least three seconds and 180 frames after switches from summaries. GPU lighting covers list construction, lighting and reconstruction; it excludes emitter measurement and shadow-map rendering.
+- For two verified particle vertex profiles, measure source geometry before the native camera-distance size clamp. Preserve native animated material colour, UVs, alpha behavior and light retention. Unsupported profiles keep their existing measurement path.
+- For one verified painted-object shader pair, sample complete material triangles using the native material shader and stable source anchors. Preserve alpha discard and source animation while avoiding camera-visible colour averages. Unsupported material modes retain their existing path.
+- Give each admitted light its own shadow visibility instead of borrowing it from other lights. Conservatively bound negligible shadow contributions over receiver tiles; small light sets use the exact independent path. Keep shadow resolution and sampling unchanged.
+- Controlled native-shader/software Direct3D and CPU checks cover source invariance, contribution bounds, state restoration and logging. They do not establish game FPS or resolve every native source. Shadow-sampling replacements remain research; no Tensor Core runtime is added. Texture data remains 1.3.0.
+
 ## 1.13.16 â€” Local lighting candidate (not published)
 
 - Keep object-emission measurements attached to observed world cells. Unknown areas no longer inherit a newly visible colour from a parent or a whole-object average. Combine known energy consistently across lighting hierarchy levels, retain it off screen, and reject older readbacks after a newer result.

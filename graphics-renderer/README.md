@@ -1,11 +1,12 @@
 # EQ2 Graphics
 
-## TextureQuest 1.13.16 local candidate
+## TextureQuest 1.13.17 local comparison
 
-Object-emission cache conservation, conservative static shadow-face culling and
-optional emissive-light smoothing are prepared for local testing. See the
-[candidate handoff](../docs/GRAPHICS-1.13.16-HANDOFF.md) for behavior and limits.
-This candidate is not a public release.
+Advanced offers **Test lighting improvements** and opt-in CSV recording, with the
+current 1.13.16 path retained by default. The candidate changes qualified source
+measurement and independent shadow visibility. See the
+[comparison handoff](../docs/GRAPHICS-1.13.17-HANDOFF.md) for usage, timing scope,
+controlled evidence and limitations. This is not a public release.
 
 ## Inherited public defaults
 

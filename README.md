@@ -1,4 +1,4 @@
-Local source candidate: **1.13.16 lighting fixes**, not yet published. See [the candidate handoff](docs/GRAPHICS-1.13.16-HANDOFF.md) and [changelog](CHANGELOG.md).
+Local source candidate: **1.13.17 lighting comparison**, not yet published. See [the candidate handoff](docs/GRAPHICS-1.13.17-HANDOFF.md) and [changelog](CHANGELOG.md).
 
 <p align="center"><img src="docs/images/texturequest-banner.png" alt="TextureQuest — an EverQuest II texture pack" width="100%"></p>
 

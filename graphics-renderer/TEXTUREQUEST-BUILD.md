@@ -1,22 +1,18 @@
-# Renderer 1.13.16 local development build
+# Renderer 1.13.17 local comparison build
 
-Based on public 1.13.15. Object cache measurements are placed only in observed
-world cells and combined by conserved area-weighted flux. A tiny, unambiguous
-adjacent-cell correction handles grid-boundary reprojection rounding. Unknown
-regions receive no parent or whole-object colour fallback.
+Based on local 1.13.16. The current renderer remains the default. Advanced exposes
+an unsaved experiment switch and opt-in comparison logging. The candidate uses
+qualified whole-triangle object material observations, particle geometry before
+native screen-size clamping, and independent per-light shadow visibility with
+conservative receiver-tile admission. Unsupported source profiles retain the old
+path. Shadow map resolution and sample patterns are unchanged.
 
-Known mesh bounds conservatively skip nonintersecting static cube-shadow faces.
-Map resolution, samples, moving shadows and update scheduling are unchanged.
-Invalid reconstruction samples are rejected. Optional slope-aware four-tap
-surface smoothing is compiled separately and defaults off. It uses no history
-and does not filter source animation or the game texture colour.
+RELEASE-SOURCE.json records actual strict C++20 /O2 /W4 /WX compiler inputs,
+binary identity and focused CPU/software Direct3D evidence. Research fixtures
+and performance measurements are outside the shipped source tree. Software
+timings do not establish physical-GPU FPS. The handoff records rejected research
+and limits; no CUDA, Tensor Core runtime or replacement shadow sampler is added.
 
-The strict C++20 /O2 /W4 /WX build passed. RELEASE-SOURCE.json records actual
-compiler inputs, binary identity and focused CPU/software Direct3D evidence.
-The alternate squared-range shader optimization was not adopted because
-controlled software timings regressed for inside-heavy light workloads.
-
-These checks do not establish physical-GPU performance or a complete fix in
-EQ2. See [the candidate handoff](../docs/GRAPHICS-1.13.16-HANDOFF.md). Earlier
-particle grouping, material normals, off-screen retention and bounded source
-cores are retained; their evidence in metadata is explicitly historical.
+See [the comparison handoff](../docs/GRAPHICS-1.13.17-HANDOFF.md). Earlier texture,
+material-normal, retention and source-core behavior is retained. Saved graphics
+settings and texture data 1.3.0 are preserved by the normal updater.

@@ -1,4 +1,8 @@
-TextureQuest 1.13.16 — Windows x64
+TextureQuest 1.13.17 — Windows x64
+
+Local comparison build: Advanced > Test lighting improvements switches between
+current and candidate lighting. Record comparison performance (CSV) saves
+timings and a summary under EQ2Graphics-captures/lighting-comparisons.
 
 1. If you used Replace PAK mode, restore stock files with EQ2's patcher first.
 2. Close EQ2. Extract outside the game folder; keep data beside the EXE.

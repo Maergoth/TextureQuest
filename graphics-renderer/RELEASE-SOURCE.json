@@ -12,13 +12,13 @@
     }
   },
   "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
-  "revision": "TextureQuest 1.13.16 local lighting cache and reconstruction candidate",
-  "integration_base_commit": "8ae625df0e7e7b27fa51044f16f7fa694baa135c",
+  "revision": "TextureQuest 1.13.17 local lighting comparison candidate",
+  "integration_base_commit": "a684223288b7d1444868ff4dcbf35956b33b928f",
   "files": [
     {
       "name": "addon.cpp",
-      "bytes": 15192,
-      "sha256": "e92271080e20aecdafcd2b7e9b47daffa762a96ea6bb69681611d920769efa2d"
+      "bytes": 17338,
+      "sha256": "352874f1fd367528cb0b786525f25110c282a97b35bb08669a66e8fe9e011592"
     },
     {
       "name": "capture.hpp",
@@ -87,8 +87,13 @@
     },
     {
       "name": "glow.hpp",
-      "bytes": 131127,
-      "sha256": "cd31533a05647ad45e6e37351a41c6e47fcf79d520ab100931e2511d4ca268c2"
+      "bytes": 144206,
+      "sha256": "50b21a7efefd5007324eb052c59c3fb37a65618d95e828860eef0f5837f2965f"
+    },
+    {
+      "name": "glow_transport.hpp",
+      "bytes": 17508,
+      "sha256": "859c6292b491cf74ba239bd746c778da0661bdab1cd964de82c84258fcdcba21"
     },
     {
       "name": "lamp_holder_policy.hpp",
@@ -101,9 +106,19 @@
       "sha256": "e566d371cc485686baa85dbb232a96f49d3e21cb49a75f58223e8a9baa7c9fae"
     },
     {
+      "name": "lighting_experiment.hpp",
+      "bytes": 18510,
+      "sha256": "fd882422020434c67dccd21c0992c47f2a8ecd62e2fac2ddec0ab0ea3ddc9e5c"
+    },
+    {
       "name": "material_normal_replay.hpp",
-      "bytes": 19761,
-      "sha256": "2d39fd6e45e35b2522e2d3b5f4b376316ce445a8a3879206571887cc343f9175"
+      "bytes": 19837,
+      "sha256": "070117a16461775680fd40788be856835b89bcf5a0c428450b1425592ca01e81"
+    },
+    {
+      "name": "object_emission_chart.hpp",
+      "bytes": 19735,
+      "sha256": "f0de84168ee0a3dde512cd235a42738088707883d7ca0f885f0fd5782b889b94"
     },
     {
       "name": "object_radiance_policy.hpp",
@@ -132,8 +147,8 @@
     },
     {
       "name": "particle_emission.hpp",
-      "bytes": 39796,
-      "sha256": "010d0525d8f1c3ba77e446a51bfc42ec63409d3b3a5f85b0f5b7ae6abfe383f5"
+      "bytes": 48733,
+      "sha256": "e96130a2e1705c30deab50960c72d58af70d36c516b0accd25be81850a3f8241"
     },
     {
       "name": "particle_emission_policy.hpp",
@@ -142,8 +157,8 @@
     },
     {
       "name": "particle_field_policy.hpp",
-      "bytes": 10733,
-      "sha256": "d0e93b08808d52aea7baaf76ad35c624e9c01a7d4aec3b561b70ced95205c97d"
+      "bytes": 11209,
+      "sha256": "ac8e1aa9ada77980dca473047a68981b8a80d75e27d44aae330d0e2a863b4c86"
     },
     {
       "name": "particle_moving_shadows.hpp",
@@ -192,8 +207,8 @@
     },
     {
       "name": "shadows.hpp",
-      "bytes": 193939,
-      "sha256": "d73437168e129be8c1090f5fcda48eb7bda6c464fbf506e45781bd5b6d82adf1"
+      "bytes": 193983,
+      "sha256": "9bc18e206a47414ba42eb1f98350a9bcd8437e639642cdfc62f0dd2c77a066c1"
     },
     {
       "name": "sun_direction_policy.hpp",
@@ -237,23 +252,23 @@
     }
   ],
   "native_release_asset": {
-    "bytes": 1143296,
-    "sha256": "97b97108a41e619307b536e0fccf9badd0dcc608b862e8bdcbc68586a8dcc71f"
+    "bytes": 1233408,
+    "sha256": "3c12b3ff1efc311b8c9aecbe2755fe3d2f15c004deb667c52f881a1f922237f6"
   },
   "build": {
     "exit_code": 0,
     "command": {
-      "bytes": 581,
-      "sha256": "b22b397aa0c3f1353772a602eb080e573bfc71a2bb3cc7934a083fc2dc52b003"
+      "bytes": 596,
+      "sha256": "71770b0e6729d5595278ce4dfa1d1eb6c95c300091bc3841db55263d41a3f077"
     },
     "log": {
-      "bytes": 54788,
-      "sha256": "c5358b5b267cac4470c4bdb7dcee5b6a88de01f4c5c94a2bf7e2eb2e00b8611d"
+      "bytes": 55377,
+      "sha256": "6c806c1a24c61f5cea86da89b3a680809a5413e12ef93a85ca7fb7e7cef5122b"
     },
     "actual_showIncludes": true,
     "warnings": 0,
     "toolchain": "VS18 x64/MSVC14.50.35717",
-    "compilation_roster": "Explicit translation unit plus project/dependency headers recorded by this build /showIncludes."
+    "compilation_roster": "Explicit translation unit plus actual project/dependency inputs recorded by /showIncludes."
   },
   "prior_metadata": {
     "revision": "TextureQuest030 / non-live Develop1.13.12",
@@ -330,8 +345,8 @@
     },
     "historical_only": true
   },
-  "qualification": "Controlled CPU/software Direct3D evidence only; no hardware FPS gain or complete camera-motion fix is established. Unknown object cells carry no guessed energy, sparse established observations are retained, partial visibility inside a 2-unit cell can still change its mean. Optional surface smoothing defaults off because it adds shader arithmetic. No source RGB animation smoothing or shadow quality reduction. Existing unsupported native sources, AO checkerboard history and sun-direction issues remain separate limitations.",
-  "publication_note": "Local candidate only. This metadata does not assert installation, publication or GitHub changes.",
+  "qualification": "The baseline renderer remains default and the candidate is an unsaved Advanced experiment. Exact source profiles only; unsupported observers retain their existing route. Physical rotation of unchanged object buffers and native culling remain limitations. Candidate independent visibility can cost more than legacy visibility borrowing; no universal speedup or complete flicker fix is claimed. Shadow filter sample-count transitions remain. Paired shadow-sampling research was rejected; no Tensor Core runtime is added.",
+  "publication_note": "Local comparison candidate only. This metadata does not assert installation, publication or GitHub changes.",
   "previous_evidence": {
     "revision": "TextureQuest031/032 / Develop1.13.14",
     "native_release_asset": {
@@ -358,11 +373,12 @@
     "addon.cpp"
   ],
   "changes": [
-    "Conserve measured object radiance across hierarchy levels; retain observed cells and reject older readbacks.",
-    "Schedule first radiance sampling after geometry readiness; admit sparse first observations without replacing established cells on weak evidence.",
-    "Bounded unique adjacent-cell lookup for tiny grid-boundary reprojection errors; no broad fallback colour.",
-    "Conservative static shadow-face AABB rejection with unchanged shadow quality and scheduling.",
-    "Reject invalid/cross-surface reconstruction fallback; optional four-tap slope-aware smoothing off by default."
+    "Retain current 1.13.16 path by default; candidate frame-boundary switches reset source epochs without mixing readbacks.",
+    "Opt-in CSV and retained A/B mean/p95 timings, warm-up/fallback labels, settings and resolution reset, summary on stop.",
+    "Two verified native particle profiles use geometry before camera-distance size cap; native material/alpha remains.",
+    "One verified painted-object pair uses complete native material triangles with stable anchors and collision-checked cell keys.",
+    "Independent per-light direct visibility with bounded receiver-tile shadow admission; exact path for small light sets.",
+    "Bounce remains exact; extra bounce-mask optimization was rejected after software regressions."
   ],
   "previous_public_evidence": {
     "revision": "TextureQuest 1.13.15 public graphics controls/defaults",
@@ -392,43 +408,115 @@
     "status": "STRICT_NATIVE_AND_FOCUSED_CPU_WARP_PASS",
     "evidence": [
       {
-        "name": "radiance-cache-001/RESULT.json",
-        "bytes": 1791,
-        "sha256": "0f26b8f5f08f39df4e3b0cf9977dda6a903e7a23ed4d302e97e01ca455ed6652"
+        "name": "comparison-001/RESULT.json",
+        "bytes": 1728,
+        "sha256": "620dd23ad7d70f7eeb1f55c04f77d0031d66b1f005ea5710bf86403127efd7e9"
       },
       {
-        "name": "cache-review-001/RESULT.json",
-        "bytes": 2573,
-        "sha256": "7e5ea008a2a826b24dfcd3ef7c5d3ed7d1259957a4a422789c24a5ebe85ebdad"
+        "name": "emitter-implementation/RESULT.json",
+        "bytes": 3214,
+        "sha256": "30bd6afab51029add8156d854105beb7e5d159a70817e2efc82e2ccf9d47fd69"
       },
       {
-        "name": "radiance-boundary-001/RESULT.json",
-        "bytes": 2516,
-        "sha256": "f1bd1fd463241d259b9a3ef1eb75a7f2d65d03d9d36dcbe4a8389626ebb58e18"
+        "name": "research/particle-precap-001/HANDOFF.json",
+        "bytes": 831,
+        "sha256": "3cec505f99f2e4ddce2eae324980815c57900b8cf63170e6f062dc88222a34b1"
       },
       {
-        "name": "shadow-face-001/RESULT.json",
-        "bytes": 2975,
-        "sha256": "595c70b56c32e1a12b705eaa135f20cb35cc3cfdfcf109700b2c329166447565"
+        "name": "transport-001/RESULT.json",
+        "bytes": 4323,
+        "sha256": "f5e055e30328bbb9fe3693aca82a6471066f7767cfa6eb8de945f61a2e1fcb01"
       },
       {
-        "name": "shader-fixture-001/PRODUCTION-REVIEW.json",
-        "bytes": 3348,
-        "sha256": "335485c357e57965d34fddbe897767889418a946c52efbba4208109208b2c76b"
+        "name": "research/COMPARISON-REVIEW.json",
+        "bytes": 4513,
+        "sha256": "4201388ea8324f623dc1fc277b1a63e20f935433fcaf4189ef8b4a2e7ca4e0bf"
       },
       {
-        "name": "shader-fixture-001/final-compile-002/RESULT.json",
-        "bytes": 2498,
-        "sha256": "9fd6ec83cf76d9d93ee667891391602c18d162f400807a7950063b93cdd55935"
+        "name": "FINAL-REVIEW.json",
+        "bytes": 5655,
+        "sha256": "9c59f1afcda2d709212e52667d3c9ad2ec3dc96a6387194ea93e062945fa3b8f"
       },
       {
-        "name": "shader-perf-001/RESULT.json",
-        "bytes": 4563,
-        "sha256": "b428c58c875f61a24e1f7f57444960df1d708780ff4b0f3a69c2443ad42a1b9c"
+        "name": "research/PAIRED-RESULT.json",
+        "bytes": 2635,
+        "sha256": "9a3ee13ff3b099d7467b214ee36212f56e831e4a2d9e74d8ff80694ccce29ee3"
+      },
+      {
+        "name": "research/TENSOR-ALGEBRA.json",
+        "bytes": 4197,
+        "sha256": "5c5d714f0319cc7099d39e062c55455a193af7ec18f66ec02a0c8c77fa5af8a6"
       }
     ],
     "physical_gpu_executed": false,
     "real_game_tested": false,
-    "scope": "Production cache conservation, bounded reprojection mapping, conservative shadow-face rejection, actual HLSL reconstruction fixtures and final entry-point compilation. Initial cache evidence predates the separately tested boundary refinement. Shader-perf range rejection was evaluated and deliberately not adopted."
+    "scope": "Qualified native material/particle replay, canonical flux conservation, independent visibility and receiver bounds, D3D state restoration, mode/epoch/query ownership and CSV logs. Software benchmarks include candidate list construction and reconstruction; they are not hardware FPS."
+  },
+  "previous_local_evidence": {
+    "revision": "TextureQuest 1.13.16 local lighting cache and reconstruction candidate",
+    "native_release_asset": {
+      "bytes": 1143296,
+      "sha256": "97b97108a41e619307b536e0fccf9badd0dcc608b862e8bdcbc68586a8dcc71f"
+    },
+    "build": {
+      "exit_code": 0,
+      "command": {
+        "bytes": 581,
+        "sha256": "b22b397aa0c3f1353772a602eb080e573bfc71a2bb3cc7934a083fc2dc52b003"
+      },
+      "log": {
+        "bytes": 54788,
+        "sha256": "c5358b5b267cac4470c4bdb7dcee5b6a88de01f4c5c94a2bf7e2eb2e00b8611d"
+      },
+      "actual_showIncludes": true,
+      "warnings": 0,
+      "toolchain": "VS18 x64/MSVC14.50.35717",
+      "compilation_roster": "Explicit translation unit plus project/dependency headers recorded by this build /showIncludes."
+    },
+    "qualification": "Controlled CPU/software Direct3D evidence only; no hardware FPS gain or complete camera-motion fix is established. Unknown object cells carry no guessed energy, sparse established observations are retained, partial visibility inside a 2-unit cell can still change its mean. Optional surface smoothing defaults off because it adds shader arithmetic. No source RGB animation smoothing or shadow quality reduction. Existing unsupported native sources, AO checkerboard history and sun-direction issues remain separate limitations.",
+    "controlled_validation": {
+      "status": "STRICT_NATIVE_AND_FOCUSED_CPU_WARP_PASS",
+      "evidence": [
+        {
+          "name": "radiance-cache-001/RESULT.json",
+          "bytes": 1791,
+          "sha256": "0f26b8f5f08f39df4e3b0cf9977dda6a903e7a23ed4d302e97e01ca455ed6652"
+        },
+        {
+          "name": "cache-review-001/RESULT.json",
+          "bytes": 2573,
+          "sha256": "7e5ea008a2a826b24dfcd3ef7c5d3ed7d1259957a4a422789c24a5ebe85ebdad"
+        },
+        {
+          "name": "radiance-boundary-001/RESULT.json",
+          "bytes": 2516,
+          "sha256": "f1bd1fd463241d259b9a3ef1eb75a7f2d65d03d9d36dcbe4a8389626ebb58e18"
+        },
+        {
+          "name": "shadow-face-001/RESULT.json",
+          "bytes": 2975,
+          "sha256": "595c70b56c32e1a12b705eaa135f20cb35cc3cfdfcf109700b2c329166447565"
+        },
+        {
+          "name": "shader-fixture-001/PRODUCTION-REVIEW.json",
+          "bytes": 3348,
+          "sha256": "335485c357e57965d34fddbe897767889418a946c52efbba4208109208b2c76b"
+        },
+        {
+          "name": "shader-fixture-001/final-compile-002/RESULT.json",
+          "bytes": 2498,
+          "sha256": "9fd6ec83cf76d9d93ee667891391602c18d162f400807a7950063b93cdd55935"
+        },
+        {
+          "name": "shader-perf-001/RESULT.json",
+          "bytes": 4563,
+          "sha256": "b428c58c875f61a24e1f7f57444960df1d708780ff4b0f3a69c2443ad42a1b9c"
+        }
+      ],
+      "physical_gpu_executed": false,
+      "real_game_tested": false,
+      "scope": "Production cache conservation, bounded reprojection mapping, conservative shadow-face rejection, actual HLSL reconstruction fixtures and final entry-point compilation. Initial cache evidence predates the separately tested boundary refinement. Shader-perf range rejection was evaluated and deliberately not adopted."
+    },
+    "historical_only": true
   }
 }

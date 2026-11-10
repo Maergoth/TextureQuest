@@ -2535,6 +2535,7 @@ static void WriteState()
         OwnLampShaders.load() ? 1 : 0, CreateFailed ? 1 : 0);
     particle_emission::WriteState(file);
     WriteMaterialState(file);
+    lighting_experiment::WriteState(file);
     {
         std::lock_guard guard(capture::ClassLock);
         const auto writeSet = [file](const char *name, uint32_t bit) {
