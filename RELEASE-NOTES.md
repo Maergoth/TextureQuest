@@ -1,4 +1,18 @@
-# TextureQuest 1.13.19
+# TextureQuest 1.13.20 — Local particle-shadow motion candidate
+
+This candidate addresses one cause of jumping particle shadows: the source was
+already smoothed over 0.20 seconds, but its shadow map could remain at an old
+position until the source moved more than 0.1 world units. A bounded allowance for
+smaller map updates now lets more of that smooth movement reach the shadow.
+Conservative particle caster caching reduces repeated CPU searches. The rejected
+150 ms shadow fade remains removed.
+
+This costs additional shadow-map rendering. A controlled software-rendered test
+shows smaller shadow-position errors and jumps, but it is not an EQ2 or physical
+GPU benchmark. Crowded scenes, source reassignment and the remaining map budget
+can still cause steps. See the [candidate handoff](docs/GRAPHICS-1.13.20-HANDOFF.md)
+for the measured tradeoff and limits. This is a local candidate, not a public
+release announcement.
 
 Choose **Low, Medium, High or Max** in the installer to configure lighting without
 opening ReShade. The same **Quality Presets** dropdown is at the top of the
@@ -22,11 +36,10 @@ thoughtful starting budgets, not benchmarked FPS promises. Resolution, busy raid
 native game settings and other ReShade effects also affect performance.
 
 The qualified object/particle source fixes and independent light visibility from
-the recent local builds are now active without an experimental switch. The 150 ms
-shadow fade from 1.13.18 is removed because its visual result did not solve the
-reported jumping. Particle grouping, source caching and current-position shadows
-remain; complete source coverage and perfectly continuous shadow motion are not
-claimed. See the [graphics guide](docs/GRAPHICS_FEATURES.md) for the tradeoffs.
+1.13.19 remain active without a comparison switch. Particle grouping, source
+caching and shadows tied to the position used to build their maps remain. Complete
+source coverage and perfectly continuous shadow motion are not claimed. See the
+[graphics guide](docs/GRAPHICS_FEATURES.md) for the other lighting tradeoffs.
 
 Frame Gen and Neural Rendering are separate opt-ins and start off on a fresh
 install. Applying a quality preset leaves those choices unchanged. Existing custom

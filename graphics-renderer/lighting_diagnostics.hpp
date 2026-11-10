@@ -87,7 +87,7 @@ public:
         const auto path = folder / name;
         if (_wfopen_s(&File, path.c_str(), L"wx") != 0 || !File) { Error = "Cannot create performance CSV"; return false; }
         Path = path.string(); LastFlush = Clock::now();
-        Buffer = "utc,elapsed_ms,event,mode,epoch,frame,warmup,valid,gpu_lighting_ms,present_interval_ms,light_count,width,height,fallback,dropped_log_rows,settings_id\n";
+        Buffer = "utc,elapsed_ms,event,mode,epoch,frame,warmup,valid,gpu_lighting_ms,present_interval_ms,light_count,width,height,fallback,dropped_log_rows,settings_id,shadow_snapshot_frame,shadow_count_window_frames,shadow_count_window_ms,shadow_gpu_ms_smoothed,shadow_gpu_smoothed_available,shadow_cpu_ms_last_second_mean,shadow_static_cpu_ms_last_second_mean,shadow_maps_built,shadow_static_caster_draws,particle_refinement_cubes,particle_refinement_pixel_units\n";
         Buffer.reserve(256 * 1024);
         return true;
     }
@@ -133,11 +133,37 @@ inline void Log(const char *event, uint64_t epoch, uint64_t frame, bool warm,
     SYSTEMTIME utc{}; GetSystemTime(&utc);
     const double elapsed = std::chrono::duration<double, std::milli>(Clock::now() - SessionStart).count();
     char line[512]{};
-    sprintf_s(line, "%04u-%02u-%02uT%02u:%02u:%02u.%03uZ,%.3f,%s,%s,%llu,%llu,%d,%d,%.6f,%.6f,%u,%u,%u,%d,%llu,%016llx\n",
+    sprintf_s(line, "%04u-%02u-%02uT%02u:%02u:%02u.%03uZ,%.3f,%s,%s,%llu,%llu,%d,%d,%.6f,%.6f,%u,%u,%u,%d,%llu,%016llx,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1\n",
         utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond, utc.wMilliseconds,
         elapsed, event, "production", static_cast<unsigned long long>(epoch),
         static_cast<unsigned long long>(frame), warm ? 1 : 0, valid ? 1 : 0, gpu, present, lights, width, height,
         fallback ? 1 : 0, static_cast<unsigned long long>(Writer.Lost()), static_cast<unsigned long long>(settings));
+    Writer.Push(line);
+}
+
+
+// Reuse the existing shadow-map timer and once-per-second counters. These are
+// explicitly snapshots, not a new per-frame GPU query or lighting sample. The
+// GPU value is the last available smoothed result; the CPU timer has its own
+// last-completed-second window. Neither enters the lighting-only summary.
+inline void LogShadowMapsSnapshot(uint64_t sourceFrame, unsigned windowFrames, double countWindowMs,
+    double gpuMsSmoothed, double cpuMsLastSecondMean, double staticCpuMsLastSecondMean,
+    unsigned mapsBuilt, unsigned staticCasterDraws, unsigned refinementCubes, unsigned refinementPixelUnits)
+{
+    if (!Recording) return;
+    const bool gpuAvailable = std::isfinite(gpuMsSmoothed) && gpuMsSmoothed > 0;
+    const auto finiteNonnegative = [](double value) { return std::isfinite(value) && value >= 0 ? value : -1.0; };
+    SYSTEMTIME utc{}; GetSystemTime(&utc);
+    const double elapsed = std::chrono::duration<double, std::milli>(Clock::now() - SessionStart).count();
+    char line[1024]{};
+    sprintf_s(line, "%04u-%02u-%02uT%02u:%02u:%02u.%03uZ,%.3f,shadow_maps_snapshot,production,%llu,%llu,%d,0,-1,-1,0,0,0,0,%llu,%016llx,%llu,%u,%.3f,%.6f,%d,%.6f,%.6f,%u,%u,%u,%u\n",
+        utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond, utc.wMilliseconds,
+        elapsed, static_cast<unsigned long long>(CurrentEpoch()), static_cast<unsigned long long>(Frame),
+        Warming() ? 1 : 0, static_cast<unsigned long long>(Writer.Lost()), static_cast<unsigned long long>(SettingsId),
+        static_cast<unsigned long long>(sourceFrame), windowFrames, finiteNonnegative(countWindowMs),
+        gpuAvailable ? gpuMsSmoothed : -1.0, gpuAvailable ? 1 : 0,
+        finiteNonnegative(cpuMsLastSecondMean), finiteNonnegative(staticCpuMsLastSecondMean),
+        mapsBuilt, staticCasterDraws, refinementCubes, refinementPixelUnits);
     Writer.Push(line);
 }
 
@@ -341,6 +367,6 @@ inline void DrawSettings()
         row("Fallbacks / unavailable queries", [](const Results &r) { ImGui::Text("%llu / %llu", static_cast<unsigned long long>(r.Fallbacks), static_cast<unsigned long long>(r.Unavailable)); });
         ImGui::EndTable();
     }
-    ImGui::TextWrapped("Statistics use the latest 600 valid samples. GPU lighting includes light-list construction, shading and upsampling; it excludes source measurement and shadow-map generation. Game Present intervals include other game work and frame caps; they are not display/output FPS. CSV uses -1 for an inapplicable metric. Buffered CSV writes occur once per second; their CPU cost is logged as csv_flush_cpu_ms.");
+    ImGui::TextWrapped("Statistics use the latest 600 valid samples. GPU lighting includes light-list construction, shading and upsampling; it excludes source measurement and shadow-map generation. Game Present intervals include other game work and frame caps; they are not display/output FPS. CSV shadow_maps_snapshot rows separately record the last smoothed shadow GPU time, last-second CPU means and map/refinement counts; these are not raw frame timings or part of the lighting summary. Their windows can overlap a settings change. CSV uses -1 for an inapplicable metric. Buffered CSV writes occur once per second; their CPU cost is logged as csv_flush_cpu_ms.");
 }
 }

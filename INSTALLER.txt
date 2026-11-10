@@ -1,4 +1,6 @@
-TextureQuest 1.13.19 — Windows x64
+TextureQuest 1.13.20 — Windows x64
+
+LOCAL CANDIDATE: particle-shadow motion. In-game results still need comparison.
 
 PRESS HOME TO SHOW OR HIDE SETTINGS. Choose the TextureQuest tab.
 Show FPS, Frame Gen and Quality Presets are at the top. Individual controls are
@@ -38,9 +40,12 @@ material shaders and GPU shadows enabled. Native game INIs and bloom are unchang
 Numpad * switches textures and graphics Original/TextureQuest without changing
 individual choices. Use Shortcut to change that key. Other ReShade effects remain.
 
-The recent qualified source and visibility improvements are active. The 150 ms
-shadow fade is removed; it did not solve source/group movement. Offscreen history
-cannot discover game-culled sources; unsupported model shaders retain fallback.
+The recent qualified source and visibility improvements remain active. This
+candidate lets particle shadows follow smaller movements of the already-smoothed
+light source, with a bounded allowance for extra shadow-map updates. The failed
+150 ms shadow fade stays removed. Crowded scenes and source reassignment can
+still step; this is not a measured FPS improvement. Offscreen history cannot
+discover game-culled sources; unsupported model shaders retain fallback.
 
 Click What's new for the changelog bundled with the installer. Developers can
 read the same history on GitHub:
