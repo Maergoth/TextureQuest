@@ -12,13 +12,13 @@
     }
   },
   "permission": "Redistribution permission confirmed by the TextureQuest maintainer on 2026-11-02 in this project chat; upstream author was present in voice. This records that permission, not an invented open-source license. Dependency licenses remain separate.",
-  "revision": "TextureQuest 1.13.22 particle strength baseline",
+  "revision": "TextureQuest 1.13.23 idle hook overhead",
   "integration_base_commit": "0a08af610cfd15c3cab3b365a182b88a671ff2b6",
   "files": [
     {
       "name": "addon.cpp",
-      "bytes": 26033,
-      "sha256": "368384ef5baafbc7c59d9700959b6d5885650aca19e9aa266ca40ba8e7fcc4fb"
+      "bytes": 26259,
+      "sha256": "57521e0e03f41b9403c5fddf35ce80f54a99ae347eef33248cf5ae4d86ee3a6e"
     },
     {
       "name": "capture.hpp",
@@ -107,8 +107,8 @@
     },
     {
       "name": "lighting_diagnostics.hpp",
-      "bytes": 19369,
-      "sha256": "7cb189209b68a55bec0dceb354420beb9cb5635b44e5b05100726317887d1843"
+      "bytes": 19673,
+      "sha256": "8161ec29838b83b10b81844177d51cb60e713e860bb8e8e225617a8e3be7d942"
     },
     {
       "name": "material_normal_replay.hpp",
@@ -268,7 +268,7 @@
   ],
   "native_release_asset": {
     "bytes": 1287168,
-    "sha256": "cbb144c9bd60f42469b12a66c106685f59ad9cc91015769af343ee5dd4ef146e"
+    "sha256": "565b0010508eb02673e1930bcc595c95097755cff43ae872fb03895d13df37ef"
   },
   "compile_targets": [
     "addon.cpp"
@@ -972,6 +972,16 @@
     "default": 1.0,
     "previous_0_5_equals_current_1": true,
     "saved_brightness_preserved": true,
+    "strict_native_build": {
+      "warnings": 0,
+      "actual_showIncludes": true,
+      "immutable_inputs": true
+    },
+    "game_validated": false,
+    "hardware_benchmark": false
+  },
+  "release_1_13_23": {
+    "scope": "Skip proven idle work; rendering quality and budgets unchanged",
     "strict_native_build": {
       "warnings": 0,
       "actual_showIncludes": true,

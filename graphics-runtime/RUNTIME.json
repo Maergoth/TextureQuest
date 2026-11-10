@@ -8,13 +8,13 @@
   "files": [
     {
       "name": "TextureQuest.addon64",
-      "bytes": 477184,
-      "sha256": "acb72186eb948353495c53b6897422fc7870ecfbbb7ed66f7e8702b222e7cea4"
+      "bytes": 479744,
+      "sha256": "5d446b91694ecb781d00b007603eea9e23a867d26b94a1dd9b5120d9829c07b5"
     },
     {
       "name": "ReShade64.dll",
-      "bytes": 5410816,
-      "sha256": "af45413c73384ec412930efd2daba2523f8d04003ff8e89d2cf86e1141ab7d9e"
+      "bytes": 5412864,
+      "sha256": "a992442ed648d1c0984bfd34bfc3426f91dbe8c12d4211515e7358af8e0c20e6"
     },
     {
       "name": "licenses/ReShade-d3d12.txt",
@@ -255,6 +255,11 @@
       "name": "licenses/TextureQuest-11322-LOCAL.txt",
       "bytes": 333,
       "sha256": "f76fa067274f2b677fd728daa67c35d3493419f428a1362d919e560d8ccb7a75"
+    },
+    {
+      "name": "licenses/TextureQuest-11323-LOCAL.txt",
+      "bytes": 504,
+      "sha256": "02b4be67e84ed8f717366c8c3e1d071a4004b096ed755801379a2c663b6a35f4"
     }
   ],
   "dlss": {
@@ -316,7 +321,7 @@
       {
         "name": "renderer/EQ2Graphics.addon64",
         "bytes": 1287168,
-        "sha256": "cbb144c9bd60f42469b12a66c106685f59ad9cc91015769af343ee5dd4ef146e"
+        "sha256": "565b0010508eb02673e1930bcc595c95097755cff43ae872fb03895d13df37ef"
       }
     ]
   }

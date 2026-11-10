@@ -1,14 +1,14 @@
 {
-  "revision": "TextureQuest 1.13.21 particle shadow motion, independent preferences and native sun-filter compatibility",
+  "revision": "TextureQuest 1.13.23 idle hook overhead",
   "native_release_asset": {
-    "bytes": 477184,
-    "sha256": "acb72186eb948353495c53b6897422fc7870ecfbbb7ed66f7e8702b222e7cea4"
+    "bytes": 479744,
+    "sha256": "5d446b91694ecb781d00b007603eea9e23a867d26b94a1dd9b5120d9829c07b5"
   },
   "actual_compiled_files": [
     {
       "name": "addon.cpp",
-      "bytes": 49171,
-      "sha256": "360c1120036081ddd8befb0f37157a9518cc72ca3dcf9cc9dfdadde3dc49b67b"
+      "bytes": 50807,
+      "sha256": "752c0d528602aabc979ee5b348c32cec2738b923f09075fc9fe2402121380898"
     },
     {
       "name": "aio_controller.hpp",
@@ -172,13 +172,13 @@
     },
     {
       "name": "effects_controller.hpp",
-      "bytes": 9912,
-      "sha256": "89efd340c5fbd9252700253efb95dc9d9972a70279eb4c5c6a015251804c3029"
+      "bytes": 12534,
+      "sha256": "a335d8dbccaef9429bb7947efeb1439143fe7bc39b832d3071e0b78dedd9a660"
     },
     {
       "name": "fps_counter.hpp",
-      "bytes": 2608,
-      "sha256": "4a8e857fc0b6b45b511ffb264ee42fcaeea60ace70232e9065f6c0e4ce6dbe54"
+      "bytes": 4139,
+      "sha256": "f8786d1e94469bba3a64731453c62535fcc88eee5bf65988d8824b961b3ba4cb"
     },
     {
       "name": "layout.hpp",
@@ -187,8 +187,8 @@
     },
     {
       "name": "renderer_binding_probe.hpp",
-      "bytes": 13613,
-      "sha256": "41ae8691c0b9074346459504810a867bdeeb130aed599f9a330768fa3b7b1f5a"
+      "bytes": 13866,
+      "sha256": "157e26ba1eca12e9e104871374f21003baf732304a8389837360a77b68a8c6ec"
     },
     {
       "name": "shortcut.hpp",
@@ -539,6 +539,16 @@
     },
     "scope": "Preset tooltip describes performance-only ownership.",
     "game_validation": "Particle shadow motion approved in local 1.13.20; new preset/migration/filter changes have controlled validation, not new live-game approval.",
+    "hardware_benchmark": false
+  },
+  "release_1_13_23": {
+    "scope": "Skip proven idle work; rendering quality and budgets unchanged",
+    "strict_native_build": {
+      "warnings": 0,
+      "actual_showIncludes": true,
+      "immutable_inputs": true
+    },
+    "game_validated": false,
     "hardware_benchmark": false
   }
 }

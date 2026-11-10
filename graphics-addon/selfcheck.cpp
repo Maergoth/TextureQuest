@@ -10,6 +10,7 @@
 #include "texture_map.hpp"
 #include "vpk_reader.hpp"
 #include "dds_reader.hpp"
+#include "fps_counter.hpp"
 #include <fstream>
 #include <string>
 #include <vector>
@@ -28,7 +29,56 @@ static std::vector<unsigned char> ReadAll(const std::wstring& path) {
     return std::vector<unsigned char>(std::istreambuf_iterator<char>(file), {});
 }
 
+static void CheckFpsCounters() {
+    tq::RuntimeFpsCounters counters;
+    int first = 0, second = 0;
+    counters.Register(&first);
+    counters.Register(&second);
+    counters.Frame(&first, 0, false, 0);
+    counters.Frame(&second, 0, false, 0);
+    for (unsigned n = 1; n <= 50; ++n) {
+        counters.Frame(&first, n * 10, false, 0);
+        if (n % 5 == 0) counters.Frame(&second, n * 10, false, 0);
+    }
+    const auto a = counters.Snapshot(&first), b = counters.Snapshot(&second);
+    Check(a.Ready && a.Game == 100 && b.Ready && b.Game == 20,
+          "interleaved runtimes retain independent source FPS");
+    counters.Forget(&first);
+    counters.Frame(&first, 750, false, 0);
+    Check(!counters.Snapshot(&first).Ready && counters.Snapshot(&second).Game == 20,
+          "destroyed runtime cannot revive or disturb another sample");
+    counters.Register(&first);
+    Check(!counters.Snapshot(&first).Ready, "reused runtime starts a fresh sample");
+    counters.SetVisible(false);
+    counters.Frame(&second, 600, false, 0);
+    counters.Frame(&second, 1000, false, 0);
+    Check(!counters.Snapshot(&second).Ready, "hidden FPS has no displayed or accumulated sample");
+    counters.SetVisible(true);
+    counters.Frame(&second, 1100, false, 0);
+    counters.Frame(&second, 1350, false, 0);
+    Check(!counters.Snapshot(&second).Ready, "showing FPS waits for a new complete sample window");
+    counters.Frame(&second, 1600, false, 0);
+    Check(counters.Snapshot(&second).Game == 4, "hidden time is excluded after toggling on");
+    counters.SetVisible(true);
+    Check(counters.Snapshot(&second).Ready, "unchanged visibility does not restart sampling");
+    counters.Frame(&first, 2000, true, 10);
+    for (unsigned n = 1; n <= 50; ++n) counters.Frame(&first, 2000 + n * 10, true, 10 + n * 3);
+    const auto generated = counters.Snapshot(&first);
+    Check(generated.Ready && generated.Game == 100 && generated.Output == 300 && generated.OutputActive,
+          "frame generation retains separate game and output rates");
+    counters.Frame(&first, 3000, true, 160);
+    Check(counters.Snapshot(&first).Output == 0, "stalled compositor does not retain a stale positive output rate");
+    counters.Frame(&first, 3010, false, 0);
+    Check(!counters.Snapshot(&first).Ready && !counters.Snapshot(&first).OutputActive,
+          "output mode changes restart the source sample coherently");
+}
+
 int wmain(int argc, wchar_t** argv) {
+    CheckFpsCounters();
+    if (argc == 2 && std::wcscmp(argv[1], L"--fps") == 0) {
+        std::printf("FPS selfcheck: %d failures\n", Failures);
+        return Failures ? 1 : 0;
+    }
     if (argc < 2) {
         std::printf("usage: selfcheck <fixture dir>\n");
         return 2;

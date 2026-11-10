@@ -46,8 +46,8 @@ inline bool ExactEffectText(const char* text, size_t reported, const char* expec
 }
 
 // Runtime is the real SDK interface or the CPU fake. Only runtime identity,
-// requested bits and render-thread identity survive a callback: no FX, SRV or
-// resource handle is cached or reused after reload/destroy.
+// requested bits, copied presence/disabled facts and render-thread identity
+// survive a callback: no FX, SRV or resource handle is cached or reused.
 template<class Runtime>
 class EffectsController {
     using Technique = decltype(std::declval<Runtime*>()->find_technique("", ""));
@@ -56,6 +56,8 @@ class EffectsController {
         std::thread::id RenderThread{};
         uint32_t Requested = DefaultEffectRequests;
         EffectSnapshot Last{};
+        bool MasterKnown = false, LastMaster = false;
+        bool CleanIdle = false, CurrentAbsent = false, RetiredClean = false;
     };
     std::mutex Lock;
     std::array<Entry, MaxEffectRuntimes> Entries{};
@@ -77,6 +79,9 @@ class EffectsController {
             return &entry;
         }
         return nullptr;
+    }
+    static void Invalidate(Entry& entry) {
+        entry.CleanIdle = entry.CurrentAbsent = entry.RetiredClean = false;
     }
     static bool Exact(const char* text, size_t size, const char* expected, size_t capacity) {
         return ExactEffectText(text, size, expected, capacity);
@@ -106,7 +111,10 @@ public:
     // compiler or shutdown thread. Reload retains all in-session menu requests.
     void Reload(Runtime* runtime, bool = false) {
         std::lock_guard guard(Lock);
-        if (auto* entry = Ensure(runtime)) entry->Last = {};
+        if (auto* entry = Ensure(runtime)) {
+            entry->Last = {};
+            Invalidate(*entry);
+        }
     }
     void Forget(Runtime* runtime) {
         std::lock_guard guard(Lock);
@@ -135,6 +143,7 @@ public:
         const uint32_t bit = 1u << index;
         if (enabled) entry->Requested |= bit;
         else entry->Requested &= ~bit;
+        Invalidate(*entry);
         return true;
     }
 
@@ -149,23 +158,56 @@ public:
         const auto current = std::this_thread::get_id();
         if (entry->RenderThread == std::thread::id{}) entry->RenderThread = current;
         if (entry->RenderThread != current) return false;
+        if (!entry->MasterKnown || entry->LastMaster != masterEnabled) {
+            Invalidate(*entry);
+            entry->MasterKnown = true;
+            entry->LastMaster = masterEnabled;
+        }
+        // Only absence/verified-disabled facts survive callbacks. Reloads,
+        // requests, owned technique events and master edges invalidate them.
+        if (entry->CleanIdle || entry->CurrentAbsent) return true;
+        if (!masterEnabled || !entry->Requested) {
+            struct Sweep { EffectSnapshot Observed{}; bool Clean = true; } sweep;
+            WriteScope ownWrite(this);
+            // Multiple copies of our file can survive search-path changes.
+            // Confirm every current/retired owned technique is off before
+            // allowing idle callbacks to skip SDK access altogether.
+            runtime->enumerate_techniques(EffectsFile, [](Runtime* current, Technique technique, void* data) {
+                auto& state = *static_cast<Sweep*>(data);
+                const int index = OwnedIndex(current, technique);
+                if (index < 0 && index != -2) return;
+                if (index >= 0) state.Observed.Available |= 1u << index;
+                if (current->get_technique_state(technique)) current->set_technique_state(technique, false);
+                if (current->get_technique_state(technique)) {
+                    state.Clean = false;
+                    if (index >= 0) state.Observed.Active |= 1u << index;
+                }
+            }, &sweep);
+            entry->Last = sweep.Observed;
+            entry->CleanIdle = entry->RetiredClean = sweep.Clean;
+            entry->CurrentAbsent = sweep.Clean && !sweep.Observed.Available;
+            return true;
+        }
         const bool depth = masterEnabled && (entry->Requested & DepthEffectRequests) && probe(runtime);
         EffectSnapshot observed{};
         observed.DepthReady = depth;
         WriteScope ownWrite(this);
-        bool hasRetired = false;
-        for (const char* name : RetiredEffectNames)
-            if (OwnedIndex(runtime, runtime->find_technique(EffectsFile, name)) == -2) {
-                hasRetired = true;
-                break;
+        if (!entry->RetiredClean) {
+            bool hasRetired = false;
+            for (const char* name : RetiredEffectNames)
+                if (OwnedIndex(runtime, runtime->find_technique(EffectsFile, name)) == -2) {
+                    hasRetired = true;
+                    break;
+                }
+            bool retiredClean = true;
+            if (hasRetired) {
+                runtime->enumerate_techniques(EffectsFile, [](Runtime* current, Technique technique, void* data) {
+                    if (OwnedIndex(current, technique) != -2) return;
+                    if (current->get_technique_state(technique)) current->set_technique_state(technique, false);
+                    if (current->get_technique_state(technique)) *static_cast<bool*>(data) = false;
+                }, &retiredClean);
             }
-        if (hasRetired) {
-            // Only old caches incur this scan. Multiple owned file copies may
-            // be loaded after a user extends their search paths; retire all.
-            runtime->enumerate_techniques(EffectsFile, [](Runtime* current, Technique technique, void*) {
-                if (OwnedIndex(current, technique) == -2 && current->get_technique_state(technique))
-                    current->set_technique_state(technique, false);
-            }, nullptr);
+            entry->RetiredClean = retiredClean;
         }
         for (size_t i = 0; i < EffectNames.size(); ++i) {
             // Fresh exact-file lookup each callback: handles never outlive it.
@@ -179,6 +221,7 @@ public:
             if (runtime->get_technique_state(technique)) observed.Active |= bit;
         }
         entry->Last = observed;
+        entry->CurrentAbsent = !observed.Available && entry->RetiredClean;
         return true;
     }
 
@@ -189,10 +232,17 @@ public:
         if (Writing == this) return false;
         std::lock_guard guard(Lock);
         Entry* entry = Find(runtime);
-        if (!entry || entry->RenderThread != std::this_thread::get_id()) return false;
+        if (!entry) return false;
+        if (entry->RenderThread != std::this_thread::get_id()) {
+            // No off-thread SDK query is allowed, but the event may change a
+            // previously clean technique. Recheck it on the next render call.
+            Invalidate(*entry);
+            return false;
+        }
         const int index = OwnedIndex(runtime, technique);
+        if (index < 0 && index != -2) return false; // Other FX, including same-named ones, untouched.
+        Invalidate(*entry);
         if (index == -2) return enabled; // Removed owned effects cannot reactivate.
-        if (index < 0) return false; // Other FX, including same-named ones, untouched.
         const uint32_t bit = 1u << index;
         if (enabled && selected) entry->Requested |= bit;
         else entry->Requested &= ~bit;

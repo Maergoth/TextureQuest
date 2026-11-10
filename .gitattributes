@@ -3,6 +3,14 @@ CHANGELOG.md text eol=lf
 RELEASE-NOTES.md text eol=lf
 /graphics-addon/addon.cpp -text
 /graphics-addon/texturequest_aio_api.h -text
+# Preserve the exact compiled/tested idle-path inputs and native source pins.
+/graphics-addon/effects_controller.hpp -text
+/graphics-addon/effects_controller_selfcheck.cpp -text
+/graphics-addon/fps_counter.hpp -text
+/graphics-addon/renderer_binding_probe.hpp -text
+/graphics-addon/selfcheck.cpp -text
+/graphics-addon/RELEASE-NATIVE-SOURCE.json -text
+/docs/IDLE_HOOK_OVERHEAD.md text eol=lf
 # Runtime FILE hashes are part of the content-verified payload descriptor.
 # Preserve exact bytes on Windows clones, including JSON, Python and licenses.
 /sideload-runtime/** -text

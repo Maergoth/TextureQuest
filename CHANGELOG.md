@@ -4,6 +4,14 @@ This is the canonical history bundled with the installer. Develop entries are
 development builds, not announcements of public binary releases. Controlled
 checks described here do not establish complete in-game appearance or FPS.
 
+## 1.13.23 — Lower idle hook overhead
+
+- Stop repeated owned-effect searches and depth queries after disabled or absent effects have been reconciled. Reloads, setting changes and technique events invalidate that result; active effects continue to use current handles and depth readiness.
+- Skip FPS sampling when Show FPS is off. Keep separate FPS samples for each runtime, and reset the sample window when the counter is shown again.
+- Let the bundled ReShade provider skip an otherwise unnecessary GUI frame when the TextureQuest FPS overlay is hidden. Home, other overlays and ReShade's normal GUI triggers remain available. Callback registrations remain stable across toggles.
+- Skip renderer device queries, timing and sampler lookups for disabled filtering, and skip diagnostic frame clocks/context queries while no recording or pending transition exists.
+- Preserve all texture bytes, mipmaps, filtering quality, lighting/shadow settings and budgets. This removes identified idle work; it does not establish the cause of a reported 10 FPS loss or promise zero ReShade overhead. Texture data remains 1.3.0.
+
 ## 1.13.22 — Particle light baseline
 
 - Set particle light strength 1× to the brightness of 0.5× in 1.13.21. Fresh installations start at this gentler 1× baseline.

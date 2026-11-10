@@ -70,6 +70,9 @@ struct Handoff {
 };
 
 struct State {
+    using OverlayDemandFn = uint32_t(WINAPI *)(void*, void*, uint32_t);
+    HMODULE Owner = nullptr;
+    OverlayDemandFn SetOverlayDemand = nullptr;
     tq::Config Config;
     tq::TextureMap Map;
     std::unique_ptr<tq::DDSReader> Reader;
@@ -90,10 +93,11 @@ struct State {
     tq::EffectsController<effect_runtime> Effects;
     tq::DlssController<effect_runtime> DLSS;
     tq::AioController AIO;
-    tq::FpsCounter FPS;
+    tq::RuntimeFpsCounters FPS;
     tq::WorldGraphicsController WorldGraphics;
     tq::RendererBindingProbe RendererProbe;
     std::atomic<bool> ShowFPS{true};
+    std::mutex FpsVisibilityLock;
     std::mutex EffectsStatusLock;
     uint64_t EffectsStatusSignature = UINT64_MAX;
     unsigned EffectsStatusLogs = 0;
@@ -103,6 +107,21 @@ struct State {
 
 State* Global = nullptr;
 thread_local Handoff Pending;
+
+void OnFpsOverlay(effect_runtime* runtime);
+
+void SetShowFPS(bool visible) {
+    // Multiple runtime threads may initialize or change this shared preference.
+    // Publish the counter, UI and provider state as one ordered transition.
+    std::lock_guard guard(Global->FpsVisibilityLock);
+    Global->FPS.SetVisible(visible);
+    Global->ShowFPS = visible;
+    // Keep event registration stable: ReShade dispatches its callback vector
+    // without a lock. The optional provider gate changes only overlay demand.
+    // Older providers retain their existing GUI behavior when this is absent.
+    if (Global->SetOverlayDemand)
+        Global->SetOverlayDemand(Global->Owner, reinterpret_cast<void*>(&OnFpsOverlay), visible ? 1u : 0u);
+}
 
 void Log(reshade::log::level level, const std::string& text) { reshade::log::message(level, text.c_str()); }
 
@@ -190,13 +209,13 @@ bool OnRendererDrawIndexed(command_list*cmd,uint32_t count,uint32_t,uint32_t,int
     if(Global)Global->RendererProbe.Draw(cmd,count);return false;
 }
 void OnRendererMap(device*dev,resource r,uint64_t offset,uint64_t size,map_access access,void**data) {
-    if(Global&&GameDevice(dev))Global->RendererProbe.Map(r,offset,size,access,data);
+    if(Global&&Global->RendererProbe.NeedsCaptureCallbacks()&&GameDevice(dev))Global->RendererProbe.Map(r,offset,size,access,data);
 }
 void OnRendererUnmap(device*dev,resource r) {
-    if(Global&&GameDevice(dev))Global->RendererProbe.Unmap(r);
+    if(Global&&Global->RendererProbe.NeedsCaptureCallbacks()&&GameDevice(dev))Global->RendererProbe.Unmap(r);
 }
 bool OnRendererUpdate(device*dev,const void*data,resource r,uint64_t offset,uint64_t size) {
-    if(Global&&GameDevice(dev))Global->RendererProbe.Update(r,data,offset,size);return false;
+    if(Global&&Global->RendererProbe.NeedsCaptureCallbacks()&&GameDevice(dev))Global->RendererProbe.Update(r,data,offset,size);return false;
 }
 
 
@@ -541,7 +560,8 @@ void OnInitEffectRuntime(effect_runtime* runtime) {
     if (!GameRuntime(runtime)) return;
     bool showFPS = true;
     reshade::get_config_value(nullptr, "TextureQuest", "ShowFPS", showFPS);
-    Global->ShowFPS = showFPS;
+    Global->FPS.Register(runtime);
+    SetShowFPS(showFPS);
     Global->Effects.Reload(runtime);
     Global->DLSS.Reload(runtime);
 }
@@ -553,6 +573,7 @@ void OnReloadedEffects(effect_runtime* runtime) {
 }
 
 void OnDestroyEffectRuntime(effect_runtime* runtime) {
+    Global->FPS.Forget(runtime);
     Global->Effects.Forget(runtime);
     Global->DLSS.Forget(runtime);
 }
@@ -608,16 +629,19 @@ void OnReshadePresent(effect_runtime* runtime) {
     // requested effects. This query is phase-qualified, not a draw observation.
     ReconcileEffects(runtime, 1);
     if (!Global || !GameRuntime(runtime)) return;
-    const auto aio = Global->AIO.Snapshot();
-    const bool outputActive = tq::AioOutputActive(aio.Compatible, Global->Original.load(), aio.Status.Flags,
-        aio.ControlsCompatible ? &aio.Controls : nullptr);
-    Global->FPS.Frame(GetTickCount64(), outputActive, aio.Status.PresentedFrames);
-    Global->RendererProbe.Frame(runtime->get_device()->get_native());
+    if (Global->ShowFPS.load(std::memory_order_relaxed)) {
+        const auto aio = Global->AIO.Snapshot();
+        const bool outputActive = tq::AioOutputActive(aio.Compatible, Global->Original.load(), aio.Status.Flags,
+            aio.ControlsCompatible ? &aio.Controls : nullptr);
+        Global->FPS.Frame(runtime, GetTickCount64(), outputActive, aio.Status.PresentedFrames);
+    }
+    if (Global->RendererProbe.NeedsCaptureCallbacks())
+        Global->RendererProbe.Frame(runtime->get_device()->get_native());
 }
 
 void OnFpsOverlay(effect_runtime* runtime) {
     if (!Global || !GameRuntime(runtime) || !Global->ShowFPS.load()) return;
-    const auto rates = Global->FPS.Snapshot();
+    const auto rates = Global->FPS.Snapshot(runtime);
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.65f);
     constexpr auto flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
@@ -766,7 +790,7 @@ void OnTextureQuestOverlay(effect_runtime* runtime) {
     const auto state = Global->Effects.Snapshot(runtime);
     bool showFPS = Global->ShowFPS.load();
     if (ImGui::Checkbox("Show FPS", &showFPS)) {
-        Global->ShowFPS = showFPS;
+        SetShowFPS(showFPS);
         reshade::set_config_value(nullptr, "TextureQuest", "ShowFPS", showFPS);
     }
     if (ImGui::IsItemHovered())
@@ -847,8 +871,12 @@ void OnTextureQuestOverlay(effect_runtime* runtime) {
     }
 }
 
-void Start(HMODULE module) {
+void Start(HMODULE module, HMODULE reshadeModule) {
     auto* state = new State();
+    state->Owner = module;
+    if (reshadeModule)
+        state->SetOverlayDemand = reinterpret_cast<State::OverlayDemandFn>(
+            GetProcAddress(reshadeModule, "TextureQuestSetOverlayCallbackDemandV1"));
     std::string error;
     if (!tq::ReadConfig(ModuleFolder(module) + L"TextureQuest.ini", state->Config, error)) {
         Log(reshade::log::level::error, error + "; textures stay stock");
@@ -878,6 +906,7 @@ void Start(HMODULE module) {
     reshade::register_event<reshade::addon_event::reshade_begin_effects>(&OnBeginEffects);
     reshade::register_event<reshade::addon_event::reshade_present>(&OnReshadePresent);
     reshade::register_event<reshade::addon_event::reshade_overlay>(&OnFpsOverlay);
+    SetShowFPS(state->ShowFPS.load()); // Safe default until the saved choice is read at runtime init.
     reshade::register_event<reshade::addon_event::reshade_overlay_technique>(&OnOverlayTechnique);
     reshade::register_overlay("TextureQuest", &OnTextureQuestOverlay);
     reshade::register_event<reshade::addon_event::init_pipeline>(&OnRendererPipeline);
@@ -955,7 +984,7 @@ extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE re
         if (participate)
             participate(addon_module, tq_depth_v1::NoManualDepth);
     }
-    Start(addon_module);
+    Start(addon_module, reshade_module);
     return true;
 }
 
